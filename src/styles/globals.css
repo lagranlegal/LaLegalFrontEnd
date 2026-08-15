@@ -1,0 +1,107 @@
+@import 'tailwindcss';
+@import './tokens.css';
+@import 'tw-animate-css';
+@import 'shadcn/tailwind.css';
+@import '@fontsource-variable/inter';
+
+/* Un solo mecanismo de dark mode: el atributo que ya usa tokens.css. */
+@custom-variant dark (&:is([data-theme='dark'] *));
+
+/*
+ * Mapea las variables que shadcn/ui y Tailwind (@theme) esperan a NUESTROS
+ * tokens de docs/DESIGN_SYSTEM.md §2. shadcn/ui se themea así, sin tocar
+ * un solo componente generado. Rebranding = editar tokens.css, no este archivo.
+ */
+@theme inline {
+  --font-sans: var(--font-sans);
+
+  --color-background: var(--bg-app);
+  --color-foreground: var(--text-strong);
+  --color-card: var(--bg-surface);
+  --color-card-foreground: var(--text-strong);
+  --color-popover: var(--bg-surface);
+  --color-popover-foreground: var(--text-strong);
+  --color-primary: var(--brand-500);
+  --color-primary-foreground: var(--brand-contrast);
+  --color-secondary: var(--brand-50);
+  --color-secondary-foreground: var(--brand-700);
+  --color-muted: var(--bg-app);
+  --color-muted-foreground: var(--text-muted);
+  --color-accent: var(--brand-50);
+  --color-accent-foreground: var(--brand-700);
+  --color-destructive: var(--danger);
+  --color-destructive-foreground: var(--brand-contrast);
+  --color-border: var(--border);
+  --color-input: var(--border);
+  --color-ring: var(--brand-500);
+
+  /* Semánticos propios del dominio (§2) — utilidades bg-success, text-danger… */
+  --color-success: var(--success);
+  --color-success-soft: var(--success-soft);
+  --color-warning: var(--warning);
+  --color-warning-soft: var(--warning-soft);
+  --color-danger: var(--danger);
+  --color-danger-soft: var(--danger-soft);
+  --color-info: var(--info);
+  --color-info-soft: var(--info-soft);
+
+  /* Estados de dominio (StatusBadge) */
+  --color-status-active: var(--status-active);
+  --color-status-arrears: var(--status-arrears);
+  --color-status-extension: var(--status-extension);
+  --color-status-auctioned: var(--status-auctioned);
+  --color-status-paid: var(--status-paid);
+  --color-status-neutral: var(--status-neutral);
+
+  /* Gráficas (Recharts) */
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+
+  /* Sidebar (AppShell) */
+  --color-sidebar: var(--bg-surface);
+  --color-sidebar-foreground: var(--text-strong);
+  --color-sidebar-primary: var(--brand-500);
+  --color-sidebar-primary-foreground: var(--brand-contrast);
+  --color-sidebar-accent: var(--brand-50);
+  --color-sidebar-accent-foreground: var(--brand-700);
+  --color-sidebar-border: var(--border);
+  --color-sidebar-ring: var(--brand-500);
+
+  /* Forma */
+  --radius-input: var(--radius-input);
+  --radius-card: var(--radius-card);
+  --radius-modal: var(--radius-modal);
+  --radius-pill: var(--radius-pill);
+  --radius-sm: calc(var(--radius-input) * 0.6);
+  --radius-md: var(--radius-input);
+  --radius-lg: var(--radius-card);
+  --radius-xl: var(--radius-modal);
+
+  /* Sombra */
+  --shadow-card: var(--shadow-card);
+  --shadow-modal: var(--shadow-modal);
+
+  /* Espaciado de layout (p-page, gap-card…) */
+  --spacing-page: var(--space-page);
+  --spacing-card: var(--space-card);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+  html {
+    @apply font-sans;
+  }
+  /* Cifras (KPIs, dinero) con tabular numbers — Money/KpiCard lo heredan. */
+  .tnum {
+    font-feature-settings: 'tnum' 1;
+    font-variant-numeric: tabular-nums;
+  }
+}

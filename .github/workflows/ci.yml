@@ -1,0 +1,50 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [dev, main]
+
+jobs:
+  lint-typecheck-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci --legacy-peer-deps
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Typecheck (tsc estricto)
+        run: npm run typecheck
+
+      - name: Tests (Vitest)
+        run: npm run test
+
+      - name: Build
+        run: npm run build
+
+  api-drift:
+    runs-on: ubuntu-latest
+    # CLAUDE.md regla 1: los tipos SIEMPRE salen del /openapi.json del backend
+    # — este job detecta breaking changes de API antes del deploy.
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci --legacy-peer-deps
+
+      - name: Verifica que src/types/api.ts está al día con /openapi.json
+        run: npm run gen:api:check
+        env:
+          VITE_API_URL: ${{ vars.VITE_API_URL || 'https://compraventa-backend-dev.fly.dev' }}

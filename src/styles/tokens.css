@@ -1,0 +1,65 @@
+/**
+ * Única fuente de verdad del diseño. Ver docs/DESIGN_SYSTEM.md §2.
+ * Cambiar la marca completa = editar las 6 líneas de "Marca" abajo.
+ * Prohibido: hex/rgb sueltos en features o components/shared — todo pasa por aquí.
+ */
+:root {
+  /* ==== Marca (cambiar estas 6 líneas re-marca toda la app) ==== */
+  --brand-50: #e6f7f5; /* fondos suaves, item activo de sidebar, chips */
+  --brand-100: #c2ede7;
+  --brand-500: #00b19e; /* primario: botones, links, item activo, series "ingresos" */
+  --brand-600: #009c8b; /* hover del primario */
+  --brand-700: #00806f; /* pressed / focos */
+  --brand-contrast: #ffffff;
+
+  /* ==== Semánticos ==== */
+  --success: #22a06b;
+  --success-soft: #e6f6ef;
+  --warning: #e8a23d;
+  --warning-soft: #fcf3e3;
+  --danger: #e5484d; /* gastos, cuentas por cobrar, anulaciones, mora */
+  --danger-soft: #fdebec;
+  --info: #3b82f6;
+  --info-soft: #eaf2fe;
+
+  /* ==== Neutrales (superficies y texto) ==== */
+  --bg-app: #f5f7fa; /* fondo general */
+  --bg-surface: #ffffff; /* cards, sidebar, topbar, modales */
+  --border: #e5eaf0; /* bordes de cards, inputs, divisores */
+  --text-strong: #1e2a3b; /* títulos, cifras */
+  --text-body: #44546a;
+  --text-muted: #8a97a8; /* labels de KPI, hints, placeholders */
+
+  /* ==== Estados de dominio (badges) ==== */
+  --status-active: var(--success); /* Vigente / disponible / activa */
+  --status-arrears: var(--warning); /* En mora / borrador */
+  --status-extension: #d97706; /* Prórroga */
+  --status-auctioned: var(--danger); /* Rematado / anulada / vencida */
+  --status-paid: var(--info); /* Pagado / vendido */
+  --status-neutral: var(--text-muted); /* invitado, inactivo, written_off */
+
+  /* ==== Gráficas (Recharts lee de aquí) ==== */
+  --chart-1: var(--brand-500); /* serie principal / ingresos */
+  --chart-2: var(--danger); /* gastos / egresos */
+  --chart-3: #0e7490;
+  --chart-4: #67c7bc;
+  --chart-5: #a7b3c2; /* series secundarias, dona */
+
+  /* ==== Forma ==== */
+  --radius-input: 10px;
+  --radius-card: 14px;
+  --radius-modal: 24px;
+  --radius-pill: 9999px;
+  --shadow-card: 0 1px 3px rgb(30 42 59 / 0.06);
+  --shadow-modal: 0 20px 50px rgb(30 42 59 / 0.18);
+
+  /* ==== Tipografía y espaciado ==== */
+  --font-sans: 'Inter', system-ui, sans-serif; /* cifras de KPI con font-feature "tnum" */
+  --space-page: 24px;
+  --space-card: 20px;
+}
+
+/* Dark mode: la estructura ya lo permite (mismas variables redefinidas). No es
+   requisito hoy — no invertir esfuerzo, pero tampoco romper el mecanismo. */
+[data-theme='dark'] {
+}
