@@ -1,8 +1,10 @@
+import { Link } from '@tanstack/react-router'
 import { useMe } from '@/lib/auth/me'
-import { useDashboard } from '@/features/dashboard/api'
+import { useDashboard, useReadyForAuction } from '@/features/dashboard/api'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { KpiCard, KpiRow } from '@/components/shared/KpiCard'
 import { Money } from '@/components/shared/Money'
+import { EmptyState } from '@/components/shared/EmptyState'
 import { ContractsStatusChart, type StatusDatum } from '@/components/shared/charts/ContractsStatusChart'
 import { Button } from '@/components/ui/button'
 import { formatDate } from '@/lib/dates'
@@ -27,6 +29,7 @@ function DashboardSkeleton() {
 export function DashboardPage() {
   const { data: me } = useMe()
   const { data, isPending, isError, refetch } = useDashboard()
+  const { data: readyForAuction } = useReadyForAuction()
 
   if (isPending) return <DashboardSkeleton />
 
@@ -72,9 +75,33 @@ export function DashboardPage() {
         <KpiCard label="Estado de caja" value={data.cashbox.session_open ? 'Abierta' : 'Cerrada'} tone={data.cashbox.session_open ? 'success' : 'danger'} />
       </KpiRow>
 
-      <div className="rounded-card border border-border bg-card p-card shadow-card">
-        <h2 className="text-sm font-medium text-foreground">Contratos por estado</h2>
-        <ContractsStatusChart data={contractsByStatus} />
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+        <div className="rounded-card border border-border bg-card p-card shadow-card">
+          <h2 className="text-sm font-medium text-foreground">Contratos por estado</h2>
+          <ContractsStatusChart data={contractsByStatus} />
+        </div>
+
+        <div className="rounded-card border border-border bg-card p-card shadow-card">
+          <h2 className="text-sm font-medium text-foreground">Listos para remate</h2>
+          {!readyForAuction || readyForAuction.length === 0 ? (
+            <EmptyState title="Nada pendiente de remate" description="Los contratos vencidos que agotan su prórroga aparecen aquí." />
+          ) : (
+            <div className="mt-3 flex flex-col divide-y divide-border">
+              {readyForAuction.slice(0, 5).map((contract) => (
+                <Link
+                  key={contract.id}
+                  to="/contratos/$contractId"
+                  params={{ contractId: contract.id }}
+                  className="flex items-center justify-between gap-3 py-2.5 text-sm hover:text-primary"
+                >
+                  <span className="font-medium text-foreground">Contrato #{contract.number}</span>
+                  <span className="text-muted-foreground">Vencido el {formatDate(contract.due_date)}</span>
+                  <Money value={contract.capital_balance} />
+                </Link>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
     </div>
   )

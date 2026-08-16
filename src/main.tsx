@@ -6,6 +6,8 @@ import './styles/globals.css'
 import { queryClient } from '@/app/query-client'
 import { createAppRouter } from '@/app/router'
 import { useInactivityLogout } from '@/lib/auth/inactivity'
+import { Toaster } from '@/components/ui/sonner'
+import { ConfirmDialogHost } from '@/components/shared/ConfirmDialog'
 
 const router = createAppRouter(queryClient)
 
@@ -18,6 +20,8 @@ createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <QueryClientProvider client={queryClient}>
       <Root />
+      <Toaster position="top-center" richColors />
+      <ConfirmDialogHost />
     </QueryClientProvider>
   </StrictMode>,
 )

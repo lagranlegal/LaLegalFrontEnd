@@ -60,3 +60,22 @@ export function parseMoneyInput(maskedInput: string): string {
   const digits = digitsOnly(maskedInput).replace(/^0+(?=\d)/, '')
   return `${digits || '0'}.00`
 }
+
+function toCents(decimal: string): number {
+  const [wholeRaw = '0', decimalRaw = '00'] = decimal.split('.')
+  const whole = Number(wholeRaw.replace(/[^0-9]/g, '') || '0')
+  const cents = Number(decimalRaw.padEnd(2, '0').slice(0, 2))
+  return whole * 100 + cents
+}
+
+/**
+ * Suma de PRESENTACIÓN (docs/ARCHITECTURE.md §7: "sumas de presentación
+ * hechas sobre enteros de centavos, nunca floats") — ej. mostrar
+ * interés + capital extra ANTES de enviar el abono, nunca para decidir un
+ * monto que manda la API (eso siempre lo calcula el backend).
+ * `sumMoney("50000.00", "10000.00")` → `"60000.00"`.
+ */
+export function sumMoney(...values: (string | null | undefined)[]): string {
+  const totalCents = values.reduce((total: number, value) => total + (value ? toCents(value) : 0), 0)
+  return `${Math.floor(totalCents / 100)}.${String(totalCents % 100).padStart(2, '0')}`
+}

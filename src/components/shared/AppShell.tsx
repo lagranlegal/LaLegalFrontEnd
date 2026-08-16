@@ -37,7 +37,7 @@ interface NavItem {
 // pantalla ya existe.
 const NAV_ITEMS: NavItem[] = [
   { label: 'Inicio', icon: Home, to: '/' },
-  { label: 'Contratos', icon: FileText },
+  { label: 'Contratos', icon: FileText, to: '/contratos' },
   { label: 'Ventas', icon: ShoppingCart },
   { label: 'Inventario', icon: Package },
   { label: 'Clientes', icon: Users, to: '/clientes' },
@@ -48,7 +48,7 @@ const NAV_ITEMS: NavItem[] = [
   { label: 'Configuración', icon: Settings },
 ]
 
-function SidebarContent({ collapsed }: { collapsed: boolean }) {
+function SidebarContent({ collapsed, onNavigate }: { collapsed: boolean; onNavigate?: () => void }) {
   return (
     <nav className="flex flex-1 flex-col gap-1 p-3">
       {NAV_ITEMS.map((item) => {
@@ -73,6 +73,7 @@ function SidebarContent({ collapsed }: { collapsed: boolean }) {
           <Link
             key={item.label}
             to={item.to}
+            onClick={onNavigate}
             className={cn(
               'flex items-center gap-3 rounded-input px-3 py-2 text-sm text-foreground transition-colors hover:bg-accent',
               collapsed && 'justify-center',
@@ -138,7 +139,7 @@ export function AppShell() {
                 <X className="size-4" />
               </Button>
             </div>
-            <SidebarContent collapsed={false} />
+            <SidebarContent collapsed={false} onNavigate={() => setMobileDrawerOpen(false)} />
           </aside>
         </div>
       )}

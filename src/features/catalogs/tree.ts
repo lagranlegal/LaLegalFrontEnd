@@ -1,6 +1,6 @@
-import type { components } from '@/types/api'
+import type { Category } from '@/lib/catalogs/categories'
 
-export type Category = components['schemas']['CategoryOut']
+export type { Category }
 
 export interface CategoryTreeNode extends Category {
   children: CategoryTreeNode[]

@@ -19,6 +19,9 @@ export const STATUS_LABELS = {
   invited: 'Invitado',
   open: 'Abierta',
   closed: 'Cerrada',
+  // Estado de `ContractItemOut.status` mientras la prenda respalda un
+  // contrato vigente — visto en pruebas reales (paso 5, contracts).
+  in_custody: 'En custodia',
 } as const
 
 export type KnownStatus = keyof typeof STATUS_LABELS
@@ -39,6 +42,7 @@ const STATUS_CLASSES: Record<KnownStatus, string> = {
   invited: 'bg-status-neutral/15 text-status-neutral',
   open: 'bg-status-active/15 text-status-active',
   closed: 'bg-status-neutral/15 text-status-neutral',
+  in_custody: 'bg-status-active/15 text-status-active',
 }
 
 const FALLBACK_CLASSES = 'bg-status-neutral/15 text-status-neutral'

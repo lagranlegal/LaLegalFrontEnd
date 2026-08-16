@@ -2,6 +2,81 @@
 
 > Registro vivo de qué existe en el código, cómo está armado y por qué se tomó cada decisión — para que cualquiera (humano o Claude Code) pueda retomar el proyecto sin releer todo el historial de commits. Se actualiza en cada paso del "Orden de implementación" de `CLAUDE.md`. No repite lo que ya está en `ARCHITECTURE.md`/`DESIGN_SYSTEM.md` (el qué-debería-ser); esto es el qué-hay-hoy y las decisiones concretas tomadas al construirlo.
 
+## Paso 5 — Contracts (completo)
+
+Crear contrato (varias prendas, categorías nivel 3, snapshot calculado por el backend), detalle con estado y KPIs, abonos **solo** desde `payment-options` (botones con monto exacto, capital extra opcional), historial de abonos, listado con tabs de estado, y "Rematar" para contratos `ready_for_auction`. Primera feature de dinero real: estrena `useMoneyMutation` (idempotencia), `ConfirmDialog`/`confirm()`, `CashSessionRequiredDialog`, toasts (`sonner`) y el card "Listos para remate" del dashboard (diferido desde el paso 3). Probado en navegador real de punta a punta: contrato creado con datos reales (`Empresa Demo Front`), incluyendo un 400 real del backend por configuración incompleta de categoría (ver hallazgos) y su recuperación tras corregirla desde el front mismo.
+
+### Estructura nueva
+
+```
+src/
+  components/shared/
+    ConfirmDialog.tsx / confirmStore.ts   # confirm() imperativo — host único montado en main.tsx
+    CashSessionRequiredDialog.tsx           # CASH_SESSION_NOT_OPEN → modal con CTA a abrir caja
+  components/ui/
+    sonner.tsx                                # toasts — sin next-themes (un solo mecanismo de dark mode)
+  lib/
+    api/useMoneyMutation.ts                     # Idempotency-Key por acción de usuario (regla 8)
+    catalogs/categories.ts                        # useCategories — movido de features/catalogs (ver hallazgos)
+    paymentMethods.ts                                # PAYMENT_METHOD_LABELS — un solo mapa, 3 consumidores
+    money.ts                                           # + sumMoney() (suma de presentación, centavos enteros)
+  features/contracts/
+    api.ts                # list/detail/create/update, payment-options, payments, auction, ready-for-auction
+    components/
+      CustomerPicker.tsx        # buscar-y-elegir cliente (no reusa features/customers — features aisladas)
+      PaymentOptionsPanel.tsx     # botones de payment-options + capital extra + confirm()
+      ContractEditDialog.tsx        # solo appraisal_value/notes (todo lo demás lo calcula el backend)
+    pages/
+      ContractsListPage.tsx           # tabs de estado + DataTable
+      ContractFormPage.tsx              # página completa (no modal) — useFieldArray + useBlocker
+      ContractDetailPage.tsx              # KPIs, prendas, abonos, historial, Rematar
+main.tsx                # + <Toaster/> y <ConfirmDialogHost/>
+```
+
+### Decisiones y hallazgos
+
+**`useMoneyMutation` (`lib/api/useMoneyMutation.ts`) implementa la regla 8 de CLAUDE.md tal como se documentó como pendiente desde el paso 1.** Genera la `Idempotency-Key` una vez por MONTAJE del hook (no por request) vía `useIdempotencyKey`, y la resetea solo en `onSuccess` — los reintentos de red de una mutación fallida reusan la misma key. Encaja natural con el patrón de remount-por-`key` de los diálogos (paso 4): al reabrir un formulario de dinero con una `key` nueva, el hook se remonta y genera una key nueva automáticamente, sin coordinación explícita. Testeado (`tests/useMoneyMutation.test.tsx`): la key se mantiene entre un fallo y su reintento, y cambia después de un éxito.
+
+**`ConfirmDialog`/`confirm()` es imperativo sobre un store de Zustand (`confirmStore.ts`), no un componente que cada feature monta.** `await confirm({title, tone:'danger', ...})` resuelve una promesa (`{confirmed, reason?}`) sin que el caller renderice ningún JSX de diálogo — un solo `<ConfirmDialogHost/>` vive en `main.tsx` (mismo patrón que `<Toaster/>`). Se necesitaba ya para "Rematar" (confirmación con consecuencia explícita, `DESIGN_SYSTEM.md` §4.4) y para registrar abonos; se construyó como lo describe `DESIGN_SYSTEM.md` §3, no una versión reducida.
+
+**`sonner` se agregó vía `npx shadcn add sonner`, y se le quitó la dependencia a `next-themes` que trae por defecto.** El preset generado usa `useTheme()` de `next-themes` para decidir claro/oscuro: el proyecto ya decidió en el paso 1 tener **un solo mecanismo de dark mode** (`[data-theme='dark']`, sin toggle todavía) — agregar `next-themes` habría sido una segunda fuente de verdad conviviendo con la primera. Se dejó `theme="system"` en `<Toaster/>` (sigue `prefers-color-scheme` por su cuenta, sin JS) y se desinstaló el paquete.
+
+**Categorías (`useCategories`) se movieron de `features/catalogs/api.ts` a `lib/catalogs/categories.ts`.** `contracts` necesita leer categorías (nivel 3, para clasificar prendas) y `features aisladas` (CLAUDE.md regla 3) prohíbe que una feature importe internals de otra — igual que `lib/auth/me.ts` no vive en `features/auth` porque más de un consumidor lo necesita. `catalogs/api.ts` conserva el CRUD (exclusivo de esa feature); la lectura compartida vive en `lib/`. `inventory` (paso 7) va a necesitar lo mismo.
+
+**`useCustomerSearch`/`useCustomer` en `features/contracts/api.ts` NO reusan `features/customers/api.ts`** — mismo principio de aislamiento. Son 3-6 líneas sobre el `api` central cada uno, no lógica de negocio duplicada (la regla que prohíbe duplicar vive en el backend, esto es solo el hook de React Query).
+
+**Bug real encontrado en navegador: `useCustomer(contract?.customer_id ?? '')` disparaba un request real a `/api/v1/customers/` (sin id) mientras `contract` todavía cargaba.** El backend redirige ese path (307) a la colección, y esa respuesta de redirect no trae `Access-Control-Allow-Origin` — el navegador la bloquea por CORS y aparece como error de consola. Se arregló con `enabled: customerId.length > 0` en el hook, evitando el request mientras no hay un id real. No era un problema del backend (nunca debió pedirse ese id vacío); confirmado corrigiendo y viendo la consola limpia después.
+
+**Bug real de mobile encontrado en este paso, pero preexistente desde el paso 2: el drawer del sidebar en mobile no se cerraba al navegar.** Un `<Link>` dentro del drawer solo cambiaba de ruta; el overlay (`fixed inset-0 z-50`) seguía montado encima del contenido nuevo, bloqueando todo click hasta cerrarlo a mano. Se encontró porque la prueba de contratos en 360px se quedaba "atascada" tras navegar desde el menú. Arreglado con un `onNavigate` opcional en `SidebarContent` que cierra el drawer (`setMobileDrawerOpen(false)`) — pasado solo desde el render del drawer, sin efecto en el sidebar de escritorio.
+
+**Hallazgo real de negocio, no un bug: el backend rechaza `POST /contracts` con `BAD_REQUEST` ("La categoría no tiene plazo/ventana de mora por defecto configurados.") si la categoría de una prenda no tiene `default_term_months`/`arrears_window_months`.** `CategoryFormDialog` (paso 4) no exponía esos campos — se agregaron ahí (`default_term_months`, `arrears_window_months`, `max_ltv_pct`, los tres opcionales, ya estaban en `CategoryCreateIn`/`CategoryUpdateIn` sin usar) porque sin ellos **ninguna categoría nivel 3 sirve para crear un contrato** — no es una mejora futura, es un gap real del formulario de catálogos que este paso necesitaba cerrar para poder probarse. Confirmado end-to-end: se editó "Anillos de oro" con esos 3 campos desde el front y el mismo contrato que había fallado con 400 se creó con 201 al reintentar.
+
+**`ContractItemOut.status` trae valores que `StatusBadge` no conocía (`in_custody`, visto en la prenda de un contrato recién creado).** Se agregó al mapa central (`STATUS_LABELS`/`STATUS_CLASSES`) — "En custodia", tono `status-active`. Es la misma regla del paso 3: el mapa se completa según lo que la API realmente manda, no se adivina de antemano; otros valores de este campo que no se han visto todavía (ej. tras un remate o una devolución) se agregan cuando aparezcan.
+
+**`PaymentOptionsPanel` no se pudo probar con opciones reales (abono efectivo) — un contrato recién creado no tiene meses adeudados todavía** (`interest_paid_until` = `start_date` = hoy), así que `payment-options` devuelve una lista vacía y el panel muestra correctamente "Este contrato no tiene abonos disponibles en este momento." (el estado vacío SÍ se probó). Probar un abono real requeriría un contrato con al menos un mes vencido, no fabricable rápido en dev. El código sigue el mismo patrón ya probado en esta sesión (`MoneyInput`, `Select`, `confirm()`, `useMoneyMutation`) — revisado pero no ejercitado con datos reales; queda anotado para la próxima vez que haya un contrato en mora real en dev.
+
+**"Rematar" tampoco se probó con datos reales** por la misma razón (ningún contrato llega a `ready_for_auction` en minutos) — el botón, el gate por permiso (`contracts.auction`, el único código de este paso ya confirmado por `ARCHITECTURE.md` §5, a diferencia de `contracts.create`/`contracts.payment` que son inferidos por convención igual que en el paso 4) y el `confirm()` con tono `danger` están implementados pero sin ejercitar contra el backend.
+
+**`ContractFormPage` es una página completa, no un `AppDialog`** — a diferencia de clientes/categorías/proveedores. `DESIGN_SYSTEM.md` §4.6 distingue "borradores largos (contrato, ingreso multi-línea)" como caso aparte que "avisan antes de descartar cambios"; un formulario con N prendas dinámicas no cabe cómodo en un modal `sm/md/lg`. Se usa `useBlocker` de TanStack Router (`shouldBlockFn` + `enableBeforeUnload`) en vez del patrón de confirmación del navegador nativo, con un `submittedRef` para no bloquear la navegación que dispara el propio submit exitoso.
+
+**Rutas de contratos son hermanas directas de `appLayoutRoute`, no anidadas bajo `contractsRoute`.** El primer intento anidó `contractNewRoute`/`contractDetailRoute` como hijas de `contractsRoute` (`/contratos` → `/contratos/nuevo`, `/contratos/$contractId`) pensando en agrupar por prefijo de URL — pero TanStack Router exige un `<Outlet/>` en el componente padre para que los hijos rendericen, y `ContractsListPage` no tiene uno (ni debería: la lista y el detalle/formulario son pantallas independientes, no un layout compartido). Confirmado en navegador: con el anidamiento, `/contratos/nuevo` renderizaba el listado de contratos, no el formulario. Se corrigió poniendo las tres rutas como hermanas bajo `appLayoutRoute`, igual que `dashboardRoute`/`customersRoute`/`catalogsRoute`.
+
+**`useParams` en `ContractDetailPage` usa `from: '/app-layout/contratos/$contractId'`, con el prefijo `app-layout`, mientras que `Link`/`navigate({to:...})` en el resto del feature usan `'/contratos/$contractId'` sin prefijo.** Mismo gotcha ya documentado en el paso 2 para `useSearch`: `appLayoutRoute` es pathless (`id: 'app-layout'`, no `path`) para no afectar la URL real — pero el `id` de sus rutas hijas para el sistema de tipos de TanStack SÍ hereda ese prefijo, mientras que el `fullPath` (lo que de verdad usa el navegador) no. `to`/`navigate` tipan contra `fullPath`; `from` en hooks como `useParams`/`useSearch` tipa contra `id`. Es la primera vez que una ruta hija de `appLayoutRoute` necesita `useParams`, así que es la primera vez que este detalle se vuelve visible en código (antes solo estaba anotado como riesgo).
+
+### Qué falta (fuera de alcance del paso 5)
+
+- Fotos de prendas (`ContractItemIn.photos`) — esperan a `PhotoUploader`, que llega con `inventory` (paso 7, mismo criterio que el resto de `components/shared`: se construye con su primer consumidor real).
+- Confirmar `contracts.create`/`contracts.payment` contra `GET /identity/permissions` — paso 8 (solo `contracts.auction` está confirmado por `ARCHITECTURE.md`).
+- Probar `PaymentOptionsPanel` con opciones reales (meses adeudados) y "Rematar" contra un contrato real en `ready_for_auction` — no se pudo fabricar ese estado en minutos contra dev; queda para la primera vez que exista un contrato así.
+- Acta/comprobante imprimible de contrato (`PrintLayout`) — mientras el backend no genere PDFs; no es parte del alcance textual del paso 5 en `CLAUDE.md`.
+
+### Comandos de verificación
+
+```bash
+npm run lint && npm run typecheck && npm run test && npm run build   # todo en verde (41 tests)
+npm run dev   # /contratos: listado con tabs, + Nuevo contrato, detalle con abonos/historial
+```
+
 ## Paso 4 — Customers + catalogs (completo)
 
 CRUD de clientes con búsqueda `?q=`, árbol de categorías (3 niveles, armado en el cliente desde la lista plana) con CRUD, proveedores con CRUD. Primera aparición de `DataTable` (TanStack Table) y del helper central de errores de formulario. Probado en navegador real, incluyendo el caso de conflicto (409) exacto que describe `DESIGN_SYSTEM.md` §4.9.

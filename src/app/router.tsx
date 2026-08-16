@@ -15,6 +15,9 @@ import { AuthCallbackPage } from '@/features/auth/pages/AuthCallbackPage'
 import { DashboardPage } from '@/features/dashboard/pages/DashboardPage'
 import { CustomersPage } from '@/features/customers/pages/CustomersPage'
 import { CatalogsPage } from '@/features/catalogs/pages/CatalogsPage'
+import { ContractsListPage } from '@/features/contracts/pages/ContractsListPage'
+import { ContractFormPage } from '@/features/contracts/pages/ContractFormPage'
+import { ContractDetailPage } from '@/features/contracts/pages/ContractDetailPage'
 
 interface RouterContext {
   queryClient: QueryClient
@@ -117,10 +120,34 @@ const catalogsRoute = createRoute({
   component: CatalogsPage,
 })
 
+// Hermanas de appLayoutRoute (no anidadas entre sí): si `contractNewRoute`/
+// `contractDetailRoute` fueran hijas de `contractsRoute`, TanStack Router
+// exigiría un <Outlet/> dentro de `ContractsListPage` para renderizarlas —
+// la lista y el detalle/formulario son pantallas independientes, no un
+// layout compartido. Estático antes que dinámico en el array por claridad
+// (el matcher de TanStack ya prioriza segmentos estáticos igual).
+const contractsRoute = createRoute({
+  getParentRoute: () => appLayoutRoute,
+  path: '/contratos',
+  component: ContractsListPage,
+})
+
+const contractNewRoute = createRoute({
+  getParentRoute: () => appLayoutRoute,
+  path: '/contratos/nuevo',
+  component: ContractFormPage,
+})
+
+const contractDetailRoute = createRoute({
+  getParentRoute: () => appLayoutRoute,
+  path: '/contratos/$contractId',
+  component: ContractDetailPage,
+})
+
 const routeTree = rootRoute.addChildren([
   authLayoutRoute.addChildren([loginRoute, authCallbackRoute]),
   subscriptionBlockedRoute,
-  appLayoutRoute.addChildren([dashboardRoute, customersRoute, catalogsRoute]),
+  appLayoutRoute.addChildren([dashboardRoute, customersRoute, catalogsRoute, contractsRoute, contractNewRoute, contractDetailRoute]),
 ])
 
 export function createAppRouter(queryClient: QueryClient) {

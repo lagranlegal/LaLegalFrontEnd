@@ -1,4 +1,4 @@
-import { queryOptions, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { api, unwrap } from '@/lib/api/client'
 import { useCursorInfiniteQuery } from '@/lib/api/pagination'
 import type { components } from '@/types/api'
@@ -9,18 +9,9 @@ export type SupplierUpdateIn = components['schemas']['SupplierUpdateIn']
 export type CategoryCreateIn = components['schemas']['CategoryCreateIn']
 export type CategoryUpdateIn = components['schemas']['CategoryUpdateIn']
 
-// ---- Categorías: lista plana chica, sin paginación (el árbol se arma en el cliente, ver tree.ts) ----
-
-export function categoriesQueryOptions() {
-  return queryOptions({
-    queryKey: ['catalogs', 'categories'] as const,
-    queryFn: () => unwrap(api.GET('/api/v1/catalogs/categories')),
-  })
-}
-
-export function useCategories() {
-  return useQuery(categoriesQueryOptions())
-}
+// La LECTURA de categorías (`useCategories`) vive en `lib/catalogs/categories.ts`
+// — más de una feature la consume (ver ese archivo). Acá solo el CRUD, que sí
+// es exclusivo de esta feature.
 
 export function useCreateCategory() {
   const queryClient = useQueryClient()

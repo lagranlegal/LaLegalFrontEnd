@@ -19,6 +19,14 @@ const categorySchema = z.object({
     .max(1, 'Una sola letra')
     .transform((v) => v.toUpperCase()),
   applies_to: z.enum(['pawn', 'store', 'both']),
+  // Solo importan de verdad en categorías nivel 3 (las que se usan al armar
+  // un contrato) — el backend rechaza `POST /contracts` con BAD_REQUEST si
+  // la categoría de la prenda no las tiene configuradas. Se piden en
+  // cualquier nivel igual: no sabemos el nivel hasta guardar (lo calcula el
+  // backend a partir del padre), y no cuesta nada tenerlas de una vez.
+  default_term_months: z.string().optional(),
+  arrears_window_months: z.string().optional(),
+  max_ltv_pct: z.string().optional(),
   active: z.boolean(),
 })
 
@@ -57,17 +65,31 @@ export function CategoryFormDialog({
   } = useForm<CategoryFormValues>({
     resolver: zodResolver(categorySchema),
     defaultValues: category
-      ? { name: category.name, code_letter: category.code_letter, applies_to: category.applies_to as CategoryFormValues['applies_to'], active: category.active }
-      : { name: '', code_letter: '', applies_to: 'both', active: true },
+      ? {
+          name: category.name,
+          code_letter: category.code_letter,
+          applies_to: category.applies_to as CategoryFormValues['applies_to'],
+          default_term_months: category.default_term_months != null ? String(category.default_term_months) : '',
+          arrears_window_months: category.arrears_window_months != null ? String(category.arrears_window_months) : '',
+          max_ltv_pct: category.max_ltv_pct ?? '',
+          active: category.active,
+        }
+      : { name: '', code_letter: '', applies_to: 'both', default_term_months: '', arrears_window_months: '', max_ltv_pct: '', active: true },
   })
 
   async function onSubmit(values: CategoryFormValues) {
     setFormError(null)
+    const body = {
+      ...values,
+      default_term_months: values.default_term_months ? Number(values.default_term_months) : null,
+      arrears_window_months: values.arrears_window_months ? Number(values.arrears_window_months) : null,
+      max_ltv_pct: values.max_ltv_pct || null,
+    }
     try {
       if (mode === 'create') {
-        await createCategory.mutateAsync({ ...values, parent_id: parentId ?? null })
+        await createCategory.mutateAsync({ ...body, parent_id: parentId ?? null })
       } else if (category) {
-        await updateCategory.mutateAsync({ categoryId: category.id, body: values })
+        await updateCategory.mutateAsync({ categoryId: category.id, body })
       }
       onOpenChange(false)
     } catch (error) {
@@ -133,6 +155,28 @@ export function CategoryFormDialog({
             />
           </div>
         </div>
+
+        <div className="grid grid-cols-3 gap-3">
+          <div>
+            <label htmlFor="cat-term" className="text-sm font-medium text-foreground">
+              Plazo (meses)
+            </label>
+            <input id="cat-term" inputMode="numeric" className={inputClass} {...register('default_term_months')} />
+          </div>
+          <div>
+            <label htmlFor="cat-arrears" className="text-sm font-medium text-foreground">
+              Ventana de mora (meses)
+            </label>
+            <input id="cat-arrears" inputMode="numeric" className={inputClass} {...register('arrears_window_months')} />
+          </div>
+          <div>
+            <label htmlFor="cat-ltv" className="text-sm font-medium text-foreground">
+              LTV máximo (%)
+            </label>
+            <input id="cat-ltv" inputMode="decimal" className={inputClass} {...register('max_ltv_pct')} />
+          </div>
+        </div>
+        <p className="-mt-2 text-xs text-muted-foreground">Obligatorios para categorías nivel 3 (las que se usan al armar un contrato).</p>
 
         {mode === 'edit' && (
           <label className="flex items-center gap-2 text-sm text-foreground">

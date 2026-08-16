@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { formatCOP, maskMoneyInput, parseMoneyInput } from '@/lib/money'
+import { formatCOP, maskMoneyInput, parseMoneyInput, sumMoney } from '@/lib/money'
 
 // Intl.NumberFormat('es-CO') separa el símbolo del monto con NBSP (U+00A0),
 // no un espacio normal — visualmente idéntico a "$ 2.664.500" pero hay que
@@ -67,5 +67,23 @@ describe('parseMoneyInput', () => {
   it('es el inverso de maskMoneyInput para el mismo monto', () => {
     const masked = maskMoneyInput('1500000')
     expect(parseMoneyInput(masked)).toBe('1500000.00')
+  })
+})
+
+describe('sumMoney', () => {
+  it('suma dos strings decimales sobre centavos enteros', () => {
+    expect(sumMoney('50000.00', '10000.00')).toBe('60000.00')
+  })
+
+  it('acarrea centavos correctamente', () => {
+    expect(sumMoney('50000.50', '10000.75')).toBe('60001.25')
+  })
+
+  it('ignora valores null/undefined (capital extra opcional)', () => {
+    expect(sumMoney('50000.00', null, undefined)).toBe('50000.00')
+  })
+
+  it('suma cero valores a "0.00"', () => {
+    expect(sumMoney()).toBe('0.00')
   })
 })
