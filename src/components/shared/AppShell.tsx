@@ -22,6 +22,7 @@ import { useLogout } from '@/features/auth/api'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
+import { CashSessionBanner } from '@/components/shared/CashSessionBanner'
 
 interface NavItem {
   label: string
@@ -89,9 +90,8 @@ function SidebarContent({ collapsed }: { collapsed: boolean }) {
 
 /**
  * Sidebar (blanca, colapsable a íconos en desktop, drawer con overlay en
- * mobile) + topbar (avatar con menú: salir) + contenido con `--space-page`
- * (docs/DESIGN_SYSTEM.md §3). `PageHeader`/`CashSessionBanner` llegan con
- * el paso 3 (dashboard + caja mínima).
+ * mobile) + topbar (avatar con menú: salir) + `CashSessionBanner` +
+ * contenido con `--space-page` (docs/DESIGN_SYSTEM.md §3).
  */
 export function AppShell() {
   const { data: me } = useMe()
@@ -181,6 +181,8 @@ export function AppShell() {
             </DropdownMenuContent>
           </DropdownMenu>
         </header>
+
+        <CashSessionBanner />
 
         <main className="flex-1 p-page">
           <Outlet />

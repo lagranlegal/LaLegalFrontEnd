@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { BOGOTA_TZ, formatDate, formatDateTime, getActiveTimezone, setActiveTimezone, todayBogota } from '@/lib/dates'
+import { BOGOTA_TZ, formatDate, formatDateTime, formatTime, getActiveTimezone, setActiveTimezone, todayBogota } from '@/lib/dates'
 
 describe('todayBogota', () => {
   afterEach(() => {
@@ -75,5 +75,14 @@ describe('formatDateTime (timestamps con hora)', () => {
     setActiveTimezone('America/Mexico_City')
     // México (UTC-6) va una hora detrás de Bogotá (UTC-5).
     expect(formatDateTime('2026-08-15T23:30:00Z')).toBe('15/08/2026 5:30 PM')
+  })
+})
+
+describe('formatTime', () => {
+  beforeEach(() => setActiveTimezone(BOGOTA_TZ))
+  afterEach(() => setActiveTimezone(BOGOTA_TZ))
+
+  it('formatea solo la hora, sin fecha, en la zona activa', () => {
+    expect(formatTime('2026-08-15T23:30:00Z')).toBe('6:30 PM')
   })
 })

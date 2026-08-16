@@ -52,3 +52,8 @@ export function formatDate(dateOnly: string): string {
 export function formatDateTime(timestamp: string | Date): string {
   return format(timestamp, 'dd/MM/yyyy h:mm a', { in: tz(activeTimezone) })
 }
+
+/** Solo la hora (`h:mm a`), en la zona de la empresa — ej. "caja abierta desde las 6:30 PM". */
+export function formatTime(timestamp: string | Date): string {
+  return format(timestamp, 'h:mm a', { in: tz(activeTimezone) })
+}

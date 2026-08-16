@@ -2,6 +2,67 @@
 
 > Registro vivo de qué existe en el código, cómo está armado y por qué se tomó cada decisión — para que cualquiera (humano o Claude Code) pueda retomar el proyecto sin releer todo el historial de commits. Se actualiza en cada paso del "Orden de implementación" de `CLAUDE.md`. No repite lo que ya está en `ARCHITECTURE.md`/`DESIGN_SYSTEM.md` (el qué-debería-ser); esto es el qué-hay-hoy y las decisiones concretas tomadas al construirlo.
 
+## Paso 3 — Dashboard + caja mínima (completo)
+
+KPIs reales (`GET /reports/dashboard`), gráfica "Contratos por estado", `CashSessionBanner` funcionando de punta a punta (abrir caja incluido). Primeros componentes de dinero (`Money`, `MoneyInput`) y el modal único (`AppDialog`) — construidos con un consumidor real, no por adelantado. Probado en navegador real con datos reales de "Empresa Demo Front" (login → dashboard → abrir caja → banner se actualiza).
+
+### Estructura nueva
+
+```
+src/
+  components/shared/
+    AppDialog.tsx           # EL modal de la app — sobre shadcn/ui Dialog (Radix)
+    Money.tsx                 # formatCOP envuelto, tabular-nums
+    MoneyInput.tsx              # enmascara mientras se escribe, emite decimal string
+    KpiCard.tsx                  # KpiCard + KpiRow
+    PageHeader.tsx
+    StatusBadge.tsx                # ÚNICO lugar que traduce estado→texto (+ statusLabel() reutilizable)
+    CashSessionBanner.tsx            # franja global bajo la topbar, en AppShell
+    charts/
+      ContractsStatusChart.tsx       # wrapper Recharts, colores por var(--status-*)
+  components/ui/
+    dialog.tsx                # shadcn — base de AppDialog
+  features/
+    dashboard/
+      api.ts                    # useDashboard() → GET /reports/dashboard
+      pages/DashboardPage.tsx     # real: KpiRow + chart, ya no placeholder
+    cashbox/
+      api.ts                      # useCashboxCurrent(), useOpenSession()
+      components/OpenSessionDialog.tsx
+```
+
+### Decisiones y hallazgos
+
+**`CASH_SESSION_NOT_OPEN` no es un error de UI, es un dato.** `GET /cashbox/sessions/current` lo lanza (como `ApiError`, vía el envelope `{code,...}`) cuando no hay sesión abierta hoy — `cashboxCurrentQueryOptions` lo atrapa y normaliza a `null`, así `useCashboxCurrent()` se consume como cualquier query normal (`data: SessionOut | null`) en vez de que cada consumidor tenga que hacer `try/catch` de un `ApiError` específico. **Confirmado en runtime que ese código viaja en un HTTP 404**, no 409 como sugiere la tabla de `ARCHITECTURE.md` §6 — no importa: el código del front nunca mira el status HTTP para esto, solo `error.code`, exactamente por lo que la regla 9 pide "por code, nunca por message" (y, resultó, tampoco por status).
+
+**`AppDialog` y `MoneyInput` se construyeron en este paso, no en el 1, a propósito.** En el paso 1 se documentó (ver abajo, Paso 1) que construir infraestructura sin un consumidor real es adivinar la forma. "Abrir caja" fue el primer flujo real que necesitaba capturar dinero dentro de un modal — se construyeron ahí, con un caso de uso concreto validándolos de inmediato (capturado en pantalla, funcionando).
+
+**Clases de Tailwind para colores de estado son estáticas a propósito, nunca interpoladas.** `StatusBadge` usa un `Record<KnownStatus, string>` con la clase completa por estado (`'bg-status-active/15 text-status-active'`) en vez de construirla con template strings (`` `bg-${token}/15` ``) — Tailwind v4 escanea el código fuente buscando nombres de clase literales; una clase armada en runtime con interpolación no genera CSS y el badge queda sin estilo. Mismo motivo por el que `ContractsStatusChart` sí puede usar `fill="var(--status-active)"` directo (Recharts no pasa por el scanner de Tailwind — es un atributo SVG que el navegador resuelve como CSS normal).
+
+**`recharts` necesitó `react-is` como dependencia directa** — sin instalarla a mano, `vite build` (Rolldown) fallaba con `Failed to resolve import "react-is"` (una dependencia transitiva de `recharts/es6/util/ReactUtils.js` que no se resolvía sola con `--legacy-peer-deps`). `npm run dev` no lo mostraba porque el pre-bundling de esbuild es más permisivo — el bug solo aparecía en build de producción. Se agregó explícitamente a `package.json`.
+
+**Gotcha de dev server: la primera carga después de instalar `recharts` es lenta (varios segundos)** — Vite tiene que optimizar esa dependencia (pesada: trae d3-shape, d3-scale, etc.) la primera vez que algo la importa. Un test en navegador con timeout corto (3-6s) puede parecer que el login "se cuelga" cuando en realidad solo está esperando el bundle de recharts — hay que esperar con `waitForSelector` de un elemento del destino, nunca un `waitForTimeout` corto, exactamente lo que ya advertía la skill de `run`.
+
+**Bundle sin code-splitting todavía:** el JS de producción ya pasa 1MB (recharts es pesado) — `ARCHITECTURE.md` §9 ya prevé `React.lazy` por ruta para esto, pero con 2 rutas reales (`/`, `/auth/login`) partir el bundle no rinde todavía. Se retoma cuando haya más features con peso real (gráficas, tablas) en rutas separadas.
+
+**"Listos para remate" quedó como número en el KPI row, sin la card de lista accionable** que describe `DESIGN_SYSTEM.md` §5 ("lista corta accionable — la alerta operativa más valiosa") — `DashboardOut.contracts` solo trae el conteo (`ready_for_auction_count`), no los contratos individuales; una lista accionable de verdad necesita poder consultar contratos por estado, que es la feature `contracts` (paso 5). Se retoma ahí.
+
+**Sidebar "Caja" sigue deshabilitada** — el `CashSessionBanner` cubre "abrir sesión" (lo único que pide el paso 3), pero no hay todavía una pantalla de caja (histórico, cierre, gastos) a la que ese link pueda apuntar — eso es "cashbox completo", paso 6.
+
+### Qué falta (fuera de alcance del paso 3)
+
+- Card de "Listos para remate" con lista accionable — paso 5 (contracts).
+- Card de ventas con serie mensual — bloqueada en el backend (`GET /reports/series` no existe todavía, ver `docs/RECOMENDACIONES.md`).
+- Pantalla de caja completa (cierre, gastos, reapertura, histórico, acta imprimible) — paso 6.
+- Code-splitting por ruta — cuando el bundle lo justifique.
+
+### Comandos de verificación
+
+```bash
+npm run lint && npm run typecheck && npm run test && npm run build   # todo en verde
+npm run dev   # login real → dashboard con KPIs → banner de caja → abrir caja
+```
+
 ## Paso 2 — Auth + shell (completo)
 
 Login, refresh, callback de invitación, bootstrap real con `GET /me`, guards de ruta, `usePermission`/`<Can>`, `AppShell` responsive, pantalla de bloqueo por suscripción, logout por inactividad (6h). Probado de punta a punta en un navegador real (Playwright headless) contra el proyecto Supabase de dev y el backend dev — no solo `tsc`/build.

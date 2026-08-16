@@ -1,20 +1,81 @@
 import { useMe } from '@/lib/auth/me'
+import { useDashboard } from '@/features/dashboard/api'
+import { PageHeader } from '@/components/shared/PageHeader'
+import { KpiCard, KpiRow } from '@/components/shared/KpiCard'
+import { Money } from '@/components/shared/Money'
+import { ContractsStatusChart, type StatusDatum } from '@/components/shared/charts/ContractsStatusChart'
+import { Button } from '@/components/ui/button'
+import { formatDate } from '@/lib/dates'
 
-/**
- * Placeholder del paso 2 (Auth + shell): confirma que la ruta protegida y
- * `/me` funcionan de punta a punta. Se reemplaza en el paso 3 por los KPIs
- * reales de `GET /reports/dashboard` + `CashSessionBanner`.
- */
+function DashboardSkeleton() {
+  return (
+    <div className="flex flex-col gap-6">
+      <div className="h-8 w-64 animate-pulse rounded-input bg-border" />
+      <div className="grid grid-cols-2 gap-4 rounded-card border border-border bg-card p-card sm:grid-cols-3 lg:grid-cols-6">
+        {Array.from({ length: 6 }).map((_, i) => (
+          <div key={i} className="flex flex-col gap-2">
+            <div className="h-3 w-20 animate-pulse rounded bg-border" />
+            <div className="h-6 w-16 animate-pulse rounded bg-border" />
+          </div>
+        ))}
+      </div>
+      <div className="h-64 animate-pulse rounded-card border border-border bg-card" />
+    </div>
+  )
+}
+
 export function DashboardPage() {
   const { data: me } = useMe()
+  const { data, isPending, isError, refetch } = useDashboard()
+
+  if (isPending) return <DashboardSkeleton />
+
+  if (isError) {
+    return (
+      <div className="flex flex-col items-center gap-3 rounded-card border border-border bg-card p-card text-center">
+        <p className="text-sm text-muted-foreground">No se pudo cargar el dashboard.</p>
+        <Button variant="outline" onClick={() => refetch()}>
+          Reintentar
+        </Button>
+      </div>
+    )
+  }
+
+  const contractsByStatus: StatusDatum[] = [
+    { key: 'active', label: 'Vigentes', count: data.contracts.active_count, color: 'var(--status-active)' },
+    { key: 'in_arrears', label: 'En mora', count: data.contracts.in_arrears_count, color: 'var(--status-arrears)' },
+    { key: 'in_extension', label: 'Prórroga', count: data.contracts.in_extension_count, color: 'var(--status-extension)' },
+    { key: 'ready_for_auction', label: 'Listos p/ remate', count: data.contracts.ready_for_auction_count, color: 'var(--status-arrears)' },
+    { key: 'auctioned', label: 'Rematados', count: data.contracts.auctioned_count, color: 'var(--status-auctioned)' },
+  ]
 
   return (
-    <div className="rounded-card border border-border bg-card p-card shadow-card">
-      <p className="text-sm text-muted-foreground">Inicio</p>
-      <h1 className="text-2xl font-semibold text-foreground">Hola, {me?.user.full_name}</h1>
-      <p className="mt-2 text-sm text-muted-foreground">
-        {me?.company.name} · {me?.role.name} · plan {me?.plan.name}
-      </p>
+    <div className="flex flex-col gap-6">
+      <PageHeader title={`Hola, ${me?.user.full_name ?? ''}`} description={`Actualizado al ${formatDate(data.as_of)}`} />
+
+      <KpiRow>
+        <KpiCard label="Cartera activa" value={<Money value={data.contracts.capital_outstanding} />} tone="danger" />
+        <KpiCard label="Ventas de hoy" value={<Money value={data.sales.today_total} />} tone="brand" />
+        <KpiCard label="Ventas del mes" value={<Money value={data.sales.month_total} />} tone="brand" />
+        <KpiCard label="Contratos activos" value={data.contracts.active_count} />
+        <KpiCard
+          label="Artículos disponibles"
+          value={
+            <>
+              {data.inventory.available_count}{' '}
+              <span className="text-sm font-normal text-muted-foreground">
+                · <Money value={data.inventory.available_value} />
+              </span>
+            </>
+          }
+        />
+        <KpiCard label="Estado de caja" value={data.cashbox.session_open ? 'Abierta' : 'Cerrada'} tone={data.cashbox.session_open ? 'success' : 'danger'} />
+      </KpiRow>
+
+      <div className="rounded-card border border-border bg-card p-card shadow-card">
+        <h2 className="text-sm font-medium text-foreground">Contratos por estado</h2>
+        <ContractsStatusChart data={contractsByStatus} />
+      </div>
     </div>
   )
 }
