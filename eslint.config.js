@@ -35,6 +35,13 @@ export default tseslint.config(
     },
   },
   {
+    // Punto de entrada — nunca se hot-reload-ea como componente en sí mismo.
+    files: ['src/main.tsx'],
+    rules: {
+      'react-refresh/only-export-components': 'off',
+    },
+  },
+  {
     // docs/DESIGN_SYSTEM.md §6: "ESLint rechaza hex/rgb en features/ y
     // components/shared/" — todo color/radio/sombra sale de tokens.css.
     files: ['src/features/**/*.{ts,tsx}', 'src/components/shared/**/*.{ts,tsx}'],

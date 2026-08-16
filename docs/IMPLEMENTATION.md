@@ -2,6 +2,81 @@
 
 > Registro vivo de qué existe en el código, cómo está armado y por qué se tomó cada decisión — para que cualquiera (humano o Claude Code) pueda retomar el proyecto sin releer todo el historial de commits. Se actualiza en cada paso del "Orden de implementación" de `CLAUDE.md`. No repite lo que ya está en `ARCHITECTURE.md`/`DESIGN_SYSTEM.md` (el qué-debería-ser); esto es el qué-hay-hoy y las decisiones concretas tomadas al construirlo.
 
+## Paso 2 — Auth + shell (completo)
+
+Login, refresh, callback de invitación, bootstrap real con `GET /me`, guards de ruta, `usePermission`/`<Can>`, `AppShell` responsive, pantalla de bloqueo por suscripción, logout por inactividad (6h). Probado de punta a punta en un navegador real (Playwright headless) contra el proyecto Supabase de dev y el backend dev — no solo `tsc`/build.
+
+### Estructura nueva
+
+```
+src/
+  app/
+    router.tsx          # TanStack Router, code-based (no file-based) — ver nota abajo
+    query-client.ts      # QueryClient central: retry policy + invalidación de ['me'] en PERMISSION_DENIED
+    store.ts              # Zustand mínimo: sidebar colapsada, drawer mobile
+    layouts/
+      AuthLayout.tsx        # /auth/* — sin sidebar
+    pages/
+      SubscriptionBlockedPage.tsx   # /cuenta-bloqueada — bloqueo por SUBSCRIPTION_EXPIRED
+      ErrorPage.tsx                  # errorComponent del root — red de seguridad para NetworkError etc.
+      NotFoundPage.tsx                # notFoundComponent del root
+  components/shared/
+    AppShell.tsx           # sidebar+topbar+Outlet — CashSessionBanner llega en el paso 3
+    Can.tsx                 # <Can permission="...">
+  components/ui/
+    dropdown-menu.tsx        # shadcn — menú del avatar
+  features/
+    auth/
+      api.ts                  # useLogin, useSetPassword, useLogout
+      pages/LoginPage.tsx, AuthCallbackPage.tsx
+    dashboard/
+      pages/DashboardPage.tsx  # placeholder — KPIs reales llegan en el paso 3
+  lib/
+    auth/
+      me.ts                  # meQueryOptions/useMe — VIVE EN lib, no en features/auth (ver nota abajo)
+      inactivity.ts            # useInactivityLogout, INACTIVITY_LOGOUT_MS = 6h
+    permissions/
+      usePermission.ts
+```
+
+### Decisiones y bugs reales encontrados probando en navegador
+
+**`meQueryOptions`/`useMe` viven en `lib/auth/me.ts`, NO en `features/auth/api.ts`.** `/me` lo consumen `usePermission`, `AppShell`, el guard de suscripción del router y `lib/dates` (`setActiveTimezone`) — ninguno de esos es la feature de login. Ponerlo en `features/auth` habría violado la regla 3 (features aisladas, lib no depende de una feature) apenas un nivel más abajo. `features/auth/api.ts` solo tiene las acciones propias de esa feature: `useLogin`, `useSetPassword`, `useLogout`.
+
+**Routing es code-based (`createRoute`/`createRouter`), no file-based.** La estructura de `CLAUDE.md` no lista un `src/routes/`; `app/` es explícitamente donde viven "rutas" según esa guía. Se usa `@tanstack/router-plugin` cero — todo el árbol se arma a mano en `app/router.tsx`.
+
+**Gotcha real de TanStack Router: `id` en una ruta pathless NO es lo mismo que su `fullPath`.** Si una ruta layout se crea con `id: 'algo'` (sin `path`), su `fullPath` para matching de URL queda correctamente vacío/heredado del padre, PERO su `id` interno (usado por `from:` en `useSearch`/`useParams` tipados) SÍ incluye ese `'algo'` como segmento — así que `useSearch({from: '/auth/login'})` no compilaba porque el id real terminaba siendo `/auth-layout/auth/login`, no `/auth/login`. Se resolvió dándole a `authLayoutRoute` un `path: '/auth'` real (con hijos en paths relativos `'login'`/`'callback'`) en vez de un `id` pathless — así `id === fullPath` y no hay sorpresas. `appLayoutRoute` sí se dejó pathless vía `id: 'app-layout'` porque ninguno de sus hijos actuales necesita `useSearch`/`useParams` tipados por nombre — si алgún día lo necesitan, aplica la misma solución.
+
+**Bug real #1 — URL duplicada `/api/v1/api/v1/...` en TODAS las requests.** `client.ts` tenía `baseUrl: `${VITE_API_URL}/api/v1`\`, pero las claves de `paths` generadas por `gen:api` YA incluyen el prefijo `/api/v1` (así están en el `openapi.json` del backend: `"/api/v1/me"`, no `"/me"`). El `baseUrl` correcto es solo `VITE_API_URL`. Esto habría roto el 100% de las llamadas a la API — lo capturó la prueba en navegador real (`tsc`/build nunca lo iban a detectar, porque el path completo sigue siendo un `string` válido para TypeScript).
+
+**Bug real #2 — sin `errorComponent` en el root, un `NetworkError` durante el bootstrap de `/me` mostraba la pantalla default (fea, sin estilo) de TanStack Router**, violando la regla 10 (toda vista con datos necesita estado de error). Se agregó `src/app/pages/ErrorPage.tsx` como `errorComponent` de `rootRoute` — pantalla estándar con botón "Reintentar" (`reset()` de TanStack Router).
+
+**Bug real #3 — loop infinito entre `/` y `/auth/login` cuando el backend rechaza con 401 una sesión de Supabase técnicamente válida** (ej. un usuario creado a mano en el dashboard de Supabase sin la fila correspondiente en la base del backend — exactamente el caso de un usuario de prueba). Secuencia del bug: `/me` → 401 → `client.ts` refresca el token (éxito, la sesión de Supabase SÍ es válida) → reintenta `/me` → 401 otra vez → el router redirige a `/auth/login` → pero como la sesión de Supabase seguía viva, el guard de `authLayoutRoute` ("si ya hay sesión, redirige a `/`") rebotaba de vuelta → loop infinito, decenas de requests por segundo. Fix en `lib/api/client.ts`: si el 401 **persiste incluso después de un refresh exitoso**, es la señal de "sesión válida pero backend la rechaza" (§4.6: "si persiste → logout") — ahí sí se llama `supabase.auth.signOut()` de verdad, no solo se redirige. El router además pasa `reason=inactive` en el redirect para que `LoginPage` muestre el mensaje correspondiente.
+
+**Bug real #4 (menor) — tormenta de reintentos.** Con la retry policy default de TanStack Query (3 reintentos) multiplicada por el reintento-de-401 propio de `client.ts`, un solo `/me` fallido generaba hasta ~8 requests. Fix en `app/query-client.ts`: `retry: (failureCount, error) => !(error instanceof ApiError) && failureCount < 2` — un `ApiError` es determinístico (401/403/409…), reintentar no cambia el resultado; solo vale la pena reintentar fallas de red transitorias (`NetworkError`).
+
+**Cómo se probó de verdad:** se creó un usuario en el dashboard de Supabase (Authentication → Add user) para simular el flujo. Confirmó exactamente el caso límite esperado: el usuario se autentica bien contra Supabase, pero `/me` devuelve 401 porque el backend no tiene una fila para ese usuario (empresa/rol) — el mismo `code` que "usuario/empresa inactivos", a propósito, según ARCHITECTURE §4.6. Este es el comportamiento CORRECTO, no un bug — confirma que el mapeo de errores y el mensaje funcionan. **Sigue pendiente probar el happy path real (login exitoso → dashboard con datos → logout)**, que requiere un usuario con una fila real en la base de datos del backend (fuera del alcance del frontend — requiere sembrar una empresa+usuario del lado del backend).
+
+**`AppShell` recorta variantes de la referencia visual que no tienen backend/pantalla real todavía:** sin buscador funcional (input deshabilitado, solo visual), sin íconos de ayuda/notificaciones/apps en el topbar, sin "Perfil"/"Cambiar contraseña" en el menú del avatar (solo "Cerrar sesión", que sí funciona) — evita UI decorativa que no hace nada. El menú lateral muestra los 10 módulos del orden aprobado, pero solo "Inicio" es un link real; el resto se renderiza deshabilitado (`aria-disabled`, sin `<Link>`) hasta que exista la pantalla. El filtrado por código de permiso (no solo por "¿existe la pantalla?") llega cuando exista el catálogo real de `GET /identity/permissions` (paso 8).
+
+**No se construyó un guard de ruta por permiso** (solo por sesión/suscripción) — no hay todavía ninguna ruta que lo necesite; se agrega junto con la primera pantalla permission-gated real (paso 4+), mismo criterio que `useMoneyMutation` en el paso 1.
+
+### Qué falta (fuera de alcance del paso 2)
+
+- Happy path de login sin probar end-to-end (ver arriba — depende de seeding del backend).
+- Dashboard real con KPIs (`GET /reports/dashboard`) y `CashSessionBanner` — paso 3.
+- Guard de ruta por permiso, catálogo de permisos, matriz de roles — paso 8 (identity).
+- Claim `app_metadata.platform_role` / rutas `/platform` — paso 10.
+- "Perfil" y "Cambiar contraseña" en el menú del avatar — cuando exista una pantalla de configuración real.
+
+### Comandos de verificación
+
+```bash
+npm run lint && npm run typecheck && npm run test && npm run build   # todo en verde
+# Prueba manual en navegador (requiere .env con Supabase real):
+npm run dev   # http://localhost:5173 — /auth/login si no hay sesión
+```
+
 ## Paso 1 — Fundaciones (completo)
 
 Scaffold inicial: Vite + React 19 + TypeScript estricto, Tailwind v4 themeado con `tokens.css`, shadcn/ui, generación de tipos desde OpenAPI, cliente central de API, `money.ts`/`dates.ts` con tests, ESLint, CI. **Sin pantallas todavía** (a propósito — eso es el paso 2).
