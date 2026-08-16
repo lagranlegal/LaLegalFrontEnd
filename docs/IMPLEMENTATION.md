@@ -2,6 +2,64 @@
 
 > Registro vivo de qué existe en el código, cómo está armado y por qué se tomó cada decisión — para que cualquiera (humano o Claude Code) pueda retomar el proyecto sin releer todo el historial de commits. Se actualiza en cada paso del "Orden de implementación" de `CLAUDE.md`. No repite lo que ya está en `ARCHITECTURE.md`/`DESIGN_SYSTEM.md` (el qué-debería-ser); esto es el qué-hay-hoy y las decisiones concretas tomadas al construirlo.
 
+## Paso 4 — Customers + catalogs (completo)
+
+CRUD de clientes con búsqueda `?q=`, árbol de categorías (3 niveles, armado en el cliente desde la lista plana) con CRUD, proveedores con CRUD. Primera aparición de `DataTable` (TanStack Table) y del helper central de errores de formulario. Probado en navegador real, incluyendo el caso de conflicto (409) exacto que describe `DESIGN_SYSTEM.md` §4.9.
+
+### Estructura nueva
+
+```
+src/
+  components/shared/
+    DataTable.tsx           # LA tabla — TanStack Table headless, markup/estilo propio
+    SearchInput.tsx           # debounce 300ms
+    EmptyState.tsx
+  lib/forms/
+    applyServerErrors.ts       # VALIDATION_ERROR → setError por campo; CONFLICT → mensaje contextual
+  features/
+    customers/
+      api.ts                    # useCustomersList (cursor + q), create/update
+      components/CustomerFormDialog.tsx
+      pages/CustomersPage.tsx
+    catalogs/
+      tree.ts                    # buildCategoryTree — pura, testeada (id/parent_id → árbol)
+      api.ts                      # categorías (lista plana sin paginar) + proveedores (cursor)
+      components/
+        CategoryFormDialog.tsx
+        CategoryTreeView.tsx
+        SupplierFormDialog.tsx
+      pages/CatalogsPage.tsx        # tabs: Categorías / Proveedores
+```
+
+### Decisiones y hallazgos
+
+**`@tanstack/react-table` está fijado en `^8`, no la última (`9.x`).** `npm install @tanstack/react-table` instaló v9 por defecto, que rediseñó su sistema de tipos alrededor de un generic `TFeatures` — API distinta a la documentada/madura que se conoce. Se bajó a v8 (`8.21.3`) explícitamente: estable, bien documentada, sin cambios de comportamiento a mitad de paso. Reevaluar v9 cuando su ecosistema/documentación madure.
+
+**Los formularios de creación/edición (`CustomerFormDialog`, `CategoryFormDialog`, `SupplierFormDialog`) NO usan `useEffect` para resetear el form al abrir.** El primer intento sí lo hacía (`useEffect(() => reset(...), [open, entity])`) pero `eslint-plugin-react-hooks@7` (las reglas nuevas, alineadas con React Compiler) lo marca como error: `react-hooks/set-state-in-effect` — llamar `setState`/`reset()` síncronamente dentro de un efecto puede encadenar renders. Se resolvió con el patrón que React recomienda: cada página consumidora mantiene un `dialogNonce` (contador) que incrementa en CADA apertura del diálogo (crear o editar) y se lo pasa como `key` al componente del formulario — React lo desmonta/remonta entero, así `useForm({ defaultValues })` arranca limpio sin sincronizar nada imperativamente. **Detalle real que se encontró probando en navegador:** con un `key` basado solo en `entity?.id ?? 'new'` (sin el nonce), abrir "+ Nuevo cliente", escribir, cerrar sin guardar, y volver a abrir "+ Nuevo cliente" heredaba el draft anterior (mismo `key='new'` → no remonta) — un campo con datos de un intento abandonado se puede enviar sin que el usuario lo note. El nonce por apertura (no solo por identidad de la entidad) es necesario para evitar esto.
+
+**Mismo motivo, `SearchInput` cambió de "dos `useEffect`" a "ajustar estado durante el render".** Sincronizar `draft` (estado local del input) con `value` (prop externa) vía `useEffect(() => setDraft(value), [value])` es exactamente el antipatrón que la regla nueva marca. Se reemplazó por el patrón oficial de React para "ajustar estado cuando cambia una prop": comparar `value` contra un `prevValue` guardado en estado y llamar `setDraft`/`setPrevValue` directamente en el cuerpo del componente (no en un efecto) cuando difieren — React soporta esto sin loop porque re-renderiza inmediatamente antes de pintar.
+
+**Hallazgo real, no relacionado con el código: el backend dev tiene latencia alta (10–30s) en escrituras (`POST`/`PATCH`), aparentemente cold-start de Fly.io/DB tras inactividad — las lecturas (`GET`) responden normal (&lt;1s).** Se descubrió porque las primeras pruebas de "crear categoría" parecían colgarse (el botón se quedaba en "Guardando…" y el test fallaba por timeout) — pero esperando más tiempo, la request SÍ completaba con 201. Ninguna de las categorías "fallidas" en las primeras pruebas en realidad falló — todas se crearon igual, solo tarde. Para pruebas manuales/futuras: dar por lo menos 30s a la primera escritura de una sesión de prueba, no asumir que un `POST` colgado es un bug del front sin antes esperar.
+
+**Los códigos de permiso usados (`customers.create`, `catalogs.manage`) son inferidos por convención (`modulo.accion`, como `cashbox.open_close` que sí está documentado explícitamente en `ARCHITECTURE.md` §6), no confirmados contra un catálogo real.** `GET /identity/permissions` (paso 8) todavía no existe en el front — cuando exista, hay que verificar que estos strings coincidan exactamente o corregirlos. Mientras tanto el efecto de un código incorrecto es conservador (el botón no se muestra), nunca inseguro.
+
+**`applyServerErrors` es la única función que traduce `VALIDATION_ERROR`/`CONFLICT` a estado de un form de RHF** — confirmado en navegador con un documento de cliente duplicado: el mensaje "Ya existe un cliente con ese documento." aparece exactamente bajo el campo `doc_number`, igual al ejemplo textual de `DESIGN_SYSTEM.md` §4.9. Los tres forms de este paso ya lo usan; los que vengan (contratos, ventas, identity) lo reusan tal cual.
+
+**`CategoryUpdateIn` no acepta cambiar `parent_id`** (no está en el schema) — mover una categoría de rama en el árbol no es una operación soportada por la API hoy. `CategoryFormDialog` en modo edición no ofrece esa opción (consistente con el contrato, no una limitación inventada del front).
+
+### Qué falta (fuera de alcance del paso 4)
+
+- Confirmar los códigos de permiso reales contra `GET /identity/permissions` — paso 8.
+- Reordenar/mover categorías en el árbol — no lo soporta la API.
+- Vista de detalle de cliente (historial de contratos/ventas) — llega con esas features (pasos 5/7).
+
+### Comandos de verificación
+
+```bash
+npm run lint && npm run typecheck && npm run test && npm run build   # todo en verde (35 tests)
+npm run dev   # /clientes y /catalogos ya con CRUD real
+```
+
 ## Paso 3 — Dashboard + caja mínima (completo)
 
 KPIs reales (`GET /reports/dashboard`), gráfica "Contratos por estado", `CashSessionBanner` funcionando de punta a punta (abrir caja incluido). Primeros componentes de dinero (`Money`, `MoneyInput`) y el modal único (`AppDialog`) — construidos con un consumidor real, no por adelantado. Probado en navegador real con datos reales de "Empresa Demo Front" (login → dashboard → abrir caja → banner se actualiza).

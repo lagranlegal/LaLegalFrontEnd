@@ -13,6 +13,8 @@ import { ErrorPage } from '@/app/pages/ErrorPage'
 import { LoginPage } from '@/features/auth/pages/LoginPage'
 import { AuthCallbackPage } from '@/features/auth/pages/AuthCallbackPage'
 import { DashboardPage } from '@/features/dashboard/pages/DashboardPage'
+import { CustomersPage } from '@/features/customers/pages/CustomersPage'
+import { CatalogsPage } from '@/features/catalogs/pages/CatalogsPage'
 
 interface RouterContext {
   queryClient: QueryClient
@@ -103,10 +105,22 @@ const dashboardRoute = createRoute({
   component: DashboardPage,
 })
 
+const customersRoute = createRoute({
+  getParentRoute: () => appLayoutRoute,
+  path: '/clientes',
+  component: CustomersPage,
+})
+
+const catalogsRoute = createRoute({
+  getParentRoute: () => appLayoutRoute,
+  path: '/catalogos',
+  component: CatalogsPage,
+})
+
 const routeTree = rootRoute.addChildren([
   authLayoutRoute.addChildren([loginRoute, authCallbackRoute]),
   subscriptionBlockedRoute,
-  appLayoutRoute.addChildren([dashboardRoute]),
+  appLayoutRoute.addChildren([dashboardRoute, customersRoute, catalogsRoute]),
 ])
 
 export function createAppRouter(queryClient: QueryClient) {

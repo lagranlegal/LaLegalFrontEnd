@@ -1,0 +1,65 @@
+import { queryOptions, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { api, unwrap } from '@/lib/api/client'
+import { useCursorInfiniteQuery } from '@/lib/api/pagination'
+import type { components } from '@/types/api'
+
+export type Supplier = components['schemas']['SupplierOut']
+export type SupplierCreateIn = components['schemas']['SupplierCreateIn']
+export type SupplierUpdateIn = components['schemas']['SupplierUpdateIn']
+export type CategoryCreateIn = components['schemas']['CategoryCreateIn']
+export type CategoryUpdateIn = components['schemas']['CategoryUpdateIn']
+
+// ---- Categorías: lista plana chica, sin paginación (el árbol se arma en el cliente, ver tree.ts) ----
+
+export function categoriesQueryOptions() {
+  return queryOptions({
+    queryKey: ['catalogs', 'categories'] as const,
+    queryFn: () => unwrap(api.GET('/api/v1/catalogs/categories')),
+  })
+}
+
+export function useCategories() {
+  return useQuery(categoriesQueryOptions())
+}
+
+export function useCreateCategory() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (body: CategoryCreateIn) => unwrap(api.POST('/api/v1/catalogs/categories', { body })),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['catalogs', 'categories'] }),
+  })
+}
+
+export function useUpdateCategory() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ categoryId, body }: { categoryId: string; body: CategoryUpdateIn }) =>
+      unwrap(api.PATCH('/api/v1/catalogs/categories/{category_id}', { params: { path: { category_id: categoryId } }, body })),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['catalogs', 'categories'] }),
+  })
+}
+
+// ---- Proveedores: paginados por cursor ----
+
+export function useSuppliersList() {
+  return useCursorInfiniteQuery(['catalogs', 'suppliers', 'list'] as const, (cursor) =>
+    unwrap(api.GET('/api/v1/catalogs/suppliers', { params: { query: { cursor } } })),
+  )
+}
+
+export function useCreateSupplier() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (body: SupplierCreateIn) => unwrap(api.POST('/api/v1/catalogs/suppliers', { body })),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['catalogs', 'suppliers'] }),
+  })
+}
+
+export function useUpdateSupplier() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ supplierId, body }: { supplierId: string; body: SupplierUpdateIn }) =>
+      unwrap(api.PATCH('/api/v1/catalogs/suppliers/{supplier_id}', { params: { path: { supplier_id: supplierId } }, body })),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['catalogs', 'suppliers'] }),
+  })
+}
