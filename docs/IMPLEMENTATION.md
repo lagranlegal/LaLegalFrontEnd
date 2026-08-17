@@ -2,6 +2,69 @@
 
 > Registro vivo de qué existe en el código, cómo está armado y por qué se tomó cada decisión — para que cualquiera (humano o Claude Code) pueda retomar el proyecto sin releer todo el historial de commits. Se actualiza en cada paso del "Orden de implementación" de `CLAUDE.md`. No repite lo que ya está en `ARCHITECTURE.md`/`DESIGN_SYSTEM.md` (el qué-debería-ser); esto es el qué-hay-hoy y las decisiones concretas tomadas al construirlo.
 
+## Paso 6 — Cashbox completo (completo)
+
+Sesión diaria (abrir/cerrar/reabrir), gastos, cierre con vista previa del desglose módulo×concepto×medio desde `/report`, justificación obligatoria de descuadre sin tolerancia, histórico de cierres con rango de fechas, y acta imprimible. Primeros consumidores reales de `DatePicker`, `DateRangePicker` y `PrintLayout` (los tres documentados en `DESIGN_SYSTEM.md` desde el paso 1 pero nunca construidos hasta que hizo falta). Probado de punta a punta contra dev: abrir → gasto → cerrar con descuadre real → histórico → acta → imprimir → reabrir — cada paso con datos reales, no mockeados.
+
+### Estructura nueva
+
+```
+src/
+  components/
+    ui/calendar.tsx, popover.tsx        # shadcn — base de DatePicker/DateRangePicker
+    shared/
+      DatePicker.tsx                      # calendario único, fecha simple
+      DateRangePicker.tsx                    # variante de rango + presets (Hoy/Ayer/Esta semana/Este mes)
+      PrintLayout.tsx                          # hoja carta imprimible — primer consumidor real
+  lib/
+    dates.ts                                    # sin cambios de superficie, ya tenía todo lo necesario
+    money.ts                                      # + subtractMoney (diferencia de cierre, con signo)
+    modules.ts                                      # MODULE_LABELS + CONCEPT_LABELS (nuevo)
+  features/cashbox/
+    api.ts                                            # sesión, gastos, cierre, reapertura, histórico
+    components/
+      ExpenseFormDialog.tsx                               # + categoría nueva inline
+      SessionReportPanel.tsx                                # desglose — compartido entre cierre y acta
+      CloseSessionDialog.tsx                                  # vista previa + contar + justificar
+      ClosingActDialog.tsx                                      # acta on-screen + bloque imprimible hermano
+    pages/CashboxPage.tsx                                         # /caja
+```
+
+### Decisiones y hallazgos
+
+**Bug real de React encontrado en navegador: dos diálogos hermanos con la MISMA `key` literal.** `ExpenseFormDialog` y `CloseSessionDialog` están siempre montados en `CashboxPage` (patrón ya establecido: `key={nonce}` para forzar remount limpio en cada apertura, pasos 4/5). Cada uno tenía su propio `useState(0)` para el nonce — pero como **ambos empiezan en `0`** y son elementos hermanos dentro del mismo fragment retornado por `CashboxPage`, React los vio como dos hijos con `key={0}` compitiendo por la misma identidad y tiró "Encountered two children with the same key" en consola. No es un problema de Radix ni de `AppDialog` (se descartó con bisección real: deshabilitar cualquiera de los dos por separado hacía desaparecer el warning; con los tres diálogos de la página juntos — `OpenSessionDialog` sin key, `ExpenseFormDialog`, `CloseSessionDialog` — solo la combinación con AMBOS nonces en 0 lo disparaba). Arreglado con keys namespaced: `` key={`expense-${nonce}`} ``/`` key={`close-${nonce}`} ``. **Nunca antes había pasado** porque ninguna pantalla previa tenía dos diálogos-siempre-montados como hermanos directos a la vez (los dos de `CatalogsPage` viven en tabs distintas, solo una montada por vez). Revisar este patrón si una futura pantalla junta 2+ diálogos con nonce — usar SIEMPRE un prefijo por diálogo, nunca un contador pelado.
+
+**Bug real de datos: `GET /cashbox/sessions?limit=1` no da la sesión más reciente — da la más VIEJA.** El endpoint pagina en orden ascendente (típico de paginación por cursor estable). El primer intento de "¿la caja de hoy ya se cerró, para ofrecer 'Reabrir'?" usaba exactamente ese `limit=1` asumiendo que traía la última — confirmado el bug en navegador (con dos sesiones ya cerradas, `items[0]` era la del día anterior, no la de hoy) antes de escribir nada más encima. Se reemplazó por `useTodayClosing()`, que reusa `GET /reports/closings` con `from_date=to_date=hoy` — no depende de ningún orden, solo filtra.
+
+**Bug real de consistencia: after cerrar/reabrir, `invalidateQueries(['cashbox','current'])` mostraba el estado VIEJO varios segundos.** El cierre respondía `200` pero el siguiente `GET /cashbox/sessions/current` (disparado por la invalidación) seguía devolviendo la sesión como abierta — un hueco de consistencia eventual en el backend de dev entre "la escritura ya respondió" y "la próxima lectura ya la refleja" (visto en navegador: cerrar caja, la tarjeta de sesión seguía mostrando "Caja abierta" con los botones de siempre, mientras el histórico — que sí llegó por otra vía — ya mostraba el cierre nuevo). Como la respuesta de `close`/`open`/`reopen` YA trae el estado correcto (o implica `null` para el caso de cierre), se dejó de confiar en el refetch para ese query puntual: `queryClient.setQueryData(['cashbox','current'], ...)` con el dato conocido, y la invalidación de `['cashbox','current']` se sacó a propósito de `invalidateAfterSessionChange` (si se dejara, el refetch de fondo podía pisar el valor recién puesto con uno desactualizado). El resto de queries (histórico, gastos, dashboard) sí se invalidan normal — su peor caso es tardar unos segundos en reflejar el cambio, no mostrar un estado contradictorio en la pantalla principal.
+
+**Sin `Idempotency-Key` en ninguna mutación de cashbox** (abrir/cerrar/reabrir sesión, crear gasto) — confirmado en `src/types/api.ts`: ninguno de esos `operations[...]` acepta ese header (a diferencia de contratos/pagos/ventas). No es una omisión del front: literalmente no hay dónde mandarlo. `useMoneyMutation` no se usa acá por esta razón — mutaciones planas con `isPending` deshabilitando el botón, que es la única protección contra doble-submit que el front puede dar sin cooperación del backend.
+
+**`ConfirmDialog`/`confirm()` con `requireReason: true` (construido en el paso 5) resultó ser exactamente lo que pedía "Reabrir caja"** — cero código nuevo de UI para el modal, solo pasar `reasonLabel: 'Motivo de la reapertura'`. Confirmado en navegador: el botón de confirmar queda deshabilitado hasta escribir el motivo.
+
+**`subtractMoney` (`lib/money.ts`) es la primera función de dinero de este módulo que puede dar NEGATIVO** — `expected_cash` de una sesión con más desembolsos que ingresos en efectivo YA sale negativo del backend (visto en datos reales: `-$827.500`), y la diferencia (`counted - expected`) puede ir para cualquier lado. `toCents`/`centsToDecimal` se extendieron para preservar signo (antes `sumMoney` solo sumaba valores no-negativos, capital extra de abonos). `formatCOP` ya sabía mostrar negativos sin cambios (`Intl.NumberFormat` lo hace solo).
+
+**`CONCEPT_LABELS` (`lib/modules.ts`) traduce `BreakdownLineOut.concept`** — el backend manda el nombre interno del evento (`interest_payment`, `loan_disbursed`, `expense`), no una frase para mostrar. Mapa parcial poblado solo con los valores vistos en pruebas reales contra dev (mismo criterio que `StatusBadge`): un valor no mapeado se muestra tal cual en vez de romper o inventar una traducción.
+
+**El acta imprimible vive FUERA del `AppDialog`, como hermano, no anidada adentro.** `components/ui/dialog.tsx` gana `print:hidden` en `DialogOverlay`/`DialogContent` (regla nueva, aplica a TODOS los diálogos de la app — ningún modal debe aparecer en una hoja impresa). Si `PrintLayout` quedara anidado dentro del `AppDialog` de "Ver acta", el `print:hidden` del ancestro lo taparía también a él (un `display:none` en un ancestro esconde a los hijos sin importar su propio `display`) — confirmado con `page.emulateMedia({media:'print'})` en Playwright: la primera versión (anidada) imprimía una hoja en blanco; sacar `PrintLayout` a hermano del diálogo lo arregló. `AppShell` ya tenía `print:hidden` en sidebar/topbar/`CashSessionBanner` desde este mismo paso — es la primera vez que algo se imprime.
+
+**`DatePicker`/`DateRangePicker` (react-day-picker vía shadcn) se construyeron ahora, primer consumidor real.** Valor controlado siempre `"yyyy-MM-dd"` (o `{from,to}` de esos strings) — nunca `Date` fuera del propio componente. `dateOnlyToLocalDate`/`localDateToDateOnly` se exportan desde `DatePicker.tsx` para que `DateRangePicker` no las duplique. **Bug real de tooling, no de código:** al abrir el calendario por primera vez, React tiraba "Invalid hook call" dentro de `react-day-picker`— no eran copias duplicadas de React (`npm ls react` confirmó una sola, deduped), sino caché de pre-bundling de Vite (`node_modules/.vite`) desactualizada tras instalar el paquete a mitad de sesión. `rm -rf node_modules/.vite` + reiniciar `npm run dev` lo arregló — mismo síntoma y misma solución que un hallazgo parecido en el paso 5b con otra dependencia nueva.
+
+**`cashbox.reopen` es un código de permiso PROPIO, distinto de `cashbox.open_close`** — ambos ya estaban confirmados en el catálogo real observado en el paso 5b, pero el primer intento gateaba "Reabrir caja" con `cashbox.open_close` (el mismo de "Abrir"/"Cerrar") sin darse cuenta de que existía uno más específico. Corregido: `<Can permission="cashbox.reopen">` solo para el botón de reapertura.
+
+### Qué falta (fuera de alcance del paso 6)
+
+- Filtrar el histórico de cierres por responsable — `RECOMENDACIONES.md` lo sugería, pero `GET /reports/closings` no tiene ese query param; solo `from_date`/`to_date`.
+- Guard de ruta por permiso en `/caja` — igual que contratos/clientes/catálogos, ninguna ruta de "ver" tiene guard todavía (solo `/contratos/importar`, por ser Admin-only). Revisión sistemática pendiente.
+- Reordenar/editar categorías de gasto tras crearlas — la API solo tiene `GET`/`POST` en `/cashbox/expense-categories`, sin `PATCH`.
+
+### Comandos de verificación
+
+```bash
+npm run lint && npm run typecheck && npm run test && npm run build   # todo en verde (51 tests)
+npm run dev   # /caja: abrir, gasto, cerrar con desglose, histórico, acta, imprimir, reabrir
+```
+
 ## Paso 5 — Contracts (completo)
 
 Crear contrato (varias prendas, categorías nivel 3, snapshot calculado por el backend), detalle con estado y KPIs, abonos **solo** desde `payment-options` (botones con monto exacto, capital extra opcional), historial de abonos, listado con tabs de estado, y "Rematar" para contratos `ready_for_auction`. Primera feature de dinero real: estrena `useMoneyMutation` (idempotencia), `ConfirmDialog`/`confirm()`, `CashSessionRequiredDialog`, toasts (`sonner`) y el card "Listos para remate" del dashboard (diferido desde el paso 3). Probado en navegador real de punta a punta: contrato creado con datos reales (`Empresa Demo Front`), incluyendo un 400 real del backend por configuración incompleta de categoría (ver hallazgos) y su recuperación tras corregirla desde el front mismo.

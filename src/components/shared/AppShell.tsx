@@ -41,7 +41,7 @@ const NAV_ITEMS: NavItem[] = [
   { label: 'Ventas', icon: ShoppingCart },
   { label: 'Inventario', icon: Package },
   { label: 'Clientes', icon: Users, to: '/clientes' },
-  { label: 'Caja', icon: Wallet },
+  { label: 'Caja', icon: Wallet, to: '/caja' },
   { label: 'Catálogos', icon: Tags, to: '/catalogos' },
   { label: 'Reportes', icon: BarChart3 },
   { label: 'Auditoría', icon: History },
@@ -110,7 +110,7 @@ export function AppShell() {
       {/* Sidebar — desktop */}
       <aside
         className={cn(
-          'hidden shrink-0 flex-col border-r border-sidebar-border bg-sidebar transition-[width] lg:flex',
+          'hidden shrink-0 flex-col border-r border-sidebar-border bg-sidebar transition-[width] print:hidden lg:flex',
           sidebarCollapsed ? 'w-16' : 'w-60',
         )}
       >
@@ -146,7 +146,7 @@ export function AppShell() {
 
       <div className="flex min-w-0 flex-1 flex-col">
         {/* Topbar */}
-        <header className="flex h-14 items-center justify-between gap-3 border-b border-border bg-card px-4">
+        <header className="flex h-14 items-center justify-between gap-3 border-b border-border bg-card px-4 print:hidden">
           <Button variant="ghost" size="icon-sm" className="lg:hidden" onClick={() => setMobileDrawerOpen(true)} aria-label="Abrir menú">
             <Menu className="size-5" />
           </Button>
@@ -183,9 +183,11 @@ export function AppShell() {
           </DropdownMenu>
         </header>
 
-        <CashSessionBanner />
+        <div className="print:hidden">
+          <CashSessionBanner />
+        </div>
 
-        <main className="flex-1 p-page">
+        <main className="flex-1 p-page print:p-0">
           <Outlet />
         </main>
       </div>

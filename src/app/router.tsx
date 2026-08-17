@@ -19,6 +19,7 @@ import { ContractsListPage } from '@/features/contracts/pages/ContractsListPage'
 import { ContractFormPage } from '@/features/contracts/pages/ContractFormPage'
 import { ContractImportPage } from '@/features/contracts/pages/ContractImportPage'
 import { ContractDetailPage } from '@/features/contracts/pages/ContractDetailPage'
+import { CashboxPage } from '@/features/cashbox/pages/CashboxPage'
 
 interface RouterContext {
   queryClient: QueryClient
@@ -162,10 +163,16 @@ const contractDetailRoute = createRoute({
   component: ContractDetailPage,
 })
 
+const cashboxRoute = createRoute({
+  getParentRoute: () => appLayoutRoute,
+  path: '/caja',
+  component: CashboxPage,
+})
+
 const routeTree = rootRoute.addChildren([
   authLayoutRoute.addChildren([loginRoute, authCallbackRoute]),
   subscriptionBlockedRoute,
-  appLayoutRoute.addChildren([dashboardRoute, customersRoute, catalogsRoute, contractsRoute, contractNewRoute, contractImportRoute, contractDetailRoute]),
+  appLayoutRoute.addChildren([dashboardRoute, customersRoute, catalogsRoute, contractsRoute, contractNewRoute, contractImportRoute, contractDetailRoute, cashboxRoute]),
 ])
 
 export function createAppRouter(queryClient: QueryClient) {

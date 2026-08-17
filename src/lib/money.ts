@@ -62,10 +62,18 @@ export function parseMoneyInput(maskedInput: string): string {
 }
 
 function toCents(decimal: string): number {
+  const negative = decimal.trim().startsWith('-')
   const [wholeRaw = '0', decimalRaw = '00'] = decimal.split('.')
   const whole = Number(wholeRaw.replace(/[^0-9]/g, '') || '0')
-  const cents = Number(decimalRaw.padEnd(2, '0').slice(0, 2))
-  return whole * 100 + cents
+  const cents = Number(decimalRaw.replace(/[^0-9]/g, '').padEnd(2, '0').slice(0, 2))
+  const total = whole * 100 + cents
+  return negative ? -total : total
+}
+
+function centsToDecimal(cents: number): string {
+  const sign = cents < 0 ? '-' : ''
+  const abs = Math.abs(cents)
+  return `${sign}${Math.floor(abs / 100)}.${String(abs % 100).padStart(2, '0')}`
 }
 
 /**
@@ -77,5 +85,17 @@ function toCents(decimal: string): number {
  */
 export function sumMoney(...values: (string | null | undefined)[]): string {
   const totalCents = values.reduce((total: number, value) => total + (value ? toCents(value) : 0), 0)
-  return `${Math.floor(totalCents / 100)}.${String(totalCents % 100).padStart(2, '0')}`
+  return centsToDecimal(totalCents)
+}
+
+/**
+ * Resta de PRESENTACIÓN — vista previa del descuadre de caja (`counted_cash`
+ * − `expected_cash`) ANTES de cerrar la sesión; el backend recalcula y
+ * guarda la diferencia real al cerrar, esto es solo para mostrarla al
+ * instante mientras el usuario digita (docs/DESIGN_SYSTEM.md §4.2). Puede
+ * dar negativo (faltante de caja) — `centsToDecimal` preserva el signo.
+ * `subtractMoney("48000.00", "50000.00")` → `"-2000.00"`.
+ */
+export function subtractMoney(a: string, b: string): string {
+  return centsToDecimal(toCents(a) - toCents(b))
 }
