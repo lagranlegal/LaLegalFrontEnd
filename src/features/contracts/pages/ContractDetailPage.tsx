@@ -5,6 +5,7 @@ import { toast } from 'sonner'
 import { ChevronLeft } from 'lucide-react'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { StatusBadge } from '@/components/shared/StatusBadge'
+import { LegacyCodeBadge } from '@/components/shared/LegacyCodeBadge'
 import { Money } from '@/components/shared/Money'
 import { DataTable } from '@/components/shared/DataTable'
 import { Can } from '@/components/shared/Can'
@@ -103,16 +104,19 @@ export function ContractDetailPage() {
         description={customer ? `${customer.full_name} · ${customer.doc_type.toUpperCase()} ${customer.doc_number}` : undefined}
         actions={
           <div className="flex items-center gap-2">
+            {contract.legacy_code && <LegacyCodeBadge code={contract.legacy_code} />}
             <StatusBadge status={contract.status} />
-            <Button
-              variant="outline"
-              onClick={() => {
-                setEditDialogNonce((n) => n + 1)
-                setEditDialogOpen(true)
-              }}
-            >
-              Editar
-            </Button>
+            <Can permission="contracts.edit">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setEditDialogNonce((n) => n + 1)
+                  setEditDialogOpen(true)
+                }}
+              >
+                Editar
+              </Button>
+            </Can>
             {contract.status === 'ready_for_auction' && (
               <Can permission="contracts.auction">
                 <Button className="rounded-pill bg-danger hover:bg-danger/90" disabled={auctionContract.isPending} onClick={handleAuction}>

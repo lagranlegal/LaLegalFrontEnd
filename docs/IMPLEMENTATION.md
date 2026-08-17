@@ -66,15 +66,67 @@ main.tsx                # + <Toaster/> y <ConfirmDialogHost/>
 ### Qué falta (fuera de alcance del paso 5)
 
 - Fotos de prendas (`ContractItemIn.photos`) — esperan a `PhotoUploader`, que llega con `inventory` (paso 7, mismo criterio que el resto de `components/shared`: se construye con su primer consumidor real).
-- Confirmar `contracts.create`/`contracts.payment` contra `GET /identity/permissions` — paso 8 (solo `contracts.auction` está confirmado por `ARCHITECTURE.md`).
-- Probar `PaymentOptionsPanel` con opciones reales (meses adeudados) y "Rematar" contra un contrato real en `ready_for_auction` — no se pudo fabricar ese estado en minutos contra dev; queda para la primera vez que exista un contrato así.
+- Probar "Rematar" contra un contrato real en `ready_for_auction` — no se pudo fabricar ese estado en minutos contra dev en su momento; sigue pendiente (ver paso 5b para lo que sí se resolvió: `PaymentOptionsPanel` con opciones reales).
 - Acta/comprobante imprimible de contrato (`PrintLayout`) — mientras el backend no genere PDFs; no es parte del alcance textual del paso 5 en `CLAUDE.md`.
+
+**Actualización del paso 5b (ver abajo):** `contracts.payment` (el código que este paso usaba para gatear `PaymentOptionsPanel`) resultó estar mal — el real es `payments.create`, confirmado y corregido en el paso 5b. `contracts.create`/`contracts.auction`/`contracts.edit` sí se confirmaron correctos contra el catálogo real observado.
 
 ### Comandos de verificación
 
 ```bash
 npm run lint && npm run typecheck && npm run test && npm run build   # todo en verde (41 tests)
 npm run dev   # /contratos: listado con tabs, + Nuevo contrato, detalle con abonos/historial
+```
+
+## Paso 5b — Import de contratos preexistentes (completo)
+
+Pantalla "Registrar contrato existente" (`POST /api/v1/contracts/import`) para migrar un contrato de empeño vivo del sistema anterior de la compraventa con su saldo real — la foto financiera al corte, no el historial de abonos. Gateada por `contracts.import` (confirmado por el backend, Admin-only), con guard de ruta además de ocultar el botón (primera ruta del front con permission-gate real). Sin paso de caja ni medio de pago: no desembolsa dinero. Documentado a fondo antes de construirse en `docs/RECOMENDACIONES.md` §1.6 (ver también ahí el porqué de negocio completo) — este es el registro de qué se construyó y qué se encontró al hacerlo.
+
+### Estructura nueva
+
+```
+src/
+  components/
+    ui/calendar.tsx, popover.tsx          # shadcn — base de DatePicker (react-day-picker)
+    shared/
+      DatePicker.tsx                        # EL calendario único — primer consumidor real
+      LegacyCodeBadge.tsx                     # pill neutra para legacy_code (no es un StatusBadge)
+  lib/
+    dates.ts                                  # + addMonthsToDateOnly (aritmética pura, sin Date)
+  features/contracts/
+    contractItemSchema.ts                       # schema/tipo/helpers de "prendas" — compartido
+    api.ts                                        # + useImportContract
+    components/ContractItemsFields.tsx              # sección "Prendas" — extraída, genérica sobre RHF
+    pages/ContractImportPage.tsx                      # "Registrar contrato existente"
+```
+
+### Decisiones y hallazgos
+
+**`DatePicker` (react-day-picker vía shadcn) se construyó ahora porque es su primer consumidor real** (`start_date` del import) — mismo criterio que todo `components/shared` en este proyecto. Valor controlado siempre `"yyyy-MM-dd"` (nunca `Date` fuera del componente), locale `es`, semana empieza lunes — verificado en navegador ("agosto 2026", "lu ma mi ju vi sá do"). **Bug real encontrado y arreglado:** al abrirlo por primera vez, React tiraba "Invalid hook call" dentro de `react-day-picker`/`useMemo` — no era un problema de versiones duplicadas de React (`npm ls react` confirmó una sola copia, 19.2.8, deduped en todo el árbol), sino caché de pre-bundling de Vite desactualizada tras instalar `react-day-picker` a mitad de sesión. Se resolvió borrando `node_modules/.vite` y reiniciando `npm run dev` — si vuelve a pasar después de instalar una dependencia nueva, ese es el primer paso, no perseguir un bug de código que no existe.
+
+**`interest_paid_until` NO se pide con un segundo date picker — se deriva de "meses de interés ya cubiertos" + `addMonthsToDateOnly`.** El backend puede rechazar la combinación con `422 IMPORT_DATES_MISALIGNED` si no cae en un múltiplo entero de meses desde `start_date`; en vez de validar eso después del submit, el form hace la combinación inválida imposible de construir (sugerencia textual del propio documento de la nota técnica, `docs/RECOMENDACIONES.md` §1.6). `addMonthsToDateOnly` (`lib/dates.ts`) hace aritmética pura de año/mes/día — nunca pasa por `Date`, mismo cuidado que `formatDate`, con recorte al último día válido del mes de destino (31 ene + 1 mes → 28/29 feb, no marzo). Testeado (`tests/dates.test.ts`): cruce de año, recorte de fin de mes, año bisiesto.
+
+**`ContractItemsFields` se extrajo de `ContractFormPage`** (antes tenía la sección "Prendas" inline) **porque `ContractImportPage` necesitaba exactamente lo mismo** — mismo array `ContractItemIn`, misma UI. Genérico sobre `TFieldValues extends FieldValues & { items: ContractItemFormValue[] }`; el único obstáculo real fue tipar `useFieldArray({ name: 'items' })` — `FieldPath<TFieldValues>` no alcanza, hace falta `ArrayPath<TFieldValues>` específicamente (son tipos distintos en `react-hook-form`, el error de TS apuntaba a esto pero con un mensaje larguísimo de tipos condicionales). El resto de los `name` (`items.${index}.campo`) sí funcionan con `FieldPath` normal.
+
+**`useImportContract` usa `useMoneyMutation` solo por la `Idempotency-Key`, con `invalidateKeys: [['contracts'], ['dashboard']]` — sin `['cashbox','current']`,** tal como quedó anotado en `ARCHITECTURE.md` §3 antes de escribir código: este endpoint no desembolsa, no mueve caja. No hace falta manejar `CASH_SESSION_NOT_OPEN` en este formulario (nunca debería llegar).
+
+**Verificado en navegador de punta a punta contra dev, con hallazgos reales más allá del propio import:**
+- Un contrato importado con `start_date`/`interest_paid_until` que ya implican mora salió con `status: "in_arrears"` calculado por el backend desde la primera respuesta, exactamente como documenta `RECOMENDACIONES.md` §1.6 — sin que el front infiriera nada.
+- **Esto permitió probar por primera vez `PaymentOptionsPanel` con opciones reales** (quedó pendiente en el paso 5 por no poder fabricar un contrato en mora en minutos): se registró un abono real de punta a punta (botón → confirm() → `useCreatePayment` → recibo #1 → `interest_paid_until` avanzado un mes → opciones de pago recalculadas). Todo el código de abonos escrito en el paso 5 funciona correctamente.
+- **Bug real de permisos encontrado gracias a que esta prueba expuso por primera vez el catálogo real de `/me.permissions`:** `PaymentOptionsPanel` gateaba con `contracts.payment` (inferido por convención en el paso 5) — el código real es `payments.create`. Corregido. De paso se confirmó que `contracts.create`/`contracts.auction` sí estaban bien, y se descubrió `contracts.edit` (no usado hasta ahora) — ahora gatea el botón "Editar" del detalle de contrato, que en el paso 5 había quedado sin gate. Detalle completo del catálogo observado: `ARCHITECTURE.md` §5.
+- Reintentar el mismo `legacy_code` devuelve `409 CONTRACT_LEGACY_CODE_EXISTS` tal como documenta la nota técnica; el front lo mapea al campo `legacy_code` del form (`"Ya existe un contrato con ese código."`), no a un banner genérico.
+
+### Qué falta (fuera de alcance del paso 5b)
+
+- Búsqueda por `legacy_code` en el listado de contratos — bloqueado en el backend: `GET /contracts` solo filtra por `status`/`cursor`/`limit`, sin `q`. Documentado como dependencia en `RECOMENDACIONES.md` §1.6.
+- Guard de ruta por `contracts.view`/`customers.view` en el resto de rutas de contratos/clientes — existen en el catálogo real pero ninguna ruta los usa todavía; es una revisión sistemática de permission-gating, no específica de este paso.
+- `DateRangePicker` (variante de rango de `DatePicker`) — este paso solo necesitó fecha única; el rango llega con el histórico de cierres de caja (paso 6).
+
+### Comandos de verificación
+
+```bash
+npm run lint && npm run typecheck && npm run test && npm run build   # todo en verde (47 tests)
+npm run dev   # /contratos/importar — gateado por contracts.import
 ```
 
 ## Paso 4 — Customers + catalogs (completo)

@@ -82,7 +82,7 @@ export function PaymentOptionsPanel({ contractId }: { contractId: string }) {
   }
 
   return (
-    <Can permission="contracts.payment" fallback={<p className="text-sm text-muted-foreground">No tienes permiso para registrar abonos.</p>}>
+    <Can permission="payments.create" fallback={<p className="text-sm text-muted-foreground">No tienes permiso para registrar abonos.</p>}>
       <div className="flex flex-col gap-4">
         <p className="text-xs text-muted-foreground">
           {quote.months_owed} {quote.months_owed === 1 ? 'mes adeudado' : 'meses adeudados'} · interés mensual <Money value={quote.monthly_interest} />

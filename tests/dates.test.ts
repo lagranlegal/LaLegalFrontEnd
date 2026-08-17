@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { BOGOTA_TZ, formatDate, formatDateTime, formatTime, getActiveTimezone, setActiveTimezone, todayBogota } from '@/lib/dates'
+import { addMonthsToDateOnly, BOGOTA_TZ, formatDate, formatDateTime, formatTime, getActiveTimezone, setActiveTimezone, todayBogota } from '@/lib/dates'
 
 describe('todayBogota', () => {
   afterEach(() => {
@@ -84,5 +84,31 @@ describe('formatTime', () => {
 
   it('formatea solo la hora, sin fecha, en la zona activa', () => {
     expect(formatTime('2026-08-15T23:30:00Z')).toBe('6:30 PM')
+  })
+})
+
+describe('addMonthsToDateOnly (import de contratos, paso 5b)', () => {
+  it('suma meses dentro del mismo año', () => {
+    expect(addMonthsToDateOnly('2026-01-10', 2)).toBe('2026-03-10')
+  })
+
+  it('cruza de año', () => {
+    expect(addMonthsToDateOnly('2026-11-15', 3)).toBe('2027-02-15')
+  })
+
+  it('recorta al último día válido del mes de destino (31 ene + 1 mes → 28 feb, no marzo)', () => {
+    expect(addMonthsToDateOnly('2026-01-31', 1)).toBe('2026-02-28')
+  })
+
+  it('respeta año bisiesto', () => {
+    expect(addMonthsToDateOnly('2028-01-31', 1)).toBe('2028-02-29')
+  })
+
+  it('con 0 meses retorna la misma fecha', () => {
+    expect(addMonthsToDateOnly('2026-06-15', 0)).toBe('2026-06-15')
+  })
+
+  it('lanza si no recibe el formato esperado', () => {
+    expect(() => addMonthsToDateOnly('15/08/2026', 1)).toThrow()
   })
 })

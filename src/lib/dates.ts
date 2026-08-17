@@ -57,3 +57,39 @@ export function formatDateTime(timestamp: string | Date): string {
 export function formatTime(timestamp: string | Date): string {
   return format(timestamp, 'h:mm a', { in: tz(activeTimezone) })
 }
+
+const DAYS_IN_MONTH = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31]
+
+function isLeapYear(year: number): boolean {
+  return (year % 4 === 0 && year % 100 !== 0) || year % 400 === 0
+}
+
+function daysInMonth(year: number, month: number): number {
+  return month === 2 && isLeapYear(year) ? 29 : (DAYS_IN_MONTH[month - 1] ?? 31)
+}
+
+/**
+ * Suma meses a una fecha-sin-hora por aritmética de enteros (año/mes/día),
+ * nunca por `Date` — evita cualquier riesgo de timezone en algo que es puro
+ * calendario. Recorta el día al último válido del mes de destino (ej.
+ * `2026-01-31` + 1 mes → `2026-02-28`, no `2026-03-03`).
+ *
+ * Se construyó para el import de contratos preexistentes (paso 5b,
+ * `docs/RECOMENDACIONES.md` §1.6): en vez de dos date pickers libres para
+ * `start_date`/`interest_paid_until` (que el backend puede rechazar con
+ * `IMPORT_DATES_MISALIGNED` si no caen en un múltiplo entero de meses), el
+ * form pide "N meses ya cubiertos" y calcula la segunda fecha con esto —
+ * la combinación inválida queda estructuralmente imposible de construir.
+ */
+export function addMonthsToDateOnly(dateOnly: string, months: number): string {
+  const match = DATE_ONLY_RE.exec(dateOnly)
+  if (!match) {
+    throw new Error(`addMonthsToDateOnly: se esperaba "yyyy-MM-dd", llegó ${JSON.stringify(dateOnly)}`)
+  }
+  const [, yearStr, monthStr, dayStr] = match
+  const totalMonths = Number(yearStr) * 12 + (Number(monthStr) - 1) + months
+  const year = Math.floor(totalMonths / 12)
+  const month = (totalMonths % 12) + 1
+  const day = Math.min(Number(dayStr), daysInMonth(year, month))
+  return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`
+}

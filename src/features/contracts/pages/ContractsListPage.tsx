@@ -4,6 +4,7 @@ import { useNavigate } from '@tanstack/react-router'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { DataTable } from '@/components/shared/DataTable'
 import { StatusBadge } from '@/components/shared/StatusBadge'
+import { LegacyCodeBadge } from '@/components/shared/LegacyCodeBadge'
 import { Money } from '@/components/shared/Money'
 import { Can } from '@/components/shared/Can'
 import { Button } from '@/components/ui/button'
@@ -28,7 +29,16 @@ export function ContractsListPage() {
   const contracts = data?.pages.flatMap((page) => page.items) ?? []
 
   const columns: ColumnDef<Contract>[] = [
-    { accessorKey: 'number', header: 'Número', cell: (info) => `#${info.getValue<number>()}` },
+    {
+      accessorKey: 'number',
+      header: 'Número',
+      cell: (info) => (
+        <div className="flex items-center gap-2">
+          <span>#{info.getValue<number>()}</span>
+          {info.row.original.legacy_code && <LegacyCodeBadge code={info.row.original.legacy_code} />}
+        </div>
+      ),
+    },
     { accessorKey: 'principal', header: 'Capital', cell: (info) => <Money value={info.getValue<string>()} /> },
     { accessorKey: 'capital_balance', header: 'Saldo', cell: (info) => <Money value={info.getValue<string>()} /> },
     { accessorKey: 'due_date', header: 'Vencimiento', cell: (info) => formatDate(info.getValue<string>()) },
@@ -40,11 +50,18 @@ export function ContractsListPage() {
       <PageHeader
         title="Contratos"
         actions={
-          <Can permission="contracts.create">
-            <Button className="rounded-pill" onClick={() => navigate({ to: '/contratos/nuevo' })}>
-              + Nuevo contrato
-            </Button>
-          </Can>
+          <div className="flex items-center gap-2">
+            <Can permission="contracts.import">
+              <Button variant="outline" onClick={() => navigate({ to: '/contratos/importar' })}>
+                Registrar contrato existente
+              </Button>
+            </Can>
+            <Can permission="contracts.create">
+              <Button className="rounded-pill" onClick={() => navigate({ to: '/contratos/nuevo' })}>
+                + Nuevo contrato
+              </Button>
+            </Can>
+          </div>
         }
       />
 

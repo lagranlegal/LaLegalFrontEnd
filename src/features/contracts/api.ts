@@ -6,6 +6,7 @@ import type { components } from '@/types/api'
 
 export type Contract = components['schemas']['ContractOut']
 export type ContractCreateIn = components['schemas']['ContractCreateIn']
+export type ContractImportIn = components['schemas']['ContractImportIn']
 export type ContractUpdateIn = components['schemas']['ContractUpdateIn']
 export type ContractItemIn = components['schemas']['ContractItemIn']
 export type PaymentQuote = components['schemas']['PaymentQuoteOut']
@@ -87,6 +88,22 @@ export function useCreateContract() {
     mutationFn: (body: ContractCreateIn, idempotencyKey: string) =>
       unwrap(api.POST('/api/v1/contracts', { params: { header: { 'Idempotency-Key': idempotencyKey } }, body })),
     invalidateKeys: [['contracts'], ['dashboard'], ['cashbox', 'current']],
+  })
+}
+
+/**
+ * Import de contratos preexistentes (paso 5b, docs/RECOMENDACIONES.md §1.6):
+ * migra la foto financiera al corte de un contrato del sistema anterior. A
+ * diferencia de `useCreateContract`, NO desembolsa dinero (el préstamo ya se
+ * entregó afuera) — usa `useMoneyMutation` solo por la `Idempotency-Key` que
+ * el endpoint exige, así que `invalidateKeys` NO lleva `['cashbox','current']`
+ * (docs/ARCHITECTURE.md §3).
+ */
+export function useImportContract() {
+  return useMoneyMutation({
+    mutationFn: (body: ContractImportIn, idempotencyKey: string) =>
+      unwrap(api.POST('/api/v1/contracts/import', { params: { header: { 'Idempotency-Key': idempotencyKey } }, body })),
+    invalidateKeys: [['contracts'], ['dashboard']],
   })
 }
 

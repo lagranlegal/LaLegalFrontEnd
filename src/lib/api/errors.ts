@@ -24,6 +24,10 @@ export const API_ERROR_CODES = [
   'IDEMPOTENCY_KEY_REQUIRED',
   'CONFLICT',
   'BAD_REQUEST',
+  // Import de contratos preexistentes (paso 5b, docs/RECOMENDACIONES.md §1.6)
+  'CONTRACT_LEGACY_CODE_EXISTS',
+  'IMPORT_CAPITAL_EXCEEDS_PRINCIPAL',
+  'IMPORT_DATES_MISALIGNED',
 ] as const
 
 export type ApiErrorCode = (typeof API_ERROR_CODES)[number]

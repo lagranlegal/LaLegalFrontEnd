@@ -1,10 +1,9 @@
 import { useRef, useState } from 'react'
 import { useNavigate, useBlocker } from '@tanstack/react-router'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { Controller, useFieldArray, useForm } from 'react-hook-form'
+import { Controller, useForm } from 'react-hook-form'
 import { z } from 'zod'
 import { toast } from 'sonner'
-import { Plus, Trash2 } from 'lucide-react'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { AppDialog } from '@/components/shared/AppDialog'
 import { MoneyInput } from '@/components/shared/MoneyInput'
@@ -17,15 +16,9 @@ import { applyServerErrors } from '@/lib/forms/applyServerErrors'
 import { ApiError } from '@/lib/api/client'
 import { useCreateContract, type Customer } from '@/features/contracts/api'
 import { CustomerPicker } from '@/features/contracts/components/CustomerPicker'
+import { ContractItemsFields } from '@/features/contracts/components/ContractItemsFields'
+import { contractItemSchema, emptyContractItem } from '@/features/contracts/contractItemSchema'
 import { PAYMENT_METHOD_LABELS } from '@/lib/paymentMethods'
-
-const itemSchema = z.object({
-  category_id: z.string().min(1, 'Selecciona una categoría'),
-  description: z.string().min(1, 'La descripción es obligatoria'),
-  weight_grams: z.string().optional(),
-  serial_imei: z.string().optional(),
-  item_appraisal: z.string().optional(),
-})
 
 const contractSchema = z.object({
   principal: z.string().refine((v) => Number(v) > 0, 'El monto del préstamo debe ser mayor a cero'),
@@ -34,7 +27,7 @@ const contractSchema = z.object({
   payment_method: z.enum(['cash', 'transfer', 'other']),
   extension_months: z.number().int().min(0),
   notes: z.string().optional(),
-  items: z.array(itemSchema).min(1, 'Agrega al menos una prenda'),
+  items: z.array(contractItemSchema).min(1, 'Agrega al menos una prenda'),
 })
 
 type ContractFormValues = z.infer<typeof contractSchema>
@@ -42,30 +35,9 @@ type ContractFormValues = z.infer<typeof contractSchema>
 const inputClass =
   'mt-1 w-full rounded-input border border-border bg-background px-3 py-2 text-sm text-foreground outline-none focus:border-primary disabled:bg-muted disabled:text-muted-foreground'
 
-function emptyItem(): ContractFormValues['items'][number] {
-  return { category_id: '', description: '', weight_grams: '', serial_imei: '', item_appraisal: '' }
-}
-
-/** Categorías nivel 3 (hoja) para "empeño" — CLAUDE.md paso 5: solo esas se ofrecen para clasificar prendas. */
-function categoryLabel(categories: { id: string; name: string; parent_id: string | null }[], categoryId: string): string {
-  const byId = new Map(categories.map((c) => [c.id, c]))
-  const category = byId.get(categoryId)
-  if (!category) return ''
-  const parts = [category.name]
-  let parentId = category.parent_id
-  while (parentId) {
-    const parent = byId.get(parentId)
-    if (!parent) break
-    parts.unshift(parent.name)
-    parentId = parent.parent_id
-  }
-  return parts.join(' / ')
-}
-
 export function ContractFormPage() {
   const navigate = useNavigate()
   const { data: categories } = useCategories()
-  const pawnCategories = (categories ?? []).filter((c) => c.level === 3 && c.active && (c.applies_to === 'pawn' || c.applies_to === 'both'))
 
   const [customer, setCustomer] = useState<Customer | null>(null)
   const [customerError, setCustomerError] = useState<string | null>(null)
@@ -90,10 +62,9 @@ export function ContractFormPage() {
       payment_method: 'cash',
       extension_months: 1,
       notes: '',
-      items: [emptyItem()],
+      items: [emptyContractItem()],
     },
   })
-  const { fields, append, remove } = useFieldArray({ control, name: 'items' })
   const principal = watch('principal')
 
   const blocker = useBlocker({
@@ -215,77 +186,7 @@ export function ContractFormPage() {
           </div>
         </section>
 
-        <section className="flex flex-col gap-4 rounded-card border border-border bg-card p-card shadow-card">
-          <div className="flex items-center justify-between">
-            <h2 className="text-sm font-medium text-foreground">Prendas</h2>
-            <Button type="button" variant="outline" size="sm" onClick={() => append(emptyItem())}>
-              <Plus className="size-4" /> Agregar prenda
-            </Button>
-          </div>
-          {errors.items?.root && <p className="text-sm text-danger">{errors.items.root.message}</p>}
-          {errors.items?.message && <p className="text-sm text-danger">{errors.items.message}</p>}
-
-          <div className="flex flex-col gap-4">
-            {fields.map((field, index) => (
-              <div key={field.id} className="flex flex-col gap-3 rounded-input border border-border p-3">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-medium text-muted-foreground">Prenda {index + 1}</span>
-                  {fields.length > 1 && (
-                    <Button type="button" variant="ghost" size="icon-sm" aria-label="Quitar prenda" onClick={() => remove(index)}>
-                      <Trash2 className="size-4 text-danger" />
-                    </Button>
-                  )}
-                </div>
-                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                  <div>
-                    <label className="text-sm font-medium text-foreground">Categoría</label>
-                    <Controller
-                      control={control}
-                      name={`items.${index}.category_id`}
-                      render={({ field: categoryField }) => (
-                        <Select value={categoryField.value} onValueChange={categoryField.onChange}>
-                          <SelectTrigger className="mt-1 w-full">
-                            <SelectValue placeholder="Selecciona…" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {pawnCategories.map((category) => (
-                              <SelectItem key={category.id} value={category.id}>
-                                {categoryLabel(categories ?? [], category.id)}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      )}
-                    />
-                    {pawnCategories.length === 0 && <p className="mt-1 text-xs text-muted-foreground">No hay categorías de nivel 3 para empeño todavía — créalas en Catálogos.</p>}
-                    {errors.items?.[index]?.category_id && <p className="mt-1 text-sm text-danger">{errors.items[index]?.category_id?.message}</p>}
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium text-foreground">Descripción</label>
-                    <input className={inputClass} {...register(`items.${index}.description`)} />
-                    {errors.items?.[index]?.description && <p className="mt-1 text-sm text-danger">{errors.items[index]?.description?.message}</p>}
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium text-foreground">Peso (gramos, opcional)</label>
-                    <input inputMode="decimal" className={inputClass} {...register(`items.${index}.weight_grams`)} />
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium text-foreground">Serial / IMEI (opcional)</label>
-                    <input className={inputClass} {...register(`items.${index}.serial_imei`)} />
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium text-foreground">Avalúo de la prenda (opcional)</label>
-                    <Controller
-                      control={control}
-                      name={`items.${index}.item_appraisal`}
-                      render={({ field: appraisalField }) => <MoneyInput className="mt-1" value={appraisalField.value ?? ''} onChange={appraisalField.onChange} />}
-                    />
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </section>
+        <ContractItemsFields control={control} register={register} errors={errors} categories={categories} />
 
         <section className="rounded-card border border-border bg-card p-card shadow-card">
           <label htmlFor="notes" className="text-sm font-medium text-foreground">

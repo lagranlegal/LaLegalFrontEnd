@@ -17,6 +17,7 @@ import { CustomersPage } from '@/features/customers/pages/CustomersPage'
 import { CatalogsPage } from '@/features/catalogs/pages/CatalogsPage'
 import { ContractsListPage } from '@/features/contracts/pages/ContractsListPage'
 import { ContractFormPage } from '@/features/contracts/pages/ContractFormPage'
+import { ContractImportPage } from '@/features/contracts/pages/ContractImportPage'
 import { ContractDetailPage } from '@/features/contracts/pages/ContractDetailPage'
 
 interface RouterContext {
@@ -138,6 +139,23 @@ const contractNewRoute = createRoute({
   component: ContractFormPage,
 })
 
+// Guard por permiso (no solo ocultar el botón) — primera ruta que lo necesita
+// (docs/ARCHITECTURE.md §5, paso 5b): `contracts.import` es Admin-only de
+// fábrica, a diferencia del resto de contratos que cualquier operador ve.
+// `/me` ya está en cache acá (lo aseguró `appLayoutRoute.beforeLoad` arriba
+// en la cadena) — lectura síncrona, sin otro fetch.
+const contractImportRoute = createRoute({
+  getParentRoute: () => appLayoutRoute,
+  path: '/contratos/importar',
+  component: ContractImportPage,
+  beforeLoad: ({ context }) => {
+    const me = context.queryClient.getQueryData(meQueryOptions().queryKey)
+    if (me && !me.permissions.includes('contracts.import')) {
+      throw redirect({ to: '/contratos' })
+    }
+  },
+})
+
 const contractDetailRoute = createRoute({
   getParentRoute: () => appLayoutRoute,
   path: '/contratos/$contractId',
@@ -147,7 +165,7 @@ const contractDetailRoute = createRoute({
 const routeTree = rootRoute.addChildren([
   authLayoutRoute.addChildren([loginRoute, authCallbackRoute]),
   subscriptionBlockedRoute,
-  appLayoutRoute.addChildren([dashboardRoute, customersRoute, catalogsRoute, contractsRoute, contractNewRoute, contractDetailRoute]),
+  appLayoutRoute.addChildren([dashboardRoute, customersRoute, catalogsRoute, contractsRoute, contractNewRoute, contractImportRoute, contractDetailRoute]),
 ])
 
 export function createAppRouter(queryClient: QueryClient) {
