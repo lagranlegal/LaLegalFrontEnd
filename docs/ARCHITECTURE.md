@@ -50,7 +50,7 @@ pages (rutas)  →  components de la feature  →  hooks de api.ts (Query)  → 
 ```
 
 - **`lib/api/client.ts`** — `openapi-fetch` tipado con `src/types/api.ts` (generado de `/openapi.json`). Middleware único que: inyecta `Authorization` desde la sesión de Supabase; adjunta `Idempotency-Key` cuando la mutación lo declara; parsea el error uniforme `{code, message, details}` y lo convierte en `ApiError` tipado; expone helper de paginación por cursor (`fetchAllPages` / `useCursorInfiniteQuery` sobre `{items, next_cursor}`).
-- **`features/<modulo>/api.ts`** — únicos archivos que llaman al client. Definen las **query keys** del módulo (`['contracts', id]`, `['contracts','list',filters]`, `['dashboard']`…) y las invalidaciones tras cada mutación. Regla: una mutación de dinero invalida su documento + listado + `['dashboard']` + `['cashbox','current']` (el dinero siempre mueve caja).
+- **`features/<modulo>/api.ts`** — únicos archivos que llaman al client. Definen las **query keys** del módulo (`['contracts', id]`, `['contracts','list',filters]`, `['dashboard']`…) y las invalidaciones tras cada mutación. Regla: una mutación de dinero invalida su documento + listado + `['dashboard']` + `['cashbox','current']` (el dinero siempre mueve caja). **Excepción explícita:** `POST /contracts/import` (RECOMENDACIONES §1.6) usa `useMoneyMutation` solo por la `Idempotency-Key` que exige — no desembolsa nada, así que su `invalidateKeys` NO lleva `['cashbox','current']` y no debería mapear `CASH_SESSION_NOT_OPEN` (si ese código llegara ahí, es un bug del backend). `useMoneyMutation` es un mecanismo de idempotencia por acción de usuario, no un sinónimo de "mueve caja" — no asumir lo segundo por ver lo primero.
 - **`features/<modulo>/pages|components`** — presentación. Sin `fetch`, sin lógica de negocio, sin formatos ad-hoc.
 - **Estado:** servidor = TanStack Query (staleTime corto, `refetchOnWindowFocus` on — es una app operativa multi-usuario). UI global = Zustand mínimo (sidebar abierta, modal manager). Formularios = React Hook Form + Zod (validación de FORMA: requeridos, rangos, formato — la validación de NEGOCIO es del backend y llega como `VALIDATION_ERROR`/`BAD_REQUEST`).
 
@@ -69,6 +69,7 @@ pages (rutas)  →  components de la feature  →  hooks de api.ts (Query)  → 
 RBAC dinámico por empresa (roles editables), así que los permisos NO se hardcodean por rol — se evalúan por **código de permiso** (`contracts.create`, `cashbox.open_close`…), los mismos del backend.
 
 - La fuente es **`GET /me`** (§4.5): `permissions: string[]` es exactamente el set que `require_permission` acepta, con el mismo cache TTL 60s del backend. `lib/permissions` lo lee de la query `['me']` — `usePermission(code)` / `<Can permission="contracts.auction">` ocultan acciones; guards de ruta redirigen. (El gap que existía — no poder conocer los permisos propios sin `identity.manage_roles` — quedó resuelto con este endpoint; ver RECOMENDACIONES §1.)
+- Códigos **confirmados** explícitamente por el backend (no inferidos por convención `modulo.accion`): `contracts.auction`, `cashbox.open_close`, `contracts.import` (este último asignado solo al rol Admin de fábrica — pantalla "Registrar contrato existente", ver RECOMENDACIONES §1.6). El resto de códigos usados hoy (`contracts.create`, `customers.create`, `catalogs.manage`…) son inferencia conservadora hasta poder validarlos contra `GET /identity/permissions` (paso 8) — un código incorrecto solo oculta de más, nunca de menos.
 - Un `PERMISSION_DENIED` inesperado (el rol cambió por debajo, cache de 60s) → invalidar `['me']` además del toast: la UI se corrige sola en el siguiente render.
 - La UI oculta; **el backend es la única autoridad**. Nunca asumir que ocultar un botón protege nada.
 
@@ -91,6 +92,9 @@ RBAC dinámico por empresa (roles editables), así que los permisos NO se hardco
 | `IDEMPOTENCY_KEY_REQUIRED` (400) | Bug del front — reportar a Sentry, mensaje genérico. |
 | `CONFLICT` (409) | Mensaje contextual de la feature (doc duplicado, letra de código repetida…). |
 | `BAD_REQUEST` (400) | Mostrar `message` del backend en el contexto del form/acción. |
+| `CONTRACT_LEGACY_CODE_EXISTS` (409) | Import de contratos (RECOMENDACIONES §1.6): "Este contrato ya fue migrado" — link al contrato existente si se puede resolver por búsqueda de `legacy_code`. |
+| `IMPORT_CAPITAL_EXCEEDS_PRINCIPAL` (422) | Import de contratos: `capital_balance` ≤ 0 o > `principal` — validar en vivo mientras se escribe, no esperar el submit. |
+| `IMPORT_DATES_MISALIGNED` (422) | Import de contratos: `interest_paid_until` no cae en un múltiplo entero de meses desde `start_date` — evitarlo con un selector "N meses desde el inicio" en vez de dos date pickers libres. |
 | red / 5xx | Toast con retry; las mutaciones de dinero reintentan con la MISMA `Idempotency-Key`. |
 
 ## 7. Dinero, fechas y paginación (los tres transversales)
