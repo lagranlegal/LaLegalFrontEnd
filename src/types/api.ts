@@ -421,6 +421,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/contracts/import": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Import Contract */
+        post: operations["import_contract_api_v1_contracts_import_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/contracts/{contract_id}": {
         parameters: {
             query?: never;
@@ -1090,6 +1107,59 @@ export interface components {
             extension_months: number;
             /** Legacy Code */
             legacy_code?: string | null;
+            /** Notes */
+            notes?: string | null;
+        };
+        /**
+         * ContractImportIn
+         * @description docs/MIGRACION_CONTRATOS.md: importa la foto financiera al corte de
+         *     un contrato del sistema anterior. A diferencia de `ContractCreateIn`,
+         *     `term_months`/`arrears_window_months`/`extension_months` NO salen de la
+         *     categoría: son el snapshot real del contrato viejo, y `capital_balance`
+         *     puede ya ser menor que `principal` (abonos hechos antes del import).
+         *     Los límites de negocio (>0, alineación de fechas, etc.) se validan en el
+         *     servicio -no acá- para poder devolver los códigos de error específicos
+         *     del import (`IMPORT_*`) en vez del genérico `VALIDATION_ERROR`.
+         */
+        ContractImportIn: {
+            /** Legacy Code */
+            legacy_code: string;
+            /**
+             * Customer Id
+             * Format: uuid
+             */
+            customer_id: string;
+            /** Principal */
+            principal: number | string;
+            /** Capital Balance */
+            capital_balance: number | string;
+            /** Interest Rate Pct */
+            interest_rate_pct: number | string;
+            /** Term Months */
+            term_months: number;
+            /** Arrears Window Months */
+            arrears_window_months: number;
+            /**
+             * Extension Months
+             * @default 1
+             */
+            extension_months: number;
+            /**
+             * Start Date
+             * Format: date
+             */
+            start_date: string;
+            /**
+             * Interest Paid Until
+             * Format: date
+             */
+            interest_paid_until: string;
+            /** Items */
+            items: components["schemas"]["ContractItemIn"][];
+            /** Appraisal Value */
+            appraisal_value?: number | string | null;
+            /** Signed Photo Url */
+            signed_photo_url?: string | null;
             /** Notes */
             notes?: string | null;
         };
@@ -3225,6 +3295,41 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": components["schemas"]["ContractCreateIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ContractOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    import_contract_api_v1_contracts_import_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ContractImportIn"];
             };
         };
         responses: {
