@@ -1,14 +1,15 @@
 import { useState } from 'react'
 import { SearchInput } from '@/components/shared/SearchInput'
-import { useCustomerSearch, type Customer } from '@/features/contracts/api'
+import { useCustomerSearch, type Customer } from '@/lib/customers/search'
 
 /**
- * Buscar-y-elegir cliente para crear un contrato. Sin componente
- * `Combobox` genérico todavía (no lo pidió ninguna otra pantalla) — dropdown
- * simple sobre `SearchInput` + `useCustomerSearch` (8 resultados, no es un
- * listado paginado).
+ * Buscar-y-elegir cliente — contratos (obligatorio) y ventas (opcional,
+ * "Consumidor final" si `value` queda en `null`) lo comparten (CLAUDE.md
+ * regla 3). Sin componente `Combobox` genérico todavía (no lo pidió ninguna
+ * otra pantalla) — dropdown simple sobre `SearchInput` + `useCustomerSearch`
+ * (8 resultados, no es un listado paginado).
  */
-export function CustomerPicker({ value, onChange }: { value: Customer | null; onChange: (customer: Customer) => void }) {
+export function CustomerPicker({ value, onChange, placeholder = 'Buscar cliente por nombre…' }: { value: Customer | null; onChange: (customer: Customer | null) => void; placeholder?: string }) {
   const [q, setQ] = useState('')
   const { data, isFetching } = useCustomerSearch(q)
 
@@ -21,7 +22,7 @@ export function CustomerPicker({ value, onChange }: { value: Customer | null; on
             {value.doc_type.toUpperCase()} {value.doc_number}
           </p>
         </div>
-        <button type="button" className="text-sm font-medium text-primary hover:underline" onClick={() => onChange(null as unknown as Customer)}>
+        <button type="button" className="text-sm font-medium text-primary hover:underline" onClick={() => onChange(null)}>
           Cambiar
         </button>
       </div>
@@ -30,7 +31,7 @@ export function CustomerPicker({ value, onChange }: { value: Customer | null; on
 
   return (
     <div className="relative">
-      <SearchInput value={q} onChange={setQ} placeholder="Buscar cliente por nombre…" />
+      <SearchInput value={q} onChange={setQ} placeholder={placeholder} />
       {q.trim() && (
         <div className="absolute z-10 mt-1 w-full overflow-hidden rounded-input border border-border bg-card shadow-card">
           {isFetching && <p className="px-3 py-2 text-sm text-muted-foreground">Buscando…</p>}

@@ -99,3 +99,15 @@ export function sumMoney(...values: (string | null | undefined)[]): string {
 export function subtractMoney(a: string, b: string): string {
   return centsToDecimal(toCents(a) - toCents(b))
 }
+
+/**
+ * Multiplicación de PRESENTACIÓN — subtotal de una línea del carrito de
+ * venta (`unit_price × quantity`) ANTES de confirmar; el backend calcula el
+ * `subtotal`/`total` reales al crear la venta. `quantity` es siempre un
+ * entero (nunca fracción de unidad en este negocio), así que esto sigue
+ * siendo aritmética entera sobre centavos, no floats.
+ * `multiplyMoney("15000.00", 3)` → `"45000.00"`.
+ */
+export function multiplyMoney(unitPrice: string, quantity: number): string {
+  return centsToDecimal(toCents(unitPrice) * quantity)
+}

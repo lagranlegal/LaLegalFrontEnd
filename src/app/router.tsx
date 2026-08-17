@@ -20,6 +20,10 @@ import { ContractFormPage } from '@/features/contracts/pages/ContractFormPage'
 import { ContractImportPage } from '@/features/contracts/pages/ContractImportPage'
 import { ContractDetailPage } from '@/features/contracts/pages/ContractDetailPage'
 import { CashboxPage } from '@/features/cashbox/pages/CashboxPage'
+import { InventoryPage } from '@/features/inventory/pages/InventoryPage'
+import { EntryFormPage } from '@/features/inventory/pages/EntryFormPage'
+import { SalesListPage } from '@/features/sales/pages/SalesListPage'
+import { SaleFormPage } from '@/features/sales/pages/SaleFormPage'
 
 interface RouterContext {
   queryClient: QueryClient
@@ -169,10 +173,47 @@ const cashboxRoute = createRoute({
   component: CashboxPage,
 })
 
+const inventoryRoute = createRoute({
+  getParentRoute: () => appLayoutRoute,
+  path: '/inventario',
+  component: InventoryPage,
+})
+
+const entryNewRoute = createRoute({
+  getParentRoute: () => appLayoutRoute,
+  path: '/inventario/ingresos/nuevo',
+  component: EntryFormPage,
+})
+
+const salesRoute = createRoute({
+  getParentRoute: () => appLayoutRoute,
+  path: '/ventas',
+  component: SalesListPage,
+})
+
+const saleNewRoute = createRoute({
+  getParentRoute: () => appLayoutRoute,
+  path: '/ventas/nueva',
+  component: SaleFormPage,
+})
+
 const routeTree = rootRoute.addChildren([
   authLayoutRoute.addChildren([loginRoute, authCallbackRoute]),
   subscriptionBlockedRoute,
-  appLayoutRoute.addChildren([dashboardRoute, customersRoute, catalogsRoute, contractsRoute, contractNewRoute, contractImportRoute, contractDetailRoute, cashboxRoute]),
+  appLayoutRoute.addChildren([
+    dashboardRoute,
+    customersRoute,
+    catalogsRoute,
+    contractsRoute,
+    contractNewRoute,
+    contractImportRoute,
+    contractDetailRoute,
+    cashboxRoute,
+    inventoryRoute,
+    entryNewRoute,
+    salesRoute,
+    saleNewRoute,
+  ]),
 ])
 
 export function createAppRouter(queryClient: QueryClient) {

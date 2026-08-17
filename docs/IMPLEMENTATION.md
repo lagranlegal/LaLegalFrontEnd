@@ -2,6 +2,71 @@
 
 > Registro vivo de qué existe en el código, cómo está armado y por qué se tomó cada decisión — para que cualquiera (humano o Claude Code) pueda retomar el proyecto sin releer todo el historial de commits. Se actualiza en cada paso del "Orden de implementación" de `CLAUDE.md`. No repite lo que ya está en `ARCHITECTURE.md`/`DESIGN_SYSTEM.md` (el qué-debería-ser); esto es el qué-hay-hoy y las decisiones concretas tomadas al construirlo.
 
+## Paso 7 — Inventory + sales (completo, con un bloqueo externo documentado)
+
+Ingresos multi-línea (con validación real de negocio: "Compra" exige proveedor), edición de borrador, publicar (bloqueado hoy por falta de Storage — ver `STORAGE_PENDIENTE.md`), egresos con motivo; venta tipo POS (buscar artículo → carrito → medio de pago → descuento opcional → vender), recibo con impresión y anulación. Segundo módulo (después de contratos) que promueve helpers a `lib/` por tener 2+ consumidores reales: búsqueda de clientes ahora la usan tanto contratos como ventas.
+
+### Estructura nueva
+
+```
+src/
+  lib/
+    money.ts                              # + multiplyMoney (subtotal de línea: precio × cantidad)
+    inventory/items.ts                      # useItem, useAvailableItemsSearch — filtrado client-side
+    catalogs/suppliers.ts                     # useSuppliers() plano, para selects (distinto del paginado de CatalogsPage)
+    customers/search.ts                         # useCustomerSearch/useCustomer — PROMOVIDO desde features/contracts
+  components/shared/
+    CustomerPicker.tsx                            # MOVIDO desde features/contracts/components/
+    ItemPicker.tsx                                  # nuevo — buscar y agregar (no buscar y fijar, a diferencia de CustomerPicker)
+  features/inventory/
+    api.ts                                            # Entry, Exit, Item + hooks — sin Idempotency-Key (no aplica)
+    pages/EntryFormPage.tsx, InventoryPage.tsx          # ingresos multi-línea; tabs Artículos/Ingresos/Egresos
+    components/ItemEditDialog.tsx,                        # editar borrador + publicar (bloqueado, ver abajo)
+      ExitFormDialog.tsx, EntryDetailDialog.tsx
+  features/sales/
+    api.ts                                            # Sale + hooks — create_sale SÍ acepta Idempotency-Key
+    pages/SaleFormPage.tsx, SalesListPage.tsx           # POS: carrito local (useState, no RHF)
+    components/SaleReceiptDialog.tsx                      # ver/imprimir/anular
+```
+
+### Decisiones y hallazgos
+
+**Regla de negocio real, no documentada en el schema de OpenAPI: un ingreso `origin_type: "purchase"` exige `supplier_id`.** El schema generado marca `supplier_id` como opcional sin condición — la exigencia solo existe en la validación del backend. Se descubrió enviando una "Compra" real sin proveedor: `400 BAD_REQUEST` — `"Un ingreso de compra requiere \`supplier_id\`."`. Dos arreglos: (1) el catch de `onSubmit` en `EntryFormPage` tenía un mensaje genérico hardcodeado que se tragaba el mensaje real del backend — cambiado a `applyServerErrors(error, setError)` (el helper central ya establecido) para que cualquier error de negocio futuro se muestre tal cual, no solo este caso; (2) además se agregó validación Zod proactiva (`.refine` condicional sobre `origin_type`/`supplier_id`) para que el estado inválido ya no se pueda ni enviar — el error de servidor queda como red de seguridad, no como el único mecanismo.
+
+**Confirmado con una llamada directa al backend (no solo inferido de la UI): publicar un artículo exige ≥1 foto, y el backend lo hace cumplir, no solo el front.** `POST /inventory/items/{id}/publish` con `photos: []` devuelve `400 {"code":"BAD_REQUEST","message":"El artículo necesita al menos una foto para publicarse."}`. Esto confirma que el botón "Publicar" de `ItemEditDialog` (deshabilitado hoy porque `photos` nunca puede ser no-vacío sin `PhotoUploader`) está gateado correctamente y no es una limitación artificial del front — es un reflejo exacto de una regla real del servidor. Ver `docs/STORAGE_PENDIENTE.md` para el detalle completo del bloqueo de Storage.
+
+**Sin Storage no hay forma de que un artículo llegue a `available`**, así que egresos y "agregar al carrito de venta" nunca se probaron en navegador contra un artículo real disponible — solo contra el estado vacío de búsqueda (`Sin resultados.`), que sí se confirmó que renderiza bien. El flujo completo de venta (buscar artículo → aparece en resultados → agregar → carrito con subtotal correcto) queda sin verificar end-to-end hasta que exista al menos un artículo publicado; el código en sí (`ItemPicker`, cálculo de `multiplyMoney`/`sumMoney` para el carrito) sí tiene cobertura de unit tests para la aritmética.
+
+**`lib/customers/search.ts` — segunda promoción de una feature a `lib/` (después de categorías/proveedores/búsqueda de artículos, todas en pasos previos).** `useCustomerSearch`/`useCustomer` vivían en `features/contracts/api.ts`; ventas los necesitaba igual de intacto (mismo picker, mismo endpoint). Se movieron a `lib/customers/search.ts` y los tres consumidores de contratos (`ContractFormPage`, `ContractImportPage`, `ContractDetailPage`) se actualizaron para importar desde ahí en vez de a través de `features/contracts/api.ts`. Regla del proyecto (CLAUDE.md §3): compartido vive en `lib/`, ninguna feature importa internals de otra — acá se aplicó apenas hubo un segundo consumidor real, no antes.
+
+**`CustomerPicker` se movió junto con la promoción** (`features/contracts/components/` → `components/shared/`) y de paso se limpió su contrato: `onChange` pasó de `(customer: Customer) => void` con un cast interno feo (`null as unknown as Customer` para representar "se limpió la selección") a `(customer: Customer | null) => void`, que es lo que realmente pasa. Ambos consumidores (contratos y ventas) se actualizaron al tipo correcto.
+
+**`ItemPicker` es un componente nuevo, distinto de `CustomerPicker` a propósito: "buscar y agregar" vs. "buscar y fijar un valor".** `CustomerPicker` mantiene un cliente seleccionado (o ninguno) como su valor controlado. `ItemPicker` no tiene "valor" propio — cada resultado tiene un botón que dispara `onSelect` y limpia la búsqueda, porque tanto egresos como el carrito de venta agregan líneas repetidamente sin que el picker "recuerde" la última selección. Intentar forzarlo al mismo contrato que `CustomerPicker` hubiera significado un estado fantasma sin usar.
+
+**`useAvailableItemsSearch`/`useSuppliers` filtran del lado del cliente sobre los primeros 100 resultados** — mismo patrón y misma limitación que `legacy_code` en contratos (paso 5b): `GET /inventory/items` no tiene parámetro `q`. Documentado como gap conocido, no un bug — si el catálogo de artículos disponibles crece más allá de 100, la búsqueda dejará de ser exhaustiva y habrá que pedirle al backend un `q` real.
+
+**El carrito de venta es `useState<CartLine[]>` local, no React Hook Form** — a diferencia de `EntryFormPage` (que sí usa `useFieldArray` porque las líneas se escriben directamente en inputs del formulario), el carrito de venta se arma por selección desde `ItemPicker` (agregar por click, no por typing), así que RHF no aportaba nada; el total (`sumMoney` de `multiplyMoney` por línea, menos descuento con `subtractMoney` si aplica) se recalcula en cada render a partir del array, sin estado derivado adicional.
+
+**Ningún endpoint de inventario acepta `Idempotency-Key`** (confirmado en `src/types/api.ts`, mismo patrón que cashbox en el paso 6) — mutaciones planas con `isPending`. **`create_sale` SÍ lo acepta** (a diferencia del resto de este paso) — usa `useMoneyMutation`, con invalidación de `['sales']`, `['dashboard']`, `['cashbox','current']` e `['inventory']` (una venta mueve caja y stock a la vez).
+
+**Recibo de venta reusa el patrón de "imprimible como hermano del diálogo"** establecido en el paso 6 para el acta de cierre (`PrintLayout` fuera de `AppDialog`, nunca anidado) — mismo bug clase evitado sin tener que redescubrirlo.
+
+**Falso positivo de un script de prueba, no un bug de la app:** un intento inicial de verificar los selects encadenados de categoría (nivel 1 → 2 → 3) en el formulario de ingreso mostró cero opciones. La causa fue el script interactuando antes de que llegara la respuesta de `GET /catalogs/categories` (que en este backend de dev tarda unos segundos) — no la lógica de cascada. Confirmado correcto reescribiendo el script con `page.waitForResponse(...)` explícito: Joyería/Tecnología (nivel 1) → Anillos (nivel 2) → Anillos de oro (nivel 3) resolvieron bien.
+
+### Qué falta (fuera de alcance del paso 7)
+
+- **Publicar artículos, y por extensión probar en navegador el camino completo de egresos y venta con un artículo real** — bloqueado por Storage no configurado en el proyecto Supabase de dev. Detalle completo, qué falta configurar y a quién le toca en `docs/STORAGE_PENDIENTE.md`.
+- Búsqueda de artículos con `q` real en el backend (hoy: filtro client-side sobre 100 resultados, ver arriba).
+- Guard de ruta por permiso en `/inventario`, `/ventas` y sus subrutas — mismo pendiente sistemático que arrastra el proyecto desde el paso 4 (solo `/contratos/importar` tiene guard, por ser Admin-only).
+- Editar/anular un ingreso ya creado — la API solo tiene creación y lectura de `entries`.
+
+### Comandos de verificación
+
+```bash
+npm run lint && npm run typecheck && npm run test && npm run build   # todo en verde (54 tests)
+npm run dev   # /inventario: ingreso multi-línea, editar borrador, egreso; /ventas: POS, recibo, imprimir, anular
+```
+
 ## Paso 6 — Cashbox completo (completo)
 
 Sesión diaria (abrir/cerrar/reabrir), gastos, cierre con vista previa del desglose módulo×concepto×medio desde `/report`, justificación obligatoria de descuadre sin tolerancia, histórico de cierres con rango de fechas, y acta imprimible. Primeros consumidores reales de `DatePicker`, `DateRangePicker` y `PrintLayout` (los tres documentados en `DESIGN_SYSTEM.md` desde el paso 1 pero nunca construidos hasta que hizo falta). Probado de punta a punta contra dev: abrir → gasto → cerrar con descuadre real → histórico → acta → imprimir → reabrir — cada paso con datos reales, no mockeados.

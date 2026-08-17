@@ -13,37 +13,11 @@ export type PaymentQuote = components['schemas']['PaymentQuoteOut']
 export type PaymentOption = components['schemas']['PaymentOptionOut']
 export type Payment = components['schemas']['PaymentOut']
 export type PaymentCreateIn = components['schemas']['PaymentCreateIn']
-export type Customer = components['schemas']['CustomerOut']
 
-/**
- * Búsqueda liviana de clientes para `CustomerPicker` (crear contrato). No
- * reusa `features/customers/api.ts` — features aisladas (CLAUDE.md regla 3),
- * y esto es tres líneas sobre el mismo `api` central, no lógica a duplicar.
- * Solo primera página (8 resultados): es un picker, no un listado con "cargar más".
- */
-export function useCustomerSearch(q: string) {
-  return useQuery({
-    queryKey: ['contracts', 'customer-search', q] as const,
-    queryFn: () => unwrap(api.GET('/api/v1/customers', { params: { query: { q, limit: 8 } } })),
-    enabled: q.trim().length > 0,
-  })
-}
-
-/**
- * Cliente dueño de un contrato — `ContractOut` solo trae `customer_id`, no
- * el cliente embebido. `enabled` evita pedir `/customers/` (sin id) mientras
- * el contrato todavía está cargando: ese request real llegó a dispararse en
- * pruebas y el backend lo redirige a la colección con un 307 que el
- * navegador rechaza por CORS (sin `Access-Control-Allow-Origin` en la
- * respuesta de redirect) — error de consola espurio, no del backend en sí.
- */
-export function useCustomer(customerId: string) {
-  return useQuery({
-    queryKey: ['contracts', 'customer', customerId] as const,
-    queryFn: () => unwrap(api.GET('/api/v1/customers/{customer_id}', { params: { path: { customer_id: customerId } } })),
-    enabled: customerId.length > 0,
-  })
-}
+// `useCustomerSearch`/`useCustomer` viven en `lib/customers/search.ts` — el
+// paso 7 (sales) los necesita también, se promovieron de acá (mismo
+// criterio de `lib/catalogs/categories.ts`, CLAUDE.md regla 3). Los
+// consumidores de este feature los importan directo de `lib/`, no de acá.
 
 // ---- Listado (cursor) + listos-para-remate (lista chica sin paginar, GET propio) ----
 

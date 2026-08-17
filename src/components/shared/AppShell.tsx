@@ -38,8 +38,8 @@ interface NavItem {
 const NAV_ITEMS: NavItem[] = [
   { label: 'Inicio', icon: Home, to: '/' },
   { label: 'Contratos', icon: FileText, to: '/contratos' },
-  { label: 'Ventas', icon: ShoppingCart },
-  { label: 'Inventario', icon: Package },
+  { label: 'Ventas', icon: ShoppingCart, to: '/ventas' },
+  { label: 'Inventario', icon: Package, to: '/inventario' },
   { label: 'Clientes', icon: Users, to: '/clientes' },
   { label: 'Caja', icon: Wallet, to: '/caja' },
   { label: 'Catálogos', icon: Tags, to: '/catalogos' },
