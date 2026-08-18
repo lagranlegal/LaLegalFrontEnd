@@ -2,6 +2,53 @@
 
 > Registro vivo de qué existe en el código, cómo está armado y por qué se tomó cada decisión — para que cualquiera (humano o Claude Code) pueda retomar el proyecto sin releer todo el historial de commits. Se actualiza en cada paso del "Orden de implementación" de `CLAUDE.md`. No repite lo que ya está en `ARCHITECTURE.md`/`DESIGN_SYSTEM.md` (el qué-debería-ser); esto es el qué-hay-hoy y las decisiones concretas tomadas al construirlo.
 
+## Paso 9 — Audit (completo — "histórico de cierres" ya estaba hecho desde el paso 6)
+
+`CLAUDE.md` paso 9 pide dos cosas: "log con filtros combinables" y "histórico de cierres con rango de fechas". Lo segundo YA existía — se construyó dentro de `CashboxPage` en el paso 6 (`useClosingsHistory` + `DateRangePicker`, ver esa sección), no en `features/reports/` como sugería la estructura original del proyecto; se dejó ahí a propósito (mismo permiso `cashbox.view`, misma pantalla donde ya se abre/cierra caja — moverlo a un módulo separado solo por seguir la estructura al pie de la letra hubiera sido churn sin beneficio real). Este paso construyó lo que faltaba: el log de auditoría.
+
+### Estructura nueva
+
+```
+src/
+  lib/
+    businessModules.ts     # BUSINESS_MODULE_LABELS — PROMOVIDO desde identity (ver hallazgos)
+    identity/users.ts        # useUsersFlat() — lista plana para el filtro por usuario
+  features/audit/
+    api.ts                     # useAuditLog(filters) — cursor + module/entity_type/user_id combinables
+    labels.ts                    # AUDIT_ACTION_LABELS / AUDIT_ENTITY_TYPE_LABELS (mapa parcial, mismo criterio que CONCEPT_LABELS)
+    components/AuditDetailDialog.tsx  # ver antes/después como JSON crudo
+    pages/AuditPage.tsx            # filtros + tabla
+```
+
+### Decisiones y hallazgos
+
+**`GET /audit-log` no tiene rango de fechas — solo `module`/`entity_type`/`user_id`/`cursor`/`limit` (confirmado en `src/types/api.ts`).** A diferencia de `/reports/closings` (que sí tiene `from_date`/`to_date`, usado en el histórico de cierres del paso 6), acá no se inventó un filtro que el backend no soporta — los tres selects combinables son exactamente los tres query params reales.
+
+**`module` de `AuditLogOut` usa la MISMA taxonomía que `PermissionOut.module` (paso 8) — confirmado contra datos reales, no asumido.** Se trajeron ~19 registros reales del audit log de dev y sus valores de `module` (`cashbox`, `contracts`, `identity`, `inventory`, `platform`) son un subconjunto exacto del catálogo de módulos ya visto en la matriz de permisos, más `platform` (el dominio del panel super-admin, paso 10, que no aparece en el catálogo de permisos de una empresa normal). Con esa confirmación, `PERMISSION_MODULE_LABELS` (que vivía solo dentro de `PermissionsMatrixDialog.tsx`) se promovió a `lib/businessModules.ts` — segundo consumidor real, mismo criterio de promoción que `lib/customers/search.ts` en el paso 7. Sigue siendo un dominio DISTINTO de `lib/modules.ts` (`pawn|store|general`, el módulo de negocio de gastos/cierre de caja) — no se fusionaron, son catálogos del backend sin relación aunque compartan la palabra "módulo".
+
+**`entity_type`/`action` no tienen catálogo formal en el schema (`string` pelado, sin enum) — mismo criterio que `CONCEPT_LABELS` (paso 6): mapa parcial poblado solo con los valores vistos en el audit log real de dev, con fallback al valor crudo para lo no mapeado.** A diferencia de `module` (que sí tiene un catálogo más amplio y confiable vía `GET /identity/permissions`), acá no había otra fuente que empíricamente mirar los registros reales — se trajeron ~8 páginas (50 por página) para maximizar la cobertura de valores distintos antes de escribir el mapa.
+
+**Hallazgo real, no bug: dos registros del audit log tienen `user_id: null` (se muestran como "Sistema").** Verificado que corresponden EXACTAMENTE a los dos eventos del aprovisionamiento inicial de la empresa (`create_company` e `invite_user` del primer usuario Admin), ambos con el mismo `created_at` — no es un patrón que se repita en acciones normales de un usuario ya autenticado (confirmado: una segunda invitación real, hecha en el paso 8 con sesión de un usuario real, sí trae su `user_id`). El front no distingue "sistema" de "usuario borrado" — ambos casos hoy son indistinguibles con lo que manda el backend (`user_id: null`), documentado como comportamiento observado, no como regla garantizada.
+
+**`AuditDetailDialog` muestra `before`/`after` como JSON crudo pretty-printed, sin intentar un diff visual campo por campo.** La forma de esos objetos varía completamente según la acción (`{role_id}` para cambiar rol, `{permission_codes: string[]}` para permisos, `{name, clone_from_role_id}` para crear un rol…) — construir una vista "amigable" por tipo de acción hubiera significado un mapeo ad-hoc por cada `action` existente y futura, mucho esfuerzo para un panel que ya cumple su propósito (mostrar exactamente qué cambió) mostrando el JSON tal cual en un `<pre>`.
+
+**`useUsersFlat` (`lib/identity/users.ts`) es la lista de usuarios para el filtro, no paginada** — mismo patrón que `lib/catalogs/suppliers.ts` (paso 7): un `<select>` no necesita "cargar más", a diferencia de la tabla de `IdentityPage` (paso 8), que sí pagina por cursor con `useUsersList`. Con el tamaño real de esta empresa (2-4 usuarios) una sola página (límite 100) cubre cualquier caso real.
+
+**Falso positivo de un script de prueba: un `page.screenshot({fullPage: true})` con el `<Select>` de módulo recién abierto hizo que el siguiente click a una opción fallara por timeout** — el select se cerraba antes de que el click llegara. Confirmado NO es un bug de la app: sin el screenshot de por medio (y verificando directo por la respuesta de red, `GET /audit-log?module=identity` → 9 items, los 9 con `module: "identity"`, 9 filas renderizadas), el filtro funciona perfecto. Mismo tipo de falso positivo que el de los selects encadenados de categoría en el paso 7 — un `fullPage` screenshot puede interferir con overlays de Radix posicionados por portal; evitarlo cuando se necesite interactuar con un popover justo después de abrirlo.
+
+### Qué falta (fuera de alcance del paso 9)
+
+- Filtro por rango de fechas en el log de auditoría — no existe en el backend hoy (`GET /audit-log` no tiene `from_date`/`to_date`). Si se agrega del lado del backend, el front solo necesita sumar un `DateRangePicker` más (ya construido, reutilizable) a los filtros existentes.
+- Resolver `user_id: null` a algo más específico que "Sistema" — el backend no distingue "acción del sistema" de "usuario borrado"; no hay nada que el front pueda inferir sin ese dato.
+- Guard de ruta por permiso en `/auditoria` — SÍ tiene guard (`audit.view`, igual que `/identidad`), a diferencia del pendiente sistemático que arrastran `/contratos`, `/clientes`, etc. desde el paso 4.
+
+### Comandos de verificación
+
+```bash
+npm run lint && npm run typecheck && npm run test && npm run build   # todo en verde (54 tests)
+npm run dev   # /auditoria: filtrar por módulo/entidad/usuario combinados, ver detalle con antes/después
+```
+
 ## Paso 7b — PhotoUploader y desbloqueo de "Publicar" (completo)
 
 Backend/infra resolvió el bloqueo de Storage documentado en el paso 7 (`docs/STORAGE_PENDIENTE.md`): bucket `company-files` creado, privado, 8 MB máx, `image/jpeg|png|webp`, RLS por `company_id`. Con eso se construyó `PhotoUploader` de verdad y se desbloqueó "Publicar" en inventario — cerrando el único pendiente real que había quedado del paso 7.

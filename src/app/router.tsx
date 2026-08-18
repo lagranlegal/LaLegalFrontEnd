@@ -25,6 +25,7 @@ import { EntryFormPage } from '@/features/inventory/pages/EntryFormPage'
 import { SalesListPage } from '@/features/sales/pages/SalesListPage'
 import { SaleFormPage } from '@/features/sales/pages/SaleFormPage'
 import { IdentityPage } from '@/features/identity/pages/IdentityPage'
+import { AuditPage } from '@/features/audit/pages/AuditPage'
 
 interface RouterContext {
   queryClient: QueryClient
@@ -214,6 +215,20 @@ const identityRoute = createRoute({
   },
 })
 
+// Guard por permiso, mismo patrón que `identityRoute` — `audit.view` es el
+// único código confirmado que gatea esta pantalla (docs/ARCHITECTURE.md §5).
+const auditRoute = createRoute({
+  getParentRoute: () => appLayoutRoute,
+  path: '/auditoria',
+  component: AuditPage,
+  beforeLoad: ({ context }) => {
+    const me = context.queryClient.getQueryData(meQueryOptions().queryKey)
+    if (me && !me.permissions.includes('audit.view')) {
+      throw redirect({ to: '/' })
+    }
+  },
+})
+
 const routeTree = rootRoute.addChildren([
   authLayoutRoute.addChildren([loginRoute, authCallbackRoute]),
   subscriptionBlockedRoute,
@@ -231,6 +246,7 @@ const routeTree = rootRoute.addChildren([
     salesRoute,
     saleNewRoute,
     identityRoute,
+    auditRoute,
   ]),
 ])
 

@@ -3,31 +3,8 @@ import { AppDialog } from '@/components/shared/AppDialog'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { ApiError } from '@/lib/api/client'
+import { businessModuleLabel } from '@/lib/businessModules'
 import { useRolePermissions, useUpdateRolePermissions, usePermissionsCatalog, type Permission, type Role } from '@/features/identity/api'
-
-/**
- * Módulo de `PermissionOut.module` (ej. `contracts`, `cashbox`) — dominio
- * DISTINTO de `lib/modules.ts` (`pawn|store|general`, módulo de negocio de
- * caja/gastos). Mismo criterio de mapa-parcial-con-fallback: un módulo no
- * mapeado se muestra tal cual.
- */
-const PERMISSION_MODULE_LABELS: Record<string, string> = {
-  audit: 'Auditoría',
-  cashbox: 'Caja',
-  catalogs: 'Catálogos',
-  company: 'Empresa',
-  contracts: 'Contratos',
-  customers: 'Clientes',
-  identity: 'Identidad',
-  inventory: 'Inventario',
-  payments: 'Pagos',
-  reports: 'Reportes',
-  sales: 'Ventas',
-}
-
-function moduleLabel(module: string): string {
-  return PERMISSION_MODULE_LABELS[module] ?? module
-}
 
 function groupByModule(catalog: Permission[]): [string, Permission[]][] {
   const map = new Map<string, Permission[]>()
@@ -74,7 +51,7 @@ function PermissionsChecklist({ role, catalog, initialCodes, onSaved }: { role: 
       <div className="flex max-h-[55vh] flex-col gap-4 overflow-y-auto pr-1">
         {grouped.map(([module, permissions]) => (
           <div key={module}>
-            <h3 className="mb-2 text-sm font-semibold text-foreground">{moduleLabel(module)}</h3>
+            <h3 className="mb-2 text-sm font-semibold text-foreground">{businessModuleLabel(module)}</h3>
             <div className="flex flex-col gap-2">
               {permissions.map((permission) => (
                 <label key={permission.code} className="flex items-start gap-2 text-sm">
