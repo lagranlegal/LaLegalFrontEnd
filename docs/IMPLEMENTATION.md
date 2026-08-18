@@ -2,6 +2,57 @@
 
 > Registro vivo de qué existe en el código, cómo está armado y por qué se tomó cada decisión — para que cualquiera (humano o Claude Code) pueda retomar el proyecto sin releer todo el historial de commits. Se actualiza en cada paso del "Orden de implementación" de `CLAUDE.md`. No repite lo que ya está en `ARCHITECTURE.md`/`DESIGN_SYSTEM.md` (el qué-debería-ser); esto es el qué-hay-hoy y las decisiones concretas tomadas al construirlo.
 
+## Paso 10 — Platform (completo)
+
+Panel super-admin: empresas (crear, suspender/reactivar, extender suscripción), layout propio (`PlatformLayout`) — NUNCA `AppShell`, ni pasa por `GET /me`. Último paso del "Orden de implementación" de `CLAUDE.md` — con esto quedan completos los 10 pasos (más 7b, el desbloqueo de Storage).
+
+### Estructura nueva
+
+```
+src/
+  styles/tokens.css, globals.css   # + --platform/--platform-foreground (banda distintiva)
+  app/layouts/PlatformLayout.tsx     # banda oscura + Outlet, sin sidebar
+  lib/auth/platform.ts                 # isSuperAdmin() — lee el claim del JWT, nada más
+  features/platform/
+    api.ts                               # empresas + planes — sin Idempotency-Key
+    components/
+      CompanyStatusBadge.tsx               # estado de EMPRESA, badge propio (ver hallazgos)
+      CompanyFormDialog.tsx                  # crear
+      CompanyDetailDialog.tsx                  # suspender/reactivar + extender suscripción
+    pages/CompaniesPage.tsx                    # única pantalla real (CLAUDE.md no pide más)
+```
+
+### Decisiones y hallazgos
+
+**`/platform` es un árbol de rutas completamente separado de `appLayoutRoute` — no pasa por `GET /me` en ningún momento.** Un super-admin de plataforma no necesariamente pertenece a la empresa que está operando (docs/ARCHITECTURE.md §4: los claims del JWT se decodifican "SOLO para routing básico... no infiere permisos ni datos de empresa de los claims — para eso está `/me`"). `platformLayoutRoute.beforeLoad` verifica sesión + el claim `app_metadata.platform_role === 'super_admin'` directo de `supabase.auth.getSession()` (ya viene decodificado por `supabase-js`, sin librería de JWT-decode) y redirige a `/` si falta cualquiera de las dos cosas — nunca intenta cargar `/me`.
+
+**Bug real de TanStack Router, encontrado al primer intento de correr la app: "Route cannot have both an 'id' and a 'path' option."** Se copió el patrón de `appLayoutRoute` (que usa `id: 'app-layout'` porque no tiene `path` propio — está montada en la raíz `/`) pero se le agregó TAMBIÉN `path: '/platform'` sin quitar el `id`. La combinación no es válida. Arreglado quitando el `id` — `platformLayoutRoute` no lo necesita porque sí tiene un `path` real (`/platform`) que ya la identifica.
+
+**Banda superior deliberadamente distinta de la marca — tokens nuevos, no un color suelto.** CLAUDE.md/ARCHITECTURE.md piden que un super-admin "nunca confunda contexto" con un tenant normal. Se agregaron `--platform`/`--platform-foreground` a `tokens.css` (azul-marino oscuro `#0f172a` + blanco) y su mapeo en `globals.css` (`--color-platform`) para poder usar `bg-platform`/`text-platform-foreground` como cualquier otro token — cumple la regla 4 (todo color sale de `tokens.css`, nunca hex suelto en una feature) sin excepción para este caso especial.
+
+**Segundo caso de un badge de estado con nombre propio, no el `StatusBadge` compartido — mismo motivo que `UserStatusBadge` (paso 8).** `CompanyOut.status` usa `"active"`, que en `StatusBadge` ya significa "Vigente" (estado de contrato). Verificado en navegador contra datos reales (crear una empresa, suspenderla, reactivarla): los dos valores reales son `active`/`suspended` — `CompanyStatusBadge` los traduce a "Activa"/"Suspendida" con su propio mapa, mismo criterio de fallback-al-valor-crudo que el resto.
+
+**Hallazgo real para backend, documentado en `docs/RECOMENDACIONES.md` §1.8: `CompanyOut` no trae ni plan ni fecha de expiración de la suscripción — solo `{id, name, status, created_at}`.** Confirmado contra el `/openapi.json` real (se corrió `npm run gen:api` de nuevo antes de concluirlo, sin diff — no era un tipo viejo). `POST .../subscription/extend` funciona perfecto (probado en vivo, `204`), pero el super-admin no tiene forma de ver la fecha ACTUAL antes de decidir la nueva — el front no lo oculta ni lo inventa: el formulario de extensión dice explícitamente "Esta vista no muestra la fecha de expiración actual" en vez de aparentar que sí la tiene.
+
+**Bug real de UX encontrado en pruebas: `CompanyDetailDialog` no se cerraba solo tras suspender/reactivar.** A diferencia de `UserDetailDialog` (paso 8), el primer intento de `handleToggleStatus` no llamaba `onOpenChange(false)` tras el éxito — el diálogo se quedaba abierto mostrando el `company` del momento en que se abrió (prop cerrado, no se actualiza solo con la invalidación de la query de fondo), con el badge y el botón viejos ("Suspender empresa" seguía visible después de ya haber suspendido). Se descubrió de inmediato al encadenar dos acciones seguidas en la misma prueba de navegador — un segundo script que reabría el diálogo fallaba porque el modal anterior seguía tapando la tabla. Arreglado agregando `onOpenChange(false)` al final de `handleToggleStatus`, igual que `UserDetailDialog`.
+
+**`LAST_ADMIN_SAFEGUARD`-equivalente para plataforma: no existe, no se buscó.** A diferencia de identity (paso 8), no hay ningún mecanismo documentado de "no te quedes sin ningún super-admin" — suspender/activar empresas no toca cuentas de plataforma. No aplica acá.
+
+**No se pudo probar en navegador el camino negativo (usuario autenticado SIN el claim `super_admin` intentando `/platform`)** — la única cuenta de prueba disponible con sesión activa y contraseña conocida (`mateojaras@gmail.com`) SÍ tiene el claim (confirmado por eso mismo se pudo probar todo lo demás). Sí se verificó el camino de "sin sesión en absoluto" (`/platform` → redirige a `/auth/login?redirect=/platform`, confirmado). El código del guard (`!(await isSuperAdmin()) → redirect a '/'`) es simétrico al de `identityRoute`/`auditRoute` (mismo patrón ya probado ahí con permisos de empresa), pero la rama específica "autenticado, sin el claim" queda sin verificación en vivo — mismo tipo de hueco honesto que `LAST_ADMIN_SAFEGUARD` en el paso 8.
+
+### Qué falta (fuera de alcance del paso 10)
+
+- Ver/editar planes (`GET /platform/plans` ya se usa para el select de "Nueva empresa", pero no hay pantalla de gestión de planes — CLAUDE.md paso 10 no la pide, solo "crear empresa, suspender, extender suscripción").
+- Mostrar plan/fecha de expiración actual de cada empresa — bloqueado por el gap de `CompanyOut` documentado arriba.
+- Verificar en vivo el camino negativo del guard de `/platform` (ver hallazgo arriba) — necesita una segunda cuenta real sin el claim `super_admin`.
+
+### Comandos de verificación
+
+```bash
+npm run lint && npm run typecheck && npm run test && npm run build   # todo en verde (54 tests)
+npm run dev   # /platform: crear empresa, suspender, reactivar, extender suscripción
+```
+
 ## Paso 9 — Audit (completo — "histórico de cierres" ya estaba hecho desde el paso 6)
 
 `CLAUDE.md` paso 9 pide dos cosas: "log con filtros combinables" y "histórico de cierres con rango de fechas". Lo segundo YA existía — se construyó dentro de `CashboxPage` en el paso 6 (`useClosingsHistory` + `DateRangePicker`, ver esa sección), no en `features/reports/` como sugería la estructura original del proyecto; se dejó ahí a propósito (mismo permiso `cashbox.view`, misma pantalla donde ya se abre/cierra caja — moverlo a un módulo separado solo por seguir la estructura al pie de la letra hubiera sido churn sin beneficio real). Este paso construyó lo que faltaba: el log de auditoría.

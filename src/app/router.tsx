@@ -6,7 +6,9 @@ import { meQueryOptions } from '@/lib/auth/me'
 import { setActiveTimezone } from '@/lib/dates'
 import { ApiError } from '@/lib/api/client'
 import { AuthLayout } from '@/app/layouts/AuthLayout'
+import { PlatformLayout } from '@/app/layouts/PlatformLayout'
 import { AppShell } from '@/components/shared/AppShell'
+import { isSuperAdmin } from '@/lib/auth/platform'
 import { SubscriptionBlockedPage } from '@/app/pages/SubscriptionBlockedPage'
 import { NotFoundPage } from '@/app/pages/NotFoundPage'
 import { ErrorPage } from '@/app/pages/ErrorPage'
@@ -26,6 +28,7 @@ import { SalesListPage } from '@/features/sales/pages/SalesListPage'
 import { SaleFormPage } from '@/features/sales/pages/SaleFormPage'
 import { IdentityPage } from '@/features/identity/pages/IdentityPage'
 import { AuditPage } from '@/features/audit/pages/AuditPage'
+import { CompaniesPage } from '@/features/platform/pages/CompaniesPage'
 
 interface RouterContext {
   queryClient: QueryClient
@@ -229,9 +232,40 @@ const auditRoute = createRoute({
   },
 })
 
+// ---- /platform/* — layout PROPIO, NUNCA AppShell (CLAUDE.md paso 10) ----
+// No pasa por `/me` en absoluto: un super-admin de plataforma no
+// necesariamente pertenece a la empresa que está operando. Autorización por
+// el claim `app_metadata.platform_role` del JWT, no por `/me.permissions`
+// (docs/ARCHITECTURE.md §4: "el front los decodifica SOLO para routing
+// básico... no infiere permisos ni datos de empresa de los claims").
+
+const platformLayoutRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/platform',
+  component: PlatformLayout,
+  beforeLoad: async ({ location }) => {
+    const {
+      data: { session },
+    } = await supabase.auth.getSession()
+    if (!session) {
+      throw redirect({ to: '/auth/login', search: { redirect: location.href } })
+    }
+    if (!(await isSuperAdmin())) {
+      throw redirect({ to: '/' })
+    }
+  },
+})
+
+const platformCompaniesRoute = createRoute({
+  getParentRoute: () => platformLayoutRoute,
+  path: '/',
+  component: CompaniesPage,
+})
+
 const routeTree = rootRoute.addChildren([
   authLayoutRoute.addChildren([loginRoute, authCallbackRoute]),
   subscriptionBlockedRoute,
+  platformLayoutRoute.addChildren([platformCompaniesRoute]),
   appLayoutRoute.addChildren([
     dashboardRoute,
     customersRoute,

@@ -60,6 +60,10 @@
   --color-chart-4: var(--chart-4);
   --color-chart-5: var(--chart-5);
 
+  /* Panel de plataforma (PlatformLayout) */
+  --color-platform: var(--platform);
+  --color-platform-foreground: var(--platform-foreground);
+
   /* Sidebar (AppShell) */
   --color-sidebar: var(--bg-surface);
   --color-sidebar-foreground: var(--text-strong);

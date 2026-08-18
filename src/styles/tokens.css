@@ -45,6 +45,13 @@
   --chart-4: #67c7bc;
   --chart-5: #a7b3c2; /* series secundarias, dona */
 
+  /* ==== Panel de plataforma (super-admin) ====
+     Banda superior deliberadamente distinta de la marca (docs/ARCHITECTURE.md
+     §4: "para que un super-admin nunca confunda contexto") — un tenant normal
+     nunca ve esto. */
+  --platform: #0f172a;
+  --platform-foreground: #ffffff;
+
   /* ==== Forma ==== */
   --radius-input: 10px;
   --radius-card: 14px;
