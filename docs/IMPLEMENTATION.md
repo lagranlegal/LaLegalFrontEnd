@@ -2,6 +2,43 @@
 
 > Registro vivo de qué existe en el código, cómo está armado y por qué se tomó cada decisión — para que cualquiera (humano o Claude Code) pueda retomar el proyecto sin releer todo el historial de commits. Se actualiza en cada paso del "Orden de implementación" de `CLAUDE.md`. No repite lo que ya está en `ARCHITECTURE.md`/`DESIGN_SYSTEM.md` (el qué-debería-ser); esto es el qué-hay-hoy y las decisiones concretas tomadas al construirlo.
 
+## Paso 7b — PhotoUploader y desbloqueo de "Publicar" (completo)
+
+Backend/infra resolvió el bloqueo de Storage documentado en el paso 7 (`docs/STORAGE_PENDIENTE.md`): bucket `company-files` creado, privado, 8 MB máx, `image/jpeg|png|webp`, RLS por `company_id`. Con eso se construyó `PhotoUploader` de verdad y se desbloqueó "Publicar" en inventario — cerrando el único pendiente real que había quedado del paso 7.
+
+### Estructura nueva
+
+```
+src/
+  lib/storage/
+    compressImage.ts    # canvas + createImageBitmap, sin librería externa
+    photos.ts            # upload/sign/delete contra el bucket + useSignedPhotoUrl
+  components/shared/
+    PhotoUploader.tsx    # controlado sobre string[] de PATHS, no URLs — grid + reorder + subir/quitar
+  features/inventory/components/ItemEditDialog.tsx   # placeholder reemplazado por PhotoUploader real
+```
+
+### Decisiones y hallazgos
+
+**Antes de construir nada, se repitió en código la misma verificación que backend/infra reportó — no se dio por hecho un "ya quedó".** Con el token real de un usuario autenticado: subir un PNG real a `company-files/{company_id}/...` (200), generar una URL firmada (200), descargarla y comparar el MD5 contra el original (idénticos), borrar el archivo de prueba (200), e intentar subir a la carpeta de una empresa inventada (`403 AccessDenied` explícito de RLS, no un genérico) — y un intento con `text/plain` en vez de imagen (`400 InvalidMimeType`, confirma el filtro de tipo). Mismo criterio que el resto de la sesión: un reporte de "ya está resuelto" se confirma con una llamada real antes de construir encima.
+
+**`PhotoUploader` es controlado sobre un arreglo de PATHS de Storage, no de URLs.** El backend nunca valida ni conoce el contenido de `ItemUpdateIn.photos: string[]` — el front decide el path y lo guarda tal cual; la URL para MOSTRAR una foto se pide aparte, bajo demanda, con `useSignedPhotoUrl(path)` por cada thumbnail (`staleTime` de 4 min porque el token firmado vence a los 5 en el backend). Nunca se guarda ni cachea una URL firmada — coherente con CLAUDE.md regla 12 (nunca URLs públicas, siempre de vida corta).
+
+**Compresión sin librería nueva:** `createImageBitmap` + `<canvas>` reencodando a WebP (mejor tamaño que JPEG/PNG a calidad equivalente, y está en la lista de tipos que acepta el bucket) — redimensiona al lado más largo (1600px por defecto) antes de subir. El build ya tenía una advertencia de bundle grande (paso 1); sumar una librería de compresión solo para esto no se justificaba cuando el navegador ya trae las piezas.
+
+**La subida al Storage ocurre al instante que se elige el archivo, no se difiere al "Guardar cambios" del formulario.** No hay forma de diferir el byte-upload en sí (solo la asociación del path con el artículo, que sí es lo que hace "Guardar cambios" vía `PATCH .../items/{id}` con `photos`). Si el usuario cierra el diálogo sin guardar, el archivo queda huérfano en el bucket sin que ningún artículo lo referencie — se aceptó el trade-off (mismo que la mayoría de uploaders de este estilo) en vez de complicar el flujo con una subida diferida; no hay job de limpieza en el front, quedaría del lado de backend/infra si algún día importa.
+
+**Bug evitado, no bug encontrado: "Publicar" debía leer el estado YA guardado del artículo, no el estado sin guardar del formulario.** `publishItem` (`POST .../publish`) no manda `photos` en su body — solo valida contra lo que el artículo YA tiene guardado en el backend. Si el botón "Publicar" se hubiera habilitado apenas se subiera una foto (antes de "Guardar cambios"), publicar habría llamado al backend con el artículo todavía sin fotos asociadas y habría fallado (o peor, publicado sin fotos si el backend no repite esa validación en esa ruta). Se resolvió comparando `JSON.stringify(watch('photos'))` contra `item.photos` (el prop, la última versión confirmada por el servidor): si difieren, "Publicar" queda deshabilitado con un aviso ("Guarda los cambios para poder publicar"), forzando el orden correcto: subir → guardar → publicar.
+
+**Probado en navegador de punta a punta contra dev, cerrando los dos huecos que el paso 7 había dejado documentados como "no se pudo probar":** subir 2 fotos reales a un artículo en borrador → guardar → reabrir el diálogo y confirmar que persistieron → "Publicar" (código real emitido, `JAO0001P`) → el artículo pasa a "Disponible" → buscarlo en `/ventas/nueva`, agregarlo al carrito y completar una venta real (`POST /sales` 201, con el número de venta y las líneas correctas) → el artículo baja de cantidad pero sigue "Disponible" (no pasa a "Vendido" hasta agotar cantidad — confirmado, no asumido) → un egreso real con el mismo artículo (`POST /inventory/exits` 201). Cero errores de consola en todo el recorrido, incluyendo mobile 360px.
+
+### Comandos de verificación
+
+```bash
+npm run lint && npm run typecheck && npm run test && npm run build   # todo en verde (54 tests)
+npm run dev   # /inventario: editar un borrador → Fotos → agregar, reordenar, quitar → Publicar
+```
+
 ## Paso 8 — Identity (completo)
 
 Usuarios (listar, invitar, cambiar rol, des/reactivar) y roles (listar, crear con clonado opcional de permisos, renombrar, matriz de permisos por checkboxes). Primer consumidor real de `GET /identity/permissions` — hasta este paso el catálogo de permisos solo se conocía indirectamente vía `/me.permissions` (paso 5b). Primer módulo cuyas mutaciones tocan potencialmente los permisos de la sesión activa (cambiar el propio rol, editar los permisos del propio rol) y primer consumidor real de `LAST_ADMIN_SAFEGUARD`.

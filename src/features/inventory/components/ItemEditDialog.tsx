@@ -3,9 +3,9 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { Controller, useForm } from 'react-hook-form'
 import { z } from 'zod'
 import { toast } from 'sonner'
-import { ImageOff } from 'lucide-react'
 import { AppDialog } from '@/components/shared/AppDialog'
 import { MoneyInput } from '@/components/shared/MoneyInput'
+import { PhotoUploader } from '@/components/shared/PhotoUploader'
 import { StatusBadge } from '@/components/shared/StatusBadge'
 import { Button } from '@/components/ui/button'
 import { useUpdateItem, usePublishItem } from '@/features/inventory/api'
@@ -15,21 +15,14 @@ const itemSchema = z.object({
   name: z.string().min(1, 'El nombre es obligatorio'),
   description: z.string().optional(),
   sale_price: z.string().optional(),
+  photos: z.array(z.string()),
 })
 
 type ItemFormValues = z.infer<typeof itemSchema>
 
 const inputClass = 'mt-1 w-full rounded-input border border-border bg-background px-3 py-2 text-sm text-foreground outline-none focus:border-primary'
 
-/**
- * Editar borrador + publicar (CLAUDE.md paso 7: "publicar (precio + ≥1
- * foto, muestra el código emitido)"). **"Publicar" queda deshabilitado
- * hasta que exista Storage** (`docs/STORAGE_PENDIENTE.md`) — `photos` de un
- * artículo siempre llega vacío porque no hay forma de subir una todavía; el
- * botón y la regla de negocio (precio + ≥1 foto) SÍ están construidos y
- * listos para funcionar en cuanto `PhotoUploader` reemplace el aviso de
- * abajo, sin tocar el resto de este componente.
- */
+/** Editar borrador + publicar (CLAUDE.md paso 7: "publicar (precio + ≥1 foto, muestra el código emitido)"). */
 export function ItemEditDialog({ open, onOpenChange, item }: { open: boolean; onOpenChange: (open: boolean) => void; item: Item }) {
   const [formError, setFormError] = useState<string | null>(null)
   const updateItem = useUpdateItem()
@@ -42,14 +35,18 @@ export function ItemEditDialog({ open, onOpenChange, item }: { open: boolean; on
     formState: { errors },
   } = useForm<ItemFormValues>({
     resolver: zodResolver(itemSchema),
-    defaultValues: { name: item.name, description: item.description ?? '', sale_price: item.sale_price ?? '0.00' },
+    defaultValues: { name: item.name, description: item.description ?? '', sale_price: item.sale_price ?? '0.00', photos: item.photos },
   })
   const salePrice = watch('sale_price')
+  const photos = watch('photos')
 
   async function onSubmit(values: ItemFormValues) {
     setFormError(null)
     try {
-      await updateItem.mutateAsync({ itemId: item.id, body: { name: values.name, description: values.description || null, sale_price: values.sale_price || null } })
+      await updateItem.mutateAsync({
+        itemId: item.id,
+        body: { name: values.name, description: values.description || null, sale_price: values.sale_price || null, photos: values.photos },
+      })
       toast.success('Artículo actualizado')
       onOpenChange(false)
     } catch {
@@ -59,7 +56,12 @@ export function ItemEditDialog({ open, onOpenChange, item }: { open: boolean; on
 
   const hasPhotos = item.photos.length > 0
   const hasPrice = !!salePrice && Number(salePrice) > 0
-  const canPublish = item.status === 'draft' && hasPhotos && hasPrice
+  // Publicar usa `photos`/`sale_price` YA guardados en el artículo (lo que
+  // `publish` va a ver del lado del backend), no lo que hay sin guardar en
+  // el form — si hay fotos recién subidas sin "Guardar cambios", publicar
+  // publicaría contra el estado viejo del backend.
+  const hasUnsavedPhotos = JSON.stringify(photos) !== JSON.stringify(item.photos)
+  const canPublish = item.status === 'draft' && hasPhotos && hasPrice && !hasUnsavedPhotos
 
   async function handlePublish() {
     if (!canPublish || !salePrice) return
@@ -122,13 +124,16 @@ export function ItemEditDialog({ open, onOpenChange, item }: { open: boolean; on
         {item.status === 'draft' && (
           <div>
             <p className="text-sm font-medium text-foreground">Fotos</p>
-            <div className="mt-1 flex flex-col items-center gap-2 rounded-input border border-dashed border-border bg-background px-3 py-6 text-center">
-              <ImageOff className="size-6 text-muted-foreground" />
-              <p className="text-xs text-muted-foreground">
-                La carga de fotos todavía no está disponible — falta configurar Storage (ver <code className="rounded bg-muted px-1">docs/STORAGE_PENDIENTE.md</code>). No se puede
-                publicar sin al menos una foto.
-              </p>
-            </div>
+            <Controller
+              control={control}
+              name="photos"
+              render={({ field }) => (
+                <div className="mt-1">
+                  <PhotoUploader value={field.value} onChange={field.onChange} folder={`inventory/${item.id}`} disabled={updateItem.isPending} />
+                </div>
+              )}
+            />
+            {hasUnsavedPhotos && photos.length > 0 && <p className="mt-1 text-xs text-muted-foreground">Guarda los cambios para poder publicar.</p>}
           </div>
         )}
 

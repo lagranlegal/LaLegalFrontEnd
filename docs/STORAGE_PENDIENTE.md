@@ -1,6 +1,8 @@
-# Storage de fotos — pendiente de configurar en Supabase
+# Storage de fotos — ✅ resuelto (18/08/2026)
 
-> Documento para el equipo de backend/infra. Explica qué necesita el front, por qué, qué se verificó, y qué falta del lado de Supabase para poder construir `PhotoUploader`. No es una propuesta de cambio de arquitectura — la arquitectura (Supabase Storage, buckets privados, URLs firmadas) ya está decidida en `CLAUDE.md` y `docs/ARCHITECTURE.md` desde el paso 1 del proyecto; esto documenta que **la infraestructura todavía no existe**, bloqueando el paso 7 (inventory + sales) del front. Última actualización: 17/08/2026.
+> Backend/infra creó y configuró el bucket el 18/08/2026 — verificado de forma independiente por el front (no solo confirmado de palabra) antes de construir `PhotoUploader` encima. Este documento se deja completo, histórico primero (qué faltaba y por qué) y la resolución al final (§6) — mismo criterio que el resto de `docs/IMPLEMENTATION.md`: no se borra el rastro de un bloqueo real ya resuelto.
+>
+> Todo lo de abajo (§1-5) es el estado tal como se documentó el 17/08/2026, sin editar — sigue siendo la explicación correcta de POR QUÉ se necesitaba esto y qué se le pidió a backend. La resolución real está en §6.
 
 ## 1. Qué ya está decidido (no es una pregunta abierta)
 
@@ -43,3 +45,20 @@ Este repo del front no tiene ninguna carpeta `supabase/migrations/` (a diferenci
 **Paso 7 (inventory + sales), acción "Publicar" de un artículo en borrador** (`CLAUDE.md`: *"publicar (precio + ≥1 foto, muestra el código emitido)"*) — un artículo no puede pasar de `draft` a `available` sin al menos una foto. Sin `PhotoUploader`, esa acción queda visible en la pantalla (para no ocultar la regla de negocio) pero deshabilitada, con el motivo explicado en pantalla, hasta que este documento se resuelva. El resto del paso 7 (ingresos, editar borrador sin fotos, egresos, ventas, anulación) no depende de esto y se construye completo igual.
 
 Uso futuro ya previsto en el diseño (`docs/DESIGN_SYSTEM.md` §3): cédula del cliente, contrato firmado, comprobante de gasto — ninguno construido todavía, todos esperan lo mismo.
+
+## 6. Resolución (18/08/2026)
+
+Backend/infra reportó: bucket `company-files` creado, privado, 8 MB máx, solo `image/jpeg|png|webp`; RLS reutiliza el mismo `current_company_id()` del resto del esquema; probado con un archivo real (subida, URL firmada, descarga con bytes idénticos, intento cruzado a otra empresa rechazado por RLS, archivo de prueba borrado); confirmado que el front pide la URL firmada directo con `supabase-js` y su propia sesión, sin endpoint nuevo del backend (resuelve la pregunta abierta del punto 3 de §3); `ARCHITECTURE.md` del backend actualizado.
+
+**Antes de construir nada, el front repitió la verificación de forma independiente** (mismo criterio que el resto de esta sesión: un reporte de que algo "ya está resuelto" se confirma con una llamada real, no se da por hecho):
+
+```
+POST {SUPABASE_URL}/storage/v1/object/company-files/{company_id}/_verify-pixel.png   → 200, subida ok
+POST {SUPABASE_URL}/storage/v1/object/sign/company-files/{company_id}/_verify-pixel.png  → 200, URL firmada
+GET  <URL firmada>                                                                    → bytes idénticos al original (md5 comparado)
+DELETE {SUPABASE_URL}/storage/v1/object/company-files/{company_id}/_verify-pixel.png  → 200, limpiado
+POST {SUPABASE_URL}/storage/v1/object/company-files/00000000-.../_intruso.png         → 403 AccessDenied explícito (RLS)
+POST ...texto plano en vez de imagen                                                  → 400 InvalidMimeType (confirma el límite de tipo)
+```
+
+Con esto verificado, se construyó `PhotoUploader` (`components/shared/PhotoUploader.tsx`, `lib/storage/`) y se desbloqueó "Publicar" en `ItemEditDialog` — probado en navegador de punta a punta: subir 2 fotos → guardar → publicar (código real emitido) → el artículo aparece en `/ventas/nueva` y se pudo agregar al carrito y completar una venta real, y también se probó un egreso real con el mismo artículo — los dos flujos que habían quedado sin poder probarse en el paso 7 por este mismo bloqueo. Detalle completo de decisiones (compresión, convención de paths, orden guardar→publicar) en `docs/IMPLEMENTATION.md`, sección "Paso 7b".
