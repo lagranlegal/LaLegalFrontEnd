@@ -10,7 +10,7 @@ import { Button } from '@/components/ui/button'
 import { formatDateTime } from '@/lib/dates'
 import { PAYMENT_METHOD_LABELS } from '@/lib/paymentMethods'
 import { useSalesList, type Sale } from '@/features/sales/api'
-import { SaleReceiptDialog } from '@/features/sales/components/SaleReceiptDialog'
+import { SaleReceiptDialog } from '@/components/shared/SaleReceiptDialog'
 
 export function SalesListPage() {
   const navigate = useNavigate()

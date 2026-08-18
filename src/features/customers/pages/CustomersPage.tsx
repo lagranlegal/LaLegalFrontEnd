@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import type { ColumnDef } from '@tanstack/react-table'
+import { useNavigate } from '@tanstack/react-router'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { SearchInput } from '@/components/shared/SearchInput'
 import { DataTable } from '@/components/shared/DataTable'
@@ -18,11 +19,10 @@ const columns: ColumnDef<Customer>[] = [
 
 export function CustomersPage() {
   const [q, setQ] = useState('')
+  const navigate = useNavigate()
   const { data, isPending, isError, refetch, hasNextPage, isFetchingNextPage, fetchNextPage } = useCustomersList(q)
   const [dialogOpen, setDialogOpen] = useState(false)
-  const [editingCustomer, setEditingCustomer] = useState<Customer | undefined>(undefined)
-  // Fuerza remount del form en CADA apertura (no solo al cambiar de cliente)
-  // — si no, un "+ Nuevo cliente" después de otro hereda el draft anterior.
+  // Fuerza remount del form en CADA apertura — "+ Nuevo cliente" siempre arranca limpio.
   const [dialogNonce, setDialogNonce] = useState(0)
 
   const customers = data?.pages.flatMap((page) => page.items) ?? []
@@ -36,7 +36,6 @@ export function CustomersPage() {
             <Button
               className="rounded-pill"
               onClick={() => {
-                setEditingCustomer(undefined)
                 setDialogNonce((n) => n + 1)
                 setDialogOpen(true)
               }}
@@ -58,17 +57,13 @@ export function CustomersPage() {
         onRetry={() => refetch()}
         emptyTitle={q ? 'No encontramos clientes con ese nombre' : 'Aún no tienes clientes'}
         emptyDescription={q ? undefined : 'Crea el primero para empezar a registrar contratos y ventas.'}
-        onRowClick={(row) => {
-          setEditingCustomer(row)
-          setDialogNonce((n) => n + 1)
-          setDialogOpen(true)
-        }}
+        onRowClick={(row) => navigate({ to: '/clientes/$customerId', params: { customerId: row.id } })}
         hasNextPage={hasNextPage}
         isFetchingNextPage={isFetchingNextPage}
         onLoadMore={() => fetchNextPage()}
       />
 
-      <CustomerFormDialog key={dialogNonce} open={dialogOpen} onOpenChange={setDialogOpen} customer={editingCustomer} />
+      <CustomerFormDialog key={dialogNonce} open={dialogOpen} onOpenChange={setDialogOpen} />
     </div>
   )
 }

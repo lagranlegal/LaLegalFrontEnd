@@ -6,6 +6,7 @@ import { ChevronLeft } from 'lucide-react'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { StatusBadge } from '@/components/shared/StatusBadge'
 import { LegacyCodeBadge } from '@/components/shared/LegacyCodeBadge'
+import { PhotoThumbnail } from '@/components/shared/PhotoThumbnail'
 import { Money } from '@/components/shared/Money'
 import { DataTable } from '@/components/shared/DataTable'
 import { Can } from '@/components/shared/Can'
@@ -15,9 +16,11 @@ import { PAYMENT_METHOD_LABELS } from '@/lib/paymentMethods'
 import { confirm } from '@/components/shared/confirmStore'
 import { useCategories } from '@/lib/catalogs/categories'
 import { useContract, usePaymentsList, useAuctionContract, type Payment } from '@/features/contracts/api'
+import { effectiveContractStatus, isReadyForAuction } from '@/features/contracts/contractStatus'
 import { useCustomer } from '@/lib/customers/search'
 import { PaymentOptionsPanel } from '@/features/contracts/components/PaymentOptionsPanel'
 import { ContractEditDialog } from '@/features/contracts/components/ContractEditDialog'
+import { ContractPrintView } from '@/features/contracts/components/ContractPrintView'
 
 const PAYABLE_STATUSES = new Set(['active', 'in_arrears', 'in_extension'])
 
@@ -95,7 +98,8 @@ export function ContractDetailPage() {
   }
 
   return (
-    <div className="flex flex-col gap-6">
+    <>
+    <div className="flex flex-col gap-6 print:hidden">
       <Link to="/contratos" className="flex w-fit items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
         <ChevronLeft className="size-4" /> Contratos
       </Link>
@@ -106,7 +110,10 @@ export function ContractDetailPage() {
         actions={
           <div className="flex items-center gap-2">
             {contract.legacy_code && <LegacyCodeBadge code={contract.legacy_code} />}
-            <StatusBadge status={contract.status} />
+            <StatusBadge status={effectiveContractStatus(contract)} />
+            <Button variant="outline" onClick={() => window.print()}>
+              Imprimir
+            </Button>
             <Can permission="contracts.edit">
               <Button
                 variant="outline"
@@ -118,7 +125,7 @@ export function ContractDetailPage() {
                 Editar
               </Button>
             </Can>
-            {contract.status === 'ready_for_auction' && (
+            {isReadyForAuction(contract) && (
               <Can permission="contracts.auction">
                 <Button className="rounded-pill bg-danger hover:bg-danger/90" disabled={auctionContract.isPending} onClick={handleAuction}>
                   {auctionContract.isPending ? 'Rematando…' : 'Rematar'}
@@ -181,18 +188,28 @@ export function ContractDetailPage() {
         </div>
       )}
 
+      {contract.signed_photo_url && (
+        <div className="rounded-card border border-border bg-card p-card shadow-card">
+          <p className="text-xs text-muted-foreground">Documento firmado</p>
+          <PhotoThumbnail path={contract.signed_photo_url} className="mt-2 size-24" />
+        </div>
+      )}
+
       <div className="rounded-card border border-border bg-card p-card shadow-card">
         <h2 className="text-sm font-medium text-foreground">Prendas</h2>
         <div className="mt-3 flex flex-col gap-2">
           {contract.items.map((item) => (
-            <div key={item.id} className="flex flex-wrap items-center justify-between gap-2 rounded-input border border-border p-3 text-sm">
-              <div>
-                <p className="font-medium text-foreground">{item.description}</p>
-                <p className="text-xs text-muted-foreground">
-                  {categoryName(categories, item.category_id)}
-                  {item.weight_grams && ` · ${item.weight_grams} g`}
-                  {item.serial_imei && ` · ${item.serial_imei}`}
-                </p>
+            <div key={item.id} className="flex flex-wrap items-center justify-between gap-3 rounded-input border border-border p-3 text-sm">
+              <div className="flex items-center gap-3">
+                {item.photos.length > 0 && <PhotoThumbnail path={item.photos[0] as string} className="size-12 shrink-0" />}
+                <div>
+                  <p className="font-medium text-foreground">{item.description}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {categoryName(categories, item.category_id)}
+                    {item.weight_grams && ` · ${item.weight_grams} g`}
+                    {item.serial_imei && ` · ${item.serial_imei}`}
+                  </p>
+                </div>
               </div>
               <div className="flex items-center gap-3">
                 {item.item_appraisal && <Money value={item.item_appraisal} className="text-sm" />}
@@ -230,5 +247,8 @@ export function ContractDetailPage() {
 
       <ContractEditDialog key={editDialogNonce} open={editDialogOpen} onOpenChange={setEditDialogOpen} contract={contract} />
     </div>
+
+    <ContractPrintView contract={contract} customer={customer} categories={categories} />
+    </>
   )
 }

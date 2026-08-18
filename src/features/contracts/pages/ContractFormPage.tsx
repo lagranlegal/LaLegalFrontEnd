@@ -96,6 +96,7 @@ export function ContractFormPage() {
           weight_grams: item.weight_grams || null,
           serial_imei: item.serial_imei || null,
           item_appraisal: item.item_appraisal || null,
+          photos: item.photos,
         })),
       })
       submittedRef.current = true

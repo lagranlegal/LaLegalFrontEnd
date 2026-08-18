@@ -2,6 +2,51 @@
 
 > Registro vivo de qué existe en el código, cómo está armado y por qué se tomó cada decisión — para que cualquiera (humano o Claude Code) pueda retomar el proyecto sin releer todo el historial de commits. Se actualiza en cada paso del "Orden de implementación" de `CLAUDE.md`. No repite lo que ya está en `ARCHITECTURE.md`/`DESIGN_SYSTEM.md` (el qué-debería-ser); esto es el qué-hay-hoy y las decisiones concretas tomadas al construirlo.
 
+## Revisión post-paso-10 — huecos reales contra `docs/pending/` (completo)
+
+El cliente agregó `docs/pending/` (`CONTEXTO.md`, `CLAUDE.md` y `ARCHITECTURE.md` del BACKEND, `API_GUIDE.md` real) y señaló 10 puntos que sentía faltantes. Comparar contra esos documentos (no solo contra el `CLAUDE.md` del front, que resultó estar incompleto en varios puntos) encontró: 5 campos de foto reales en la API nunca conectados, un documento imprimible de contrato que `DESIGN_SYSTEM.md` ya pedía desde el paso 1 y nunca se construyó, una ficha de cliente que se quedó pendiente desde el paso 4, un buscador de contratos que nunca se hizo, y — el hallazgo más serio — **"Rematar" estaba roto de verdad, no solo sin probar**: la condición dependía de un valor de `status` que el backend nunca manda.
+
+### Metodología
+
+Se leyeron los 4 documentos completos de `docs/pending/` y se verificó cada punto contra el código real (`grep` de los campos en `src/types/api.ts`, no solo contra lo que el front asumía) antes de tocar nada — mismo criterio que el resto de la sesión: nunca asumir, siempre confirmar contra la fuente.
+
+### Hallazgos y qué se hizo
+
+**1) Bug real, no solo sin probar: "Rematar" nunca podía aparecer.** `ContractOut.status` solo persiste `active|in_arrears|in_extension|auctioned|paid` (confirmado en `docs/pending/API_GUIDE.md` §7 y en el propio `src/types/api.ts`, donde `status` es un `string` sin enum). `"ready_for_auction"` NO es un valor real — es un estado DERIVADO (`in_extension` + `extension_ends_at` ya vencido) que se consulta con el endpoint dedicado `GET /contracts/ready-for-auction`. Tanto `ContractDetailPage` (`contract.status === 'ready_for_auction'`, condición del botón) como `ContractsListPage` (tab "Listos para remate" mandaba `status=ready_for_auction` a `GET /contracts`, que solo entiende los 5 valores reales) asumían ese valor como si existiera — como TypeScript tipa `status` como `string` pelado, nunca lo iba a atrapar. Se agregó `features/contracts/contractStatus.ts` (`isReadyForAuction`/`effectiveContractStatus`, deriva el estado visual correcto) y se corrigieron los dos consumidores. **Verificado en vivo, no solo corregido a ciegas:** se importó un contrato de prueba con fechas viejas (`POST /contracts/import`, ventana de mora corta) para forzar `in_extension` + vencido de verdad, se confirmó que aparecía en la pestaña y que el botón "Rematar" ahora sí se mostraba, y se ejecutó el remate completo — el contrato pasó a `auctioned` y el artículo de inventario en borrador apareció en `/inventario` con el costo correcto (capital + intereses pendientes), exactamente como describe `docs/pending/API_GUIDE.md` §7.
+
+**2) Abonos SÍ existen — malentendido, no hueco.** `PaymentOptionsPanel`/`useCreatePayment` (paso 5, probado con un abono real en el paso 5b) viven en el detalle del contrato, no en Caja — así lo especifica `docs/pending/CONTEXTO.md` §3: *"Manual en caja: solo gastos y ajustes... nada se digita dos veces"*. Un abono genera su `cash_movement` automático; no se registra desde Caja directamente. Sin cambios de código — se explicó.
+
+**3-4) Cinco campos de foto reales en la API, nunca conectados desde que se construyeron sus formularios.** Todos estaban en `src/types/api.ts` desde el principio (confirmado: no son campos nuevos del backend, `npm run gen:api` no trajo diff) — simplemente ningún formulario los usaba:
+   - `ContractItemIn.photos` (prenda en garantía) — `ContractItemsFields.tsx` no tenía ningún campo de foto.
+   - `CustomerCreateIn.doc_photo_url` — `CustomerFormDialog.tsx` no lo pedía.
+   - `ContractUpdateIn.signed_photo_url` — el propio comentario en `ContractEditDialog.tsx` decía *"espera a PhotoUploader, todavía sin construir"* (paso 5) y nunca se volvió a esa nota después de construirlo en el paso 7b.
+   - `ExpenseCreateIn.receipt_url` — quinto consumidor que `docs/DESIGN_SYSTEM.md` §3 ya prometía para `PhotoUploader` ("comprobantes de gasto") y que ni siquiera el usuario mencionó — se encontró auditando el schema completo, no solo los 10 puntos señalados.
+
+   Los cinco se conectaron reusando `PhotoUploader` tal cual (sin cambios al componente): con `maxPhotos={1}` para los de una sola foto (documento de cliente, contrato firmado, comprobante), sin límite para prendas (multi-foto). Para el folder de Storage de algo que TODAVÍA no tiene id (crear cliente, crear prenda dentro de un contrato nuevo, crear gasto), se usa un id temporal estable por apertura del formulario (`crypto.randomUUID()` o el `field.id` de `useFieldArray` para prendas) — mismo trade-off de huérfanos ya aceptado en el paso 7b si se cierra sin guardar. Nuevo componente de sólo-lectura `components/shared/PhotoThumbnail.tsx` (distinto del thumbnail editable interno de `PhotoUploader`) para MOSTRAR una foto ya guardada — usado en el detalle de contrato (prendas + documento firmado), ficha de cliente, y la columna "Comprobante" de la tabla de gastos en Caja. **Probado en vivo, los cinco de punta a punta:** subir cada foto real, confirmar el path guardado en la respuesta del backend, recargar y confirmar que el thumbnail persiste — sin ningún error de consola.
+
+**1) Documento de contrato imprimible — `docs/DESIGN_SYSTEM.md` §3 lo pedía desde el paso 1 ("`PrintLayout`... para contrato Y acta de cierre") y solo se construyó el del acta (paso 6).** Nuevo `ContractPrintView.tsx`, mismo patrón ya establecido (`PrintLayout` como hermano del contenido on-screen, nunca anidado — página completa esta vez, no un diálogo, así que el contenido on-screen se envolvió en `print:hidden` igual que ya hacía `CashboxPage`). **No incluye la firma/sello de la empresa** — `docs/pending/API_GUIDE.md` §15 confirma que `GET/PATCH /company/settings` (donde viviría esa imagen) no existe todavía; deja dos líneas de firma en blanco para firmar a mano sobre el impreso, coherente con `docs/pending/CONTEXTO.md`: *"Cliente firma el impreso (fase 1)"*. El flujo completo queda: Imprimir → firma física → subir foto del documento firmado (punto 3-4 arriba).
+
+**5) Ficha de cliente con historial — pendiente desde el paso 4, nunca se retomó.** Nueva `CustomerDetailPage.tsx` (`/clientes/$customerId`) con datos de contacto + foto de documento + tablas de contratos y compras. **Ni `GET /contracts` ni `GET /sales` tienen filtro por `customer_id`** (confirmado en `docs/pending/API_GUIDE.md` §7/§10 — ninguno de los dos lo tiene, ni siquiera el segundo tiene otros filtros) — mismo criterio ya usado para artículos de inventario: se trae la página más grande posible (200) y se filtra client-side, documentado como hueco conocido. `SaleReceiptDialog` se movió a `components/shared/` (segundo consumidor real: esta ficha, además de `SalesListPage`) — `useVoidSale`/`Sale` se promovieron con él a `lib/sales/void.ts`, mismo criterio de aislamiento de features que el resto del proyecto.
+
+**6) Buscador de contratos.** `GET /contracts` no tiene `?q=` (confirmado, solo `status`/`cursor`/`limit`) — mismo patrón: se trae una página de 200 y se filtra client-side por número de contrato o `legacy_code`, **no por nombre del cliente** (`ContractOut` solo trae `customer_id`, resolver el nombre de cada fila para filtrar sería N+1 requests — límite honesto, no oculto).
+
+**7) "Finanzas"/"Configuración" — no se tocaron.** Ninguno de los dos existe como pantalla propia (`Reportes`/`Configuración` siguen deshabilitados en el sidebar) — decisión deliberada de NO construir nada ahí todavía porque falta definir con el cliente qué va exactamente en cada uno (`Reportes` ya tiene contenido real disperso — dashboard + histórico de cierres — pero no una pantalla unificada; `Configuración` sigue bloqueada por la falta de `GET/PATCH /company/settings`, confirmado sin cambios en `docs/pending/API_GUIDE.md` §15).
+
+**9) Separación empeño/tienda — ya existe y ya se ve, se explicó dónde.** `SessionReportPanel` (paso 6) desglosa cada movimiento de caja por módulo (Empeño/Tienda/General) × concepto × medio de pago — visible en "Cerrar caja" (vista previa) y en el acta de cualquier cierre ya hecho. Coincide exactamente con `docs/pending/CONTEXTO.md` §3: *"desglose contable por módulo en el acta (sección EMPEÑO, sección TIENDA, gastos, otros medios)"*. Sin cambios de código — se confirmó que la arquitectura pedida ya está implementada correctamente.
+
+### Qué falta (fuera de alcance de esta revisión)
+
+- Firma/sello de la empresa en el documento imprimible del contrato — bloqueado por la falta de `GET/PATCH /company/settings` en el backend (`docs/RECOMENDACIONES.md` §1.9).
+- Definir con el cliente qué va exactamente en "Reportes" y "Configuración" antes de construirlos — decisión de producto, no técnica.
+- `CompanyOut` sin plan/fecha de expiración (paso 10, ya documentado) sigue igual.
+
+### Comandos de verificación
+
+```bash
+npm run lint && npm run typecheck && npm run test && npm run build   # todo en verde (54 tests)
+npm run dev   # /contratos/$id: imprimir, editar → subir firma; /clientes/$id: historial; Rematar con un contrato real vencido
+```
+
 ## Paso 10 — Platform (completo)
 
 Panel super-admin: empresas (crear, suspender/reactivar, extender suscripción), layout propio (`PlatformLayout`) — NUNCA `AppShell`, ni pasa por `GET /me`. Último paso del "Orden de implementación" de `CLAUDE.md` — con esto quedan completos los 10 pasos (más 7b, el desbloqueo de Storage).

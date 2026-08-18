@@ -3,6 +3,7 @@ import { Plus, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { MoneyInput } from '@/components/shared/MoneyInput'
+import { PhotoUploader } from '@/components/shared/PhotoUploader'
 import { categoryLabel, emptyContractItem, type ContractItemFormValue } from '@/features/contracts/contractItemSchema'
 import type { Category } from '@/lib/catalogs/categories'
 
@@ -95,6 +96,23 @@ export function ContractItemsFields<TFieldValues extends FieldValues & { items: 
                   render={({ field: appraisalField }) => <MoneyInput className="mt-1" value={appraisalField.value ?? ''} onChange={appraisalField.onChange} />}
                 />
               </div>
+            </div>
+
+            <div>
+              <label className="text-sm font-medium text-foreground">Fotos (constancia del estado de la prenda)</label>
+              <Controller
+                control={control}
+                name={`items.${index}.photos` as FieldPath<TFieldValues>}
+                render={({ field: photosField }) => (
+                  <div className="mt-1">
+                    <PhotoUploader
+                      value={photosField.value as string[]}
+                      onChange={photosField.onChange}
+                      folder={`contract-items/${field.id}`}
+                    />
+                  </div>
+                )}
+              />
             </div>
           </div>
         ))}

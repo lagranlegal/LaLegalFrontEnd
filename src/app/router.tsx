@@ -16,6 +16,7 @@ import { LoginPage } from '@/features/auth/pages/LoginPage'
 import { AuthCallbackPage } from '@/features/auth/pages/AuthCallbackPage'
 import { DashboardPage } from '@/features/dashboard/pages/DashboardPage'
 import { CustomersPage } from '@/features/customers/pages/CustomersPage'
+import { CustomerDetailPage } from '@/features/customers/pages/CustomerDetailPage'
 import { CatalogsPage } from '@/features/catalogs/pages/CatalogsPage'
 import { ContractsListPage } from '@/features/contracts/pages/ContractsListPage'
 import { ContractFormPage } from '@/features/contracts/pages/ContractFormPage'
@@ -123,6 +124,15 @@ const customersRoute = createRoute({
   getParentRoute: () => appLayoutRoute,
   path: '/clientes',
   component: CustomersPage,
+})
+
+// Hermana de `customersRoute`, no anidada (mismo motivo que contratos: la
+// lista y el detalle son pantallas independientes, `CustomersPage` no tiene
+// `<Outlet/>`).
+const customerDetailRoute = createRoute({
+  getParentRoute: () => appLayoutRoute,
+  path: '/clientes/$customerId',
+  component: CustomerDetailPage,
 })
 
 const catalogsRoute = createRoute({
@@ -269,6 +279,7 @@ const routeTree = rootRoute.addChildren([
   appLayoutRoute.addChildren([
     dashboardRoute,
     customersRoute,
+    customerDetailRoute,
     catalogsRoute,
     contractsRoute,
     contractNewRoute,

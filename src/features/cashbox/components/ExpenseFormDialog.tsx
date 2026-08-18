@@ -5,6 +5,7 @@ import { z } from 'zod'
 import { toast } from 'sonner'
 import { AppDialog } from '@/components/shared/AppDialog'
 import { MoneyInput } from '@/components/shared/MoneyInput'
+import { PhotoUploader } from '@/components/shared/PhotoUploader'
 import { CashSessionRequiredDialog } from '@/components/shared/CashSessionRequiredDialog'
 import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
@@ -20,6 +21,7 @@ const expenseSchema = z.object({
   amount: z.string().refine((v) => Number(v) > 0, 'El monto debe ser mayor a cero'),
   payment_method: z.enum(['cash', 'transfer', 'other']),
   module: z.enum(['pawn', 'store', 'general']),
+  receipt: z.array(z.string()),
 })
 
 type ExpenseFormValues = z.infer<typeof expenseSchema>
@@ -88,6 +90,10 @@ function ExpenseCategoryField({ value, onChange }: { value: string; onChange: (c
 export function ExpenseFormDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (open: boolean) => void }) {
   const [formError, setFormError] = useState<string | null>(null)
   const [cashDialogOpen, setCashDialogOpen] = useState(false)
+  // Un gasto no tiene id hasta creado — un id temporal por apertura del
+  // diálogo alcanza para la carpeta de Storage (mismo criterio que
+  // `CustomerFormDialog` al crear).
+  const [draftId] = useState(() => crypto.randomUUID())
   const createExpense = useCreateExpense()
   const {
     register,
@@ -97,13 +103,14 @@ export function ExpenseFormDialog({ open, onOpenChange }: { open: boolean; onOpe
     formState: { errors },
   } = useForm<ExpenseFormValues>({
     resolver: zodResolver(expenseSchema),
-    defaultValues: { category_id: '', description: '', amount: '0.00', payment_method: 'cash', module: 'general' },
+    defaultValues: { category_id: '', description: '', amount: '0.00', payment_method: 'cash', module: 'general', receipt: [] },
   })
 
   async function onSubmit(values: ExpenseFormValues) {
     setFormError(null)
     try {
-      await createExpense.mutateAsync(values)
+      const { receipt, ...rest } = values
+      await createExpense.mutateAsync({ ...rest, receipt_url: receipt[0] ?? null })
       toast.success('Gasto registrado')
       onOpenChange(false)
     } catch (error) {
@@ -193,6 +200,18 @@ export function ExpenseFormDialog({ open, onOpenChange }: { open: boolean; onOpe
                     ))}
                   </SelectContent>
                 </Select>
+              )}
+            />
+          </div>
+          <div>
+            <label className="text-sm font-medium text-foreground">Comprobante (opcional)</label>
+            <Controller
+              control={control}
+              name="receipt"
+              render={({ field }) => (
+                <div className="mt-1">
+                  <PhotoUploader value={field.value} onChange={field.onChange} folder={`expenses/${draftId}`} maxPhotos={1} />
+                </div>
               )}
             />
           </div>

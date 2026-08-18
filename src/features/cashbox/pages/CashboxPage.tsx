@@ -5,6 +5,7 @@ import { PageHeader } from '@/components/shared/PageHeader'
 import { DataTable } from '@/components/shared/DataTable'
 import { EmptyState } from '@/components/shared/EmptyState'
 import { Money } from '@/components/shared/Money'
+import { PhotoThumbnail } from '@/components/shared/PhotoThumbnail'
 import { Can } from '@/components/shared/Can'
 import { DateRangePicker, type DateRangeValue } from '@/components/shared/DateRangePicker'
 import { confirm } from '@/components/shared/confirmStore'
@@ -88,6 +89,11 @@ export function CashboxPage() {
     { accessorKey: 'module', header: 'Módulo', cell: (info) => MODULE_LABELS[info.getValue<'pawn' | 'store' | 'general'>()] ?? info.getValue<string>() },
     { accessorKey: 'payment_method', header: 'Medio', cell: (info) => PAYMENT_METHOD_LABELS[info.getValue<'cash' | 'transfer' | 'other'>()] ?? info.getValue<string>() },
     { accessorKey: 'amount', header: 'Monto', cell: (info) => <Money value={info.getValue<string>()} tone="out" /> },
+    {
+      id: 'receipt',
+      header: 'Comprobante',
+      cell: ({ row }) => (row.original.receipt_url ? <PhotoThumbnail path={row.original.receipt_url} className="size-10" /> : <span className="text-muted-foreground">—</span>),
+    },
   ]
 
   const closingColumns: ColumnDef<ClosingHistory>[] = [

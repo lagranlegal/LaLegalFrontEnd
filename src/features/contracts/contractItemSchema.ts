@@ -13,12 +13,13 @@ export const contractItemSchema = z.object({
   weight_grams: z.string().optional(),
   serial_imei: z.string().optional(),
   item_appraisal: z.string().optional(),
+  photos: z.array(z.string()),
 })
 
 export type ContractItemFormValue = z.infer<typeof contractItemSchema>
 
 export function emptyContractItem(): ContractItemFormValue {
-  return { category_id: '', description: '', weight_grams: '', serial_imei: '', item_appraisal: '' }
+  return { category_id: '', description: '', weight_grams: '', serial_imei: '', item_appraisal: '', photos: [] }
 }
 
 /** Categorías nivel 3 (hoja) para "empeño" — CLAUDE.md paso 5: solo esas se ofrecen para clasificar prendas. */

@@ -4,6 +4,7 @@ import { Controller, useForm } from 'react-hook-form'
 import { z } from 'zod'
 import { AppDialog } from '@/components/shared/AppDialog'
 import { Button } from '@/components/ui/button'
+import { PhotoUploader } from '@/components/shared/PhotoUploader'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { applyServerErrors } from '@/lib/forms/applyServerErrors'
 import { useCreateCustomer, useUpdateCustomer, type Customer } from '@/features/customers/api'
@@ -24,6 +25,7 @@ const customerSchema = z.object({
   phone: z.string().min(1, 'El teléfono es obligatorio'),
   email: z.union([z.string().email('Correo inválido'), z.literal('')]).optional(),
   notes: z.string().optional(),
+  doc_photo: z.array(z.string()),
 })
 
 type CustomerFormValues = z.infer<typeof customerSchema>
@@ -31,7 +33,7 @@ type CustomerFormValues = z.infer<typeof customerSchema>
 const inputClass = 'mt-1 w-full rounded-input border border-border bg-background px-3 py-2 text-sm text-foreground outline-none focus:border-primary disabled:bg-muted disabled:text-muted-foreground'
 
 function emptyValues(): CustomerFormValues {
-  return { full_name: '', doc_type: 'cc', doc_number: '', doc_issue_place: '', address: '', phone: '', email: '', notes: '' }
+  return { full_name: '', doc_type: 'cc', doc_number: '', doc_issue_place: '', address: '', phone: '', email: '', notes: '', doc_photo: [] }
 }
 
 function valuesFromCustomer(customer: Customer): CustomerFormValues {
@@ -44,6 +46,7 @@ function valuesFromCustomer(customer: Customer): CustomerFormValues {
     phone: customer.phone,
     email: customer.email ?? '',
     notes: customer.notes ?? '',
+    doc_photo: customer.doc_photo_url ? [customer.doc_photo_url] : [],
   }
 }
 
@@ -59,6 +62,10 @@ function valuesFromCustomer(customer: Customer): CustomerFormValues {
 export function CustomerFormDialog({ open, onOpenChange, customer }: { open: boolean; onOpenChange: (open: boolean) => void; customer?: Customer }) {
   const mode = customer ? 'edit' : 'create'
   const [formError, setFormError] = useState<string | null>(null)
+  // Al crear todavía no hay `customer.id` para la carpeta de Storage — un id
+  // temporal estable por apertura del diálogo alcanza (mismo trade-off de
+  // huérfanos aceptado en `PhotoUploader` si se cierra sin guardar).
+  const [draftId] = useState(() => crypto.randomUUID())
   const createCustomer = useCreateCustomer()
   const updateCustomer = useUpdateCustomer()
   const {
@@ -75,12 +82,14 @@ export function CustomerFormDialog({ open, onOpenChange, customer }: { open: boo
   async function onSubmit(values: CustomerFormValues) {
     setFormError(null)
     const email = values.email || null
+    const doc_photo_url = values.doc_photo[0] ?? null
     try {
       if (mode === 'create') {
-        await createCustomer.mutateAsync({ ...values, email })
+        const { doc_photo: _docPhoto, ...rest } = values
+        await createCustomer.mutateAsync({ ...rest, email, doc_photo_url })
       } else if (customer) {
-        const { doc_type: _docType, doc_number: _docNumber, ...editable } = values
-        await updateCustomer.mutateAsync({ customerId: customer.id, body: { ...editable, email } })
+        const { doc_type: _docType, doc_number: _docNumber, doc_photo: _docPhoto, ...editable } = values
+        await updateCustomer.mutateAsync({ customerId: customer.id, body: { ...editable, email, doc_photo_url } })
       }
       onOpenChange(false)
     } catch (error) {
@@ -184,6 +193,19 @@ export function CustomerFormDialog({ open, onOpenChange, customer }: { open: boo
             Notas
           </label>
           <textarea id="notes" rows={2} className={inputClass} {...register('notes')} />
+        </div>
+
+        <div>
+          <p className="text-sm font-medium text-foreground">Foto del documento</p>
+          <Controller
+            control={control}
+            name="doc_photo"
+            render={({ field }) => (
+              <div className="mt-1">
+                <PhotoUploader value={field.value} onChange={field.onChange} folder={`customers/${customer?.id ?? draftId}`} maxPhotos={1} />
+              </div>
+            )}
+          />
         </div>
 
         {formError && <p className="rounded-input bg-danger-soft px-3 py-2 text-sm text-danger">{formError}</p>}

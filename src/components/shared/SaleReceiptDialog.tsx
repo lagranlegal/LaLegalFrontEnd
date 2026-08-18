@@ -10,7 +10,7 @@ import { formatDateTime } from '@/lib/dates'
 import { PAYMENT_METHOD_LABELS } from '@/lib/paymentMethods'
 import { useCustomer } from '@/lib/customers/search'
 import { useItem } from '@/lib/inventory/items'
-import { useVoidSale, type Sale } from '@/features/sales/api'
+import { useVoidSale, type Sale } from '@/lib/sales/void'
 import type { components } from '@/types/api'
 
 type SaleLine = components['schemas']['SaleLineOut']
@@ -33,7 +33,14 @@ function SaleLineRow({ line, forPrint = false }: { line: SaleLine; forPrint?: bo
   )
 }
 
-/** Comprobante de venta (CLAUDE.md paso 7) — ver/imprimir + anular. Mismo patrón que `ClosingActDialog` (paso 6): `PrintLayout` hermano del `AppDialog`, nunca anidado. */
+/**
+ * Comprobante de venta (CLAUDE.md paso 7) — ver/imprimir + anular. Mismo
+ * patrón que `ClosingActDialog` (paso 6): `PrintLayout` hermano del
+ * `AppDialog`, nunca anidado. Movido a `components/shared/` en la revisión
+ * post-paso-10 (segundo consumidor real: historial de cliente en
+ * `features/customers`, además de `SalesListPage`) — `useVoidSale`/`Sale`
+ * viven en `lib/sales/void.ts` por la misma razón.
+ */
 export function SaleReceiptDialog({ open, onOpenChange, sale }: { open: boolean; onOpenChange: (open: boolean) => void; sale: Sale }) {
   const { data: customer } = useCustomer(sale.customer_id ?? '')
   const voidSale = useVoidSale()
