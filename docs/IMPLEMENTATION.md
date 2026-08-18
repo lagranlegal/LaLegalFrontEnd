@@ -2,6 +2,63 @@
 
 > Registro vivo de qué existe en el código, cómo está armado y por qué se tomó cada decisión — para que cualquiera (humano o Claude Code) pueda retomar el proyecto sin releer todo el historial de commits. Se actualiza en cada paso del "Orden de implementación" de `CLAUDE.md`. No repite lo que ya está en `ARCHITECTURE.md`/`DESIGN_SYSTEM.md` (el qué-debería-ser); esto es el qué-hay-hoy y las decisiones concretas tomadas al construirlo.
 
+## Paso 8 — Identity (completo)
+
+Usuarios (listar, invitar, cambiar rol, des/reactivar) y roles (listar, crear con clonado opcional de permisos, renombrar, matriz de permisos por checkboxes). Primer consumidor real de `GET /identity/permissions` — hasta este paso el catálogo de permisos solo se conocía indirectamente vía `/me.permissions` (paso 5b). Primer módulo cuyas mutaciones tocan potencialmente los permisos de la sesión activa (cambiar el propio rol, editar los permisos del propio rol) y primer consumidor real de `LAST_ADMIN_SAFEGUARD`.
+
+### Estructura nueva
+
+```
+src/
+  components/ui/checkbox.tsx              # shadcn — primer consumidor: matriz de permisos
+  features/identity/
+    api.ts                                  # usuarios, invitaciones, roles, permisos — sin Idempotency-Key
+    components/
+      UserStatusBadge.tsx                     # estado de CUENTA, separado de StatusBadge (ver hallazgos)
+      InviteUserDialog.tsx
+      UserDetailDialog.tsx                    # cambiar rol + des/reactivar + explica LAST_ADMIN_SAFEGUARD
+      RoleFormDialog.tsx                      # crear (+ clonar permisos) / renombrar
+      PermissionsMatrixDialog.tsx             # checkboxes agrupados por módulo, textos del backend
+    pages/IdentityPage.tsx                    # tabs Usuarios/Roles, cada uno gateado por su propio permiso
+```
+
+### Decisiones y hallazgos
+
+**`UserStatusBadge` es un componente NUEVO y separado de `StatusBadge`, a propósito — no una reutilización.** `"active"` ya es un estado de CONTRATO en el mapa compartido (`STATUS_LABELS.active = 'Vigente'`); reusarlo para un usuario activo mostraría "Vigente", que no tiene sentido en español para una cuenta. Se verificaron los tres valores reales de `UserOut.status` contra el backend (`invited` → `active` → `inactive`, confirmado en navegador invitando, reactivando y desactivando un usuario real): con eso se armó un mapa local `invited: 'Invitado', active: 'Activo', inactive: 'Inactivo'`, mismo criterio de fallback-al-valor-crudo que `StatusBadge`/`CONCEPT_LABELS` si apareciera un cuarto valor no visto.
+
+**`PermissionsMatrixDialog` usa `PermissionOut.description` tal cual del backend, sin mapa de traducción a mano.** A diferencia de `CONCEPT_LABELS`/`STATUS_LABELS` (que sí necesitan mapa porque el backend manda códigos internos como `interest_payment`), `GET /identity/permissions` ya trae una descripción en español lista para mostrar (`"Abrir y cerrar la caja diaria"`, `"Reabrir un cierre (excepcional, auditado)"`) — usarla directo evita duplicar contenido que puede cambiar del lado del backend sin que el front se entere. Sí hizo falta un mapa local para `PermissionOut.module` (`PERMISSION_MODULE_LABELS`, ej. `contracts` → "Contratos") porque esos códigos de módulo no traen descripción propia — mismo criterio de mapa-parcial-con-fallback. **Este `module` es un dominio DISTINTO de `lib/modules.ts`** (`MODULE_LABELS: pawn|store|general`, el módulo de negocio de gastos/cierre de caja) — mismo nombre de concepto, dos catálogos del backend que no se relacionan; se mantuvieron en mapas separados a propósito en vez de compartir uno.
+
+**La casilla `is_special` de `PermissionOut` se muestra como una etiqueta "Permiso especial" bajo la descripción, sin restringir nada en la UI.** No hay regla documentada de qué hace especial a un permiso (ejemplos vistos: abrir/cerrar caja, reabrir cierre) — se decidió mostrarlo como información, no usarlo para deshabilitar el checkbox, porque inventar una restricción no pedida violaría la regla 7 (la UI oculta lo que el backend ya decidió ocultar, no decide ella misma qué es peligroso).
+
+**El `Checkbox` de shadcn se instaló con `npx shadcn add checkbox` (primera vez en el proyecto) — el CLI escribió el archivo en `./@/components/ui/checkbox.tsx` en vez de `src/components/ui/`, literalmente una carpeta `@` en la raíz del repo.** El alias `@` de `components.json` no lo resolvió al generar la ruta de salida (bug/limitación del propio CLI en este entorno, no algo del proyecto). Se movió el archivo a mano a su ruta correcta y se borró la carpeta `@` espuria — el contenido generado en sí (basado en `radix-ui`, mismo import que `select.tsx`/`dialog.tsx`) no necesitó ningún cambio. Si se agregan más componentes de shadcn en pasos futuros, verificar dónde quedó escrito el archivo antes de darlo por hecho.
+
+**`PermissionsMatrixDialog` NO usa RHF** (a diferencia de casi todos los formularios del proyecto) — es un `Set<string>` local de códigos marcados. Para sembrarlo sin `useEffect` sincronizando estado (la regla no escrita de este proyecto desde `SupplierFormDialog`, paso 4), se partió el diálogo en dos: el de afuera (`PermissionsMatrixDialog`) hace ambos fetches (catálogo + permisos actuales del rol) y solo monta el hijo (`PermissionsChecklist`) cuando YA llegaron los dos; el hijo siembra `useState(() => new Set(initialCodes))` en su primer render, que ya tiene los datos reales — nunca hay un estado "vacío" que después se corrige con un efecto.
+
+**Verificado en navegador, con waits explícitos sobre la respuesta de red (no `waitForTimeout`): cambiar el rol de un usuario, y des/reactivarlo, NO tienen el hueco de consistencia eventual que sí tenía cashbox en el paso 6.** Una primera pasada de pruebas con esperas fijas de 1200ms hizo sospechar el mismo bug (el diálogo mostraba el rol viejo tras reabrir) — se confirmó con `page.waitForResponse` sobre el `PATCH` y el `GET` de invalidación que en realidad el dato SÍ estaba correcto en ambas respuestas; el diálogo anterior mostraba el rol viejo por una carrera del propio script de prueba (un `waitForSelector` con texto ambiguo que coincidía con el label de un botón ya visible, resolviendo antes de tiempo), no por un bug de la app. Se descarta: `useUpdateUserRole`/`useDeactivateUser`/`useReactivateUser` se quedan con `invalidateQueries` simple, sin el `setQueryData` defensivo que sí hizo falta en cashbox — no hace falta duplicar ese patrón donde no hay evidencia real del problema.
+
+**Hallazgo real, no bug: invitar un correo ya invitado NO devuelve `CONFLICT` — el backend intenta reenviar la invitación vía Supabase Auth Admin, y en pruebas devolvió `502 AUTH_ADMIN_ERROR` porque el límite de envío de correos de Supabase (`over_email_send_rate_limit`, 429) ya estaba alcanzado por las propias pruebas de esta sesión.** `AUTH_ADMIN_ERROR` no estaba en el catálogo de códigos conocidos (`lib/api/errors.ts`) — se agregó (mismo criterio que los códigos de import de contratos en el paso 5b: todo código real observado se registra, aunque no dispare un modal especial). No hizo falta comportamiento dedicado: cae al banner genérico de `applyServerErrors` con `error.message`, que YA trae el texto en español del backend ("No se pudo invitar al usuario en Supabase Auth.") — verificado que el formulario se queda usable (no se pierde lo escrito, el botón se reactiva). El `conflictMessage` que sí se le pasó a `applyServerErrors` en `InviteUserDialog` (para un eventual 409 real) queda sin verificar en la práctica — no se pudo forzar un duplicado limpio porque el rate limit de Supabase se disparó primero.
+
+**`LAST_ADMIN_SAFEGUARD` se implementó (catch de `ApiError`, modal explicativo de un solo botón "Entendido", sin reintentar — regla 9) pero NO se verificó disparándolo de verdad.** Hacerlo hubiera requerido desactivar o cambiar de rol la única cuenta Admin activa real de la sesión (`mateojaras@gmail.com`, la que está usando estas pruebas) — un riesgo real de perder la sesión sin otra forma de volver a entrar, ya que la única otra cuenta (`Admin Demo`) no tenía contraseña creada al momento de esta prueba. Mismo criterio que el bloqueo de Storage del paso 7: verificar honestamente lo que SÍ se pudo probar, dejar constancia explícita de lo que no, en vez de asumir que funciona.
+
+**`IdentityPage` gatea cada tab por su propio permiso** (`identity.manage_users` / `identity.manage_roles`) — un usuario con uno solo de los dos ve solo esa pestaña, no ambas deshabilitadas. La ruta `/identidad` reusa el patrón de guard de `contractImportRoute` (paso 5b): sin ninguno de los dos permisos, redirige a `/`. Es la primera vez que ese patrón de guard se reutiliza fuera de contratos.
+
+**Primer ítem de la barra lateral filtrado por permiso.** `NAV_ITEMS` tenía un comentario desde el paso 6 anticipando esto ("el filtrado por permiso llega cuando exista el catálogo real, paso 8") — se agregó un campo opcional `anyPermission?: string[]` a `NavItem` y un filtro en `SidebarContent` contra `useMe().permissions`; el resto de ítems con pantalla (`Contratos`, `Ventas`, etc.) se queda sin filtrar, deliberadamente — es el mismo pendiente sistemático de guard-por-ruta que arrastra el proyecto desde el paso 4, no algo que este paso debía resolver para todos los módulos.
+
+**Datos reales que quedaron en el ambiente de dev tras las pruebas** (mismo criterio que pasos anteriores: no se revierte lo que sirve como evidencia real, sí se revirtió lo que era puro residuo de prueba): el rol `Cajero Temporal` creado durante las pruebas queda (no hay `DELETE /identity/roles/{id}` en la API); `Admin Demo` pasó de `invited` a `active` como efecto secundario de probar reactivar (no hay forma de volver a `invited`); un usuario nuevo `mateojaras+paso8test@gmail.com` (rol Bodega) quedó invitado de verdad. Sí se revirtió: el permiso `audit.view` que se había marcado de más en el rol `Asesor` durante la prueba de guardado de la matriz.
+
+### Qué falta (fuera de alcance del paso 8)
+
+- Verificar `LAST_ADMIN_SAFEGUARD` disparándolo de verdad — necesita una segunda cuenta Admin activa en el ambiente de pruebas (ver hallazgo arriba).
+- Guard de ruta por permiso en `/identidad/*` sub-rutas específicas — hoy es un único guard a nivel de la ruta completa; no aplica porque no hay sub-rutas (todo vive en diálogos), pero queda anotado por si eso cambia.
+- `RoleOut.active` se muestra en la tabla pero no hay ninguna acción para desactivar un rol — la API no tiene endpoint para eso (solo listar/crear/renombrar/permisos).
+
+### Comandos de verificación
+
+```bash
+npm run lint && npm run typecheck && npm run test && npm run build   # todo en verde (54 tests)
+npm run dev   # /identidad: invitar, cambiar rol, des/reactivar, crear rol, matriz de permisos
+```
+
 ## Paso 7 — Inventory + sales (completo, con un bloqueo externo documentado)
 
 Ingresos multi-línea (con validación real de negocio: "Compra" exige proveedor), edición de borrador, publicar (bloqueado hoy por falta de Storage — ver `STORAGE_PENDIENTE.md`), egresos con motivo; venta tipo POS (buscar artículo → carrito → medio de pago → descuento opcional → vender), recibo con impresión y anulación. Segundo módulo (después de contratos) que promueve helpers a `lib/` por tener 2+ consumidores reales: búsqueda de clientes ahora la usan tanto contratos como ventas.

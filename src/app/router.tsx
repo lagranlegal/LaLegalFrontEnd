@@ -24,6 +24,7 @@ import { InventoryPage } from '@/features/inventory/pages/InventoryPage'
 import { EntryFormPage } from '@/features/inventory/pages/EntryFormPage'
 import { SalesListPage } from '@/features/sales/pages/SalesListPage'
 import { SaleFormPage } from '@/features/sales/pages/SaleFormPage'
+import { IdentityPage } from '@/features/identity/pages/IdentityPage'
 
 interface RouterContext {
   queryClient: QueryClient
@@ -197,6 +198,22 @@ const saleNewRoute = createRoute({
   component: SaleFormPage,
 })
 
+// Guard por permiso (mismo patrón de `contractImportRoute`, §1.6): sin
+// `identity.manage_users` NI `identity.manage_roles` no hay nada que ver acá
+// (ambos tabs de `IdentityPage` se ocultan por separado, pero la ruta
+// completa tampoco debe quedar accesible).
+const identityRoute = createRoute({
+  getParentRoute: () => appLayoutRoute,
+  path: '/identidad',
+  component: IdentityPage,
+  beforeLoad: ({ context }) => {
+    const me = context.queryClient.getQueryData(meQueryOptions().queryKey)
+    if (me && !me.permissions.includes('identity.manage_users') && !me.permissions.includes('identity.manage_roles')) {
+      throw redirect({ to: '/' })
+    }
+  },
+})
+
 const routeTree = rootRoute.addChildren([
   authLayoutRoute.addChildren([loginRoute, authCallbackRoute]),
   subscriptionBlockedRoute,
@@ -213,6 +230,7 @@ const routeTree = rootRoute.addChildren([
     entryNewRoute,
     salesRoute,
     saleNewRoute,
+    identityRoute,
   ]),
 ])
 

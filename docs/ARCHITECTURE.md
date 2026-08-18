@@ -95,6 +95,7 @@ RBAC dinámico por empresa (roles editables), así que los permisos NO se hardco
 | `CONTRACT_LEGACY_CODE_EXISTS` (409) | Import de contratos (RECOMENDACIONES §1.6): "Este contrato ya fue migrado" — link al contrato existente si se puede resolver por búsqueda de `legacy_code`. |
 | `IMPORT_CAPITAL_EXCEEDS_PRINCIPAL` (422) | Import de contratos: `capital_balance` ≤ 0 o > `principal` — validar en vivo mientras se escribe, no esperar el submit. |
 | `IMPORT_DATES_MISALIGNED` (422) | Import de contratos: `interest_paid_until` no cae en un múltiplo entero de meses desde `start_date` — evitarlo con un selector "N meses desde el inicio" en vez de dos date pickers libres. |
+| `AUTH_ADMIN_ERROR` (502) | Identity (paso 8): fallo de Supabase Auth Admin al invitar (incluye rate limit de envío de correos) — sin modal específico, banner genérico con `error.message` (ya viene en español, verificado en pruebas reales). |
 | red / 5xx | Toast con retry; las mutaciones de dinero reintentan con la MISMA `Idempotency-Key`. |
 
 ## 7. Dinero, fechas y paginación (los tres transversales)

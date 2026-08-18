@@ -12,6 +12,7 @@ import {
   Settings,
   ShoppingCart,
   Tags,
+  UserCog,
   Users,
   Wallet,
   X,
@@ -29,12 +30,11 @@ interface NavItem {
   icon: ComponentType<{ className?: string }>
   /** Sin `to`: el módulo todavía no tiene pantalla — se muestra deshabilitado, no como link roto. */
   to?: string
+  /** Si se define, el ítem solo aparece con al menos uno de estos permisos (deny-by-default, regla 7). */
+  anyPermission?: string[]
 }
 
 // Orden aprobado por el cliente el 15/08/2026 (docs/DESIGN_SYSTEM.md §3).
-// El filtrado por código de permiso llega cuando exista el catálogo real
-// (GET /identity/permissions, paso 8) — hoy solo se filtra por si la
-// pantalla ya existe.
 const NAV_ITEMS: NavItem[] = [
   { label: 'Inicio', icon: Home, to: '/' },
   { label: 'Contratos', icon: FileText, to: '/contratos' },
@@ -43,15 +43,22 @@ const NAV_ITEMS: NavItem[] = [
   { label: 'Clientes', icon: Users, to: '/clientes' },
   { label: 'Caja', icon: Wallet, to: '/caja' },
   { label: 'Catálogos', icon: Tags, to: '/catalogos' },
+  // Primer ítem de nav filtrado por permiso — el catálogo real llegó en el
+  // paso 8 (`GET /identity/permissions`). El resto de ítems con pantalla
+  // sigue sin gate (pendiente sistemático, ver docs/IMPLEMENTATION.md paso 6).
+  { label: 'Identidad', icon: UserCog, to: '/identidad', anyPermission: ['identity.manage_users', 'identity.manage_roles'] },
   { label: 'Reportes', icon: BarChart3 },
   { label: 'Auditoría', icon: History },
   { label: 'Configuración', icon: Settings },
 ]
 
 function SidebarContent({ collapsed, onNavigate }: { collapsed: boolean; onNavigate?: () => void }) {
+  const { data: me } = useMe()
+  const items = NAV_ITEMS.filter((item) => !item.anyPermission || item.anyPermission.some((code) => me?.permissions.includes(code)))
+
   return (
     <nav className="flex flex-1 flex-col gap-1 p-3">
-      {NAV_ITEMS.map((item) => {
+      {items.map((item) => {
         const Icon = item.icon
         if (!item.to) {
           return (

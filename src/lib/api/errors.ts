@@ -28,6 +28,11 @@ export const API_ERROR_CODES = [
   'CONTRACT_LEGACY_CODE_EXISTS',
   'IMPORT_CAPITAL_EXCEEDS_PRINCIPAL',
   'IMPORT_DATES_MISALIGNED',
+  // Invitar usuario (paso 8): el backend envuelve cualquier fallo de
+  // Supabase Auth Admin (incluido rate limit de envío de correos) en este
+  // código con 502 — sin modal específico, cae al banner genérico con
+  // `error.message` (ya trae el mensaje real en español).
+  'AUTH_ADMIN_ERROR',
 ] as const
 
 export type ApiErrorCode = (typeof API_ERROR_CODES)[number]
