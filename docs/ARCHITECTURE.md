@@ -89,7 +89,7 @@ RBAC dinámico por empresa (roles editables), así que los permisos NO se hardco
 | `PAYMENT_PARTIAL_INTEREST_REJECTED` (422) | No debería ocurrir si la UI usa `payment-options`; si ocurre, modal explicando "solo meses completos" y recargar opciones. |
 | `CONTRACT_CLOSED` / `CONTRACT_NOT_READY_FOR_AUCTION` (400/409) | Modal explicativo + refetch del contrato (estado cambió por debajo). |
 | `LAST_ADMIN_SAFEGUARD` (409) | Modal explicativo — mostrar, NO reintentar. |
-| `IDEMPOTENCY_KEY_REQUIRED` (400) | Bug del front — reportar a Sentry, mensaje genérico. |
+| `IDEMPOTENCY_KEY_REQUIRED` (400) | Bug del front — mensaje genérico, revisar consola/logs. (Sentry no está instalado todavía — ver RECOMENDACIONES §3 "Técnica"; hasta entonces no hay reporte automático de errores en producción.) |
 | `CONFLICT` (409) | Mensaje contextual de la feature (doc duplicado, letra de código repetida…). |
 | `BAD_REQUEST` (400) | Mostrar `message` del backend en el contexto del form/acción. |
 | `CONTRACT_LEGACY_CODE_EXISTS` (409) | Import de contratos (RECOMENDACIONES §1.6): "Este contrato ya fue migrado" — link al contrato existente si se puede resolver por búsqueda de `legacy_code`. |
@@ -115,16 +115,16 @@ RBAC dinámico por empresa (roles editables), así que los permisos NO se hardco
 
 ## 9. Rutas y layouts
 
-- `/auth/*` — AuthLayout (login, recuperar, callback de invitación). Sin sidebar.
-- `/*` — AppShell (sidebar + topbar + `CashSessionBanner` + `<Outlet>`), protegido por sesión + suscripción. Rutas por módulo: `/` (dashboard), `/contratos`, `/contratos/:id`, `/clientes`, `/inventario`, `/ventas`, `/caja`, `/catalogos`, `/usuarios`, `/roles`, `/auditoria`, `/reportes`, `/configuracion`. URLs en español (las ve el usuario).
+- `/auth/*` — AuthLayout (login, callback de invitación). Sin sidebar. `/cuenta-bloqueada` (pantalla de bloqueo por suscripción vencida, §4.7) vive fuera del shell normal.
+- `/*` — AppShell (sidebar + topbar + `CashSessionBanner` + `<Outlet>`), protegido por sesión + suscripción. Rutas reales hoy: `/` (dashboard), `/contratos`, `/contratos/nuevo`, `/contratos/importar` (paso 5b), `/contratos/:contractId`, `/clientes`, `/clientes/:customerId`, `/inventario`, `/inventario/ingresos/nuevo`, `/ventas`, `/ventas/nueva`, `/caja`, `/catalogos`, `/identidad` (usuarios y roles juntos en una sola pantalla, no dos rutas separadas), `/auditoria`. URLs en español (las ve el usuario). **"Reportes" y "Configuración" son ítems de sidebar sin ruta** (`AppShell.tsx`, sin `to:`) — quedan visibles pero deshabilitados a propósito, para no prometer una pantalla que no existe (bloqueados por backend, ver RECOMENDACIONES §1 puntos 4/5 y PENDIENTES_BACKEND_INFRA.md puntos 7/8); no inventar la ruta antes de que el backend tenga qué mostrar ahí.
 - `/platform/*` — PlatformLayout (solo `super_admin`): empresas, planes. Visualmente diferenciado (banda superior distinta) para que un super-admin nunca confunda contexto.
-- Lazy loading por feature (`React.lazy` por ruta) — el bundle inicial solo carga shell + dashboard.
+- Router: rutas declaradas a mano en `src/app/router.tsx` (TanStack Router, no file-based routing) — no hay lazy loading por feature todavía, todo el árbol de rutas entra en el bundle inicial (ver el warning de tamaño de chunk en `npm run build`, documentado como deuda conocida, no bloqueante).
 
 ## 10. Testing
 
 - **Unidad (Vitest):** `money.ts` (formateo/parseo con puntos de miles, redondeos de presentación), `dates.ts` (con el instante exacto del bug de las 7pm–medianoche como caso fijo, igual que el backend), mapeo de errores, armado del árbol de categorías.
 - **Componentes (Testing Library + MSW):** los flujos que mueven dinero — abono desde payment-options, cierre de caja con descuadre (exige justificación), venta POS, y el modal de `CASH_SESSION_NOT_OPEN`. MSW sirve además para desarrollar sin backend.
-- **E2E (Playwright, smoke):** login → abrir caja → crear contrato → abono → cierre, contra el backend dev. Corre manual/nightly, no en cada PR.
+- **E2E (Playwright):** no hay suite E2E commiteada en el repo todavía (`playwright` no está en `package.json`). Cada feature nueva SÍ se verifica en vivo con Playwright contra el backend dev real (navegador real, login real, mutaciones reales) durante la sesión de desarrollo que la construye — ver los "probado en vivo" repartidos por `docs/IMPLEMENTATION.md` — pero es verificación manual puntual, no una suite automatizada que corra en CI o nightly. Si se decide invertir en esto, sería un proyecto aparte (instalar `@playwright/test`, escribir specs, decidir contra qué backend correrlos en CI).
 - **CI (GitHub Actions):** lint + `tsc` + Vitest en cada PR; job que regenera tipos contra el `openapi.json` exportado del backend y falla si hay drift (detecta breaking changes de API antes del deploy).
 
 ## 11. Entornos y despliegue
