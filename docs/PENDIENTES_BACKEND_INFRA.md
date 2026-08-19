@@ -1,6 +1,6 @@
 # Pendientes para revisar con backend/arquitectura/infraestructura
 
-> Documento de traspaso — no es una queja sobre el backend, es la lista concreta de huecos reales encontrados construyendo el front, para decidir en equipo qué se resuelve y en qué orden. Cada punto dice qué se verificó, cómo, y por qué importa para el negocio (no solo técnicamente). Última actualización: 19/08/2026.
+> Documento de traspaso — no es una queja sobre el backend, es la lista concreta de huecos reales encontrados construyendo el front, para decidir en equipo qué se resuelve y en qué orden. Cada punto dice qué se verificó, cómo, y por qué importa para el negocio (no solo técnicamente). Última actualización: 19/08/2026 (segunda revisión — se suman los puntos 13 a 18: reportes, panel de plataforma, ajustes de usuario, paginación, edición de artículos de remate, resumen financiero).
 
 ## 1. Búsqueda de clientes: solo por nombre, no por documento
 
@@ -79,3 +79,68 @@ Para poder probar abonos/mora/prórroga/remate de verdad (pedido explícito), se
 | 8 | `DEMO-MORA-1MES` | Quedó en `active`, no `in_arrears` como su nombre sugiere | Efecto colateral real del punto 10 de arriba (límite exacto de 1 mes) — se deja como evidencia del hallazgo, no se puede borrar (no hay `DELETE` de contratos) |
 
 Todos con `Anillos de oro` como categoría (la única nivel 3 que existe hoy en la empresa de pruebas) y prendas/montos variados para que se vean distintos en las listas.
+
+---
+
+## 13. Reportes — qué falta para separar contabilidad de tienda y contratos con claridad
+
+Pedido explícito: "qué necesitamos del backend para hacer los reportes de forma clara". Hoy existe `GET /reports/dashboard` (KPIs de hoy/mes), `GET /reports/closings` (histórico de cierres) y `GET /cashbox/sessions/{id}/report` (desglose módulo×concepto×medio, pero **solo de UNA sesión a la vez**). No alcanza para un reporte contable real. En orden de prioridad:
+
+1. **Desglose de caja agregado por rango de fechas, no por sesión.** Es la extensión natural de algo que ya existe — `GET /cashbox/sessions/{id}/report` ya calcula módulo×concepto×medio para una sesión puntual; hace falta la misma agregación pero sumando N sesiones entre `from_date`/`to_date`. Esto es, literalmente, la "contabilidad separada de tienda y contratos" que pide `docs/pending/CONTEXTO.md` §3, consolidada en cualquier rango (mes, trimestre, lo que sea) en vez de sesión por sesión. Mejor relación esfuerzo/valor de toda la lista: no es un reporte nuevo, es agregar lo que ya se calcula.
+2. **Intereses cobrados en un período — no existe en ningún lado hoy.** El dashboard tiene `capital_outstanding` (cuánto hay prestado), pero nada dice cuánto ha *generado* el módulo de empeño en intereses cobrados en el mes. Sin esto no se puede ver la rentabilidad real de Contratos.
+3. **`GET /reports/series?months=12`** — ya estaba en el backlog aceptado del backend (`docs/pending/API_GUIDE.md` §15) desde antes de este documento. Sin serie histórica, "Reportes" solo puede mostrar el momento actual, no tendencia.
+4. **Filtros de fecha en `GET /sales`** — mismo punto 3 de la primera revisión de este documento, se repite acá porque bloquea directamente "ventas del mes pasado" como reporte.
+
+Menor prioridad, útiles pero no bloqueantes para una v1:
+- Capital desglosado por estado en pesos (hoy el dashboard da el *conteo* de contratos por estado, no cuánto capital hay en mora vs. vigente vs. prórroga).
+- Utilidad de ventas (costo del artículo vs. precio de venta — cruzar `item.cost` contra `sale_line.unit_price`, hoy no se agrega en ningún endpoint).
+- Contratos rematados en un período + valor recuperado.
+- Antigüedad/rotación de inventario (artículos `available` hace más de N días sin venderse).
+
+**Decisión de producto todavía pendiente** (no técnica): ¿"Reportes" es una pantalla nueva que consume todo esto, o el resumen financiero por módulo (punto 18 de abajo) reemplaza la necesidad de una pantalla separada? Se recomienda resolverlo junto con el punto 18.
+
+## 14. Panel de plataforma — no se ve fecha de expiración, ni historial de cambios de suscripción
+
+Al entrar como super-admin (punto 11), la lista y el detalle de empresas no muestran ni el plan ni la fecha de expiración — ya documentado como punto 4 de este archivo y en `docs/RECOMENDACIONES.md` §1.8. Verificando más a fondo para esta revisión, aparecieron dos problemas adicionales, uno de ellos más serio que el original:
+
+- **`PlanOut` no trae lo que `docs/pending/CONTEXTO.md` §3 dice que un plan debería tener.** El documento describe planes con *"módulos habilitados, límite usuarios, precio"* — el schema real (`PlanOut`) solo trae `{id, name, code, price, active}`. No hay forma de que el front muestre "este plan permite hasta 5 usuarios" ni qué módulos habilita, aunque el concepto ya esté descrito en la arquitectura.
+- **Extender o suspender una suscripción NO queda en la auditoría — confirmado en vivo, no es una suposición.** Se hizo `POST .../subscription/extend` y luego `POST .../suspend` + `POST .../activate` sobre una empresa de prueba real, y se revisó `GET /audit-log?module=platform` inmediatamente después: **solo aparece el `create_company` original** — ninguna de las tres acciones nuevas generó una entrada. Esto es distinto (y más importante) que "no veo cuánto se pagó": hoy, si dos personas del equipo de plataforma tienen acceso de super-admin, no hay ningún registro de quién extendió una suscripción, cuándo, ni con qué `notes` (el campo `notes` de `SubscriptionExtendIn` se manda pero no hay ningún lugar donde se pueda volver a leer — se pierde). Contradice la regla general del propio backend (`docs/pending/CLAUDE.md`: *"toda acción sensible... inserta en `audit_log` en la misma transacción"*) — suspender el acceso de una empresa entera y cambiar su fecha de vencimiento son acciones tan sensibles como cualquiera de las que sí se auditan.
+- **Recomendación sobre "valores pagados"**: dado que el cobro es 100% manual y fuera del sistema (`docs/pending/CONTEXTO.md` §3: *"el cliente paga por fuera del sistema"*), hoy no hay NINGÚN registro financiero de lo pagado — ni siquiera el monto. Sugerencia concreta: agregar un campo opcional `amount`/`amount_paid` a `SubscriptionExtendIn`, y que quede auditado (con el punto anterior resuelto, esto ya alcanzaría para tener un historial básico de "quién pagó cuánto y cuándo" sin construir un módulo de facturación completo).
+
+## 15. Ajustes/configuración de usuario — qué recomiendo incluir
+
+No hay ninguna pantalla de "mi perfil" hoy — el pendiente ya estaba anotado desde el paso 2 ("Perfil"/"Cambiar contraseña" en el menú del avatar). Verificado qué hace falta de backend para cada pieza razonable:
+
+| Función | ¿Necesita backend nuevo? | Detalle |
+|---|---|---|
+| Ver mi perfil (nombre, correo, rol, empresa) | No | Ya disponible completo vía `GET /me`, sería una pantalla de solo lectura. |
+| Cambiar mi contraseña | No | Va directo contra Supabase Auth (`supabase.auth.updateUser({password})`), igual que ya hace el flujo de aceptar invitación — no pasa por este backend en absoluto. |
+| Editar mi nombre (`full_name`) | **Sí** | No existe ningún `PATCH /me` ni endpoint de auto-edición — confirmado, `/api/v1/me` solo tiene `GET`. Los únicos `PATCH` de usuario que existen son de admin sobre OTROS usuarios (`PATCH /identity/users/{id}/role`). |
+| Foto de perfil / avatar | **Sí** | No existe ningún campo `avatar_url` en `MeUserOut`/`UserOut` — si se quiere, habría que agregarlo (el Storage ya está listo desde el paso 7b, el front puede subir la foto solo; falta el campo para guardar el path). |
+| Preferencias de notificaciones | No aplica todavía | Notificaciones son Fase 2 en el roadmap (`docs/pending/CONTEXTO.md` §5) — no tiene sentido un ajuste para algo que no existe. |
+
+**Recomendación de alcance para una v1:** perfil de solo lectura + cambiar contraseña (cero backend nuevo, se puede construir ya) y dejar nombre/avatar editables para cuando exista `PATCH /me` — no vale la pena bloquear la pantalla completa por esos dos campos.
+
+## 16. Paginación — confirmado que ya existe en todos lados, incluida auditoría
+
+Se verificó específicamente `GET /audit-log` (la duda puntual) y de paso el resto de listados ya construidos: **todos** usan `{cursor?, limit?}` con el mismo patrón `CursorPage_*` — confirmado en el schema (`list_audit_log_api_v1_audit_log_get` sí tiene `cursor`/`limit`, igual que `contracts`, `customers`, `identity/users`, `platform/companies`, etc.). El default documentado es 50 (máximo 200) — cómodamente por encima del mínimo de 12 pedido. **No es un pendiente real, solo faltaba confirmarlo explícitamente** — queda anotado acá como verificación, no como cambio a pedir.
+
+## 17. Artículos creados por remate: no se pueden corregir categoría antes de publicar
+
+Reproducido en vivo de punta a punta: se rematou un contrato, el artículo quedó en `draft` con `origin: "auction"`, `supplier_id: null` y las categorías **heredadas tal cual de la prenda del contrato** (la categoría que se eligió al crear el contrato, pensada para clasificar una prenda en garantía, no necesariamente la más adecuada para vender en tienda). Se publicó igual para confirmar el código: salió `JAO0003R` — el sufijo `R` en vez de letra de proveedor **ya funciona correctamente del lado del backend**, sin ningún bug ahí.
+
+El problema real es que **`ItemUpdateIn` (`PATCH /inventory/items/{id}`) solo acepta `{name?, description?, sale_price?, photos?}`** — no hay forma de corregir `cat1_id`/`cat2_id`/`cat3_id` antes de publicar, aunque el artículo siga en `draft` (mismo estado en el que sí se puede editar nombre/precio/fotos sin restricción). Si la categoría heredada del contrato no es la correcta para la tienda, hoy no hay forma de arreglarlo — ni desde el front (porque el backend lo rechazaría) ni manualmente.
+
+**Sugerencia:** agregar `cat1_id?`/`cat2_id?`/`cat3_id?` a `ItemUpdateIn`, con la misma validación de árbol de 3 niveles que ya usa `POST /inventory/entries` — la restricción de que solo se pueda mientras `status='draft'` seguiría siendo válida (`409` una vez publicado, como ya pasa hoy). No hace falta ni debería agregarse un campo de proveedor: el diseño de `origin`+sufijo `R` para artículos de remate ya es correcto tal como está, el front solo necesita mostrarlo bien (ver siguiente punto).
+
+**Del lado del front (sin esperar al backend):** hoy `ItemEditDialog` no muestra de dónde viene un artículo — ni "origen: remate", ni el link al contrato de donde salió (`source_contract_id` sí lo trae `ItemOut`, no se usa en pantalla). Se puede corregir esto ahora mismo sin depender del punto de arriba; lo dejo anotado para hacerlo en la próxima sesión de trabajo del front.
+
+## 18. Resumen financiero de contratos y ventas — recomendación de dónde ubicarlo
+
+Pedido: un apartado con el resumen en dinero de contratos (abonos, desembolsos, cartera) y de ventas, en el lugar que mejor encaje con el diseño actual de la app.
+
+**Recomendación:** que viva dentro de "Reportes" (punto 13), no dentro de las pantallas operativas de `/contratos` y `/ventas`. Es una separación de propósito que ya sigue el resto de la app — las listas operativas (`ContractsListPage`, `SalesListPage`) están pensadas para *hacer* cosas (crear, cobrar, vender, anular), no para *analizar* — meterle un bloque financiero ahí competiría con la acción principal de la pantalla y DESIGN_SYSTEM.md ya establece "una acción primaria por pantalla". El dashboard (`/`) ya es el lugar de KPIs de un vistazo; "Reportes" sería el lugar para profundizar (por período, por módulo) sin mezclarse con ninguno de los dos.
+
+Como complemento liviano (no reemplaza lo anterior): agregar una fila corta de KPIs arriba de `ContractsListPage` y `SalesListPage` (cartera activa + capital en mora arriba de contratos; total vendido hoy/este mes arriba de ventas) — mismo patrón `KpiRow` que ya existe en el dashboard, dando contexto inmediato sin salir de la pantalla operativa. Esto sí se puede construir con los datos que YA expone `GET /reports/dashboard` hoy, sin esperar nada nuevo del backend.
+
+**Qué necesita el backend para el resumen completo (no el KPI liviano):** los mismos puntos 1 y 2 del punto 13 — desglose de caja por rango de fechas e intereses cobrados por período son, en la práctica, el "resumen financiero de contratos" que se pide acá. No es una pieza aparte, es el mismo pendiente visto desde dos ángulos de producto distintos (una pantalla de reportes vs. un resumen dentro de contratos) — se resuelven con el mismo trabajo de backend.

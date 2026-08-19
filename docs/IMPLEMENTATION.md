@@ -2,6 +2,17 @@
 
 > Registro vivo de qué existe en el código, cómo está armado y por qué se tomó cada decisión — para que cualquiera (humano o Claude Code) pueda retomar el proyecto sin releer todo el historial de commits. Se actualiza en cada paso del "Orden de implementación" de `CLAUDE.md`. No repite lo que ya está en `ARCHITECTURE.md`/`DESIGN_SYSTEM.md` (el qué-debería-ser); esto es el qué-hay-hoy y las decisiones concretas tomadas al construirlo.
 
+## Revisión — segunda ronda de requisitos para backend (19/08/2026)
+
+Sin cambios de código — el cliente pidió analizar 5 temas nuevos (reportes claros, panel de plataforma, ajustes de usuario, paginación, edición de artículos de remate, resumen financiero) y volcarlos en `docs/PENDIENTES_BACKEND_INFRA.md` (puntos 13-18) para llevarlos a backend. Todo se verificó contra la API real antes de escribirlo, no se documentó por sospecha:
+
+- **Extender/suspender una suscripción no queda en auditoría** — probado en vivo (extender + suspender + reactivar una empresa real, revisar `GET /audit-log?module=platform` inmediatamente después): solo aparece el `create_company` original. Es más serio que "no se ve cuánto se pagó" — contradice la propia regla del backend de auditar toda acción sensible.
+- **El código de remate (sufijo `R`) ya funciona bien** — se rematou un contrato, se publicó el artículo resultante, y el código salió `JAO0003R` como se esperaba. El problema real es que `ItemUpdateIn` no deja corregir la categoría heredada del contrato antes de publicar (solo `name`/`description`/`sale_price`/`photos`) — ni el front ni un humano pueden arreglarlo hoy si la categoría de la prenda no es la correcta para la tienda.
+- `PATCH /me` no existe (solo `GET`) — confirma que "editar mi nombre" necesita backend nuevo, pero "cambiar contraseña" no (va directo contra Supabase Auth, ya establecido desde el paso 2).
+- Paginación: se confirmó que `audit-log` y el resto de listados ya usan cursor consistentemente — no era un hueco real, solo faltaba confirmarlo.
+
+Detalle completo, con qué se verificó y las recomendaciones de dónde ubicar cada cosa en la UI, en `docs/PENDIENTES_BACKEND_INFRA.md`.
+
 ## Revisión — feedback directo del cliente (19/08/2026)
 
 El cliente probó la app después de la revisión post-paso-10 y reportó 5 puntos. Uno resultó ser un bug real y fixeable (abono a capital), dos eran huecos reales del backend explicados y documentados aparte, uno era documentación faltante (cómo entrar como super-admin), y uno era un pedido de datos de prueba.
