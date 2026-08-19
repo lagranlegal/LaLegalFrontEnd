@@ -2,6 +2,21 @@
 
 > Registro vivo de qué existe en el código, cómo está armado y por qué se tomó cada decisión — para que cualquiera (humano o Claude Code) pueda retomar el proyecto sin releer todo el historial de commits. Se actualiza en cada paso del "Orden de implementación" de `CLAUDE.md`. No repite lo que ya está en `ARCHITECTURE.md`/`DESIGN_SYSTEM.md` (el qué-debería-ser); esto es el qué-hay-hoy y las decisiones concretas tomadas al construirlo.
 
+## Revisión — trazabilidad de artículos rematados (19/08/2026)
+
+`ItemOut.source_contract_id` ya existía en la API desde siempre (mismo patrón que los huecos de fotos de la revisión post-paso-10: el dato estaba, nadie lo mostraba). Se agregó `ItemOriginInfo` en `ItemEditDialog.tsx` — para artículos `origin: "auction"` muestra "Viene del remate del contrato #N" con link directo al contrato (y, de paso, "Comprado a [proveedor]" para `origin: "supplier"`, mismo criterio simétrico). Probado en vivo contra un artículo real ya publicado (`JAO0003R`): el link navega correctamente al contrato de origen, cero errores de consola.
+
+`useContract`/`contractQueryOptions` se promovieron de `features/contracts/api.ts` a `lib/contracts/reference.ts` — `inventory` es el segundo consumidor real (mismo criterio de aislamiento de features que `lib/customers/search.ts`/`lib/sales/void.ts`); `ContractDetailPage` ahora importa directo de `lib/`, no a través de la feature de contratos.
+
+**La dirección contraria (contrato → qué artículo se generó por cada prenda) SÍ necesita backend** — `ContractItemOut` no expone `inventory_item_id`, aunque la documentación del propio backend dice que la columna existe. Documentado como punto 19 de `docs/PENDIENTES_BACKEND_INFRA.md`.
+
+### Comandos de verificación
+
+```bash
+npm run lint && npm run typecheck && npm run test && npm run build   # todo en verde (54 tests)
+npm run dev   # /inventario: abrir un artículo con origin=auction, click en el link del contrato
+```
+
 ## Revisión — segunda ronda de requisitos para backend (19/08/2026)
 
 Sin cambios de código — el cliente pidió analizar 5 temas nuevos (reportes claros, panel de plataforma, ajustes de usuario, paginación, edición de artículos de remate, resumen financiero) y volcarlos en `docs/PENDIENTES_BACKEND_INFRA.md` (puntos 13-18) para llevarlos a backend. Todo se verificó contra la API real antes de escribirlo, no se documentó por sospecha:

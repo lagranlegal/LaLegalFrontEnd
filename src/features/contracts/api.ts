@@ -18,6 +18,9 @@ export type PaymentCreateIn = components['schemas']['PaymentCreateIn']
 // paso 7 (sales) los necesita también, se promovieron de acá (mismo
 // criterio de `lib/catalogs/categories.ts`, CLAUDE.md regla 3). Los
 // consumidores de este feature los importan directo de `lib/`, no de acá.
+// `useContract`/`contractQueryOptions` (detalle de un contrato) se
+// promovieron igual a `lib/contracts/reference.ts` — `inventory` lo
+// necesita para mostrar de qué contrato viene un artículo de remate.
 
 // ---- Listado (cursor) + listos-para-remate (lista chica sin paginar, GET propio) ----
 
@@ -59,19 +62,6 @@ export function useContractSearch(q: string) {
     },
     enabled: q.trim().length > 0,
   })
-}
-
-// ---- Detalle ----
-
-export function contractQueryOptions(contractId: string) {
-  return queryOptions({
-    queryKey: ['contracts', contractId] as const,
-    queryFn: () => unwrap(api.GET('/api/v1/contracts/{contract_id}', { params: { path: { contract_id: contractId } } })),
-  })
-}
-
-export function useContract(contractId: string) {
-  return useQuery(contractQueryOptions(contractId))
 }
 
 /**

@@ -1,6 +1,6 @@
 # Pendientes para revisar con backend/arquitectura/infraestructura
 
-> Documento de traspaso — no es una queja sobre el backend, es la lista concreta de huecos reales encontrados construyendo el front, para decidir en equipo qué se resuelve y en qué orden. Cada punto dice qué se verificó, cómo, y por qué importa para el negocio (no solo técnicamente). Última actualización: 19/08/2026 (segunda revisión — se suman los puntos 13 a 18: reportes, panel de plataforma, ajustes de usuario, paginación, edición de artículos de remate, resumen financiero).
+> Documento de traspaso — no es una queja sobre el backend, es la lista concreta de huecos reales encontrados construyendo el front, para decidir en equipo qué se resuelve y en qué orden. Cada punto dice qué se verificó, cómo, y por qué importa para el negocio (no solo técnicamente). Última actualización: 19/08/2026 (tercera revisión — punto 17 resuelto del lado del front; se suma el punto 19, el vínculo inverso contrato→artículo que sí necesita backend).
 
 ## 1. Búsqueda de clientes: solo por nombre, no por documento
 
@@ -133,7 +133,7 @@ El problema real es que **`ItemUpdateIn` (`PATCH /inventory/items/{id}`) solo ac
 
 **Sugerencia:** agregar `cat1_id?`/`cat2_id?`/`cat3_id?` a `ItemUpdateIn`, con la misma validación de árbol de 3 niveles que ya usa `POST /inventory/entries` — la restricción de que solo se pueda mientras `status='draft'` seguiría siendo válida (`409` una vez publicado, como ya pasa hoy). No hace falta ni debería agregarse un campo de proveedor: el diseño de `origin`+sufijo `R` para artículos de remate ya es correcto tal como está, el front solo necesita mostrarlo bien (ver siguiente punto).
 
-**Del lado del front (sin esperar al backend):** hoy `ItemEditDialog` no muestra de dónde viene un artículo — ni "origen: remate", ni el link al contrato de donde salió (`source_contract_id` sí lo trae `ItemOut`, no se usa en pantalla). Se puede corregir esto ahora mismo sin depender del punto de arriba; lo dejo anotado para hacerlo en la próxima sesión de trabajo del front.
+**Del lado del front, ya resuelto (19/08/2026):** `ItemEditDialog` ahora muestra "Viene del remate del contrato #N" con link directo a `/contratos/$id` cuando `origin === 'auction'` (y, de paso, "Comprado a [proveedor]" cuando `origin === 'supplier'`) — usando `source_contract_id`, que `ItemOut` ya traía y no se estaba mostrando. Probado en vivo: click en el link navega correctamente al contrato de origen. Ver punto 19 para la dirección contraria (desde el contrato, saber en qué artículo se convirtió cada prenda), que sí necesita un campo nuevo del backend.
 
 ## 18. Resumen financiero de contratos y ventas — recomendación de dónde ubicarlo
 
@@ -144,3 +144,12 @@ Pedido: un apartado con el resumen en dinero de contratos (abonos, desembolsos, 
 Como complemento liviano (no reemplaza lo anterior): agregar una fila corta de KPIs arriba de `ContractsListPage` y `SalesListPage` (cartera activa + capital en mora arriba de contratos; total vendido hoy/este mes arriba de ventas) — mismo patrón `KpiRow` que ya existe en el dashboard, dando contexto inmediato sin salir de la pantalla operativa. Esto sí se puede construir con los datos que YA expone `GET /reports/dashboard` hoy, sin esperar nada nuevo del backend.
 
 **Qué necesita el backend para el resumen completo (no el KPI liviano):** los mismos puntos 1 y 2 del punto 13 — desglose de caja por rango de fechas e intereses cobrados por período son, en la práctica, el "resumen financiero de contratos" que se pide acá. No es una pieza aparte, es el mismo pendiente visto desde dos ángulos de producto distintos (una pantalla de reportes vs. un resumen dentro de contratos) — se resuelven con el mismo trabajo de backend.
+
+## 19. Trazabilidad contrato → artículo de inventario: falta el vínculo inverso
+
+Pedido explícito: poder asociar un artículo rematado a su contrato de origen. La dirección **artículo → contrato** ya se resolvió del lado del front (punto 17: `ItemOut.source_contract_id` ya existía en la API, solo faltaba mostrarlo). La dirección **contrato → artículo** (desde la prenda del contrato, saber en qué artículo específico se convirtió) es la que sí necesita un cambio de backend:
+
+- **`ContractItemOut` no trae `inventory_item_id`**, aunque `docs/pending/API_GUIDE.md` §7 describe explícitamente que existe la columna: *"`contract_item.inventory_item_id` guarda el vínculo"*. Confirmado contra el schema real (`npm run gen:api` sin diff, no es un tipo desactualizado): el campo simplemente no está en la respuesta de la API, aunque exista en la base de datos.
+- El front no puede reconstruir esto de forma confiable por su cuenta: `GET /inventory/items` no tiene filtro por `source_contract_id`, y aunque lo tuviera, un contrato con **varias prendas** genera varios artículos — sin el vínculo por prenda específica, no hay forma de saber cuál artículo corresponde a cuál prenda (emparejar por nombre/descripción sería frágil, no una solución real).
+
+**Sugerencia:** exponer `inventory_item_id` (nullable) en `ContractItemOut` — es literalmente el mismo dato que `ItemOut.source_contract_id` visto desde el otro lado, la columna ya existe según la propia documentación del backend, solo falta incluirla en el schema Pydantic de salida. Con eso, el detalle del contrato podría mostrar, junto a cada prenda ya rematada, un link directo al artículo específico en el que se convirtió (en vez de solo el estado "Rematado").

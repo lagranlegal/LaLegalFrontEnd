@@ -3,12 +3,15 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { Controller, useForm } from 'react-hook-form'
 import { z } from 'zod'
 import { toast } from 'sonner'
+import { Link } from '@tanstack/react-router'
 import { AppDialog } from '@/components/shared/AppDialog'
 import { MoneyInput } from '@/components/shared/MoneyInput'
 import { PhotoUploader } from '@/components/shared/PhotoUploader'
 import { StatusBadge } from '@/components/shared/StatusBadge'
 import { Button } from '@/components/ui/button'
 import { useUpdateItem, usePublishItem } from '@/features/inventory/api'
+import { useContract } from '@/lib/contracts/reference'
+import { useSuppliers } from '@/lib/catalogs/suppliers'
 import type { Item } from '@/lib/inventory/items'
 
 const itemSchema = z.object({
@@ -21,6 +24,31 @@ const itemSchema = z.object({
 type ItemFormValues = z.infer<typeof itemSchema>
 
 const inputClass = 'mt-1 w-full rounded-input border border-border bg-background px-3 py-2 text-sm text-foreground outline-none focus:border-primary'
+
+/** Contrato del que salió un artículo de remate (`ItemOut.source_contract_id`) — pedido explícito: poder rastrear a qué contrato pertenecía. */
+function AuctionOriginInfo({ contractId }: { contractId: string }) {
+  const { data: contract } = useContract(contractId)
+  return (
+    <p className="text-xs text-muted-foreground">
+      Viene del remate del{' '}
+      <Link to="/contratos/$contractId" params={{ contractId }} className="text-primary hover:underline">
+        contrato {contract ? `#${contract.number}` : '…'}
+      </Link>
+    </p>
+  )
+}
+
+function SupplierOriginInfo({ supplierId }: { supplierId: string }) {
+  const { data: suppliers } = useSuppliers()
+  const supplier = suppliers?.find((s) => s.id === supplierId)
+  return <p className="text-xs text-muted-foreground">Comprado a {supplier?.name ?? '…'}</p>
+}
+
+function ItemOriginInfo({ item }: { item: Item }) {
+  if (item.origin === 'auction' && item.source_contract_id) return <AuctionOriginInfo contractId={item.source_contract_id} />
+  if (item.origin === 'supplier' && item.supplier_id) return <SupplierOriginInfo supplierId={item.supplier_id} />
+  return null
+}
 
 /** Editar borrador + publicar (CLAUDE.md paso 7: "publicar (precio + ≥1 foto, muestra el código emitido)"). */
 export function ItemEditDialog({ open, onOpenChange, item }: { open: boolean; onOpenChange: (open: boolean) => void; item: Item }) {
@@ -98,6 +126,8 @@ export function ItemEditDialog({ open, onOpenChange, item }: { open: boolean; on
           <StatusBadge status={item.status} />
           {item.code && <span className="font-mono text-xs text-muted-foreground">{item.code}</span>}
         </div>
+
+        <ItemOriginInfo item={item} />
 
         <div>
           <label htmlFor="item-name" className="text-sm font-medium text-foreground">
