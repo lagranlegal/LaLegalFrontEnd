@@ -2,6 +2,41 @@
 
 > Registro vivo de qué existe en el código, cómo está armado y por qué se tomó cada decisión — para que cualquiera (humano o Claude Code) pueda retomar el proyecto sin releer todo el historial de commits. Se actualiza en cada paso del "Orden de implementación" de `CLAUDE.md`. No repite lo que ya está en `ARCHITECTURE.md`/`DESIGN_SYSTEM.md` (el qué-debería-ser); esto es el qué-hay-hoy y las decisiones concretas tomadas al construirlo.
 
+## Revisión — feedback directo del cliente (19/08/2026)
+
+El cliente probó la app después de la revisión post-paso-10 y reportó 5 puntos. Uno resultó ser un bug real y fixeable (abono a capital), dos eran huecos reales del backend explicados y documentados aparte, uno era documentación faltante (cómo entrar como super-admin), y uno era un pedido de datos de prueba.
+
+### 2) Bug real corregido: no se podía abonar a capital si el contrato ya estaba al día
+
+`PaymentOptionsPanel` mostraba "Este contrato no tiene abonos disponibles en este momento" para cualquier contrato con `months_owed === 0` — porque `GET /contracts/{id}/payment-options` responde `options: []` cuando no hay ningún mes de interés que elegir, y el campo de capital vivía DENTRO de una opción seleccionada (nunca había opción que seleccionar). **Verificado contra el backend antes de tocar el front:** `POST /contracts/{id}/payments` con `{months_covered: 0, capital_amount: "50000.00"}` sobre un contrato al día respondió `201` y descontó el capital correctamente — la regla real (`docs/pending/CONTEXTO.md` §3: *"el capital solo se abona cuando los intereses quedan al día, en el mismo pago que los salda **o después**"*) sí lo permite; el hueco era 100% del front, no del backend. Se agregó `CapitalOnlyPaymentForm` dentro de `PaymentOptionsPanel.tsx`: cuando `months_owed === 0`, muestra directo el campo de abono a capital (sin pasar por una opción de interés) en vez del mensaje de "no disponible". Probado en vivo de punta a punta: `201`, saldo reducido correctamente, aparece bien en el historial de abonos (`months: 0`).
+
+### 4) Explicado, no era un bug: buscar cliente por documento no encuentra nada
+
+Reproducido en vivo: buscar "Juan" o "Pérez" en el `CustomerPicker` de "Nuevo contrato" SÍ encuentra a Juan Pérez correctamente. Buscar por el número de documento (`123456789`) da "Sin resultados". Confirmado contra el backend directo: `GET /customers?q=123456789` responde `items: []` mientras que `?q=Juan` responde el cliente completo — `?q=` en `/customers` es full-text **solo sobre el nombre**, nunca tocó el documento. No es algo que el front pueda arreglar por su cuenta (necesitaría que el backend busque también por `doc_number`) — documentado como punto 1 de `docs/PENDIENTES_BACKEND_INFRA.md`, el nuevo archivo pedido explícitamente para llevar estos temas a discutir con backend/arquitectura/infraestructura.
+
+### 1) Cómo entrar como super-admin — ya funciona, faltaba decirlo
+
+La cuenta de pruebas (`mateojaras@gmail.com`) ya tiene el claim `app_metadata.platform_role: "super_admin"` en Supabase Auth desde antes del paso 10 — confirmado contra el JWT real. `/platform` ya es accesible hoy con esa misma sesión, sin nada que configurar. No hay (ni debería haber, por diseño) un flujo de auto-servicio para volverse super-admin — se fija a mano en el dashboard de Supabase Auth, una sola vez por cuenta.
+
+### 3) Datos de prueba para cubrir todos los estados de contrato
+
+Se fabricaron 6 contratos nuevos con `POST /contracts/import` (fechas viejas a propósito, mismo mecanismo ya usado para probar Rematar en la revisión anterior): en mora (1 y 2 meses), en mora con un abono ya registrado, en prórroga sin vencer, listo para remate (sin auctionar, para que el cliente lo pruebe él mismo), y uno pagado por completo. Tabla completa con el `legacy_code` de cada uno en `docs/PENDIENTES_BACKEND_INFRA.md` punto 12 — incluye un hallazgo real de paso: fabricar el de "1 mes en mora" con fechas exactas (ni un día más viejo) lo dejó en `active` en vez de `in_arrears`, lo que reveló el comportamiento documentado en el punto 10 del mismo archivo (un mes se cuenta como adeudado solo pasado el día exacto del vencimiento, no ese mismo día).
+
+### 5) Explicado: dónde ver la parte contable de tienda y contratos
+
+No es un hueco — el desglose ya existe, solo no es obvio dónde está. Se le mostró al cliente en vivo: `SessionReportPanel` (dentro de Caja, en "Cerrar caja" o en el acta de cualquier cierre ya hecho) desglosa cada movimiento por módulo (Empeño/Tienda/General) × concepto × medio de pago — es exactamente la separación contable que pide `docs/pending/CONTEXTO.md` §3. Falta una pantalla de "Reportes" que junte esto con el dashboard sin tener que pasar por un cierre — mismo pendiente de producto ya anotado (punto 8 de `docs/PENDIENTES_BACKEND_INFRA.md`), no se construyó nada nuevo hasta no definir el alcance con el cliente.
+
+### Nuevo documento: `docs/PENDIENTES_BACKEND_INFRA.md`
+
+Pedido explícito del cliente: un archivo aparte (no mezclado con `IMPLEMENTATION.md`) con todo lo que necesita revisión de backend/arquitectura/infraestructura — reúne los puntos 1 y 4 de arriba más los pendientes ya conocidos de revisiones anteriores (`CompanyOut` sin suscripción, `company/settings`, PDFs, `reports/series`, verificación de `LAST_ADMIN_SAFEGUARD`/guard de plataforma) en un solo lugar, con qué se verificó y por qué importa para el negocio, no solo técnicamente.
+
+### Comandos de verificación
+
+```bash
+npm run lint && npm run typecheck && npm run test && npm run build   # todo en verde (54 tests)
+npm run dev   # /contratos/$id de un contrato "al día": Registrar abono → directo a capital
+```
+
 ## Revisión post-paso-10 — huecos reales contra `docs/pending/` (completo)
 
 El cliente agregó `docs/pending/` (`CONTEXTO.md`, `CLAUDE.md` y `ARCHITECTURE.md` del BACKEND, `API_GUIDE.md` real) y señaló 10 puntos que sentía faltantes. Comparar contra esos documentos (no solo contra el `CLAUDE.md` del front, que resultó estar incompleto en varios puntos) encontró: 5 campos de foto reales en la API nunca conectados, un documento imprimible de contrato que `DESIGN_SYSTEM.md` ya pedía desde el paso 1 y nunca se construyó, una ficha de cliente que se quedó pendiente desde el paso 4, un buscador de contratos que nunca se hizo, y — el hallazgo más serio — **"Rematar" estaba roto de verdad, no solo sin probar**: la condición dependía de un valor de `status` que el backend nunca manda.
