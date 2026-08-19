@@ -1,5 +1,5 @@
 import { subtractMoney, sumMoney } from '@/lib/money'
-import type { SessionReport } from '@/features/cashbox/api'
+import type { SessionReport, Expense, ExpenseCategory } from '@/features/cashbox/api'
 
 type BreakdownLine = SessionReport['lines'][number]
 type Module = 'pawn' | 'store' | 'general'
@@ -46,6 +46,8 @@ export interface FinancialSummary {
   flujoSalidas: string
   /** Ingreso operativo por módulo (intereses del empeño vs ventas de tienda) — base del % Empeño/Tienda. */
   ingresosOperativosByModule: Record<Module, string>
+  /** Ingreso OPERATIVO por medio de pago — NO todo lo que entra (eso incluiría capital abonado, inflando el total frente a `ingresosOperativos`). */
+  ingresosOperativosByPaymentMethod: { paymentMethod: string; total: string }[]
   /** Desglose módulo×concepto×medio×dirección, sumado a través de TODAS las sesiones del rango (no una fila por sesión). */
   totalsByConcept: ConceptTotal[]
   /** Ingreso/gasto OPERATIVO por día de sesión, para la gráfica de tendencia (mismo criterio que los KPIs de arriba, no flujo de caja crudo). */
@@ -64,10 +66,11 @@ export interface FinancialSummary {
  * (desembolsos/abonos) — mezclarlos daría una "utilidad" que en realidad
  * mide cuánto se prestó, no cuánto ganó el negocio.
  */
-export function aggregateFinancialSummary(sessions: { sessionDate: string; report: SessionReport }[]): FinancialSummary {
+export function aggregateFinancialSummary(sessions: { sessionDate: string; report: SessionReport }[], moduleFilter?: Module): FinancialSummary {
   const conceptMap = new Map<string, ConceptTotal>()
   const dayMap = new Map<string, { ingresos: string; gastos: string }>()
   const moduleRevenue: Record<Module, string> = { pawn: '0.00', store: '0.00', general: '0.00' }
+  const paymentMethodRevenue = new Map<string, string>()
 
   let ingresosOperativos = '0.00'
   let gastosOperativos = '0.00'
@@ -79,6 +82,7 @@ export function aggregateFinancialSummary(sessions: { sessionDate: string; repor
   let flujoSalidas = '0.00'
 
   function addLine(sessionDate: string, line: BreakdownLine) {
+    if (moduleFilter && line.module !== moduleFilter) return
     const key = `${line.module}|${line.concept}|${line.payment_method}|${line.direction}`
     const existing = conceptMap.get(key)
     conceptMap.set(key, {
@@ -100,6 +104,7 @@ export function aggregateFinancialSummary(sessions: { sessionDate: string; repor
       day.ingresos = sumMoney(day.ingresos, line.total)
       ingresosOperativos = sumMoney(ingresosOperativos, line.total)
       if (line.module in moduleRevenue) moduleRevenue[line.module as Module] = sumMoney(moduleRevenue[line.module as Module], line.total)
+      paymentMethodRevenue.set(line.payment_method, sumMoney(paymentMethodRevenue.get(line.payment_method), line.total))
     } else if (isExpense) {
       day.gastos = sumMoney(day.gastos, line.total)
       gastosOperativos = sumMoney(gastosOperativos, line.total)
@@ -133,6 +138,7 @@ export function aggregateFinancialSummary(sessions: { sessionDate: string; repor
     flujoEntradas,
     flujoSalidas,
     ingresosOperativosByModule: moduleRevenue,
+    ingresosOperativosByPaymentMethod: [...paymentMethodRevenue.entries()].map(([paymentMethod, total]) => ({ paymentMethod, total })),
     totalsByConcept: [...conceptMap.values()],
     byDay,
   }
@@ -154,4 +160,70 @@ export function daysBetweenDateOnly(from: string, to: string): number {
   const fromUtc = Date.UTC(Number(fy), Number(fm) - 1, Number(fd))
   const toUtc = Date.UTC(Number(ty), Number(tm) - 1, Number(td))
   return Math.round((toUtc - fromUtc) / 86_400_000) + 1
+}
+
+function addDaysToDateOnly(dateOnly: string, days: number): string {
+  const [, y, m, d] = DATE_ONLY_RE.exec(dateOnly) ?? []
+  if (!y) throw new Error(`addDaysToDateOnly: se esperaba "yyyy-MM-dd", llegó ${JSON.stringify(dateOnly)}`)
+  const utc = Date.UTC(Number(y), Number(m) - 1, Number(d)) + days * 86_400_000
+  const result = new Date(utc)
+  return `${result.getUTCFullYear()}-${String(result.getUTCMonth() + 1).padStart(2, '0')}-${String(result.getUTCDate()).padStart(2, '0')}`
+}
+
+/**
+ * El rango de igual duración, inmediatamente anterior a `range` — para la
+ * comparación "vs período anterior" (§2 del plan v2). `daysBetweenDateOnly`
+ * ya es inclusivo (mismo día = 1), así que el rango previo empieza el día
+ * anterior a `range.from` y retrocede la misma cantidad de días.
+ */
+export function previousRangeFor(range: { from: string; to: string }): { from: string; to: string } {
+  const spanDays = daysBetweenDateOnly(range.from, range.to)
+  const to = addDaysToDateOnly(range.from, -1)
+  const from = addDaysToDateOnly(to, -(spanDays - 1))
+  return { from, to }
+}
+
+export interface Delta {
+  /** `null` si no hay base de comparación (período anterior en 0) — se muestra "—", no un % sin sentido. */
+  pct: number | null
+  /** Si el cambio es una buena noticia para el negocio — sube ingresos = favorable, sube gastos = NO favorable. Se decide por KPI, no se asume. */
+  favorable: boolean
+}
+
+/**
+ * % de cambio de PRESENTACIÓN entre dos montos decimales — no decide nada
+ * de negocio, solo compara dos totales que el backend ya calculó.
+ */
+export function computeDelta(current: string, previous: string, favorableDirection: 'up' | 'down' = 'up'): Delta {
+  const currentAmount = Number(current)
+  const previousAmount = Number(previous)
+  if (previousAmount === 0) return { pct: null, favorable: currentAmount >= 0 }
+  const pct = ((currentAmount - previousAmount) / Math.abs(previousAmount)) * 100
+  const wentUp = currentAmount > previousAmount
+  const favorable = pct === 0 ? true : favorableDirection === 'up' ? wentUp : !wentUp
+  return { pct, favorable }
+}
+
+export interface CategoryExpenseTotal {
+  categoryId: string
+  name: string
+  total: string
+}
+
+/**
+ * Gastos agrupados por categoría (`ExpenseOut.category_id`) — dimensión que
+ * NO viene en `BreakdownLineOut` (ese solo trae módulo×concepto×medio), hace
+ * falta `GET /cashbox/expenses` por sesión aparte (ver `features/reports/api.ts`).
+ * Pura, testeable — resuelve el nombre contra `GET /cashbox/expense-categories`
+ * (ya cacheado por `useExpenseCategories`), cae en "Sin categoría" si no matchea.
+ */
+export function aggregateExpensesByCategory(expenses: Expense[], categories: ExpenseCategory[]): CategoryExpenseTotal[] {
+  const nameById = new Map(categories.map((c) => [c.id, c.name]))
+  const totals = new Map<string, string>()
+  for (const expense of expenses) {
+    totals.set(expense.category_id, sumMoney(totals.get(expense.category_id), expense.amount))
+  }
+  return [...totals.entries()]
+    .map(([categoryId, total]) => ({ categoryId, name: nameById.get(categoryId) ?? 'Sin categoría', total }))
+    .sort((a, b) => Number(b.total) - Number(a.total))
 }

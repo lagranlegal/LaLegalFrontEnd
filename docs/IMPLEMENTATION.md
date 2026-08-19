@@ -2,6 +2,57 @@
 
 > Registro vivo de qué existe en el código, cómo está armado y por qué se tomó cada decisión — para que cualquiera (humano o Claude Code) pueda retomar el proyecto sin releer todo el historial de commits. Se actualiza en cada paso del "Orden de implementación" de `CLAUDE.md`. No repite lo que ya está en `ARCHITECTURE.md`/`DESIGN_SYSTEM.md` (el qué-debería-ser); esto es el qué-hay-hoy y las decisiones concretas tomadas al construirlo.
 
+## Reportes v2 — filtro por módulo, comparación de período, gastos por categoría, rankings históricos (19/08/2026)
+
+El cliente probó `/reportes` (v1, sección siguiente) y pidió, con una captura de referencia de un software de contabilidad: estética más moderna, un filtro para ver solo Tienda o solo Empeño, más índices (gastos por categoría, prendas más vendidas, categorías más movidas), y "un análisis financiero como un profesional contable" (comparación contra el período anterior).
+
+**Filtro por módulo, instantáneo.** Se separó la capa de red de la capa de agregación: `useRawSessions(range)` (renombre de `useFinancialSummary` v1) solo trae datos crudos; `aggregateFinancialSummary(sessions, moduleFilter?)` (pura) hace la suma. La página guarda el filtro en estado y llama la función pura vía `useMemo` — cambiar entre Todo/Empeño/Tienda no dispara ninguna request nueva, verificado en vivo (0 requests de red al cambiar de pestaña, confirmado contando requests en el `page.on('request')` de la prueba Playwright).
+
+**Comparación vs período anterior.** `previousRangeFor(range)` calcula el rango inmediatamente anterior de igual duración; se pide con el mismo `useRawSessions` una segunda vez y se agrega igual. `computeDelta(current, previous, direction)` da el % de cambio — `direction: 'up'|'down'` decide qué significa "favorable" por KPI (ingresos subiendo = verde, gastos subiendo = rojo, nunca "arriba siempre es bueno"). `KpiCard` ganó una prop `delta` opcional para mostrarlo.
+
+**Gastos por categoría.** `BreakdownLineOut` (usado en v1) no trae `category_id` — hace falta `GET /cashbox/expenses?session_id=` por cada sesión ya resuelta (mismo N+1 acotado por el tope de 90 días, ahora ~2 requests/sesión). `useExpensesByCategory` recibe las sesiones YA resueltas por `useRawSessions` como argumento, para no duplicar el fetch de `GET /reports/closings`.
+
+**Prendas más vendidas / categorías más movidas — histórico completo, no el rango elegido.** `GET /sales` y `GET /contracts` no tienen filtro de fecha — **se le preguntó explícitamente al cliente** cómo prefería resolver esto (opciones: solo histórico completo rotulado como tal / best-effort acotado al rango con aviso de que puede estar incompleto / no construirlo). Eligió histórico completo. `useAllTimeItemSales` trae TODAS las páginas de `GET /sales` y `GET /inventory/items` (tope defensivo de 50 páginas cada uno vía el nuevo `fetchAllPages` genérico, `lib/api/pagination.ts` — promovido ahí porque ya era el tercer "traer todo" del código, además de `fetchAllClosingsInRange`). `aggregateItemRanking` arma un mapa `item_id → {nombre, categoría}` desde el catálogo completo y lo resuelve contra TODAS las líneas de venta sin N+1 por artículo (el catálogo de artículos es mucho más chico que el volumen histórico de ventas).
+
+### Bug real encontrado y corregido probando en vivo: dos cards no respetaban el filtro de módulo
+
+Al cambiar a "Empeño" en el navegador real: la card "Gastos por categoría" seguía mostrando los MISMOS gastos que en "Todo" (no se filtraba en absoluto — `useExpensesByCategory` nunca recibía el `moduleFilter`), y la card "Medio de pago (ingresos)" mostraba $495.000 cuando el KPI "Ingresos operativos" de la misma pantalla decía $110.000 — la donut sumaba TODO lo que entra (`direction: 'in'`), incluyendo `capital_payment`, el mismo error de modelado ya corregido una vez en v1 pero reintroducido en un lugar nuevo. Se corrigió antes de dar el trabajo por terminado:
+- `filteredExpenses` en la página filtra por `expense.module === moduleFilter` antes de agregar.
+- `aggregateFinancialSummary` ahora calcula `ingresosOperativosByPaymentMethod` (solo `interest_payment`+`sale`, igual que `ingresosOperativos`) como campo propio, en vez de que la página derive el desglose por medio de pago sumando `totalsByConcept` a mano sin filtrar por concepto.
+
+Verificado en vivo, dos veces (antes y después del fix), captura de pantalla en las 3 pestañas (Todo/Empeño/Tienda): bajo "Tienda", el desglose de medio de pago ($450.000) cuadra exactamente con "Ventas" e "Ingresos operativos"; bajo "Empeño", "Gastos por categoría" muestra correctamente "Sin datos en este rango todavía" (los gastos reales de la empresa demo son `module: 'general'`, no `pawn`).
+
+### Rediseño visual
+
+- `DailyTrendChart`: `BarChart` → `AreaChart` con relleno degradado (`<linearGradient>`, `type="monotone"`) — mismo dato, curvas suaves en vez de barras.
+- `DonutChart` (nuevo, `components/shared/charts/`): wrapper de Recharts `PieChart`/`Pie` con `innerRadius`, colores `--chart-3/4/5` (reservados en `tokens.css` desde el día 1 como "series secundarias, dona", sin ningún consumidor hasta ahora) + `--brand-500`/`--text-muted` si hay más de 3 segmentos. Dos consumidores reales: gastos por categoría, medio de pago.
+- Tabs de módulo con el mismo patrón de pill-buttons ya usado en `InventoryPage.tsx` (`ITEM_STATUS_TABS`), no un componente nuevo.
+
+### Estructura nueva
+
+```
+src/lib/api/pagination.ts            # + fetchAllPages<T> genérico (3er consumidor real: closings, ventas, artículos)
+src/features/reports/
+  aggregate.ts                        # + moduleFilter, computeDelta, previousRangeFor, aggregateExpensesByCategory, ingresosOperativosByPaymentMethod
+  rankings.ts                         # NUEVO — aggregateItemRanking (pura)
+  api.ts                              # useRawSessions (renombre), + useExpensesByCategory, + useAllTimeItemSales
+  pages/ReportesPage.tsx              # tabs de módulo, deltas, donas, sección de histórico
+src/components/shared/
+  KpiCard.tsx                         # + prop opcional `delta`
+  charts/DailyTrendChart.tsx          # BarChart → AreaChart con gradiente
+  charts/DonutChart.tsx               # NUEVO
+tests/reports-aggregate.test.ts       # + moduleFilter, computeDelta, previousRangeFor, aggregateExpensesByCategory, ingresosOperativosByPaymentMethod
+tests/reports-rankings.test.ts        # NUEVO
+```
+
+### Comandos de verificación
+
+```bash
+npm run lint && npm run typecheck && npm run test && npm run build   # todo en verde (81 tests)
+npm run dev   # /reportes: cambiar Todo/Empeño/Tienda (0 requests nuevas), confirmar que
+              # Medio de pago y Gastos por categoría cuadran con los KPIs bajo cada filtro
+```
+
 ## Reportes — centro de información financiera (19/08/2026)
 
 El cliente pidió explícitamente ir más allá de "reportes" sueltos: información financiera **centralizada e interactiva** por rango de fechas (o un día específico) — intereses cobrados, ingresos vs gastos, capital abonado, ventas, cartera actual, separación Empeño/Tienda con su % de participación. "Reportes" era hasta ahora un ítem de sidebar deshabilitado (se asumía bloqueado por backend, ver `docs/PENDIENTES_BACKEND_INFRA.md` puntos 8/13/18 previos a esta revisión).

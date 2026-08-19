@@ -61,6 +61,17 @@ Los 3 de prioridad alta ya están **RESUELTOS** en el backend (verificado en API
 - ✅ **Logout por inactividad**, construido: 6 horas (decidido 15/08/2026), `lib/auth/inactivity.ts`.
 - ❌ **i18n-light: NO construido.** No existe un patrón `strings.ts` por feature — los textos siguen incrustados directo en el JSX de cada componente. Sigue siendo válido como idea si el SaaS algún día crece a otro idioma, pero no se invirtió en esto todavía.
 
+### Propuestas para "Reportes" (19/08/2026, tras el rediseño v2) — no construidas, para priorizar después
+
+El cliente pidió explícitamente ideas de qué más agregar, dado que `/reportes` centraliza toda la información financiera. Ninguna de estas se construyó en esta ronda:
+
+- **Alertas automáticas en la propia pantalla** — ej. "3 contratos entran en mora esta semana", "el gasto en Arriendo subió 40% vs el mes pasado" (ya hay el dato para esto último: `computeDelta` en `features/reports/aggregate.ts`, solo falta un umbral y dónde mostrarlo).
+- **Exportar el reporte del rango a Excel/CSV** — útil para pasarle el corte al contador real de la compraventa, no solo mirarlo en pantalla.
+- **Proyección simple de flujo de caja** — contratos activos ya tienen `due_date`; se podría proyectar cuánto capital+interés vence en los próximos N días.
+- **Ranking de vendedores/operadores** (quién registró más ventas o abonos) — necesita confirmar si `SaleOut`/`payments` exponen quién los creó; no verificado todavía.
+- **Comparación año contra año**, no solo contra el período inmediatamente anterior (`previousRangeFor` ya generaliza a cualquier rango, así que técnicamente es una extensión menor, no un rediseño).
+- **Rotación de inventario** — artículos `available` hace más de N días sin venderse (dato ya disponible en `ItemOut.entry_date`, solo falta el cálculo y la pantalla).
+
 ### Decisiones cerradas con el cliente (15/08/2026)
 1. **Venta sin cliente: SÍ** — cliente opcional, "Consumidor final" por defecto en el POS (delegado por el cliente al criterio técnico; coincide con la recomendación previa de CONTEXTO §6).
 2. **Logout por inactividad: 6 horas** (constante central `INACTIVITY_LOGOUT_MS`, ajustable).

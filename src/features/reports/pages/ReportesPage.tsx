@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from 'react'
+import { useMemo, useState, type ReactNode } from 'react'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { KpiCard, KpiRow } from '@/components/shared/KpiCard'
 import { Money } from '@/components/shared/Money'
@@ -7,12 +7,25 @@ import { DateRangePicker, type DateRangeValue } from '@/components/shared/DateRa
 import { Button } from '@/components/ui/button'
 import { ContractsStatusChart, type StatusDatum } from '@/components/shared/charts/ContractsStatusChart'
 import { DailyTrendChart } from '@/components/shared/charts/DailyTrendChart'
+import { DonutChart, type DonutDatum } from '@/components/shared/charts/DonutChart'
 import { MODULE_LABELS, conceptLabel } from '@/lib/modules'
 import { PAYMENT_METHOD_LABELS } from '@/lib/paymentMethods'
 import { todayBogota } from '@/lib/dates'
-import { useFinancialSummary, useCarteraActual, MAX_RANGE_DAYS } from '@/features/reports/api'
-import { daysBetweenDateOnly } from '@/features/reports/aggregate'
+import { cn } from '@/lib/utils'
+import { useCategories } from '@/lib/catalogs/categories'
+import { useExpenseCategories } from '@/features/cashbox/api'
+import { useRawSessions, useCarteraActual, useExpensesByCategory, useAllTimeItemSales, MAX_RANGE_DAYS } from '@/features/reports/api'
+import { aggregateFinancialSummary, aggregateExpensesByCategory, computeDelta, daysBetweenDateOnly, previousRangeFor } from '@/features/reports/aggregate'
+import { aggregateItemRanking } from '@/features/reports/rankings'
 import { ModuleSplitBar } from '@/features/reports/components/ModuleSplitBar'
+
+type ModuleFilter = 'all' | 'pawn' | 'store'
+
+const MODULE_TABS: { value: ModuleFilter; label: string }[] = [
+  { value: 'all', label: 'Todo' },
+  { value: 'pawn', label: 'Empeño' },
+  { value: 'store', label: 'Tienda' },
+]
 
 function defaultRange(): DateRangeValue {
   const today = todayBogota()
@@ -36,26 +49,107 @@ function ReportesSkeleton() {
   )
 }
 
-function CardShell({ title, children }: { title: string; children: ReactNode }) {
+function CardShell({ title, subtitle, children }: { title: string; subtitle?: string; children: ReactNode }) {
   return (
     <div className="rounded-card border border-border bg-card p-card shadow-card">
-      <h2 className="mb-3 text-sm font-medium text-foreground">{title}</h2>
+      <div className="mb-3 flex items-center justify-between gap-2">
+        <h2 className="text-sm font-medium text-foreground">{title}</h2>
+        {subtitle && <span className="text-xs text-muted-foreground">{subtitle}</span>}
+      </div>
       {children}
+    </div>
+  )
+}
+
+function RankingList({ rows, unit }: { rows: { key: string; label: string; quantity: number; revenue: string }[]; unit: string }) {
+  if (rows.length === 0) return <p className="text-sm text-muted-foreground">Sin ventas registradas todavía.</p>
+  const max = rows[0]?.quantity ?? 1
+  return (
+    <div className="flex flex-col gap-3">
+      {rows.map((row) => (
+        <div key={row.key} className="flex flex-col gap-1">
+          <div className="flex items-center justify-between gap-2 text-sm">
+            <span className="text-foreground">{row.label}</span>
+            <span className="tnum text-muted-foreground">
+              {row.quantity} {unit}
+            </span>
+          </div>
+          <div className="h-1.5 w-full overflow-hidden rounded-pill bg-border">
+            <div className="h-full rounded-pill bg-primary" style={{ width: `${Math.round((row.quantity / max) * 100)}%` }} />
+          </div>
+        </div>
+      ))}
     </div>
   )
 }
 
 export function ReportesPage() {
   const [range, setRange] = useState<DateRangeValue | null>(defaultRange())
+  const [moduleFilter, setModuleFilter] = useState<ModuleFilter>('all')
   const rangeDays = range ? daysBetweenDateOnly(range.from, range.to) : 0
   const rangeTooWide = !!range && rangeDays > MAX_RANGE_DAYS
+  const previousRange = range && !rangeTooWide ? previousRangeFor(range) : null
 
-  const { data, isPending, isError, refetch } = useFinancialSummary(range)
+  const { data: sessions, isPending, isError, refetch } = useRawSessions(range)
+  const { data: previousSessions } = useRawSessions(previousRange)
   const { data: cartera } = useCarteraActual()
+  const { data: expenses } = useExpensesByCategory(sessions)
+  const { data: expenseCategories } = useExpenseCategories()
+  const { data: allTimeSales } = useAllTimeItemSales()
+  const { data: categories } = useCategories()
+
+  const moduleParam = moduleFilter === 'all' ? undefined : moduleFilter
+  const summary = useMemo(() => aggregateFinancialSummary(sessions ?? [], moduleParam), [sessions, moduleParam])
+  const previousSummary = useMemo(() => (previousSessions ? aggregateFinancialSummary(previousSessions, moduleParam) : null), [previousSessions, moduleParam])
+
+  // Filtrado por el mismo módulo que el resto de la página — `ExpenseOut.module`
+  // usa el mismo enum pawn|store|general que `BreakdownLineOut.module`.
+  const filteredExpenses = useMemo(() => (moduleParam ? expenses?.filter((e) => e.module === moduleParam) : expenses), [expenses, moduleParam])
+  const expensesByCategory = useMemo(
+    () => (filteredExpenses && expenseCategories ? aggregateExpensesByCategory(filteredExpenses, expenseCategories) : []),
+    [filteredExpenses, expenseCategories],
+  )
+  const ranking = useMemo(
+    () => (allTimeSales && categories ? aggregateItemRanking(allTimeSales.sales, allTimeSales.items, categories) : { topItems: [], topCategories: [] }),
+    [allTimeSales, categories],
+  )
+
+  // Ingreso OPERATIVO por medio de pago (ya filtrado por módulo dentro de
+  // `aggregateFinancialSummary`) — NO todo lo que entra, eso incluiría
+  // capital abonado y no cuadraría con el KPI "Ingresos operativos" de arriba.
+  const paymentMethodDonut: DonutDatum[] = summary.ingresosOperativosByPaymentMethod.map((p) => ({
+    key: p.paymentMethod,
+    label: PAYMENT_METHOD_LABELS[p.paymentMethod as keyof typeof PAYMENT_METHOD_LABELS] ?? p.paymentMethod,
+    value: Number(p.total),
+  }))
+
+  const expenseDonut: DonutDatum[] = expensesByCategory.map((e) => ({ key: e.categoryId, label: e.name, value: Number(e.total) }))
+
+  const delta = (current: string, previous: string | undefined, direction: 'up' | 'down') => (previous === undefined ? undefined : computeDelta(current, previous, direction))
+
+  const showEmpeñoTiendaSplit = moduleFilter === 'all'
+  const showCapital = moduleFilter !== 'store'
+  const showCartera = moduleFilter !== 'store'
 
   return (
     <div className="flex flex-col gap-6">
       <PageHeader title="Reportes" description="Información financiera del período — intereses, capital, ventas y gastos." actions={<DateRangePicker value={range} onChange={setRange} />} />
+
+      <div className="flex flex-wrap gap-2">
+        {MODULE_TABS.map((tab) => (
+          <button
+            key={tab.value}
+            type="button"
+            onClick={() => setModuleFilter(tab.value)}
+            className={cn(
+              'rounded-pill px-3 py-1.5 text-sm font-medium transition-colors',
+              moduleFilter === tab.value ? 'bg-primary text-primary-foreground' : 'bg-background text-muted-foreground hover:bg-accent',
+            )}
+          >
+            {tab.label}
+          </button>
+        ))}
+      </div>
 
       {!range ? (
         <div className="rounded-card border border-border bg-card shadow-card">
@@ -77,61 +171,92 @@ export function ReportesPage() {
             Reintentar
           </Button>
         </div>
-      ) : !data || data.sessionCount === 0 ? (
+      ) : !sessions || sessions.length === 0 ? (
         <div className="rounded-card border border-border bg-card shadow-card">
           <EmptyState title="No hay cierres de caja en este rango" description="El reporte se arma a partir de las sesiones de caja ya cerradas." />
         </div>
       ) : (
         <>
           <KpiRow>
-            <KpiCard label="Ingresos operativos" value={<Money value={data.ingresosOperativos} tone="in" />} tone="success" />
-            <KpiCard label="Gastos operativos" value={<Money value={data.gastosOperativos} tone="out" />} tone="danger" />
-            <KpiCard label="Utilidad operativa" value={<Money value={data.utilidadOperativa} />} tone={Number(data.utilidadOperativa) < 0 ? 'danger' : 'success'} />
-            <KpiCard label="Intereses cobrados" value={<Money value={data.intereses} />} />
-            <KpiCard label="Ventas" value={<Money value={data.ventas} />} tone="brand" />
+            <KpiCard
+              label="Ingresos operativos"
+              value={<Money value={summary.ingresosOperativos} tone="in" />}
+              tone="success"
+              delta={delta(summary.ingresosOperativos, previousSummary?.ingresosOperativos, 'up')}
+            />
+            <KpiCard
+              label="Gastos operativos"
+              value={<Money value={summary.gastosOperativos} tone="out" />}
+              tone="danger"
+              delta={delta(summary.gastosOperativos, previousSummary?.gastosOperativos, 'down')}
+            />
+            <KpiCard
+              label="Utilidad operativa"
+              value={<Money value={summary.utilidadOperativa} />}
+              tone={Number(summary.utilidadOperativa) < 0 ? 'danger' : 'success'}
+              delta={delta(summary.utilidadOperativa, previousSummary?.utilidadOperativa, 'up')}
+            />
+            <KpiCard label="Intereses cobrados" value={<Money value={summary.intereses} />} delta={delta(summary.intereses, previousSummary?.intereses, 'up')} />
+            <KpiCard label="Ventas" value={<Money value={summary.ventas} />} tone="brand" delta={delta(summary.ventas, previousSummary?.ventas, 'up')} />
           </KpiRow>
 
-          <div className="rounded-card border border-border bg-card p-card shadow-card">
-            <div className="mb-3 flex items-center justify-between">
-              <h2 className="text-sm font-medium text-foreground">Movimiento de capital (cartera de empeño)</h2>
-              <span className="text-xs text-muted-foreground">No es ingreso ni gasto — prestar o recuperar capital no cambia la utilidad.</span>
+          {showCapital && (
+            <div className="rounded-card border border-border bg-card p-card shadow-card">
+              <div className="mb-3 flex items-center justify-between">
+                <h2 className="text-sm font-medium text-foreground">Movimiento de capital (cartera de empeño)</h2>
+                <span className="text-xs text-muted-foreground">No es ingreso ni gasto — prestar o recuperar capital no cambia la utilidad.</span>
+              </div>
+              <div className="grid grid-cols-2 gap-4 sm:grid-cols-2">
+                <KpiCard label="Capital desembolsado (préstamos nuevos)" value={<Money value={summary.capitalDesembolsado} tone="out" />} />
+                <KpiCard label="Capital abonado (recuperado)" value={<Money value={summary.capitalAbonado} tone="in" />} />
+              </div>
             </div>
-            <div className="grid grid-cols-2 gap-4 sm:grid-cols-2">
-              <KpiCard label="Capital desembolsado (préstamos nuevos)" value={<Money value={data.capitalDesembolsado} tone="out" />} />
-              <KpiCard label="Capital abonado (recuperado)" value={<Money value={data.capitalAbonado} tone="in" />} />
-            </div>
-          </div>
+          )}
 
-          <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-            <CardShell title="Empeño vs Tienda — participación en ingresos operativos">
-              <ModuleSplitBar pawn={data.ingresosOperativosByModule.pawn} store={data.ingresosOperativosByModule.store} />
-            </CardShell>
-
-            <CardShell title="Cartera actual">
-              <p className="mb-3 text-xs text-muted-foreground">Corte de hoy — no depende del rango elegido arriba.</p>
-              {cartera && (
-                <>
-                  <p className="tnum mb-3 text-2xl font-semibold text-foreground">
-                    <Money value={cartera.contracts.capital_outstanding} />
-                  </p>
-                  <ContractsStatusChart
-                    data={
-                      [
-                        { key: 'active', label: 'Vigentes', count: cartera.contracts.active_count, color: 'var(--status-active)' },
-                        { key: 'in_arrears', label: 'En mora', count: cartera.contracts.in_arrears_count, color: 'var(--status-arrears)' },
-                        { key: 'in_extension', label: 'Prórroga', count: cartera.contracts.in_extension_count, color: 'var(--status-extension)' },
-                        { key: 'auctioned', label: 'Rematados', count: cartera.contracts.auctioned_count, color: 'var(--status-auctioned)' },
-                      ] satisfies StatusDatum[]
-                    }
-                  />
-                </>
+          {(showEmpeñoTiendaSplit || showCartera) && (
+            <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+              {showEmpeñoTiendaSplit && (
+                <CardShell title="Empeño vs Tienda — participación en ingresos operativos">
+                  <ModuleSplitBar pawn={summary.ingresosOperativosByModule.pawn} store={summary.ingresosOperativosByModule.store} />
+                </CardShell>
               )}
-            </CardShell>
-          </div>
+
+              {showCartera && (
+                <CardShell title="Cartera actual" subtitle="Corte de hoy">
+                  {cartera && (
+                    <>
+                      <p className="tnum mb-3 text-2xl font-semibold text-foreground">
+                        <Money value={cartera.contracts.capital_outstanding} />
+                      </p>
+                      <ContractsStatusChart
+                        data={
+                          [
+                            { key: 'active', label: 'Vigentes', count: cartera.contracts.active_count, color: 'var(--status-active)' },
+                            { key: 'in_arrears', label: 'En mora', count: cartera.contracts.in_arrears_count, color: 'var(--status-arrears)' },
+                            { key: 'in_extension', label: 'Prórroga', count: cartera.contracts.in_extension_count, color: 'var(--status-extension)' },
+                            { key: 'auctioned', label: 'Rematados', count: cartera.contracts.auctioned_count, color: 'var(--status-auctioned)' },
+                          ] satisfies StatusDatum[]
+                        }
+                      />
+                    </>
+                  )}
+                </CardShell>
+              )}
+            </div>
+          )}
 
           <CardShell title="Tendencia diaria — ingresos vs gastos operativos">
-            <DailyTrendChart data={data.byDay} />
+            <DailyTrendChart data={summary.byDay} />
           </CardShell>
+
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+            <CardShell title="Gastos por categoría">
+              <DonutChart data={expenseDonut} />
+            </CardShell>
+            <CardShell title="Medio de pago (ingresos)">
+              <DonutChart data={paymentMethodDonut} />
+            </CardShell>
+          </div>
 
           <CardShell title="Desglose por módulo, concepto y medio de pago">
             <div className="overflow-x-auto rounded-input border border-border">
@@ -145,7 +270,7 @@ export function ReportesPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border">
-                  {data.totalsByConcept.map((line, index) => (
+                  {summary.totalsByConcept.map((line, index) => (
                     <tr key={index}>
                       <td className="px-3 py-2 text-foreground">{MODULE_LABELS[line.module as keyof typeof MODULE_LABELS] ?? line.module}</td>
                       <td className="px-3 py-2 text-foreground">{conceptLabel(line.concept)}</td>
@@ -161,6 +286,19 @@ export function ReportesPage() {
           </CardShell>
         </>
       )}
+
+      <div className="flex flex-col gap-4">
+        <h2 className="text-lg font-semibold text-foreground">Histórico completo</h2>
+        <p className="-mt-3 text-xs text-muted-foreground">No depende del rango elegido arriba — GET /sales todavía no tiene filtro de fecha en el backend.</p>
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+          <CardShell title="Prendas más vendidas">
+            <RankingList rows={ranking.topItems.map((i) => ({ key: i.itemId, label: i.code ? `${i.name} (${i.code})` : i.name, quantity: i.quantity, revenue: i.revenue }))} unit="uds" />
+          </CardShell>
+          <CardShell title="Categorías más movidas">
+            <RankingList rows={ranking.topCategories.map((c) => ({ key: c.categoryId, label: c.name, quantity: c.quantity, revenue: c.revenue }))} unit="uds" />
+          </CardShell>
+        </div>
+      </div>
     </div>
   )
 }

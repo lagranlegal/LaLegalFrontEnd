@@ -28,3 +28,24 @@ export function useCursorInfiniteQuery<T>(queryKey: QueryKey, fetchPage: (cursor
     getNextPageParam: (lastPage) => lastPage.next_cursor ?? undefined,
   })
 }
+
+/**
+ * Trae TODAS las páginas de un listado por cursor de una sola vez, como
+ * array plano — para agregación (Reportes: cierres de un rango, ventas y
+ * artículos de todo el histórico), no para scroll infinito en una tabla
+ * (eso es `useCursorInfiniteQuery`). `maxPages` es un tope defensivo — sin
+ * uno, un catálogo que crece sin límite (ventas históricas) podría disparar
+ * un loop de cientos de requests silenciosamente.
+ */
+export async function fetchAllPages<T>(fetchPage: (cursor: string | undefined) => Promise<CursorPage<T>>, maxPages = 50): Promise<T[]> {
+  const items: T[] = []
+  let cursor: string | undefined
+  let pageCount = 0
+  do {
+    const page = await fetchPage(cursor)
+    items.push(...page.items)
+    cursor = page.next_cursor ?? undefined
+    pageCount += 1
+  } while (cursor && pageCount < maxPages)
+  return items
+}

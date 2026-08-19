@@ -1,5 +1,5 @@
 import { api, unwrap } from '@/lib/api/client'
-import { useCursorInfiniteQuery } from '@/lib/api/pagination'
+import { useCursorInfiniteQuery, fetchAllPages } from '@/lib/api/pagination'
 import type { components } from '@/types/api'
 import type { DateRangeValue } from '@/components/shared/DateRangePicker'
 
@@ -18,19 +18,7 @@ export function useClosingsHistory(range: DateRangeValue | null) {
   )
 }
 
-/**
- * Variante no-hook de lo de arriba: trae TODAS las páginas de una vez como
- * array plano, para agregación (features/reports), no para scroll infinito
- * en una tabla. No existe un `fetchAllPages` genérico en el repo — este
- * helper es específico a este caso, no una abstracción prematura.
- */
-export async function fetchAllClosingsInRange(range: DateRangeValue): Promise<ClosingHistory[]> {
-  const items: ClosingHistory[] = []
-  let cursor: string | undefined
-  do {
-    const page = await unwrap(api.GET('/api/v1/reports/closings', { params: { query: { from_date: range.from, to_date: range.to, cursor, limit: 100 } } }))
-    items.push(...page.items)
-    cursor = page.next_cursor ?? undefined
-  } while (cursor)
-  return items
+/** Variante no-hook de lo de arriba: todas las páginas de una vez, para agregación (features/reports), no scroll infinito. */
+export function fetchAllClosingsInRange(range: DateRangeValue): Promise<ClosingHistory[]> {
+  return fetchAllPages((cursor) => unwrap(api.GET('/api/v1/reports/closings', { params: { query: { from_date: range.from, to_date: range.to, cursor, limit: 100 } } })))
 }

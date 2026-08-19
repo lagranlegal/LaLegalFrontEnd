@@ -1,4 +1,4 @@
-import { Bar, BarChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
+import { Area, AreaChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import { formatCOP } from '@/lib/money'
 import { formatDate } from '@/lib/dates'
 
@@ -13,27 +13,38 @@ export interface DailyTrendDatum {
  * (colores desde tokens, nunca hex inline — docs/DESIGN_SYSTEM.md §5).
  * Ingresos/gastos por día — `--chart-1`/`--chart-2` ya están reservados
  * textualmente en `tokens.css` para exactamente esto ("serie principal /
- * ingresos" / "gastos / egresos"), sin uso hasta la pantalla de Reportes.
+ * ingresos" / "gastos / egresos"). Área con relleno degradado (curvas
+ * suaves, `type="monotone"`) en vez de barras — pedido explícito del
+ * cliente de un look más moderno, mismo dato de siempre.
  */
 export function DailyTrendChart({ data }: { data: DailyTrendDatum[] }) {
   const chartData = data.map((d) => ({ date: d.date, Ingresos: Number(d.ingresos), Gastos: Number(d.gastos) }))
   return (
     <div className="h-64 w-full">
       <ResponsiveContainer width="100%" height="100%">
-        <BarChart data={chartData} margin={{ top: 8, right: 8, left: 0, bottom: 8 }}>
+        <AreaChart data={chartData} margin={{ top: 8, right: 8, left: 0, bottom: 8 }}>
+          <defs>
+            <linearGradient id="reportesIngresosFill" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="5%" stopColor="var(--chart-1)" stopOpacity={0.35} />
+              <stop offset="95%" stopColor="var(--chart-1)" stopOpacity={0} />
+            </linearGradient>
+            <linearGradient id="reportesGastosFill" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="5%" stopColor="var(--chart-2)" stopOpacity={0.35} />
+              <stop offset="95%" stopColor="var(--chart-2)" stopOpacity={0} />
+            </linearGradient>
+          </defs>
           <CartesianGrid vertical={false} stroke="var(--border)" />
           <XAxis dataKey="date" tickFormatter={formatDate} tick={{ fontSize: 12, fill: 'var(--text-muted)' }} axisLine={false} tickLine={false} />
           <YAxis tickFormatter={(v: number) => formatCOP(v, { maximumFractionDigits: 0 })} tick={{ fontSize: 11, fill: 'var(--text-muted)' }} axisLine={false} tickLine={false} width={72} />
           <Tooltip
-            cursor={{ fill: 'var(--bg-app)' }}
             contentStyle={{ borderRadius: 'var(--radius-card)', borderColor: 'var(--border)', fontSize: 12 }}
             formatter={(value) => formatCOP(Number(value))}
             labelFormatter={(label) => formatDate(String(label))}
           />
           <Legend wrapperStyle={{ fontSize: 12 }} />
-          <Bar dataKey="Ingresos" fill="var(--chart-1)" radius={[4, 4, 0, 0]} />
-          <Bar dataKey="Gastos" fill="var(--chart-2)" radius={[4, 4, 0, 0]} />
-        </BarChart>
+          <Area type="monotone" dataKey="Ingresos" stroke="var(--chart-1)" strokeWidth={2} fill="url(#reportesIngresosFill)" dot={{ r: 3, fill: 'var(--chart-1)' }} />
+          <Area type="monotone" dataKey="Gastos" stroke="var(--chart-2)" strokeWidth={2} fill="url(#reportesGastosFill)" dot={{ r: 3, fill: 'var(--chart-2)' }} />
+        </AreaChart>
       </ResponsiveContainer>
     </div>
   )
