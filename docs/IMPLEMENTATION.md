@@ -952,7 +952,7 @@ Nada de esto está construido todavía — es el paso 2 ("Auth + shell") en adel
 - `AppShell`, guards de ruta, `usePermission`/`<Can>` (dependen de `/me`).
 - TanStack Router no está instalado — se agrega cuando se construyan las rutas reales.
 - React Hook Form + Zod, Zustand, Recharts, y el resto de `components/shared` (DataTable, AppDialog, MoneyInput, DatePicker, StatusBadge, etc.) — se agregan cuando la primera feature que los necesita se construya, no antes.
-- `docs/API_GUIDE.md` todavía no se copió del repo backend (pendiente, ver `README.md`).
+- `docs/pending/API_GUIDE.md` todavía no se copió del repo backend (pendiente, ver `README.md`).
 
 ### Comandos de verificación (todos en verde al cerrar el paso 1)
 

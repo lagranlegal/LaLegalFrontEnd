@@ -1,7 +1,7 @@
 # CLAUDE.md — Frontend Plataforma SaaS para Compraventas
 
 Guía de implementación para Claude Code. Leer COMPLETO antes de escribir código.
-Arquitectura técnica del front: `docs/ARCHITECTURE.md`. Sistema de diseño (referencia visual, tokens, componentes): `docs/DESIGN_SYSTEM.md`. Contrato de la API del backend: `docs/API_GUIDE.md` (copiado del repo backend — el shape exacto siempre sale de `/openapi.json`, ver abajo).
+Arquitectura técnica del front: `docs/ARCHITECTURE.md`. Sistema de diseño (referencia visual, tokens, componentes): `docs/DESIGN_SYSTEM.md`. Contrato de la API del backend: `docs/pending/API_GUIDE.md` (copiado del repo backend — el shape exacto siempre sale de `/openapi.json`, ver abajo).
 
 ## Qué es este proyecto
 
@@ -30,7 +30,7 @@ Frontend (React SPA) de la plataforma SaaS **multi-tenant** para compraventas (c
 
 ## Autenticación (el backend NO tiene login propio)
 
-`supabase-js` habla directo con Supabase Auth: `signInWithPassword`, refresh automático, `onAuthStateChange`. El `access_token` resultante va como `Bearer` al backend en cada request (lo inyecta el client central). Justo después del login (y en cada recarga): **`GET /api/v1/me`** para hidratar permisos, empresa, timezone, rol y suscripción antes de renderizar (regla 7). Signups públicos desactivados — el alta es SOLO por invitación (correo de Supabase → el usuario crea contraseña → login normal). El JWT trae `company_id` y `role_id` como claims. Super-admin de plataforma = claim `app_metadata.platform_role == "super_admin"` (rutas `/platform` separadas del resto). Flujo completo: `docs/API_GUIDE.md` §2.
+`supabase-js` habla directo con Supabase Auth: `signInWithPassword`, refresh automático, `onAuthStateChange`. El `access_token` resultante va como `Bearer` al backend en cada request (lo inyecta el client central). Justo después del login (y en cada recarga): **`GET /api/v1/me`** para hidratar permisos, empresa, timezone, rol y suscripción antes de renderizar (regla 7). Signups públicos desactivados — el alta es SOLO por invitación (correo de Supabase → el usuario crea contraseña → login normal). El JWT trae `company_id` y `role_id` como claims. Super-admin de plataforma = claim `app_metadata.platform_role == "super_admin"` (rutas `/platform` separadas del resto). Flujo completo: `docs/pending/API_GUIDE.md` §2.
 
 ## Estructura del proyecto (crear así)
 
@@ -53,7 +53,7 @@ src/
     sales/            # venta tipo POS, listado, anulación
     identity/         # usuarios, invitaciones, roles, matriz de permisos
     audit/
-    reports/          # histórico de cierres (dashboard vive en features/dashboard)
+    reports/          # /reportes — centro de información financiera: filtro por módulo, comparación de período, gastos por categoría, rankings (dashboard vive en features/dashboard)
     platform/         # panel super-admin: empresas, suscripciones, planes
   lib/
     api/              # client.ts (openapi-fetch + auth + errores), errors.ts, pagination.ts, idempotency.ts
@@ -66,7 +66,7 @@ src/
     globals.css
   types/
     api.ts            # GENERADO — no editar a mano
-tests/  (Vitest + Testing Library + MSW; e2e Playwright aparte)
+tests/  (Vitest + Testing Library + MSW — sin suite E2E de Playwright commiteada todavía, ver docs/ARCHITECTURE.md §10)
 ```
 
 Dentro de cada feature: `api.ts` (hooks de Query/mutations de ese módulo) → `components/` → `pages/`. Sin `services` duplicando al backend: la regla vive allá.
@@ -82,7 +82,7 @@ Dentro de cada feature: `api.ts` (hooks de Query/mutations de ese módulo) → `
 6. **cashbox completo:** gastos, cierre con desglose módulo×concepto×medio (vista previa desde `/report`), justificación obligatoria de descuadre (sin tolerancia), reapertura con motivo, histórico, **acta imprimible (print CSS)** mientras el backend no genera PDFs.
 7. **inventory + sales:** ingresos multi-línea, editar borrador, publicar (precio + ≥1 foto, muestra el código emitido), egresos; venta tipo POS (buscar artículo → carrito → medio de pago → vender), anulación con motivo, comprobante imprimible. `PhotoUploader` (docs/DESIGN_SYSTEM.md §3) sube al bucket `company-files` de Supabase Storage (privado, RLS por empresa) — configurado y verificado el 18/08/2026, ver `docs/STORAGE_PENDIENTE.md` §6.
 8. **identity:** usuarios, invitar, cambiar rol, des/reactivar, roles + matriz de permisos (checkboxes desde `GET /identity/permissions`), manejo explícito de `LAST_ADMIN_SAFEGUARD`.
-9. **audit + reports:** log con filtros combinables, histórico de cierres con rango de fechas.
+9. **audit + reports:** log con filtros combinables. `reports` (`/reportes`) terminó siendo más que "histórico de cierres" — es el centro de información financiera de la app: KPIs operativos (ingresos/gastos/utilidad, separados del movimiento de capital de la cartera de empeño), filtro Todo/Empeño/Tienda, comparación % vs período anterior, gastos por categoría y medio de pago en donas, tendencia diaria, y rankings de prendas más vendidas/categorías más movidas sobre el histórico completo. Detalle completo en `docs/IMPLEMENTATION.md`.
 10. **platform:** panel super-admin (crear empresa, suspender, extender suscripción) bajo `require super_admin`, layout propio.
 
 ## Definición de Hecho por PR

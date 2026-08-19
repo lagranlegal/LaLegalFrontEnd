@@ -1,33 +1,34 @@
-# Frontend Starter — Plataforma SaaS para Compraventas
+# Frontend — Plataforma SaaS para Compraventas
 
-Paquete inicial para arrancar el **frontend** en VS Code con Claude Code. Es el espejo del starter del backend (ya terminado y desplegado en dev: `https://compraventa-backend-dev.fly.dev`).
+Frontend (React SPA) de la plataforma SaaS **multi-tenant** para compraventas (casas de empeño + tienda). Consume la API del backend (FastAPI en Fly.io + Supabase, ya terminado y desplegado en dev: `https://compraventa-backend-dev.fly.dev`) — este repo no reimplementa ninguna regla de negocio, es capa de presentación + guía de usuario.
 
-## Contenido
+**Estado:** todos los módulos del plan original (auth, dashboard, clientes, catálogos, contratos + import de contratos preexistentes, caja, inventario, ventas, identidad, auditoría, reportes, panel de plataforma super-admin) están construidos y probados en vivo contra el backend dev. Detalle completo de qué existe y por qué en `docs/IMPLEMENTATION.md` (registro vivo, un bloque por sesión de trabajo).
+
+## Documentación
 
 | Archivo | Propósito |
 |---|---|
-| `CLAUDE.md` | Guía que Claude Code lee automáticamente: stack, reglas obligatorias del front, estructura, orden de implementación y DoD. |
+| `CLAUDE.md` | Guía de arquitectura/reglas que Claude Code lee automáticamente: stack, reglas obligatorias, estructura, orden de implementación (histórico) y Definición de Hecho. |
 | `docs/ARCHITECTURE.md` | Cómo está armado el front: capas, auth con Supabase, permisos, mapa de errores por código, dinero/fechas/paginación, seguridad, despliegue en Vercel. |
-| `docs/DESIGN_SYSTEM.md` | La referencia visual aprobada: tokens centralizados, inventario de componentes compartidos (modal único, calendario único, tabla única), protocolos de UX, gráficas. |
-| `docs/RECOMENDACIONES.md` | Cambios sugeridos al backend (`GET /me`, CORS…), decisiones tomadas y sugerencias de producto pendientes de validar con el cliente. |
-| `docs/API_GUIDE.md` | **Copiarlo del repo backend** (misma versión) — contrato e intención de cada endpoint. El shape exacto siempre sale de `/openapi.json`. |
-| `docs/IMPLEMENTATION.md` | Registro vivo de qué existe en el código, cómo está armado y por qué — se actualiza en cada paso del orden de implementación. Léelo antes de tocar algo que ya existe. |
+| `docs/DESIGN_SYSTEM.md` | Sistema de diseño: tokens centralizados, inventario de componentes compartidos, protocolos de UX, gráficas. |
+| `docs/IMPLEMENTATION.md` | **Registro vivo** de qué existe en el código y por qué — léelo antes de tocar algo que ya existe. |
+| `docs/PENDIENTES_BACKEND_INFRA.md` | Documento de traspaso con backend/arquitectura/infraestructura: huecos reales encontrados construyendo el front, qué se verificó y por qué importa para el negocio. |
+| `docs/RECOMENDACIONES.md` | Decisiones tomadas y su porqué, más sugerencias de producto — con su estado real (✅ construido / ❌ no construido / 🚧 parcial). |
+| `docs/pending/` | Copia de los docs del repo **backend** (`API_GUIDE.md`, `ARCHITECTURE.md`, `CONTEXTO.md`) usada como referencia — el shape exacto de cualquier endpoint siempre sale de `/openapi.json`, no de estos archivos. |
 
-## Cómo empezar
+## Desarrollo
 
 ```bash
-git init compraventa-frontend && cd compraventa-frontend
-# copiar el contenido de este paquete en la raíz
-# copiar docs/API_GUIDE.md desde el repo backend
-code .
-claude        # leerá CLAUDE.md automáticamente
+npm install --legacy-peer-deps   # ver docs/IMPLEMENTATION.md ("Paso 1") sobre por qué la flag
+cp .env.example .env              # completar VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY
+
+npm run gen:api        # regenera src/types/api.ts desde $VITE_API_URL/openapi.json
+npm run dev             # Vite dev server
+npm run lint && npm run typecheck && npm run test   # antes de cualquier commit
+npm run build            # tsc -b && vite build
 ```
 
-Primer prompt sugerido para Claude Code:
-
-> Lee CLAUDE.md, docs/ARCHITECTURE.md y docs/DESIGN_SYSTEM.md completos. Implementa el paso 1 del orden de implementación: scaffold Vite + React + TypeScript estricto, Tailwind con styles/tokens.css como única fuente de diseño, shadcn/ui themeado contra esos tokens, generación de tipos desde el OpenAPI del backend dev (npm run gen:api), lib/api/client.ts con manejo central de auth/errores/paginación, lib/money.ts y lib/dates.ts con sus tests, y CI. No avances a pantallas todavía.
-
-## Reglas de oro (resumen — detalle en CLAUDE.md)
+## Reglas de oro (resumen — detalle en `CLAUDE.md`)
 
 - El front no calcula negocio: intereses, estados, stock y caja son del backend; la UI guía (abonos SOLO desde `payment-options`).
 - Todo diseño sale de `tokens.css`; un solo modal (`AppDialog`), un solo calendario (`DatePicker`), una sola tabla (`DataTable`).

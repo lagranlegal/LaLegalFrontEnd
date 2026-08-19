@@ -1,6 +1,6 @@
 # Arquitectura del frontend
 
-> Referencia técnica de cómo está construido el front y por qué. Para el sistema de diseño (referencia visual, tokens, componentes) ver `docs/DESIGN_SYSTEM.md`; para el contrato de la API ver `docs/API_GUIDE.md`; la guía de implementación está en `CLAUDE.md` (raíz del repo).
+> Referencia técnica de cómo está construido el front y por qué. Para el sistema de diseño (referencia visual, tokens, componentes) ver `docs/DESIGN_SYSTEM.md`; para el contrato de la API ver `docs/pending/API_GUIDE.md`; la guía de implementación está en `CLAUDE.md` (raíz del repo).
 
 ## 1. Qué es
 
@@ -49,7 +49,8 @@ pages (rutas)  →  components de la feature  →  hooks de api.ts (Query)  → 
                                     ↘  components/shared + lib (money, dates, permissions)
 ```
 
-- **`lib/api/client.ts`** — `openapi-fetch` tipado con `src/types/api.ts` (generado de `/openapi.json`). Middleware único que: inyecta `Authorization` desde la sesión de Supabase; adjunta `Idempotency-Key` cuando la mutación lo declara; parsea el error uniforme `{code, message, details}` y lo convierte en `ApiError` tipado; expone helper de paginación por cursor (`fetchAllPages` / `useCursorInfiniteQuery` sobre `{items, next_cursor}`).
+- **`lib/api/client.ts`** — `openapi-fetch` tipado con `src/types/api.ts` (generado de `/openapi.json`). Middleware único que: inyecta `Authorization` desde la sesión de Supabase; adjunta `Idempotency-Key` cuando la mutación lo declara; parsea el error uniforme `{code, message, details}` y lo convierte en `ApiError` tipado.
+- **`lib/api/pagination.ts`** — paginación por cursor sobre `{items, next_cursor}`: `useCursorInfiniteQuery` (scroll infinito, consumido por `<DataTable>`) y `fetchAllPages` (todas las páginas de una vez como array plano, para agregación — ej. `features/reports`, que necesita el histórico completo de ventas/artículos para los rankings, no una vista paginada). `fetchAllPages` acepta un tope defensivo de páginas (default 50) para no crecer sin límite con catálogos que aumentan con el tiempo.
 - **`features/<modulo>/api.ts`** — únicos archivos que llaman al client. Definen las **query keys** del módulo (`['contracts', id]`, `['contracts','list',filters]`, `['dashboard']`…) y las invalidaciones tras cada mutación. Regla: una mutación de dinero invalida su documento + listado + `['dashboard']` + `['cashbox','current']` (el dinero siempre mueve caja). **Excepción explícita:** `POST /contracts/import` (RECOMENDACIONES §1.6) usa `useMoneyMutation` solo por la `Idempotency-Key` que exige — no desembolsa nada, así que su `invalidateKeys` NO lleva `['cashbox','current']` y no debería mapear `CASH_SESSION_NOT_OPEN` (si ese código llegara ahí, es un bug del backend). `useMoneyMutation` es un mecanismo de idempotencia por acción de usuario, no un sinónimo de "mueve caja" — no asumir lo segundo por ver lo primero.
 - **`features/<modulo>/pages|components`** — presentación. Sin `fetch`, sin lógica de negocio, sin formatos ad-hoc.
 - **Estado:** servidor = TanStack Query (staleTime corto, `refetchOnWindowFocus` on — es una app operativa multi-usuario). UI global = Zustand mínimo (sidebar abierta, modal manager). Formularios = React Hook Form + Zod (validación de FORMA: requeridos, rangos, formato — la validación de NEGOCIO es del backend y llega como `VALIDATION_ERROR`/`BAD_REQUEST`).
