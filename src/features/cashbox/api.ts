@@ -4,13 +4,16 @@ import { useCursorInfiniteQuery } from '@/lib/api/pagination'
 import { todayBogota } from '@/lib/dates'
 import type { components } from '@/types/api'
 
+// `useClosingsHistory`/`ClosingHistory` viven en `lib/cashbox/closings.ts`
+// desde esta sesión — `features/reports` se volvió el segundo consumidor
+// real (CLAUDE.md regla 3). `CashboxPage.tsx` importa directo de `lib/`.
+
 export type Session = components['schemas']['SessionOut']
 export type SessionReport = components['schemas']['SessionReportOut']
 export type ExpenseCategory = components['schemas']['ExpenseCategoryOut']
 export type ExpenseCategoryCreateIn = components['schemas']['ExpenseCategoryCreateIn']
 export type Expense = components['schemas']['ExpenseOut']
 export type ExpenseCreateIn = components['schemas']['ExpenseCreateIn']
-export type ClosingHistory = components['schemas']['ClosingHistoryOut']
 
 /**
  * `CASH_SESSION_NOT_OPEN` acá no es un error de UI — es el estado normal
@@ -175,10 +178,3 @@ export function useCreateExpense() {
   })
 }
 
-// ---- Histórico de cierres ----
-
-export function useClosingsHistory(range: { from: string; to: string } | null) {
-  return useCursorInfiniteQuery(['reports', 'closings', range] as const, (cursor) =>
-    unwrap(api.GET('/api/v1/reports/closings', { params: { query: { from_date: range?.from, to_date: range?.to, cursor } } })),
-  )
-}

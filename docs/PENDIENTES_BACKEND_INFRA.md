@@ -5,6 +5,8 @@
 > **Tercera revisión (backend, mismo día):** puntos 1, 3, 4, 17 y la mitad de 14 (`PlanOut.modules` + `CompanyOut` con plan/suscripción) ya resueltos — ver la nota "✅ Resuelto" en cada uno. Puntos 10 y 14 (auditoría) además tenían un diagnóstico distinto al reportado — corregido inline, no era el bug descrito originalmente.
 >
 > **Cuarta revisión (backend, mismo día):** se suma el punto 19 (`ContractItemOut.inventory_item_id`, reportado por el front después de la tercera revisión) — también resuelto.
+>
+> **Quinta revisión (front, mismo día):** puntos 8, 13 y 18 (Reportes/resumen financiero) resueltos del lado del front sin esperar backend nuevo — pantalla `/reportes` construida agregando `GET /reports/closings` + `GET /cashbox/sessions/{id}/report`, client-side, con tope de 90 días. Punto 20 (latencia de `GET /catalogs/categories`) sigue pendiente de backend. Punto 13 se mantiene abierto para rangos >90 días, cartera histórica y series largas.
 
 ## 1. Búsqueda de clientes: solo por nombre, no por documento
 
@@ -58,9 +60,8 @@ Ya en backlog aceptado (`docs/pending/API_GUIDE.md` §15). El dashboard hoy solo
 
 ## 8. Definir con el cliente qué va en "Reportes" y "Configuración"
 
-No es un pendiente técnico — es una decisión de producto que todavía no se tomó. Hoy:
-- **"Reportes"** no tiene pantalla propia. Su contenido real ya existe pero está repartido: KPIs en el dashboard (`/`), histórico de cierres dentro de Caja (`/caja`). Falta decidir si eso se consolida en una pantalla `/reportes` (y qué más iría ahí — ¿reporte de cartera de contratos? ¿ventas por período? ¿algo de inventario?) o si se deja como está.
-- **"Configuración"** bloqueada por el punto 5. Cuando exista el endpoint, falta decidir el alcance exacto: ¿solo logo/firma/timezone, o también parámetros de negocio (tasas por defecto, ventanas de mora) que hoy solo se editan por categoría?
+- **✅ "Reportes" resuelto (19/08/2026) — pantalla `/reportes` construida.** El cliente pidió explícitamente ir más allá de un listado de reportes: un centro de información financiera con rango de fechas (o un día específico), ingresos vs gastos separando lo operativo del movimiento de capital, intereses cobrados, capital abonado/desembolsado, ventas, cartera actual y el % de participación Empeño vs Tienda. Se pudo construir SIN backend nuevo agregando `GET /reports/closings?from_date&to_date` + `GET /cashbox/sessions/{id}/report` por cada sesión del rango (client-side, `sumMoney` decimal-safe, tope de 90 días — ver punto 13). Detalle completo en `docs/IMPLEMENTATION.md`.
+- **"Configuración"** sigue bloqueada por el punto 5. Cuando exista el endpoint, falta decidir el alcance exacto: ¿solo logo/firma/timezone, o también parámetros de negocio (tasas por defecto, ventanas de mora) que hoy solo se editan por categoría?
 
 ## 9. Verificación en vivo pendiente por falta de una segunda cuenta de prueba
 
@@ -102,20 +103,23 @@ Todos con `Anillos de oro` como categoría (la única nivel 3 que existe hoy en 
 
 ## 13. Reportes — qué falta para separar contabilidad de tienda y contratos con claridad
 
-Pedido explícito: "qué necesitamos del backend para hacer los reportes de forma clara". Hoy existe `GET /reports/dashboard` (KPIs de hoy/mes), `GET /reports/closings` (histórico de cierres) y `GET /cashbox/sessions/{id}/report` (desglose módulo×concepto×medio, pero **solo de UNA sesión a la vez**). No alcanza para un reporte contable real. En orden de prioridad:
+Pedido explícito: "qué necesitamos del backend para hacer los reportes de forma clara". Hoy existe `GET /reports/dashboard` (KPIs de hoy/mes), `GET /reports/closings` (histórico de cierres) y `GET /cashbox/sessions/{id}/report` (desglose módulo×concepto×medio, pero **solo de UNA sesión a la vez**).
 
-1. **Desglose de caja agregado por rango de fechas, no por sesión.** Es la extensión natural de algo que ya existe — `GET /cashbox/sessions/{id}/report` ya calcula módulo×concepto×medio para una sesión puntual; hace falta la misma agregación pero sumando N sesiones entre `from_date`/`to_date`. Esto es, literalmente, la "contabilidad separada de tienda y contratos" que pide `docs/pending/CONTEXTO.md` §3, consolidada en cualquier rango (mes, trimestre, lo que sea) en vez de sesión por sesión. Mejor relación esfuerzo/valor de toda la lista: no es un reporte nuevo, es agregar lo que ya se calcula.
-2. **Intereses cobrados en un período — no existe en ningún lado hoy.** El dashboard tiene `capital_outstanding` (cuánto hay prestado), pero nada dice cuánto ha *generado* el módulo de empeño en intereses cobrados en el mes. Sin esto no se puede ver la rentabilidad real de Contratos.
-3. **`GET /reports/series?months=12`** — ya estaba en el backlog aceptado del backend (`docs/pending/API_GUIDE.md` §15) desde antes de este documento. Sin serie histórica, "Reportes" solo puede mostrar el momento actual, no tendencia.
-4. **Filtros de fecha en `GET /sales`** — mismo punto 3 de la primera revisión de este documento, se repite acá porque bloquea directamente "ventas del mes pasado" como reporte.
+**✅ Punto 1 resuelto del lado del front (19/08/2026), sin esperar backend nuevo — `/reportes`.** En vez de un endpoint de agregación por rango, el front trae `GET /reports/closings?from_date&to_date` (la lista de sesiones cerradas del rango) y llama `GET /cashbox/sessions/{id}/report` por cada una (`Promise.all`), agregando client-side con `sumMoney` (decimal-safe, sin negocio inventado — solo suma lo que el backend ya calculó por sesión). Con eso, `/reportes` ya muestra: ingresos/gastos operativos separados del movimiento de capital (ver nota de modelado abajo), intereses cobrados, capital abonado/desembolsado, ventas, % Empeño vs Tienda, tendencia diaria y desglose módulo×concepto×medio — para un rango de hasta 90 días (tope explícito: el mecanismo es N+1, una request por sesión de caja, ~1/día). Detalle completo en `docs/IMPLEMENTATION.md`.
 
-Menor prioridad, útiles pero no bloqueantes para una v1:
+**Hallazgo de modelado financiero, no solo de UI:** la primera versión sumaba TODO lo que entra como "ingresos" y TODO lo que sale como "gastos" — eso metía `capital_payment` (capital recuperado) dentro de ingresos y `loan_disbursed` (préstamo entregado) dentro de gastos, dando una "utilidad" falsa (prestar dinero no es un gasto, se convierte en cartera; recuperarlo no es ingreso, reduce esa cartera). Se corrigió antes de dar el trabajo por terminado: "Ingresos operativos"/"Gastos operativos"/"Utilidad operativa" ahora usan solo `interest_payment`+`sale` (ingreso) y `expense` (gasto); el movimiento de capital vive en su propia card, rotulada explícitamente "no es ingreso ni gasto".
+
+Lo que SIGUE bloqueado por backend, en orden de prioridad:
+1. **Rangos de más de 90 días.** El mecanismo N+1 del front no escala más allá de eso (cientos de requests). Para trimestres/años hace falta la agregación real en el backend — la extensión natural de `GET /cashbox/sessions/{id}/report` pero sumando N sesiones en el servidor, no en el navegador.
+2. **`GET /reports/series?months=12`** — ya estaba en el backlog aceptado del backend (`docs/pending/API_GUIDE.md` §15) desde antes de este documento. Sin esto, la "tendencia diaria" de `/reportes` solo puede cubrir el mismo tope de 90 días del punto anterior.
+3. **Filtros de fecha en `GET /sales`** — mismo punto 3 de la primera revisión de este documento. Los TOTALES de venta del rango sí salen de la agregación de caja (arriba), pero el detalle por factura individual dentro de un rango sigue sin poder listarse.
+4. **Cartera histórica** (`capital_outstanding` en una fecha pasada, no solo "hoy"). `/reportes` muestra la cartera actual como snapshot rotulado "corte de hoy", separado a propósito del rango elegido — no hay forma de mostrar "cartera al 15/07" sin esto.
+
+Menor prioridad, útiles pero no bloqueantes:
 - Capital desglosado por estado en pesos (hoy el dashboard da el *conteo* de contratos por estado, no cuánto capital hay en mora vs. vigente vs. prórroga).
 - Utilidad de ventas (costo del artículo vs. precio de venta — cruzar `item.cost` contra `sale_line.unit_price`, hoy no se agrega en ningún endpoint).
 - Contratos rematados en un período + valor recuperado.
 - Antigüedad/rotación de inventario (artículos `available` hace más de N días sin venderse).
-
-**Decisión de producto todavía pendiente** (no técnica): ¿"Reportes" es una pantalla nueva que consume todo esto, o el resumen financiero por módulo (punto 18 de abajo) reemplaza la necesidad de una pantalla separada? Se recomienda resolverlo junto con el punto 18.
 
 ## 14. Panel de plataforma — no se ve fecha de expiración, ni historial de cambios de suscripción
 
@@ -163,11 +167,9 @@ El problema real es que **`ItemUpdateIn` (`PATCH /inventory/items/{id}`) solo ac
 
 Pedido: un apartado con el resumen en dinero de contratos (abonos, desembolsos, cartera) y de ventas, en el lugar que mejor encaje con el diseño actual de la app.
 
-**Recomendación:** que viva dentro de "Reportes" (punto 13), no dentro de las pantallas operativas de `/contratos` y `/ventas`. Es una separación de propósito que ya sigue el resto de la app — las listas operativas (`ContractsListPage`, `SalesListPage`) están pensadas para *hacer* cosas (crear, cobrar, vender, anular), no para *analizar* — meterle un bloque financiero ahí competiría con la acción principal de la pantalla y DESIGN_SYSTEM.md ya establece "una acción primaria por pantalla". El dashboard (`/`) ya es el lugar de KPIs de un vistazo; "Reportes" sería el lugar para profundizar (por período, por módulo) sin mezclarse con ninguno de los dos.
+**✅ Resuelto (19/08/2026) — quedó exactamente donde se recomendaba: dentro de "Reportes" (`/reportes`), no en las pantallas operativas de `/contratos` y `/ventas`.** Abonos e intereses (contratos), desembolsos/capital abonado (cartera), ventas y gastos, todo por rango de fechas — ver punto 13. La fila corta de KPIs sugerida como complemento liviano arriba de `ContractsListPage`/`SalesListPage` (cartera activa, ventas del día) sigue sin construirse — sigue siendo una mejora válida, no bloqueante, no se hizo en esta ronda.
 
-Como complemento liviano (no reemplaza lo anterior): agregar una fila corta de KPIs arriba de `ContractsListPage` y `SalesListPage` (cartera activa + capital en mora arriba de contratos; total vendido hoy/este mes arriba de ventas) — mismo patrón `KpiRow` que ya existe en el dashboard, dando contexto inmediato sin salir de la pantalla operativa. Esto sí se puede construir con los datos que YA expone `GET /reports/dashboard` hoy, sin esperar nada nuevo del backend.
-
-**Qué necesita el backend para el resumen completo (no el KPI liviano):** los mismos puntos 1 y 2 del punto 13 — desglose de caja por rango de fechas e intereses cobrados por período son, en la práctica, el "resumen financiero de contratos" que se pide acá. No es una pieza aparte, es el mismo pendiente visto desde dos ángulos de producto distintos (una pantalla de reportes vs. un resumen dentro de contratos) — se resuelven con el mismo trabajo de backend.
+**Lo que todavía necesita backend para el resumen COMPLETO** (rangos más largos, cartera histórica, utilidad de ventas) es lo mismo del punto 13 — ver ahí el detalle actualizado.
 
 ## 19. Trazabilidad contrato → artículo de inventario: falta el vínculo inverso
 

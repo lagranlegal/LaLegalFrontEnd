@@ -5,7 +5,8 @@ import { Button } from '@/components/ui/button'
 import { formatDate, formatDateTime } from '@/lib/dates'
 import { conceptLabel, MODULE_LABELS } from '@/lib/modules'
 import { PAYMENT_METHOD_LABELS } from '@/lib/paymentMethods'
-import { useSessionReport, type ClosingHistory } from '@/features/cashbox/api'
+import { useSessionReport } from '@/features/cashbox/api'
+import type { ClosingHistory } from '@/lib/cashbox/closings'
 import { SessionReportPanel } from '@/features/cashbox/components/SessionReportPanel'
 
 /**

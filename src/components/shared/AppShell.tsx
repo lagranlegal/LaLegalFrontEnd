@@ -47,7 +47,7 @@ const NAV_ITEMS: NavItem[] = [
   // paso 8 (`GET /identity/permissions`). El resto de ítems con pantalla
   // sigue sin gate (pendiente sistemático, ver docs/IMPLEMENTATION.md paso 6).
   { label: 'Identidad', icon: UserCog, to: '/identidad', anyPermission: ['identity.manage_users', 'identity.manage_roles'] },
-  { label: 'Reportes', icon: BarChart3 },
+  { label: 'Reportes', icon: BarChart3, to: '/reportes', anyPermission: ['reports.view'] },
   { label: 'Auditoría', icon: History, to: '/auditoria', anyPermission: ['audit.view'] },
   { label: 'Configuración', icon: Settings },
 ]

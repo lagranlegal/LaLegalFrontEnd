@@ -29,6 +29,7 @@ import { SalesListPage } from '@/features/sales/pages/SalesListPage'
 import { SaleFormPage } from '@/features/sales/pages/SaleFormPage'
 import { IdentityPage } from '@/features/identity/pages/IdentityPage'
 import { AuditPage } from '@/features/audit/pages/AuditPage'
+import { ReportesPage } from '@/features/reports/pages/ReportesPage'
 import { CompaniesPage } from '@/features/platform/pages/CompaniesPage'
 
 interface RouterContext {
@@ -242,6 +243,20 @@ const auditRoute = createRoute({
   },
 })
 
+// `reports.view` es el mismo código que ya gatea `GET /reports/dashboard` y
+// `GET /reports/closings` (docs/ARCHITECTURE.md §5) — mismo patrón que `auditRoute`.
+const reportesRoute = createRoute({
+  getParentRoute: () => appLayoutRoute,
+  path: '/reportes',
+  component: ReportesPage,
+  beforeLoad: ({ context }) => {
+    const me = context.queryClient.getQueryData(meQueryOptions().queryKey)
+    if (me && !me.permissions.includes('reports.view')) {
+      throw redirect({ to: '/' })
+    }
+  },
+})
+
 // ---- /platform/* — layout PROPIO, NUNCA AppShell (CLAUDE.md paso 10) ----
 // No pasa por `/me` en absoluto: un super-admin de plataforma no
 // necesariamente pertenece a la empresa que está operando. Autorización por
@@ -291,6 +306,7 @@ const routeTree = rootRoute.addChildren([
     salesRoute,
     saleNewRoute,
     identityRoute,
+    reportesRoute,
     auditRoute,
   ]),
 ])

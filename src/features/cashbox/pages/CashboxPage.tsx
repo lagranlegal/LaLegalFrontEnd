@@ -13,15 +13,14 @@ import { Button } from '@/components/ui/button'
 import { formatDate, formatDateTime, formatTime } from '@/lib/dates'
 import { PAYMENT_METHOD_LABELS } from '@/lib/paymentMethods'
 import { MODULE_LABELS } from '@/lib/modules'
+import { useClosingsHistory, type ClosingHistory } from '@/lib/cashbox/closings'
 import { cn } from '@/lib/utils'
 import {
   useCashboxCurrent,
-  useClosingsHistory,
   useExpenseCategories,
   useExpensesList,
   useTodayClosing,
   useReopenSession,
-  type ClosingHistory,
   type Expense,
 } from '@/features/cashbox/api'
 import { OpenSessionDialog } from '@/features/cashbox/components/OpenSessionDialog'

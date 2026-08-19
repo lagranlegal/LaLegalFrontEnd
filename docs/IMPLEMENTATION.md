@@ -2,6 +2,56 @@
 
 > Registro vivo de qué existe en el código, cómo está armado y por qué se tomó cada decisión — para que cualquiera (humano o Claude Code) pueda retomar el proyecto sin releer todo el historial de commits. Se actualiza en cada paso del "Orden de implementación" de `CLAUDE.md`. No repite lo que ya está en `ARCHITECTURE.md`/`DESIGN_SYSTEM.md` (el qué-debería-ser); esto es el qué-hay-hoy y las decisiones concretas tomadas al construirlo.
 
+## Reportes — centro de información financiera (19/08/2026)
+
+El cliente pidió explícitamente ir más allá de "reportes" sueltos: información financiera **centralizada e interactiva** por rango de fechas (o un día específico) — intereses cobrados, ingresos vs gastos, capital abonado, ventas, cartera actual, separación Empeño/Tienda con su % de participación. "Reportes" era hasta ahora un ítem de sidebar deshabilitado (se asumía bloqueado por backend, ver `docs/PENDIENTES_BACKEND_INFRA.md` puntos 8/13/18 previos a esta revisión).
+
+**Se pudo construir sin backend nuevo.** `GET /reports/closings?from_date&to_date` (ya en uso por el histórico de cierres de Caja) da las sesiones cerradas del rango; `GET /cashbox/sessions/{id}/report` (ya en uso por la vista previa de cierre) da el desglose módulo(`pawn|store|general`)×dirección(`in|out`)×concepto(`interest_payment`,`capital_payment`,`loan_disbursed`,`sale`,`expense`)×medio de cada sesión. Agregando ambas cosas client-side con `sumMoney` (decimal-safe, CLAUDE.md regla 5 — suma de PRESENTACIÓN sobre montos que YA calculó el backend, no negocio inventado) se cubre casi todo lo pedido.
+
+**Tope de 90 días, a propósito.** El mecanismo es N+1 acotado: una request por sesión de caja del rango (~1/día, ciclo diario único del negocio), en paralelo (`Promise.all`). Los presets del `DateRangePicker` (Hoy/Ayer/Esta semana/Este mes) siempre caen dentro del tope; si el usuario arma un rango manual más ancho, la página NO dispara la query — muestra un estado explicativo en vez de cientos de requests silenciosos. Probado en vivo: un rango de 19 días con 3 sesiones cerradas reales disparó exactamente 3 requests a `/cashbox/sessions/*/report`, cero de más.
+
+### Hallazgo real de modelado financiero (no solo de código)
+
+La primera versión sumaba TODO lo que entra como "Ingresos" y TODO lo que sale como "Gastos" — con datos reales de dev eso dio "Gastos: $5.360.000" porque metía `loan_disbursed` (préstamo entregado, $4.300.000) junto con `expense` real ($1.060.000). Un préstamo entregado **no es un gasto** — se convierte en cartera (un activo); el capital recuperado (`capital_payment`) tampoco es ingreso, solo reduce esa cartera. Mezclarlos con intereses/ventas/gastos reales da una "utilidad" que en realidad solo mide cuánto se prestó ese período, no si el negocio ganó o perdió plata — el tipo de error que un dueño podría no notar hasta que le cuadra mal la caja mental de "¿estamos ganando?".
+
+Se corrigió antes de dar el trabajo por terminado (`features/reports/aggregate.ts`):
+- **Ingresos operativos** = `interest_payment` + `sale` (dirección `in`) — ingreso real.
+- **Gastos operativos** = `expense` (dirección `out`) — costo real.
+- **Utilidad operativa** = ingresos − gastos operativos (tono rojo si da negativo).
+- **Movimiento de capital** — `capitalDesembolsado`/`capitalAbonado` — card SEPARADA, con la nota explícita "no es ingreso ni gasto — prestar o recuperar capital no cambia la utilidad".
+- El % Empeño vs Tienda (`ModuleSplitBar`) también se corrigió para basarse en ingreso OPERATIVO por módulo (intereses del empeño vs ventas de tienda), no en todo el efectivo entrante — antes daba 52%/48%, con datos reales corregidos da 20%/80% (la tienda genera 4× más ingreso real que los intereses en el período probado).
+
+Verificado en vivo dos veces contra datos reales de dev (antes y después del fix), captura de pantalla confirmando que la corrección se refleja correctamente en la UI.
+
+### Estructura nueva
+
+```
+src/lib/cashbox/closings.ts          # useClosingsHistory (promovido de features/cashbox) + fetchAllClosingsInRange
+src/features/reports/
+  aggregate.ts                        # aggregateFinancialSummary (función pura, testeada) + daysBetweenDateOnly
+  api.ts                              # useFinancialSummary (tope 90 días), useCarteraActual (duplicado de useDashboard)
+  components/ModuleSplitBar.tsx       # % Empeño/Tienda, barra CSS, sin Recharts
+  pages/ReportesPage.tsx
+src/components/shared/charts/DailyTrendChart.tsx   # generalizado de ContractsStatusChart, usa --chart-1/--chart-2 (tokens.css, sin consumidor hasta ahora)
+tests/reports-aggregate.test.ts
+```
+
+`useClosingsHistory` se promovió de `features/cashbox/api.ts` a `lib/cashbox/closings.ts` (mismo patrón ya usado 3 veces esta sesión: `lib/contracts/reference.ts`, `lib/customers/search.ts`, `lib/sales/void.ts`) — `features/reports` es el segundo consumidor real; `CashboxPage.tsx` actualizó su import. `useCarteraActual` es un duplicado deliberado de 3 líneas de `dashboardQueryOptions`/`useDashboard` (mismo criterio que `useReadyForAuction`, ya existente en `features/dashboard/api.ts`: hook trivial, misma `queryKey: ['dashboard']` a propósito para compartir cache/invalidaciones, sin que una feature importe internals de otra).
+
+Ruta `/reportes` con guard de permiso `reports.view` (mismo código que ya gatea `GET /reports/dashboard`/`GET /reports/closings`) — mismo patrón que `/auditoria`. Ítem de sidebar "Reportes" (ya existía, deshabilitado) completado con `to`/`anyPermission`.
+
+### Qué sigue bloqueado por backend
+
+Documentado con detalle en `docs/PENDIENTES_BACKEND_INFRA.md` punto 13 (actualizado): rangos de más de 90 días (necesita agregación real en el servidor), `GET /reports/series` para tendencias largas, filtro de fecha en `GET /sales` para detalle por factura, y cartera histórica (`capital_outstanding` en una fecha pasada — hoy `/reportes` solo puede mostrar el corte de HOY, rotulado explícitamente para no confundir con el rango elegido).
+
+### Comandos de verificación
+
+```bash
+npm run lint && npm run typecheck && npm run test && npm run build   # todo en verde (64 tests)
+npm run dev   # /reportes: cambiar el rango (Este mes por defecto) → confirmar KPIs, split
+              # Empeño/Tienda, tendencia diaria, cartera actual y desglose contra datos reales de dev
+```
+
 ## Revisión — puntos resueltos por backend (tercera/cuarta revisión, 19/08/2026)
 
 El cliente reemplazó `docs/PENDIENTES_BACKEND_INFRA.md` con la versión que backend fue actualizando el mismo día (puntos 1, 3, 4, 17, mitad del 14, y 19 marcados "✅ Resuelto"). Antes de tocar código se regeneró `src/types/api.ts` (`npm run gen:api`) y se verificó con `git diff` que el schema real cambió exactamente como backend documentó — cero discrepancias entre lo escrito y la API real. Cinco cambios de front desbloqueados:

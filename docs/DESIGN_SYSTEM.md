@@ -106,15 +106,23 @@ Construidos UNA vez sobre shadcn/ui + tokens; las features solo los componen. Si
 10. **Responsive real:** breakpoints 360 / 768 / 1024 / 1280. La operación diaria (abonos, ventas, consulta de contrato) debe ser 100% usable en un teléfono de gama media — el mostrador puede ser un celular.
 11. **Dos puertas de entrada a un mismo recurso, cuando el permiso las separa:** "+ Nuevo contrato" (crea y desembolsa, CTA con el monto — regla 1) y "Registrar contrato existente" (importa un contrato migrado del sistema anterior, sin desembolso — RECOMENDACIONES §1.6) son acciones primarias DISTINTAS en `PageHeader`, no un toggle dentro del mismo formulario: campos, validaciones y hasta el texto del CTA difieren ("Crear contrato $X" vs. "Registrar"). La segunda es visible solo con `contracts.import` (Admin de fábrica) — si el rol no lo tiene, ese botón no existe, ni siquiera deshabilitado.
 
-## 5. Gráficas (dashboard)
+## 5. Gráficas (dashboard y Reportes)
 
-Recharts con wrapper propio `components/shared/charts/` que lee colores de los tokens (`--chart-*`) — nunca colores inline por gráfica. Piezas del dashboard (espejo del layout de referencia + datos de `GET /reports/dashboard`):
+Recharts con wrapper propio `components/shared/charts/` que lee colores de los tokens (`--chart-*`/`--status-*`) — nunca colores inline por gráfica. Piezas del dashboard (espejo del layout de referencia + datos de `GET /reports/dashboard`):
 
 - `KpiRow`: Cartera activa (capital_outstanding, rojo suave), Ventas de hoy, Ventas del mes, Contratos activos, Artículos disponibles (+ valor), Estado de caja.
-- Card "Contratos por estado": barras o dona con `--status-*`.
-- Card "Ventas": línea/área mensual cuando el backend exponga `GET /reports/series` (ya en su backlog aceptado — ver RECOMENDACIONES §1.4; mientras tanto, KPIs sin serie).
+- Card "Contratos por estado": `ContractsStatusChart` — barras con `--status-*`.
 - Card "Listos para remate": lista corta accionable (no gráfica) — es la alerta operativa más valiosa.
-- Tooltips con `formatCOP`, ejes abreviados (`$2,5M`), leyenda con puntos de color, grid horizontal sutil `--border`.
+- Tooltips con `formatCOP`, leyenda con puntos de color, grid horizontal sutil `--border`.
+
+**Reportes** (`/reportes`, construido — ver `docs/IMPLEMENTATION.md`) es la pantalla que sí usa `--chart-1`/`--chart-2` (reservados en `tokens.css` para "ingresos"/"gastos" desde el día 1, sin consumidor hasta esta pantalla):
+
+- `DateRangePicker` en `PageHeader.actions` — rango o un día específico (presets Hoy/Ayer/Esta semana/Este mes + calendario libre), tope de 90 días (el mecanismo agrega sesión por sesión, N+1 acotado — más ancho pide un endpoint de agregación al backend, ver `docs/PENDIENTES_BACKEND_INFRA.md` punto 13).
+- `KpiRow`: Ingresos operativos, Gastos operativos, Utilidad operativa, Intereses cobrados, Ventas — **excluye a propósito** el movimiento de capital (desembolsos/abonos), que vive en su propia card separada con una nota explícita ("no es ingreso ni gasto") — mezclar ambos daría una utilidad falsa (prestar dinero no es un gasto, recuperarlo no es ingreso).
+- Card "Empeño vs Tienda": `ModuleSplitBar` — barra de 2 segmentos en CSS puro (no Recharts) con el % de participación en ingresos operativos.
+- Card "Cartera actual": snapshot de HOY (`GET /reports/dashboard`, no depende del rango elegido — rotulado explícitamente para no confundir), reusa `ContractsStatusChart`.
+- Card "Tendencia diaria": `DailyTrendChart` (nuevo, mismo criterio de tokens que `ContractsStatusChart`) — ingresos vs gastos operativos por día, `--chart-1`/`--chart-2`.
+- Card "Desglose por módulo, concepto y medio de pago": tabla, mismo shell que `SessionReportPanel` (Caja) pero agregada sobre TODO el rango.
 
 ## 6. Flujo de theming en la práctica
 
