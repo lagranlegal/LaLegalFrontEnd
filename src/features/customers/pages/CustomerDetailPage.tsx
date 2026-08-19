@@ -46,7 +46,16 @@ export function CustomerDetailPage() {
   const navigate = useNavigate()
   const { data: customer, isPending, isError, refetch } = useCustomer(customerId)
   const { data: contracts, isPending: contractsPending, isError: contractsError, refetch: refetchContracts } = useCustomerContracts(customerId)
-  const { data: sales, isPending: salesPending, isError: salesError, refetch: refetchSales } = useCustomerSales(customerId)
+  const {
+    data: salesData,
+    isPending: salesPending,
+    isError: salesError,
+    refetch: refetchSales,
+    hasNextPage: salesHasNextPage,
+    isFetchingNextPage: salesFetchingNextPage,
+    fetchNextPage: fetchNextSalesPage,
+  } = useCustomerSales(customerId)
+  const sales = salesData?.pages.flatMap((page) => page.items) ?? []
   const [editOpen, setEditOpen] = useState(false)
   const [editNonce, setEditNonce] = useState(0)
   const [viewingSale, setViewingSale] = useState<SaleSummary | null>(null)
@@ -142,13 +151,16 @@ export function CustomerDetailPage() {
         <h2 className="mb-3 text-sm font-medium text-foreground">Compras</h2>
         <DataTable
           columns={saleColumns}
-          data={sales ?? []}
+          data={sales}
           getRowId={(row) => row.id}
           isLoading={salesPending}
           isError={salesError}
           onRetry={() => refetchSales()}
           emptyTitle="Sin compras"
           onRowClick={(row) => setViewingSale(row)}
+          hasNextPage={salesHasNextPage}
+          isFetchingNextPage={salesFetchingNextPage}
+          onLoadMore={() => fetchNextSalesPage()}
         />
       </div>
 

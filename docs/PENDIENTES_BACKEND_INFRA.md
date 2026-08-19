@@ -1,6 +1,10 @@
 # Pendientes para revisar con backend/arquitectura/infraestructura
 
-> Documento de traspaso — no es una queja sobre el backend, es la lista concreta de huecos reales encontrados construyendo el front, para decidir en equipo qué se resuelve y en qué orden. Cada punto dice qué se verificó, cómo, y por qué importa para el negocio (no solo técnicamente). Última actualización: 19/08/2026 (tercera revisión — punto 17 resuelto del lado del front; se suma el punto 19, el vínculo inverso contrato→artículo que sí necesita backend).
+> Documento de traspaso — no es una queja sobre el backend, es la lista concreta de huecos reales encontrados construyendo el front, para decidir en equipo qué se resuelve y en qué orden. Cada punto dice qué se verificó, cómo, y por qué importa para el negocio (no solo técnicamente). Última actualización: 19/08/2026 (segunda revisión — se suman los puntos 13 a 18: reportes, panel de plataforma, ajustes de usuario, paginación, edición de artículos de remate, resumen financiero).
+>
+> **Tercera revisión (backend, mismo día):** puntos 1, 3, 4, 17 y la mitad de 14 (`PlanOut.modules` + `CompanyOut` con plan/suscripción) ya resueltos — ver la nota "✅ Resuelto" en cada uno. Puntos 10 y 14 (auditoría) además tenían un diagnóstico distinto al reportado — corregido inline, no era el bug descrito originalmente.
+>
+> **Cuarta revisión (backend, mismo día):** se suma el punto 19 (`ContractItemOut.inventory_item_id`, reportado por el front después de la tercera revisión) — también resuelto.
 
 ## 1. Búsqueda de clientes: solo por nombre, no por documento
 
@@ -9,6 +13,10 @@
 **Por qué importa para el negocio, no solo técnicamente:** en el mostrador de una compraventa, el cliente casi siempre entrega su cédula física — el operador tipea el número, no el nombre. Con el buscador actual, si no recuerda cómo está escrito el nombre exacto en el sistema, no puede encontrarlo por documento aunque lo tenga en la mano. Esto afecta directamente **crear contrato**, **venta con cliente registrado**, y cualquier flujo que use `CustomerPicker`.
 
 **Sugerencia:** que `?q=` busque también por `doc_number` (coincidencia exacta o prefijo, no necesita ser full-text ahí — un documento se busca completo o casi completo, no por fragmentos como un nombre).
+
+**✅ Resuelto (19/08/2026):** `?q=` en `GET /customers` ahora matchea `doc_number` (exacto o prefijo) además del full-text de `full_name`. Ver `docs/API_GUIDE.md` §5.
+
+**Del lado del front, ya resuelto (19/08/2026):** no había nada que cambiar en la búsqueda (ya mandaba `q` tal cual al backend) — solo se actualizó el placeholder de `CustomersPage`/`CustomerPicker` de "Buscar por nombre…" a "Buscar por nombre o documento…" para que la UI refleje la capacidad nueva.
 
 ## 2. `GET /contracts` sin `?q=` — buscador de contratos es un parche client-side
 
@@ -24,9 +32,17 @@ Confirmado en el schema: `{cursor?, limit?}` únicamente. Ni `customer_id`, ni `
 
 **Sugerencia:** al menos `?customer_id=` y `?status=` en `GET /sales` — son los dos filtros que ya tiene `GET /contracts` y que la simetría entre ambos módulos sugiere que deberían coincidir.
 
+**✅ Resuelto (19/08/2026):** `GET /sales` ya acepta `?customer_id=` y `?status=`. Ver `docs/API_GUIDE.md` §10. `?q=` con número de contrato/`legacy_code`/cliente en `GET /contracts` (punto 2) y filtros de fecha en `GET /sales` (parte del punto 13) siguen pendientes.
+
+**Del lado del front, ya resuelto (19/08/2026):** `useCustomerSales` (`features/customers/history.ts`) pasó del parche de traer 200 ventas y filtrar en cliente a `useCursorInfiniteQuery` con `?customer_id=` real — paginado de verdad en el historial de cliente. `useCustomerContracts` se dejó igual (sigue con el parche) porque `GET /contracts` (punto 2) todavía no tiene `?customer_id=`.
+
 ## 4. `CompanyOut` (panel de plataforma) no trae plan ni fecha de expiración de suscripción
 
 Ya documentado en `docs/RECOMENDACIONES.md` §1.8 — se repite acá porque es exactamente el tipo de cosa que esta lista busca centralizar. Un super-admin puede extender una suscripción sin ver la fecha de expiración actual.
+
+**✅ Resuelto (19/08/2026):** `CompanyOut` (creación, detalle y listado) trae `plan_code`/`plan_name`/`subscription_expires_at` de la suscripción `active` actual (LEFT JOIN — `null` si no hay ninguna, nunca desaparece la fila). Ver `docs/API_GUIDE.md` §3.
+
+**Del lado del front, ya resuelto (19/08/2026):** columnas de Plan y Suscripción vence en `CompaniesPage` (la fecha en rojo si ya venció), y el bloque de info de `CompanyDetailDialog` ahora muestra las 4 celdas (Estado, Creada el, Plan, Suscripción vence) en vez de 2 — el texto de ayuda de "Extender suscripción" ya no dice que la fecha no se puede mostrar. Verificado en vivo contra las 2 empresas de prueba reales.
 
 ## 5. `GET/PATCH /company/settings` — bloquea dos cosas, no solo "Configuración"
 
@@ -59,6 +75,8 @@ Dos caminos de código están implementados pero **nunca se dispararon de verdad
 Al fabricar datos de prueba con `POST /contracts/import` se encontró un comportamiento consistente y repetible, no un error aislado: si `interest_paid_until` queda **exactamente** a N meses calendario de hoy (ej. hoy 19/08, `interest_paid_until` = 19/07 → exactamente 1 mes), `months_owed` cuenta **N-1**, no N — hace falta que `interest_paid_until` sea al menos un día más viejo (18/07) para que cuente como el mes completo. Se confirmó dos veces con datos distintos (1 mes y 3 meses de diferencia), mismo resultado ambas veces.
 
 No se reporta como bug — probablemente es intencional (no se penaliza el día exacto del vencimiento, hay que estar realmente *pasado* del mes) y de hecho suena razonable para no ser injustos con el cliente. Se deja anotado para que quede confirmado explícitamente como comportamiento esperado, no algo que alguien "arregle" después sin saber que ya se decidió así.
+
+**Diagnóstico corregido (backend, 19/08/2026):** corrí `months_between` con las fechas reales de `DEMO-MORA-1MES`/`DEMO-MORA-1MES-B` contra el "hoy" real de ahora mismo — los dos calculan `N` exacto, no `N-1`; no hay ningún corrimiento de límite. Lo que pasó: `DEMO-MORA-1MES` se creó (probablemente 08-18) cuando en ESE momento le faltaba un día para el mes completo (correcto, 0 meses adeudados en ese instante), y el `status` quedó grabado con esa foto — el sistema recalcula al leer (`GET /contracts/{id}`) o por el job nocturno, nunca solo, así que un registro sin releer desde entonces queda con el estado de cuando se creó (`CLAUDE.md`: "el estado del contrato solo lo calcula el servicio + job nocturno"). Confirmado en vivo: un `GET /contracts/{id}` sobre ese mismo contrato ahora lo corrige a `in_arrears` sin tocar nada más. No hay cambio de código que hacer.
 
 ## 11. Cómo probar como super-admin (no es un pendiente, es documentación que faltaba)
 
@@ -107,6 +125,8 @@ Al entrar como super-admin (punto 11), la lista y el detalle de empresas no mues
 - **Extender o suspender una suscripción NO queda en la auditoría — confirmado en vivo, no es una suposición.** Se hizo `POST .../subscription/extend` y luego `POST .../suspend` + `POST .../activate` sobre una empresa de prueba real, y se revisó `GET /audit-log?module=platform` inmediatamente después: **solo aparece el `create_company` original** — ninguna de las tres acciones nuevas generó una entrada. Esto es distinto (y más importante) que "no veo cuánto se pagó": hoy, si dos personas del equipo de plataforma tienen acceso de super-admin, no hay ningún registro de quién extendió una suscripción, cuándo, ni con qué `notes` (el campo `notes` de `SubscriptionExtendIn` se manda pero no hay ningún lugar donde se pueda volver a leer — se pierde). Contradice la regla general del propio backend (`docs/pending/CLAUDE.md`: *"toda acción sensible... inserta en `audit_log` en la misma transacción"*) — suspender el acceso de una empresa entera y cambiar su fecha de vencimiento son acciones tan sensibles como cualquiera de las que sí se auditan.
 - **Recomendación sobre "valores pagados"**: dado que el cobro es 100% manual y fuera del sistema (`docs/pending/CONTEXTO.md` §3: *"el cliente paga por fuera del sistema"*), hoy no hay NINGÚN registro financiero de lo pagado — ni siquiera el monto. Sugerencia concreta: agregar un campo opcional `amount`/`amount_paid` a `SubscriptionExtendIn`, y que quede auditado (con el punto anterior resuelto, esto ya alcanzaría para tener un historial básico de "quién pagó cuánto y cuándo" sin construir un módulo de facturación completo).
 
+**✅ Resuelto en parte (19/08/2026):** `PlanOut.modules` ya se expone (la columna ya existía con datos reales, solo faltaba el schema — ver `docs/API_GUIDE.md` §3); falta `max_users`/límite de usuarios, que sí necesita columna nueva. Sobre la auditoría: **diagnóstico corregido** — el insert de `extend_subscription`/`set_company_status` funciona bien, confirmado consultando `audit_log` directo sin RLS (las filas existen). El problema real es que `GET /audit-log` es tenant-scoped (RLS por `company_id` de quien pregunta) — un super-admin nunca puede ver auditoría de una empresa que no es la suya propia, sin importar el filtro `?module=`. Falta un endpoint tipo `GET /platform/companies/{id}/audit-log` con el mismo molde que el resto de `platform` (`require_super_admin` + sesión bypass sin RLS) — no es una pieza nueva de arquitectura, es aplicar el patrón que ya existe. Sigue pendiente (Tier 3), junto con `amount_paid`.
+
 ## 15. Ajustes/configuración de usuario — qué recomiendo incluir
 
 No hay ninguna pantalla de "mi perfil" hoy — el pendiente ya estaba anotado desde el paso 2 ("Perfil"/"Cambiar contraseña" en el menú del avatar). Verificado qué hace falta de backend para cada pieza razonable:
@@ -133,7 +153,11 @@ El problema real es que **`ItemUpdateIn` (`PATCH /inventory/items/{id}`) solo ac
 
 **Sugerencia:** agregar `cat1_id?`/`cat2_id?`/`cat3_id?` a `ItemUpdateIn`, con la misma validación de árbol de 3 niveles que ya usa `POST /inventory/entries` — la restricción de que solo se pueda mientras `status='draft'` seguiría siendo válida (`409` una vez publicado, como ya pasa hoy). No hace falta ni debería agregarse un campo de proveedor: el diseño de `origin`+sufijo `R` para artículos de remate ya es correcto tal como está, el front solo necesita mostrarlo bien (ver siguiente punto).
 
-**Del lado del front, ya resuelto (19/08/2026):** `ItemEditDialog` ahora muestra "Viene del remate del contrato #N" con link directo a `/contratos/$id` cuando `origin === 'auction'` (y, de paso, "Comprado a [proveedor]" cuando `origin === 'supplier'`) — usando `source_contract_id`, que `ItemOut` ya traía y no se estaba mostrando. Probado en vivo: click en el link navega correctamente al contrato de origen. Ver punto 19 para la dirección contraria (desde el contrato, saber en qué artículo se convirtió cada prenda), que sí necesita un campo nuevo del backend.
+**Del lado del front (sin esperar al backend):** hoy `ItemEditDialog` no muestra de dónde viene un artículo — ni "origen: remate", ni el link al contrato de donde salió (`source_contract_id` sí lo trae `ItemOut`, no se usa en pantalla). Se puede corregir esto ahora mismo sin depender del punto de arriba; lo dejo anotado para hacerlo en la próxima sesión de trabajo del front.
+
+**✅ Resuelto (19/08/2026):** `ItemUpdateIn` (`PATCH /inventory/items/{id}`) ya acepta `cat1_id?/cat2_id?/cat3_id?` mientras `status='draft'` — todo-o-nada (los tres juntos o ninguno, `400` si viene parcial), misma validación de árbol que `POST /entries`. Ver `docs/API_GUIDE.md` §9.
+
+**Del lado del front, ya resuelto (19/08/2026):** `ItemEditDialog` gana 3 `<Select>` en cascada (mismo patrón que `EntryFormPage`) cuando el artículo está en `draft`; publicado, se muestra de solo lectura. El submit manda los tres campos juntos solo si `status === 'draft'`, nunca parcial. Probando esto en vivo salió un bug real ya corregido: los selects no mostraban la categoría actual al abrir el diálogo (Radix `SelectValue` solo resuelve texto de un `SelectItem` que ya se montó al menos una vez — un valor precargado sin abrir nunca el dropdown se veía vacío aunque el valor fuera correcto; se arregló pasando el nombre ya resuelto como children de `SelectValue`). De paso: `GET /catalogs/categories` tarda ~4s consistentemente en dev (medido con `curl -w %{time_total}` tres veces) — se agregó placeholder "Cargando categorías…" mientras carga.
 
 ## 18. Resumen financiero de contratos y ventas — recomendación de dónde ubicarlo
 
@@ -153,3 +177,17 @@ Pedido explícito: poder asociar un artículo rematado a su contrato de origen. 
 - El front no puede reconstruir esto de forma confiable por su cuenta: `GET /inventory/items` no tiene filtro por `source_contract_id`, y aunque lo tuviera, un contrato con **varias prendas** genera varios artículos — sin el vínculo por prenda específica, no hay forma de saber cuál artículo corresponde a cuál prenda (emparejar por nombre/descripción sería frágil, no una solución real).
 
 **Sugerencia:** exponer `inventory_item_id` (nullable) en `ContractItemOut` — es literalmente el mismo dato que `ItemOut.source_contract_id` visto desde el otro lado, la columna ya existe según la propia documentación del backend, solo falta incluirla en el schema Pydantic de salida. Con eso, el detalle del contrato podría mostrar, junto a cada prenda ya rematada, un link directo al artículo específico en el que se convirtió (en vez de solo el estado "Rematado").
+
+**✅ Resuelto (19/08/2026):** `ContractItemOut` ya trae `inventory_item_id` (`null` mientras la prenda no se remata). Cero migración — la columna y el `UPDATE` que la llena (`auction_contract` → `mark_item_auctioned`) ya existían; solo faltaba incluirla en el `SELECT` del repositorio y en el schema de salida. Ver `docs/API_GUIDE.md` §7. Test de regresión en `tests/integration/test_auction.py` que compara el `inventory_item_id` de cada prenda en la respuesta de `POST /contracts/{id}/auction` contra el valor real en `contract_item` — no solo "no es null", sino que es exactamente el mismo id.
+
+**Del lado del front, ya resuelto (19/08/2026):** con esto se cierra el lado que faltaba de la trazabilidad bidireccional (el lado artículo→contrato, `ItemOriginInfo`, ya existía desde la revisión anterior). `AuctionedItemLink` en `ContractDetailPage` muestra "Convertido en [código]" con link a `/inventario` bajo cada prenda ya rematada. Verificado en vivo contra un contrato real con artículo publicado (`JAO0003R`).
+
+## 20. `GET /catalogs/categories` tarda ~4 segundos consistentemente en dev
+
+Encontrado probando en vivo la edición de categoría de artículos (punto 17): al abrir `ItemEditDialog` para un artículo en borrador, los `<select>` de categoría se veían vacíos varios segundos. Medido directo contra el backend, sin nada del front de por medio: `curl -w '%{time_total}'` contra `GET /api/v1/catalogs/categories` tres veces seguidas dio 3.85s / 3.88s / 4.08s — no es una demora puntual (cold start de un solo request), es consistente.
+
+**Por qué importa para el negocio, no solo técnicamente:** es un endpoint que se usa en el flujo de **crear contrato** (elegir categoría de cada prenda) y ahora también en editar artículos de remate — 4 segundos de espera silenciosa en un flujo de mostrador (cliente esperando) es perceptible. El front ya le puso un placeholder de carga ("Cargando categorías…") para que no se vea como una pantalla rota, pero no resuelve la demora real.
+
+**Posible causa:** el catálogo de categorías es chico (12 filas en la empresa de prueba) y no debería tardar segundos — huele a N+1 o falta de índice en `parent_id`/`company_id`, no a volumen de datos. No se investigó más a fondo del lado del backend porque está fuera del alcance del front.
+
+**Sugerencia:** perfilar la query de `GET /catalogs/categories` — con un catálogo de este tamaño (decenas de filas, no miles) debería responder en milisegundos.

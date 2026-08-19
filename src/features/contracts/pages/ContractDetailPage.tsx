@@ -15,6 +15,7 @@ import { formatDate, formatDateTime } from '@/lib/dates'
 import { PAYMENT_METHOD_LABELS } from '@/lib/paymentMethods'
 import { confirm } from '@/components/shared/confirmStore'
 import { useCategories } from '@/lib/catalogs/categories'
+import { useItem } from '@/lib/inventory/items'
 import { usePaymentsList, useAuctionContract, type Payment } from '@/features/contracts/api'
 import { effectiveContractStatus, isReadyForAuction } from '@/features/contracts/contractStatus'
 import { useContract } from '@/lib/contracts/reference'
@@ -51,6 +52,22 @@ function ContractDetailSkeleton() {
 
 function categoryName(categories: { id: string; name: string }[] | undefined, categoryId: string): string {
   return categories?.find((c) => c.id === categoryId)?.name ?? '—'
+}
+
+/**
+ * Vínculo inverso prenda→artículo (`ContractItemOut.inventory_item_id`,
+ * resuelto por backend 19/08/2026 — ver `docs/PENDIENTES_BACKEND_INFRA.md`
+ * punto 19). Sin ruta propia de detalle de artículo en el front (se editan
+ * desde un diálogo abierto desde la lista, no una página) — el link lleva
+ * a `/inventario` sin más, el código mostrado es lo que se busca ahí.
+ */
+function AuctionedItemLink({ inventoryItemId }: { inventoryItemId: string }) {
+  const { data: inventoryItem } = useItem(inventoryItemId)
+  return (
+    <Link to="/inventario" className="text-xs text-primary hover:underline">
+      Convertido en {inventoryItem?.code ?? inventoryItem?.name ?? 'un artículo de inventario'}
+    </Link>
+  )
 }
 
 export function ContractDetailPage() {
@@ -210,6 +227,7 @@ export function ContractDetailPage() {
                     {item.weight_grams && ` · ${item.weight_grams} g`}
                     {item.serial_imei && ` · ${item.serial_imei}`}
                   </p>
+                  {item.inventory_item_id && <AuctionedItemLink inventoryItemId={item.inventory_item_id} />}
                 </div>
               </div>
               <div className="flex items-center gap-3">

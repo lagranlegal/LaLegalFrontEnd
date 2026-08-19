@@ -46,7 +46,7 @@ export function CustomersPage() {
         }
       />
 
-      <SearchInput value={q} onChange={setQ} placeholder="Buscar por nombre…" className="max-w-sm" />
+      <SearchInput value={q} onChange={setQ} placeholder="Buscar por nombre o documento…" className="max-w-sm" />
 
       <DataTable
         columns={columns}

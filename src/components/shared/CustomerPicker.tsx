@@ -9,7 +9,7 @@ import { useCustomerSearch, type Customer } from '@/lib/customers/search'
  * otra pantalla) — dropdown simple sobre `SearchInput` + `useCustomerSearch`
  * (8 resultados, no es un listado paginado).
  */
-export function CustomerPicker({ value, onChange, placeholder = 'Buscar cliente por nombre…' }: { value: Customer | null; onChange: (customer: Customer | null) => void; placeholder?: string }) {
+export function CustomerPicker({ value, onChange, placeholder = 'Buscar cliente por nombre o documento…' }: { value: Customer | null; onChange: (customer: Customer | null) => void; placeholder?: string }) {
   const [q, setQ] = useState('')
   const { data, isFetching } = useCustomerSearch(q)
 

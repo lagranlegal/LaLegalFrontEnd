@@ -2,6 +2,32 @@
 
 > Registro vivo de qué existe en el código, cómo está armado y por qué se tomó cada decisión — para que cualquiera (humano o Claude Code) pueda retomar el proyecto sin releer todo el historial de commits. Se actualiza en cada paso del "Orden de implementación" de `CLAUDE.md`. No repite lo que ya está en `ARCHITECTURE.md`/`DESIGN_SYSTEM.md` (el qué-debería-ser); esto es el qué-hay-hoy y las decisiones concretas tomadas al construirlo.
 
+## Revisión — puntos resueltos por backend (tercera/cuarta revisión, 19/08/2026)
+
+El cliente reemplazó `docs/PENDIENTES_BACKEND_INFRA.md` con la versión que backend fue actualizando el mismo día (puntos 1, 3, 4, 17, mitad del 14, y 19 marcados "✅ Resuelto"). Antes de tocar código se regeneró `src/types/api.ts` (`npm run gen:api`) y se verificó con `git diff` que el schema real cambió exactamente como backend documentó — cero discrepancias entre lo escrito y la API real. Cinco cambios de front desbloqueados:
+
+- **Plan y vencimiento de suscripción visibles en `/platform`** (`CompanyOut.plan_code/plan_name/subscription_expires_at`, punto 4): columnas nuevas en `CompaniesPage` y bloque de 4 celdas en `CompanyDetailDialog` (antes 2), con el vencimiento en rojo si ya pasó (`todayBogota()`). El texto de ayuda de "Extender suscripción" ya no dice que la fecha no se puede mostrar — muestra la fecha real. Verificado en vivo contra las 2 empresas de prueba reales (`Empresa Demo Front`: plan Completo, vence 01/01/2027; `Compraventa de Prueba QA`: plan Completo, vence 01/06/2027 — coincide con la extensión hecha en una revisión anterior).
+- **Historial de ventas del cliente usa el filtro real** (`GET /sales?customer_id=`, punto 3): `useCustomerSales` en `features/customers/history.ts` pasó de traer 200 ventas y filtrar en cliente a usar `useCursorInfiniteQuery` con el filtro del backend — paginado de verdad, ya no un límite arbitrario de 200. `useCustomerContracts` se dejó **sin cambios** (sigue filtrando en cliente) porque `GET /contracts` todavía no acepta `customer_id`.
+- **Búsqueda de clientes por documento** (`?q=` en `GET /customers`, punto 1): sin cambio de lógica (la búsqueda ya pasaba el término tal cual) — solo se actualizó el placeholder en `CustomersPage` y `CustomerPicker` de "Buscar por nombre…" a "Buscar por nombre o documento…" para que la UI refleje la capacidad nueva.
+- **Editar la categoría de un artículo en borrador** (`ItemUpdateIn.cat1_id/cat2_id/cat3_id`, todo-o-nada mientras `status='draft'`, punto 17): `ItemEditDialog` gana 3 `<Select>` en cascada (mismo patrón que `EntryFormPage`) cuando el artículo está en borrador; publicado, se muestra de solo lectura ("no se puede cambiar después de publicar"). El `onSubmit` solo manda los tres campos juntos si `item.status === 'draft'` (nunca parcial, evita el 400 documentado).
+- **Link contrato → artículo rematado** (`ContractItemOut.inventory_item_id`, punto 19): con esto se cierra el lado que faltaba de la trazabilidad bidireccional (el lado artículo→contrato ya existía, ver revisión anterior más abajo). `AuctionedItemLink` en `ContractDetailPage` muestra "Convertido en [código]" con link a `/inventario` bajo cada prenda ya rematada.
+
+### Bug real encontrado y corregido probando lo anterior en vivo: `ItemEditDialog` no precargaba la categoría actual
+
+Al probar la edición de categoría contra un artículo real (uno nuevo, fabricado con `POST /contracts/import` + `/contracts/{id}/auction` para no gastar el fixture `DEMO-LISTO-REMATE` reservado para el cliente), los 3 `<Select>` se veían completamente vacíos al abrir el diálogo — pese a que `defaultValues` sí traía `item.cat1_id/cat2_id/cat3_id` correctos. **Causa real:** Radix `Select` solo resuelve el texto que muestra `SelectValue` a partir de un `SelectItem` que ya se montó al menos una vez (se abrió el dropdown) — un valor precargado por `defaultValues` sin que el usuario haya abierto nunca el desplegable se queda sin texto que mostrar, aunque el valor internamente sea correcto. Se arregló pasando el nombre ya resuelto como children de `SelectValue` (`{level1Options.find((c) => c.id === field.value)?.name}`), que no depende de que el item se haya montado.
+
+De paso se encontró que `GET /catalogs/categories` tarda **~4 segundos consistentemente** en dev (confirmado con `curl -w %{time_total}` tres veces seguidas: 3.85s/3.88s/4.08s) — no es una demora puntual. Sin feedback visual, el `<Select>` de categoría se veía vacío y confuso durante esos 4 segundos. Se agregó placeholder "Cargando categorías…" + `disabled` mientras `!categories`. Este tiempo de respuesta vale la pena reportarlo a backend si no está ya cubierto por algún punto de `PENDIENTES_BACKEND_INFRA.md`.
+
+Probado en vivo de punta a punta contra un artículo real: categoría precargada visible (`tecnologia/Celulares/Smartphones`, de una prueba anterior en la misma sesión) → cambiada a `Joyería/Anillos/Anillos de oro` → `Guardar cambios` → `PATCH /inventory/items/{id}` responde `200` con los tres campos actualizados juntos.
+
+### Comandos de verificación
+
+```bash
+npm run lint && npm run typecheck && npm run test && npm run build   # todo en verde
+npm run dev   # /platform (plan+vencimiento), /clientes/$id (historial de ventas paginado),
+              # /inventario → editar borrador (categoría precargada + cascada), /contratos/$id de un remate (link al artículo)
+```
+
 ## Revisión — trazabilidad de artículos rematados (19/08/2026)
 
 `ItemOut.source_contract_id` ya existía en la API desde siempre (mismo patrón que los huecos de fotos de la revisión post-paso-10: el dato estaba, nadie lo mostraba). Se agregó `ItemOriginInfo` en `ItemEditDialog.tsx` — para artículos `origin: "auction"` muestra "Viene del remate del contrato #N" con link directo al contrato (y, de paso, "Comprado a [proveedor]" para `origin: "supplier"`, mismo criterio simétrico). Probado en vivo contra un artículo real ya publicado (`JAO0003R`): el link navega correctamente al contrato de origen, cero errores de consola.

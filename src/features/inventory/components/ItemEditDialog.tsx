@@ -9,8 +9,10 @@ import { MoneyInput } from '@/components/shared/MoneyInput'
 import { PhotoUploader } from '@/components/shared/PhotoUploader'
 import { StatusBadge } from '@/components/shared/StatusBadge'
 import { Button } from '@/components/ui/button'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { useUpdateItem, usePublishItem } from '@/features/inventory/api'
 import { useContract } from '@/lib/contracts/reference'
+import { useCategories } from '@/lib/catalogs/categories'
 import { useSuppliers } from '@/lib/catalogs/suppliers'
 import type { Item } from '@/lib/inventory/items'
 
@@ -19,6 +21,9 @@ const itemSchema = z.object({
   description: z.string().optional(),
   sale_price: z.string().optional(),
   photos: z.array(z.string()),
+  cat1_id: z.string().min(1, 'Selecciona una categoría'),
+  cat2_id: z.string().min(1, 'Selecciona una subcategoría'),
+  cat3_id: z.string().min(1, 'Selecciona la categoría final'),
 })
 
 type ItemFormValues = z.infer<typeof itemSchema>
@@ -55,25 +60,51 @@ export function ItemEditDialog({ open, onOpenChange, item }: { open: boolean; on
   const [formError, setFormError] = useState<string | null>(null)
   const updateItem = useUpdateItem()
   const publishItem = usePublishItem()
+  const { data: categories } = useCategories()
   const {
     register,
     handleSubmit,
     control,
     watch,
+    setValue,
     formState: { errors },
   } = useForm<ItemFormValues>({
     resolver: zodResolver(itemSchema),
-    defaultValues: { name: item.name, description: item.description ?? '', sale_price: item.sale_price ?? '0.00', photos: item.photos },
+    defaultValues: {
+      name: item.name,
+      description: item.description ?? '',
+      sale_price: item.sale_price ?? '0.00',
+      photos: item.photos,
+      cat1_id: item.cat1_id,
+      cat2_id: item.cat2_id,
+      cat3_id: item.cat3_id,
+    },
   })
   const salePrice = watch('sale_price')
   const photos = watch('photos')
+  const cat1 = watch('cat1_id')
+  const cat2 = watch('cat2_id')
+
+  const level1Options = (categories ?? []).filter((c) => c.level === 1 && c.active)
+  const level2Options = (categories ?? []).filter((c) => c.level === 2 && c.active && c.parent_id === cat1)
+  const level3Options = (categories ?? []).filter((c) => c.level === 3 && c.active && c.parent_id === cat2)
 
   async function onSubmit(values: ItemFormValues) {
     setFormError(null)
     try {
       await updateItem.mutateAsync({
         itemId: item.id,
-        body: { name: values.name, description: values.description || null, sale_price: values.sale_price || null, photos: values.photos },
+        body: {
+          name: values.name,
+          description: values.description || null,
+          sale_price: values.sale_price || null,
+          photos: values.photos,
+          // Solo mientras `status='draft'` el backend acepta esto — y es
+          // todo-o-nada (400 si viene parcial), por eso siempre van los tres
+          // juntos (ya vienen precargados con la categoría actual, así que
+          // no cambiar nada acá reenvía el mismo valor sin efecto real).
+          ...(item.status === 'draft' ? { cat1_id: values.cat1_id, cat2_id: values.cat2_id, cat3_id: values.cat3_id } : {}),
+        },
       })
       toast.success('Artículo actualizado')
       onOpenChange(false)
@@ -143,6 +174,104 @@ export function ItemEditDialog({ open, onOpenChange, item }: { open: boolean; on
           </label>
           <textarea id="item-description" rows={2} className={inputClass} {...register('description')} />
         </div>
+
+        {item.status === 'draft' ? (
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+            <div>
+              <label className="text-sm font-medium text-foreground">Categoría</label>
+              <Controller
+                control={control}
+                name="cat1_id"
+                render={({ field }) => (
+                  <Select
+                    value={field.value}
+                    onValueChange={(v) => {
+                      field.onChange(v)
+                      setValue('cat2_id', '')
+                      setValue('cat3_id', '')
+                    }}
+                    disabled={!categories}
+                  >
+                    <SelectTrigger className="mt-1 w-full">
+                      {/* Radix solo resuelve el texto de SelectValue desde un SelectItem que ya se
+                          montó (se abrió) al menos una vez — con un valor precargado por defaultValues
+                          nunca se abrió, así que sin esto el trigger se ve vacío aunque sí haya valor.
+                          Además `GET /catalogs/categories` tarda ~4s en dev — sin placeholder de carga
+                          el trigger se veía vacío y confuso mientras tanto. */}
+                      <SelectValue placeholder={categories ? 'Selecciona…' : 'Cargando categorías…'}>{level1Options.find((c) => c.id === field.value)?.name}</SelectValue>
+                    </SelectTrigger>
+                    <SelectContent>
+                      {level1Options.map((c) => (
+                        <SelectItem key={c.id} value={c.id}>
+                          {c.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+              />
+              {errors.cat1_id && <p className="mt-1 text-sm text-danger">{errors.cat1_id.message}</p>}
+            </div>
+            <div>
+              <label className="text-sm font-medium text-foreground">Subcategoría</label>
+              <Controller
+                control={control}
+                name="cat2_id"
+                render={({ field }) => (
+                  <Select
+                    value={field.value}
+                    onValueChange={(v) => {
+                      field.onChange(v)
+                      setValue('cat3_id', '')
+                    }}
+                    disabled={!cat1}
+                  >
+                    <SelectTrigger className="mt-1 w-full">
+                      <SelectValue placeholder={cat1 ? 'Selecciona…' : 'Elige categoría primero'}>{level2Options.find((c) => c.id === field.value)?.name}</SelectValue>
+                    </SelectTrigger>
+                    <SelectContent>
+                      {level2Options.map((c) => (
+                        <SelectItem key={c.id} value={c.id}>
+                          {c.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+              />
+              {errors.cat2_id && <p className="mt-1 text-sm text-danger">{errors.cat2_id.message}</p>}
+            </div>
+            <div>
+              <label className="text-sm font-medium text-foreground">Categoría final</label>
+              <Controller
+                control={control}
+                name="cat3_id"
+                render={({ field }) => (
+                  <Select value={field.value} onValueChange={field.onChange} disabled={!cat2}>
+                    <SelectTrigger className="mt-1 w-full">
+                      <SelectValue placeholder={cat2 ? 'Selecciona…' : 'Elige subcategoría primero'}>{level3Options.find((c) => c.id === field.value)?.name}</SelectValue>
+                    </SelectTrigger>
+                    <SelectContent>
+                      {level3Options.map((c) => (
+                        <SelectItem key={c.id} value={c.id}>
+                          {c.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+              />
+              {errors.cat3_id && <p className="mt-1 text-sm text-danger">{errors.cat3_id.message}</p>}
+            </div>
+          </div>
+        ) : (
+          <div>
+            <p className="text-sm font-medium text-foreground">Categoría</p>
+            <p className="mt-1 text-sm text-muted-foreground">
+              {categories?.find((c) => c.id === item.cat3_id)?.name ?? '—'} — no se puede cambiar después de publicar.
+            </p>
+          </div>
+        )}
 
         <div>
           <label htmlFor="item-sale-price" className="text-sm font-medium text-foreground">

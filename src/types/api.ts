@@ -1079,6 +1079,12 @@ export interface components {
              * Format: date-time
              */
             created_at: string;
+            /** Plan Code */
+            plan_code: string | null;
+            /** Plan Name */
+            plan_name: string | null;
+            /** Subscription Expires At */
+            subscription_expires_at: string | null;
         };
         /** ContractCreateIn */
         ContractCreateIn: {
@@ -1205,6 +1211,8 @@ export interface components {
             status: string;
             /** Photos */
             photos: string[];
+            /** Inventory Item Id */
+            inventory_item_id: string | null;
         };
         /** ContractKpisOut */
         ContractKpisOut: {
@@ -1770,6 +1778,12 @@ export interface components {
             sale_price?: number | string | null;
             /** Photos */
             photos?: string[] | null;
+            /** Cat1 Id */
+            cat1_id?: string | null;
+            /** Cat2 Id */
+            cat2_id?: string | null;
+            /** Cat3 Id */
+            cat3_id?: string | null;
         };
         /** MeCompanyOut */
         MeCompanyOut: {
@@ -1942,6 +1956,10 @@ export interface components {
             code: string;
             /** Price */
             price: string | null;
+            /** Modules */
+            modules: {
+                [key: string]: boolean;
+            };
             /** Active */
             active: boolean;
         };
@@ -2852,7 +2870,7 @@ export interface operations {
             query?: {
                 cursor?: string | null;
                 limit?: number;
-                /** @description Búsqueda por nombre */
+                /** @description Búsqueda por nombre o número de documento */
                 q?: string | null;
             };
             header?: never;
@@ -4188,6 +4206,8 @@ export interface operations {
             query?: {
                 cursor?: string | null;
                 limit?: number;
+                customer_id?: string | null;
+                status?: string | null;
             };
             header?: never;
             path?: never;

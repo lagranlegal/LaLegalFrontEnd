@@ -3,7 +3,8 @@ import type { ColumnDef } from '@tanstack/react-table'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { DataTable } from '@/components/shared/DataTable'
 import { Button } from '@/components/ui/button'
-import { formatDateTime } from '@/lib/dates'
+import { formatDate, formatDateTime, todayBogota } from '@/lib/dates'
+import { cn } from '@/lib/utils'
 import { useCompaniesList, type Company } from '@/features/platform/api'
 import { CompanyStatusBadge } from '@/features/platform/components/CompanyStatusBadge'
 import { CompanyFormDialog } from '@/features/platform/components/CompanyFormDialog'
@@ -12,6 +13,17 @@ import { CompanyDetailDialog } from '@/features/platform/components/CompanyDetai
 const columns: ColumnDef<Company>[] = [
   { accessorKey: 'name', header: 'Nombre' },
   { accessorKey: 'status', header: 'Estado', cell: (info) => <CompanyStatusBadge status={info.getValue<string>()} /> },
+  { accessorKey: 'plan_name', header: 'Plan', cell: (info) => info.getValue<string | null>() ?? '—' },
+  {
+    accessorKey: 'subscription_expires_at',
+    header: 'Suscripción vence',
+    cell: (info) => {
+      const value = info.getValue<string | null>()
+      if (!value) return '—'
+      const expired = value < todayBogota()
+      return <span className={cn(expired && 'font-medium text-danger')}>{formatDate(value)}</span>
+    },
+  },
   { accessorKey: 'created_at', header: 'Creada el', cell: (info) => formatDateTime(info.getValue<string>()) },
 ]
 

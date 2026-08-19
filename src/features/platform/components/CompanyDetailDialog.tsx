@@ -5,7 +5,8 @@ import { AppDialog } from '@/components/shared/AppDialog'
 import { Button } from '@/components/ui/button'
 import { DatePicker } from '@/components/shared/DatePicker'
 import { confirm } from '@/components/shared/confirmStore'
-import { formatDateTime, todayBogota } from '@/lib/dates'
+import { formatDate, formatDateTime, todayBogota } from '@/lib/dates'
+import { cn } from '@/lib/utils'
 import { ApiError } from '@/lib/api/client'
 import { useActivateCompany, useExtendSubscription, useSuspendCompany, type Company, type SubscriptionExtendIn } from '@/features/platform/api'
 import { CompanyStatusBadge } from '@/features/platform/components/CompanyStatusBadge'
@@ -67,11 +68,12 @@ export function CompanyDetailDialog({ open, onOpenChange, company }: { open: boo
   }
 
   const isPending = suspendCompany.isPending || activateCompany.isPending
+  const isSubscriptionExpired = !!company.subscription_expires_at && company.subscription_expires_at < todayBogota()
 
   return (
     <AppDialog open={open} onOpenChange={onOpenChange} title={company.name} size="lg">
       <div className="flex flex-col gap-6">
-        <div className="flex items-center justify-between text-sm">
+        <div className="grid grid-cols-2 gap-4 text-sm">
           <div>
             <p className="text-muted-foreground">Estado</p>
             <CompanyStatusBadge status={company.status} className="mt-1" />
@@ -79,6 +81,16 @@ export function CompanyDetailDialog({ open, onOpenChange, company }: { open: boo
           <div className="text-right">
             <p className="text-muted-foreground">Creada el</p>
             <p className="text-foreground">{formatDateTime(company.created_at)}</p>
+          </div>
+          <div>
+            <p className="text-muted-foreground">Plan</p>
+            <p className="text-foreground">{company.plan_name ?? '—'}</p>
+          </div>
+          <div className="text-right">
+            <p className="text-muted-foreground">Suscripción vence</p>
+            <p className={cn('text-foreground', isSubscriptionExpired && 'font-medium text-danger')}>
+              {company.subscription_expires_at ? formatDate(company.subscription_expires_at) : '—'}
+            </p>
           </div>
         </div>
 
@@ -94,7 +106,9 @@ export function CompanyDetailDialog({ open, onOpenChange, company }: { open: boo
         <div className="border-t border-border pt-4">
           <p className="text-sm font-medium text-foreground">Extender suscripción</p>
           <p className="mt-1 text-xs text-muted-foreground">
-            Esta vista no muestra la fecha de expiración actual — la API de plataforma no la incluye todavía (ver `docs/RECOMENDACIONES.md`).
+            {company.subscription_expires_at
+              ? `Vence el ${formatDate(company.subscription_expires_at)} — elige la nueva fecha.`
+              : 'Esta empresa no tiene una suscripción activa registrada.'}
           </p>
           <form onSubmit={handleSubmit(onExtend)} className="mt-3 flex flex-col gap-3" noValidate>
             <div>
