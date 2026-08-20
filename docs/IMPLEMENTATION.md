@@ -2,6 +2,46 @@
 
 > Registro vivo de qué existe en el código, cómo está armado y por qué se tomó cada decisión — para que cualquiera (humano o Claude Code) pueda retomar el proyecto sin releer todo el historial de commits. Se actualiza en cada paso del "Orden de implementación" de `CLAUDE.md`. No repite lo que ya está en `ARCHITECTURE.md`/`DESIGN_SYSTEM.md` (el qué-debería-ser); esto es el qué-hay-hoy y las decisiones concretas tomadas al construirlo.
 
+## Fase 3: se elimina la duplicación entre lote y producto (20/08/2026)
+
+Cierra el cambio de modelo. `inventory_item` pierde `name`, `cat1/2/3_id`, `description` y `sale_price`: desde 00021 esos datos viven en `product` y estaban duplicados.
+
+### Por qué no bastaba con dejarlo duplicado
+
+Mientras hubo dos columnas con el mismo dato, alguien tenía que mantenerlas sincronizadas — **y falló**. `update_product` escribía el precio en el producto pero no en los lotes, así que la pantalla mostraba $250.000 y la caja seguía cobrando $200.000 (el POS arma la venta con `inventory_item.sale_price`). Se parcheó con `sync_lot_prices`, pero el arreglo real es que el dato exista una sola vez. Esa función se fue con esta migración.
+
+Vale la pena registrar cómo se encontró: **no fue un test que fallara**, fue revisar de dónde saca el precio la venta. Ningún test cruzaba el `PATCH` del producto con lo que lee el POS. Ahora hay uno.
+
+### Dos migraciones, no una
+
+Contraer de un golpe rompía **en los dos órdenes posibles**:
+
+| Orden | Qué se rompe |
+|---|---|
+| Migración → código | El código desplegado hace `SELECT name` sobre una columna que ya no existe |
+| Código → migración | El `INSERT` nuevo no escribe `name`, que es `NOT NULL` |
+
+Por eso `00022` relaja los `NOT NULL` (ahí conviven los dos códigos) y `00023` borra. Ambas idempotentes, verificadas reejecutándolas sobre una base ya contraída. `00022` además **repara** artículos huérfanos en vez de solo negarse — los hubo: 3 remates creados en la ventana entre fases.
+
+> **Trampa operativa descubierta:** `supabase db push` aplica TODAS las migraciones pendientes de una vez, así que no respeta una secuencia de "aplicar → desplegar → aplicar". Dev quedó unos minutos con las columnas borradas y el código viejo. Para secuencias así hay que aplicar la primera con `psql` directo y dejar la segunda para después del deploy.
+
+### Por qué el frontend no se rompió
+
+`ItemOut` conserva su forma exacta —sigue exponiendo `name`, categoría y precio— pero salen del **JOIN** con `product`. Ningún consumidor tuvo que cambiar por la contracción.
+
+Lo único que cambió es `ItemUpdateIn`, reducido a `photos`. `ItemEditDialog` se reescribió: muestra los datos del producto como lectura (con la explicación de dónde se editan) y edita solo fotos. El precio sigue apareciendo al publicar porque publicar el primer lote **es** el momento en que se le fija precio al producto.
+
+El margen que muestra el diálogo es el de **ese lote**: costo propio contra precio común. Por eso puede variar entre lotes del mismo producto —el comprado más barato gana más— y eso es información real, no una inconsistencia.
+
+### Estado final del modelo
+
+```
+producto   nombre · categoría · descripción · PRECIO · SKU
+  lote     costo · proveedor · fecha de entrada · cantidad · estado · fotos · código
+```
+
+El costo nunca sube al producto (identificación específica, NIIF) y el precio nunca baja al lote. Cada dato existe una sola vez.
+
 ## Producto + lote: fases 1 y 2 (20/08/2026)
 
 El cambio de modelo que documenta `docs/propuesta-productos-lotes.html`. El sistema no tenía el concepto de **producto**, solo artículos sueltos — y de ahí salían cuatro síntomas que parecían independientes: la lista no agrupaba, el precio se editaba lote por lote, reponer dependía de escribir el nombre idéntico, y no se podían comparar proveedores del mismo producto.

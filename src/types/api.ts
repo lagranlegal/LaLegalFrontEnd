@@ -2075,22 +2075,20 @@ export interface components {
             /** Sale Price */
             sale_price: number | string;
         };
-        /** ItemUpdateIn */
+        /**
+         * ItemUpdateIn
+         * @description Solo FOTOS. Desde 00022 el nombre, la descripción, la categoría y el
+         *     precio pertenecen al producto y se editan con `PATCH /products/{id}`,
+         *     donde el cambio aplica a todos sus lotes — que es el comportamiento
+         *     correcto: dos lotes del mismo producto no pueden llamarse distinto ni
+         *     costar distinto al cliente.
+         *
+         *     Las fotos sí son del lote: una pieza de remate tiene las suyas, y un lote
+         *     puede fotografiarse aparte.
+         */
         ItemUpdateIn: {
-            /** Name */
-            name?: string | null;
-            /** Description */
-            description?: string | null;
-            /** Sale Price */
-            sale_price?: number | string | null;
             /** Photos */
             photos?: string[] | null;
-            /** Cat1 Id */
-            cat1_id?: string | null;
-            /** Cat2 Id */
-            cat2_id?: string | null;
-            /** Cat3 Id */
-            cat3_id?: string | null;
         };
         /** MeCompanyOut */
         MeCompanyOut: {
