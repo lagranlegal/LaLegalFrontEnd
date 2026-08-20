@@ -1,0 +1,459 @@
+<title>Compras y Caja</title>
+<style>
+  :root {
+    --accent: #00806f;
+    --accent-bright: #00b19e;
+    --accent-wash: #e6f7f5;
+    --ink: #16202e;
+    --ink-soft: #46566d;
+    --ink-mute: #7d8a9c;
+    --ground: #f6f8fa;
+    --surface: #ffffff;
+    --rule: #dfe5ec;
+    --rule-soft: #eaeef4;
+    --ok: #1d8f5f;
+    --ok-wash: #e8f6ef;
+    --warn: #a4680d;
+    --warn-wash: #fdf3e2;
+    --stop: #c0392f;
+    --stop-wash: #fdecea;
+    --font: ui-sans-serif, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --accent: #5fd8c6;
+      --accent-bright: #2ecdb9;
+      --accent-wash: #0f2f2c;
+      --ink: #e9eef5;
+      --ink-soft: #adbaca;
+      --ink-mute: #7d8b9e;
+      --ground: #0d141c;
+      --surface: #151f2a;
+      --rule: #27323f;
+      --rule-soft: #1d2733;
+      --ok: #4cc38a;
+      --ok-wash: #13291f;
+      --warn: #e0a850;
+      --warn-wash: #2c2214;
+      --stop: #f2706a;
+      --stop-wash: #33191a;
+    }
+  }
+
+  :root[data-theme="dark"] {
+    --accent: #5fd8c6;
+    --accent-bright: #2ecdb9;
+    --accent-wash: #0f2f2c;
+    --ink: #e9eef5;
+    --ink-soft: #adbaca;
+    --ink-mute: #7d8b9e;
+    --ground: #0d141c;
+    --surface: #151f2a;
+    --rule: #27323f;
+    --rule-soft: #1d2733;
+    --ok: #4cc38a;
+    --ok-wash: #13291f;
+    --warn: #e0a850;
+    --warn-wash: #2c2214;
+    --stop: #f2706a;
+    --stop-wash: #33191a;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    background: var(--ground);
+    color: var(--ink-soft);
+    font-family: var(--font);
+    font-size: 17px;
+    line-height: 1.7;
+    margin: 0;
+    padding: 0 1.25rem 5rem;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .wrap { max-width: 46rem; margin: 0 auto; }
+
+  header.top {
+    padding: 4rem 0 2rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+  }
+  .eyebrow {
+    font-size: 0.8rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--accent);
+    font-weight: 600;
+    margin: 0;
+  }
+  h1 {
+    font-size: clamp(2.1rem, 6vw, 3rem);
+    line-height: 1.1;
+    letter-spacing: -0.025em;
+    color: var(--ink);
+    font-weight: 680;
+    margin: 0;
+    text-wrap: balance;
+  }
+  .lede {
+    font-size: 1.15rem;
+    margin: 0;
+    max-width: 34rem;
+  }
+
+  h2 {
+    font-size: 1.45rem;
+    color: var(--ink);
+    font-weight: 640;
+    letter-spacing: -0.018em;
+    margin: 3.5rem 0 1rem;
+    text-wrap: balance;
+  }
+  h3 {
+    font-size: 1.05rem;
+    color: var(--ink);
+    font-weight: 640;
+    margin: 2rem 0 0.5rem;
+  }
+  p { margin: 0 0 1.1rem; }
+  strong { color: var(--ink); font-weight: 640; }
+  ul { margin: 0 0 1.1rem; padding-left: 1.3rem; }
+  li { margin-bottom: 0.5rem; }
+
+  .divider { height: 2px; background: var(--ink); border: 0; margin: 0; opacity: 0.9; }
+
+  /* --- comparación antes/ahora --- */
+  .split {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 1px;
+    background: var(--rule);
+    border: 1px solid var(--rule);
+    border-radius: 14px;
+    overflow: hidden;
+    margin: 1.75rem 0;
+  }
+  @media (min-width: 34rem) { .split { grid-template-columns: 1fr 1fr; } }
+  .split > div { background: var(--surface); padding: 1.3rem 1.4rem; }
+  .split .label {
+    font-size: 0.78rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    font-weight: 650;
+    margin: 0 0 0.6rem;
+  }
+  .split .before .label { color: var(--ink-mute); }
+  .split .after .label { color: var(--accent); }
+  .split p { margin: 0; font-size: 0.97rem; }
+
+  /* --- escenarios --- */
+  .case {
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    border-radius: 14px;
+    padding: 1.4rem 1.5rem;
+    margin-bottom: 1rem;
+  }
+  .case-head {
+    display: flex;
+    align-items: baseline;
+    gap: 0.7rem;
+    margin-bottom: 0.6rem;
+  }
+  .case-num {
+    flex-shrink: 0;
+    width: 1.7rem; height: 1.7rem;
+    border-radius: 999px;
+    background: var(--accent-wash);
+    color: var(--accent);
+    font-size: 0.85rem;
+    font-weight: 700;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    align-self: center;
+  }
+  .case-title {
+    font-size: 1.08rem;
+    font-weight: 640;
+    color: var(--ink);
+    margin: 0;
+    line-height: 1.35;
+  }
+  .case p { margin: 0 0 0.7rem; font-size: 0.98rem; }
+  .case p:last-child { margin-bottom: 0; }
+  .do {
+    display: inline-block;
+    background: var(--ok-wash);
+    color: var(--ok);
+    border-radius: 8px;
+    padding: 0.5rem 0.8rem;
+    font-size: 0.93rem;
+    font-weight: 600;
+    margin-top: 0.3rem;
+  }
+
+  /* --- regla destacada --- */
+  .rule {
+    border-radius: 14px;
+    padding: 1.6rem 1.7rem;
+    margin: 2rem 0;
+    border: 1px solid transparent;
+  }
+  .rule.gold { background: var(--accent-wash); border-color: color-mix(in srgb, var(--accent) 28%, transparent); }
+  .rule.caution { background: var(--warn-wash); border-color: color-mix(in srgb, var(--warn) 32%, transparent); }
+  .rule .tag {
+    font-size: 0.76rem;
+    letter-spacing: 0.11em;
+    text-transform: uppercase;
+    font-weight: 680;
+    display: block;
+    margin-bottom: 0.5rem;
+  }
+  .rule.gold .tag { color: var(--accent); }
+  .rule.caution .tag { color: var(--warn); }
+  .rule .big {
+    font-size: 1.25rem;
+    line-height: 1.45;
+    color: var(--ink);
+    font-weight: 620;
+    margin: 0 0 0.8rem;
+    text-wrap: balance;
+  }
+  .rule p:last-child { margin-bottom: 0; }
+  .rule p { font-size: 0.97rem; }
+
+  /* --- ejemplo numérico --- */
+  .example {
+    background: var(--surface);
+    border-left: 4px solid var(--stop);
+    border-radius: 0 12px 12px 0;
+    padding: 1.2rem 1.4rem;
+    margin: 1.5rem 0;
+    font-size: 0.96rem;
+  }
+  .example .step {
+    display: flex;
+    gap: 0.8rem;
+    padding: 0.4rem 0;
+  }
+  .example .day {
+    flex-shrink: 0;
+    width: 5.5rem;
+    font-weight: 640;
+    color: var(--ink);
+  }
+  .example .bad { color: var(--stop); font-weight: 600; }
+
+  table { border-collapse: collapse; width: 100%; font-size: 0.97rem; }
+  .tw { overflow-x: auto; border: 1px solid var(--rule); border-radius: 14px; margin: 1.5rem 0; background: var(--surface); }
+  th {
+    text-align: left;
+    font-size: 0.78rem;
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+    color: var(--ink-mute);
+    font-weight: 650;
+    padding: 0.8rem 1rem;
+    border-bottom: 1px solid var(--rule);
+    white-space: nowrap;
+  }
+  td { padding: 0.8rem 1rem; border-bottom: 1px solid var(--rule-soft); vertical-align: top; }
+  tr:last-child td { border-bottom: none; }
+  td:first-child { color: var(--ink); font-weight: 600; }
+
+  footer {
+    margin-top: 4rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid var(--rule);
+    font-size: 0.88rem;
+    color: var(--ink-mute);
+  }
+</style>
+
+<div class="wrap">
+
+  <header class="top">
+    <p class="eyebrow">Guía de uso</p>
+    <h1>Cómo registrar las compras a proveedor</h1>
+    <p class="lede">
+      Qué cambió, qué hacer en cada situación, y la única regla que conviene no romper.
+    </p>
+  </header>
+  <hr class="divider">
+
+  <h2>El problema que resolvimos</h2>
+
+  <p>
+    Antes, registrar una compra y pagarla eran <strong>el mismo acto</strong>. Eso funcionaba solo si
+    comprabas, pagabas y registrabas todo al mismo tiempo, con la caja abierta.
+  </p>
+
+  <p>
+    En la práctica no pasa así. Llega la factura del proveedor dos días después. O te sientas a cargar
+    las compras a las once de la noche, con la caja ya cerrada. En esos casos el sistema simplemente
+    no te dejaba.
+  </p>
+
+  <div class="split">
+    <div class="before">
+      <p class="label">Antes</p>
+      <p>Registrar una compra <em>era</em> sacar la plata de la caja, en ese instante. Sin caja abierta, no podías registrar nada.</p>
+    </div>
+    <div class="after">
+      <p class="label">Ahora</p>
+      <p>La llegada de la mercancía y el pago son dos momentos separados. Puedes registrar la compra cuando quieras y pagar después.</p>
+    </div>
+  </div>
+
+  <p>
+    Cada compra ahora tiene <strong>su fecha real de entrada</strong> — el día que llegó la mercancía,
+    no el día que la digitaste. Eso hace que tu inventario y tus costos queden correctos, aunque
+    cargues la información tarde.
+  </p>
+
+  <h2>Qué hacer en cada situación</h2>
+
+  <div class="case">
+    <div class="case-head">
+      <span class="case-num">1</span>
+      <p class="case-title">Compras y pagas en el momento</p>
+    </div>
+    <p>Es lo más común: el proveedor llega, recibes la mercancía y le pagas ahí mismo.</p>
+    <p class="do">Elige el medio de pago al registrar. Igual que siempre.</p>
+  </div>
+
+  <div class="case">
+    <div class="case-head">
+      <span class="case-num">2</span>
+      <p class="case-title">Recibes ahora y pagas después</p>
+    </div>
+    <p>
+      El proveedor te deja la mercancía a crédito, o quedas de pagarle por transferencia el viernes.
+    </p>
+    <p>
+      Registra la compra <strong>sin medio de pago</strong>: queda marcada como <strong>“Por pagar”</strong>.
+      La mercancía entra al inventario de inmediato y ya la puedes vender. Cuando le entregues la plata,
+      abres esa compra y registras el pago.
+    </p>
+    <p class="do">Deja la opción “Pendiente de pago”. La saldas después.</p>
+  </div>
+
+  <div class="case">
+    <div class="case-head">
+      <span class="case-num">3</span>
+      <p class="case-title">Cargas facturas de días anteriores, o de noche</p>
+    </div>
+    <p>
+      Este era el caso imposible. Ahora sí se puede: pones la <strong>fecha real</strong> en que llegó
+      la mercancía y la registras como pendiente. No necesitas tener la caja abierta.
+    </p>
+    <p class="do">Ajusta la fecha de entrada y déjala pendiente de pago.</p>
+  </div>
+
+  <div class="rule gold">
+    <span class="tag">Beneficio adicional</span>
+    <p class="big">Tu lista de compras “Por pagar” es tu cuenta de deudas con proveedores.</p>
+    <p>
+      Antes no tenías esa información en ningún lado. Ahora, de un vistazo, sabes cuánto le debes a
+      quién y desde cuándo.
+    </p>
+  </div>
+
+  <h2>La regla que conviene no romper</h2>
+
+  <div class="rule caution">
+    <span class="tag">Importante</span>
+    <p class="big">Las compras que pagas en efectivo, regístralas el mismo día, antes de cerrar la caja.</p>
+    <p>
+      Esto no es una limitación del programa. Es porque la caja se cuadra contra el efectivo que
+      cuentas físicamente en el cajón al final del día.
+    </p>
+  </div>
+
+  <p>Veámoslo con un ejemplo de por qué importa:</p>
+
+  <div class="example">
+    <div class="step">
+      <span class="day">Martes</span>
+      <span>Le pagas $2.000.000 en efectivo a un proveedor. No lo registras.</span>
+    </div>
+    <div class="step">
+      <span class="day">Martes, 7pm</span>
+      <span>Cierras caja. Te <span class="bad">faltan $2.000.000</span> al contar, y lo justificas como descuadre.</span>
+    </div>
+    <div class="step">
+      <span class="day">Jueves</span>
+      <span>Registras la compra como “pagada”. El sistema saca $2.000.000 de la caja de <strong>hoy</strong>.</span>
+    </div>
+    <div class="step">
+      <span class="day">Jueves, 7pm</span>
+      <span>Cierras caja y ahora te <span class="bad">sobran $2.000.000</span>.</span>
+    </div>
+  </div>
+
+  <p>
+    El descuadre no se arregló: se mudó de día. Por eso la regla. Para compras por
+    <strong>transferencia o a crédito</strong> no hay ningún problema — ese dinero no está en el cajón,
+    así que no afecta el conteo físico.
+  </p>
+
+  <h3>¿Y si ya pasó?</h3>
+
+  <p>
+    Si pagaste en efectivo y se te quedó sin registrar, no hay forma de arreglarlo hacia atrás: la caja
+    de ese día ya se cerró, se contó y se firmó. El sistema no permite modificarla, y hace bien —
+    sería alterar un documento contable ya cuadrado.
+  </p>
+
+  <p>
+    Lo mejor en ese caso es registrar la compra <strong>con su fecha real y como pendiente</strong>. Así
+    tu inventario y tus costos quedan correctos, que es lo que no se puede recuperar de otra forma, y
+    no le inventas un movimiento a la caja de hoy. El faltante de aquel día ya quedó registrado donde
+    corresponde: en la justificación del descuadre.
+  </p>
+
+  <h2>Resumen</h2>
+
+  <div class="tw">
+    <table>
+      <thead>
+        <tr>
+          <th>Forma de pago</th>
+          <th>Cuándo registrarla</th>
+          <th>¿Necesita caja abierta?</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Efectivo</td>
+          <td>El mismo día, antes de cerrar caja</td>
+          <td>Sí</td>
+        </tr>
+        <tr>
+          <td>Transferencia</td>
+          <td>Cuando quieras, con su fecha real</td>
+          <td>Solo al registrar el pago</td>
+        </tr>
+        <tr>
+          <td>A crédito</td>
+          <td>Cuando llegue la factura</td>
+          <td>No, hasta que pagues</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <p>
+    Y recuerda: la <strong>fecha de entrada</strong> es cuándo llegó la mercancía, no cuándo la
+    escribiste en el sistema. Ponerla bien es lo que mantiene tus costos y tus reportes confiables.
+  </p>
+
+  <footer>
+    Documento de uso · Módulo de Inventario y Caja
+  </footer>
+
+</div>
