@@ -128,7 +128,13 @@ export function ReportesPage() {
   const delta = (current: string, previous: string | undefined, direction: 'up' | 'down') => (previous === undefined ? undefined : computeDelta(current, previous, direction))
 
   const showEmpeñoTiendaSplit = moduleFilter === 'all'
-  const showCapital = moduleFilter !== 'store'
+  // Préstamos (empeño) y compras de mercancía (tienda) son la MISMA idea
+  // contable: efectivo que se convierte en un activo, no en un gasto. Van en
+  // la misma card con una sola explicación; cada fila aparece según el módulo
+  // que se esté mirando.
+  const showCapitalEmpeño = moduleFilter !== 'store'
+  const showCapitalTienda = moduleFilter !== 'pawn'
+  const showCapital = showCapitalEmpeño || showCapitalTienda
   const showCartera = moduleFilter !== 'store'
 
   return (
@@ -202,13 +208,26 @@ export function ReportesPage() {
 
           {showCapital && (
             <div className="rounded-card border border-border bg-card p-card shadow-card">
-              <div className="mb-3 flex items-center justify-between">
-                <h2 className="text-sm font-medium text-foreground">Movimiento de capital (cartera de empeño)</h2>
-                <span className="text-xs text-muted-foreground">No es ingreso ni gasto — prestar o recuperar capital no cambia la utilidad.</span>
+              <div className="mb-3 flex flex-wrap items-center justify-between gap-x-4 gap-y-1">
+                <h2 className="text-sm font-medium text-foreground">Movimiento de capital</h2>
+                <span className="text-xs text-muted-foreground">
+                  No es ingreso ni gasto — prestar, recuperar o comprar mercancía convierte efectivo en un activo, no cambia la utilidad.
+                </span>
               </div>
-              <div className="grid grid-cols-2 gap-4 sm:grid-cols-2">
-                <KpiCard label="Capital desembolsado (préstamos nuevos)" value={<Money value={summary.capitalDesembolsado} tone="out" />} />
-                <KpiCard label="Capital abonado (recuperado)" value={<Money value={summary.capitalAbonado} tone="in" />} />
+              <div className="grid grid-cols-2 gap-4 lg:grid-cols-3">
+                {showCapitalEmpeño && (
+                  <>
+                    <KpiCard label="Capital desembolsado (préstamos nuevos)" value={<Money value={summary.capitalDesembolsado} tone="out" />} />
+                    <KpiCard label="Capital abonado (recuperado)" value={<Money value={summary.capitalAbonado} tone="in" />} />
+                  </>
+                )}
+                {showCapitalTienda && (
+                  <KpiCard
+                    label="Compras a proveedor (inversión en inventario)"
+                    value={<Money value={summary.comprasInventario} tone="out" />}
+                    delta={delta(summary.comprasInventario, previousSummary?.comprasInventario, 'down')}
+                  />
+                )}
               </div>
             </div>
           )}

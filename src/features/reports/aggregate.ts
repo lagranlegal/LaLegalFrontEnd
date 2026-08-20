@@ -22,6 +22,12 @@ export interface DayTotal {
 // no es un gasto (se convierte en cartera, un activo) y el capital recuperado
 // no es ingreso (solo reduce esa cartera) — mezclarlos con intereses/ventas/
 // gastos reales daría una "utilidad" falsa. Ver docs/IMPLEMENTATION.md.
+//
+// `purchase` (compra a proveedor) queda FUERA de los gastos por la misma
+// razón que `loan_disbursed`: comprar mercancía no es un gasto, es convertir
+// efectivo en inventario — un activo. El costo se vuelve gasto (costo de
+// ventas) cuando el artículo SE VENDE, no cuando se compra. Meterlo acá haría
+// que un mes con mucha compra pareciera un mes de pérdida.
 const REVENUE_CONCEPTS = new Set(['interest_payment', 'sale'])
 const EXPENSE_CONCEPTS = new Set(['expense'])
 
@@ -41,6 +47,8 @@ export interface FinancialSummary {
   capitalAbonado: string
   /** Capital desembolsado — préstamos nuevos entregados (`concept: 'loan_disbursed'`, `direction: 'out'`) — movimiento de cartera, NO gasto. */
   capitalDesembolsado: string
+  /** Compras a proveedor (`concept: 'purchase'`, `direction: 'out'`) — inversión en inventario, NO gasto: el efectivo se convierte en mercancía. */
+  comprasInventario: string
   /** Todo el efectivo que entró/salió en el rango, incluyendo capital — "cuánta plata se movió", distinto de la utilidad. */
   flujoEntradas: string
   flujoSalidas: string
@@ -77,6 +85,7 @@ export function aggregateFinancialSummary(sessions: { sessionDate: string; repor
   let intereses = '0.00'
   let capitalAbonado = '0.00'
   let capitalDesembolsado = '0.00'
+  let comprasInventario = '0.00'
   let ventas = '0.00'
   let flujoEntradas = '0.00'
   let flujoSalidas = '0.00'
@@ -115,6 +124,7 @@ export function aggregateFinancialSummary(sessions: { sessionDate: string; repor
     if (line.direction === 'in' && line.concept === 'sale') ventas = sumMoney(ventas, line.total)
     if (line.direction === 'in' && line.concept === 'capital_payment') capitalAbonado = sumMoney(capitalAbonado, line.total)
     if (line.direction === 'out' && line.concept === 'loan_disbursed') capitalDesembolsado = sumMoney(capitalDesembolsado, line.total)
+    if (line.direction === 'out' && line.concept === 'purchase') comprasInventario = sumMoney(comprasInventario, line.total)
   }
 
   for (const { sessionDate, report } of sessions) {
@@ -135,6 +145,7 @@ export function aggregateFinancialSummary(sessions: { sessionDate: string; repor
     ventas,
     capitalAbonado,
     capitalDesembolsado,
+    comprasInventario,
     flujoEntradas,
     flujoSalidas,
     ingresosOperativosByModule: moduleRevenue,

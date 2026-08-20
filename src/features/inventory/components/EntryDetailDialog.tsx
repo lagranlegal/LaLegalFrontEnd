@@ -2,6 +2,7 @@ import { AppDialog } from '@/components/shared/AppDialog'
 import { Money } from '@/components/shared/Money'
 import { StatusBadge } from '@/components/shared/StatusBadge'
 import { formatDateTime } from '@/lib/dates'
+import { paymentMethodLabel } from '@/lib/paymentMethods'
 import type { Entry } from '@/features/inventory/api'
 
 const ORIGIN_TYPE_LABELS: Record<string, string> = { purchase: 'Compra', other: 'Otro' }
@@ -24,7 +25,21 @@ export function EntryDetailDialog({ open, onOpenChange, entry }: { open: boolean
             <p className="text-xs text-muted-foreground">Costo total</p>
             <Money value={entry.total_cost} className="font-medium" />
           </div>
+          {/* Solo las compras lo llevan: un ingreso "Otro" no entrega plata a
+              nadie y no genera egreso de caja. */}
+          {entry.payment_method && (
+            <div>
+              <p className="text-xs text-muted-foreground">Medio de pago</p>
+              <p className="font-medium text-foreground">{paymentMethodLabel(entry.payment_method)}</p>
+            </div>
+          )}
         </div>
+        {entry.payment_method && (
+          <p className="text-xs text-muted-foreground">
+            Registrado como egreso de caja del módulo Tienda — se refleja en el cierre del día y en Reportes como inversión en
+            inventario.
+          </p>
+        )}
         {entry.notes && <p className="text-sm text-foreground">{entry.notes}</p>}
         <div className="flex flex-col gap-2">
           {entry.items.map((item) => (

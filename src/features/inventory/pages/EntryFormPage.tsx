@@ -9,11 +9,14 @@ import { PageHeader } from '@/components/shared/PageHeader'
 import { AppDialog } from '@/components/shared/AppDialog'
 import { MoneyInput } from '@/components/shared/MoneyInput'
 import { Money } from '@/components/shared/Money'
+import { CashSessionRequiredDialog } from '@/components/shared/CashSessionRequiredDialog'
 import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { ApiError } from '@/lib/api/client'
 import { useCategories } from '@/lib/catalogs/categories'
 import { useSuppliers } from '@/lib/catalogs/suppliers'
 import { sumMoney, multiplyMoney } from '@/lib/money'
+import { PAYMENT_METHOD_LABELS } from '@/lib/paymentMethods'
 import { applyServerErrors } from '@/lib/forms/applyServerErrors'
 import { useCreateEntry } from '@/features/inventory/api'
 
@@ -34,6 +37,7 @@ const entrySchema = z
     origin_type: z.enum(['purchase', 'other']),
     supplier_id: z.string().optional(),
     supplier_invoice: z.string().optional(),
+    payment_method: z.enum(['cash', 'transfer', 'other']).optional(),
     notes: z.string().optional(),
     lines: z.array(entryLineSchema).min(1, 'Agrega al menos un artículo'),
   })
@@ -44,6 +48,13 @@ const entrySchema = z
   .refine((data) => data.origin_type !== 'purchase' || !!data.supplier_id, {
     message: 'Un ingreso de tipo "Compra" necesita un proveedor',
     path: ['supplier_id'],
+  })
+  // Misma forma condicional: una compra entrega plata al proveedor y genera
+  // su egreso de caja, así que el medio de pago es obligatorio ahí (y no
+  // aplica a un ingreso "Otro", que no mueve dinero).
+  .refine((data) => data.origin_type !== 'purchase' || !!data.payment_method, {
+    message: 'Indica con qué medio se pagó la compra',
+    path: ['payment_method'],
   })
 
 type EntryFormValues = z.infer<typeof entrySchema>
@@ -60,6 +71,7 @@ export function EntryFormPage() {
   const { data: categories } = useCategories()
   const { data: suppliers } = useSuppliers()
   const [formError, setFormError] = useState<string | null>(null)
+  const [cashDialogOpen, setCashDialogOpen] = useState(false)
   const submittedRef = useRef(false)
   const createEntry = useCreateEntry()
 
@@ -73,10 +85,19 @@ export function EntryFormPage() {
     formState: { errors, isDirty },
   } = useForm<EntryFormValues>({
     resolver: zodResolver(entrySchema),
-    defaultValues: { origin_type: 'purchase', supplier_id: '', supplier_invoice: '', notes: '', lines: [emptyLine()] },
+    defaultValues: {
+      origin_type: 'purchase',
+      supplier_id: '',
+      supplier_invoice: '',
+      payment_method: 'cash',
+      notes: '',
+      lines: [emptyLine()],
+    },
   })
   const { fields, append, remove } = useFieldArray({ control, name: 'lines' })
   const lines = watch('lines')
+  const originType = watch('origin_type')
+  const isPurchase = originType === 'purchase'
 
   const blocker = useBlocker({
     shouldBlockFn: () => isDirty && !submittedRef.current,
@@ -93,6 +114,9 @@ export function EntryFormPage() {
         origin_type: values.origin_type,
         supplier_id: values.supplier_id || null,
         supplier_invoice: values.supplier_invoice || null,
+        // Solo la compra lo lleva — el backend rechaza un 'other' con medio
+        // de pago (CHECK de la migración 00014).
+        payment_method: values.origin_type === 'purchase' ? (values.payment_method ?? null) : null,
         notes: values.notes || null,
         lines: values.lines.map((line) => ({
           name: line.name,
@@ -108,6 +132,12 @@ export function EntryFormPage() {
       toast.success(`Ingreso #${entry.number} registrado — ${entry.items.length} artículo(s) en borrador`)
       await navigate({ to: '/inventario' })
     } catch (error) {
+      // Mismo manejo que la venta: una compra ahora exige caja abierta, así
+      // que el 409 se resuelve ofreciendo abrirla, no con un error seco.
+      if (error instanceof ApiError && error.code === 'CASH_SESSION_NOT_OPEN') {
+        setCashDialogOpen(true)
+        return
+      }
       const banner = applyServerErrors(error, setError)
       if (banner) setFormError(banner)
     }
@@ -178,6 +208,44 @@ export function EntryFormPage() {
               <input id="supplier_invoice" className={inputClass} {...register('supplier_invoice')} />
             </div>
           </div>
+
+          {/* Solo la compra entrega plata: el medio de pago decide si el
+              egreso baja el efectivo esperado del cierre o se concilia por
+              otro medio. Un ingreso "Otro" no mueve caja. */}
+          {isPurchase && (
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+              <div>
+                <label htmlFor="payment_method" className="text-sm font-medium text-foreground">
+                  Medio de pago
+                </label>
+                <Controller
+                  control={control}
+                  name="payment_method"
+                  render={({ field }) => (
+                    <Select value={field.value ?? ''} onValueChange={field.onChange}>
+                      <SelectTrigger id="payment_method" className="mt-1 w-full">
+                        <SelectValue placeholder="Selecciona…">
+                          {field.value ? PAYMENT_METHOD_LABELS[field.value] : undefined}
+                        </SelectValue>
+                      </SelectTrigger>
+                      <SelectContent>
+                        {Object.entries(PAYMENT_METHOD_LABELS).map(([value, label]) => (
+                          <SelectItem key={value} value={value}>
+                            {label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
+                />
+                {errors.payment_method && <p className="mt-1 text-sm text-danger">{errors.payment_method.message}</p>}
+              </div>
+              <p className="text-xs text-muted-foreground sm:col-span-2 sm:self-end sm:pb-2">
+                La compra queda registrada como egreso de caja del módulo Tienda, así que el cierre del día ya la
+                descuenta. Requiere la caja abierta.
+              </p>
+            </div>
+          )}
         </section>
 
         <section className="flex flex-col gap-4 rounded-card border border-border bg-card p-card shadow-card">
@@ -353,6 +421,8 @@ export function EntryFormPage() {
           </div>
         }
       />
+
+      <CashSessionRequiredDialog open={cashDialogOpen} onOpenChange={setCashDialogOpen} />
     </div>
   )
 }

@@ -4,3 +4,13 @@ export const PAYMENT_METHOD_LABELS: Record<'cash' | 'transfer' | 'other', string
   transfer: 'Transferencia',
   other: 'Otro',
 }
+
+/**
+ * Para valores que llegan tipados como `string` desde la API (ej.
+ * `EntryOut.payment_method`, que el backend declara `str | None` y no como el
+ * literal del enum). Mismo criterio de fallback seguro que `conceptLabel` en
+ * `lib/modules.ts`: un valor no mapeado se muestra tal cual en vez de romper.
+ */
+export function paymentMethodLabel(method: string): string {
+  return PAYMENT_METHOD_LABELS[method as keyof typeof PAYMENT_METHOD_LABELS] ?? method
+}

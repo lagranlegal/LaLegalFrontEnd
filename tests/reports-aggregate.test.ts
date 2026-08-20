@@ -39,6 +39,61 @@ describe('aggregateFinancialSummary', () => {
     expect(summary.sessionCount).toBe(1)
   })
 
+  it('una compra a proveedor es inversión en inventario, NO un gasto operativo', () => {
+    // Regresión de la regla contable: cuando la compra empezó a generar
+    // movimiento de caja (`concept: 'purchase'`), lo fácil era sumarla a
+    // gastos y dejar que un mes de reposición de mercancía se viera como un
+    // mes de pérdida. Comprar convierte efectivo en un activo; el costo se
+    // vuelve gasto cuando el artículo se VENDE, no cuando se compra.
+    const summary = aggregateFinancialSummary([
+      {
+        sessionDate: '2026-08-01',
+        report: report([
+          { module: 'store', direction: 'in', concept: 'sale', payment_method: 'cash', total: '300000.00' },
+          { module: 'store', direction: 'out', concept: 'purchase', payment_method: 'cash', total: '2000000.00' },
+          { module: 'general', direction: 'out', concept: 'expense', payment_method: 'cash', total: '50000.00' },
+        ]),
+      },
+    ])
+
+    expect(summary.comprasInventario).toBe('2000000.00')
+    // El gasto operativo es SOLO el gasto real, no la compra.
+    expect(summary.gastosOperativos).toBe('50000.00')
+    // Y por lo tanto la utilidad es +250.000, no −1.750.000.
+    expect(summary.utilidadOperativa).toBe('250000.00')
+    // El flujo de caja crudo sí la incluye — es el número que explica por qué
+    // hay menos efectivo en el cajón.
+    expect(summary.flujoSalidas).toBe('2050000.00')
+  })
+
+  it('la compra tampoco distorsiona la tendencia diaria de gastos', () => {
+    const summary = aggregateFinancialSummary([
+      {
+        sessionDate: '2026-08-01',
+        report: report([{ module: 'store', direction: 'out', concept: 'purchase', payment_method: 'cash', total: '5000000.00' }]),
+      },
+    ])
+
+    expect(summary.byDay).toEqual([{ date: '2026-08-01', ingresos: '0.00', gastos: '0.00' }])
+  })
+
+  it('el filtro por módulo separa compras (tienda) de desembolsos (empeño)', () => {
+    const sessions = [
+      {
+        sessionDate: '2026-08-01',
+        report: report([
+          { module: 'store', direction: 'out', concept: 'purchase', payment_method: 'cash', total: '800000.00' },
+          { module: 'pawn', direction: 'out', concept: 'loan_disbursed', payment_method: 'cash', total: '1000000.00' },
+        ]),
+      },
+    ]
+
+    expect(aggregateFinancialSummary(sessions, 'store').comprasInventario).toBe('800000.00')
+    expect(aggregateFinancialSummary(sessions, 'store').capitalDesembolsado).toBe('0.00')
+    expect(aggregateFinancialSummary(sessions, 'pawn').comprasInventario).toBe('0.00')
+    expect(aggregateFinancialSummary(sessions, 'pawn').capitalDesembolsado).toBe('1000000.00')
+  })
+
   it('suma la misma combinación módulo/concepto/medio a través de varias sesiones, no float', () => {
     const summary = aggregateFinancialSummary([
       { sessionDate: '2026-08-01', report: report([{ module: 'store', direction: 'in', concept: 'sale', payment_method: 'cash', total: '0.10' }]) },

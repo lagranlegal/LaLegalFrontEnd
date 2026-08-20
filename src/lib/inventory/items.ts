@@ -10,13 +10,13 @@ export type Item = components['schemas']['ItemOut']
  * de venta (sales) — mismo criterio que `lib/catalogs/categories.ts`
  * (CLAUDE.md regla 3: compartido entre features vive en `lib/`).
  *
- * **Sin `q` en el backend:** `GET /inventory/items` solo filtra por
- * `status`/`cursor`/`limit`, sin búsqueda de texto (mismo hueco que
- * `legacy_code` en contratos, documentado en `RECOMENDACIONES.md` §1.6).
- * Se trae la primera página de disponibles (100, generoso para un picker) y
- * se filtra por código/nombre en el cliente — si una compraventa tiene más
- * de 100 artículos disponibles a la vez, la búsqueda puede no encontrar uno
- * fuera de esa página. Documentado como hueco conocido, no un bug oculto.
+ * **Busca en el servidor** (`?q=` en `GET /inventory/items`). Antes traía la
+ * primera página de 100 disponibles y filtraba en el navegador, lo que ponía
+ * un techo duro real: con más de 100 artículos disponibles a la vez, un
+ * artículo fuera de esa página simplemente NO se podía encontrar — y este es
+ * el buscador del carrito de venta, así que era un artículo que no se podía
+ * vender. Con `?q=` el filtro lo hace Postgres sobre todo el inventario
+ * (código por prefijo, nombre por full-text) y el techo desaparece.
  */
 /** Artículo por id — `SaleLineOut` solo trae `item_id`, no el nombre/código para mostrar en el recibo. */
 export function useItem(itemId: string | undefined) {
@@ -28,13 +28,16 @@ export function useItem(itemId: string | undefined) {
 }
 
 export function useAvailableItemsSearch(q: string) {
+  const query = q.trim()
   return useQuery({
-    queryKey: ['inventory', 'items', 'available-search'] as const,
-    queryFn: () => unwrap(api.GET('/api/v1/inventory/items', { params: { query: { status: 'available', limit: 100 } } })),
-    select: (page) => {
-      const query = q.trim().toLowerCase()
-      if (!query) return []
-      return page.items.filter((item) => item.name.toLowerCase().includes(query) || item.code?.toLowerCase().includes(query)).slice(0, 8)
-    },
+    // `q` va en la clave: cada término es su propia entrada de cache, así que
+    // volver a un término ya buscado es instantáneo.
+    queryKey: ['inventory', 'items', 'available-search', query] as const,
+    queryFn: () => unwrap(api.GET('/api/v1/inventory/items', { params: { query: { status: 'available', q: query, limit: 8 } } })),
+    // Sin término no se pide nada (el picker no muestra lista hasta que se
+    // escribe). `SearchInput` ya trae debounce de 300ms, así que no se
+    // dispara una request por tecla.
+    enabled: query.length > 0,
+    select: (page) => page.items,
   })
 }

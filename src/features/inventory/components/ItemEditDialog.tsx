@@ -5,10 +5,13 @@ import { z } from 'zod'
 import { toast } from 'sonner'
 import { Link } from '@tanstack/react-router'
 import { AppDialog } from '@/components/shared/AppDialog'
+import { Money } from '@/components/shared/Money'
 import { MoneyInput } from '@/components/shared/MoneyInput'
 import { PhotoUploader } from '@/components/shared/PhotoUploader'
 import { StatusBadge } from '@/components/shared/StatusBadge'
 import { Button } from '@/components/ui/button'
+import { cn } from '@/lib/utils'
+import { subtractMoney } from '@/lib/money'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { useUpdateItem, usePublishItem } from '@/features/inventory/api'
 import { useContract } from '@/lib/contracts/reference'
@@ -53,6 +56,49 @@ function ItemOriginInfo({ item }: { item: Item }) {
   if (item.origin === 'auction' && item.source_contract_id) return <AuctionOriginInfo contractId={item.source_contract_id} />
   if (item.origin === 'supplier' && item.supplier_id) return <SupplierOriginInfo supplierId={item.supplier_id} />
   return null
+}
+
+/**
+ * Costo de compra, utilidad y margen. `ItemOut.cost` siempre vino en la API y
+ * la tabla del listado ya lo mostraba, pero el detalle no — así que la
+ * pregunta central del negocio ("¿cuánto me gano con esta pieza?") no tenía
+ * respuesta en ninguna pantalla.
+ *
+ * `salePrice` viene del form (no de `item.sale_price`) para que la utilidad se
+ * recalcule mientras se escribe el precio, que es justo cuando el usuario
+ * necesita verla. Aritmética con los helpers decimales de `lib/money` — el
+ * dinero nunca pasa por `parseFloat` (CLAUDE.md regla 5).
+ */
+function ItemMarginInfo({ cost, salePrice }: { cost: string; salePrice: string | undefined }) {
+  const price = salePrice && Number(salePrice) > 0 ? salePrice : null
+  const profit = price ? subtractMoney(price, cost) : null
+  // Margen sobre el precio de venta (no sobre el costo): es como se lee un
+  // margen comercial y evita dividir por cero si algo entró con costo 0.
+  const marginPct = price && profit && Number(price) > 0 ? Math.round((Number(profit) / Number(price)) * 100) : null
+  const isLoss = profit !== null && Number(profit) < 0
+
+  return (
+    <div className="grid grid-cols-3 gap-3 rounded-input bg-muted/40 px-3 py-2.5">
+      <div>
+        <p className="text-xs text-muted-foreground">Costo de compra</p>
+        <Money value={cost} className="text-sm font-medium text-foreground" />
+      </div>
+      <div>
+        <p className="text-xs text-muted-foreground">Utilidad</p>
+        {profit ? (
+          <Money value={profit} className={cn('text-sm font-medium', isLoss ? 'text-danger' : 'text-success')} />
+        ) : (
+          <p className="text-sm text-muted-foreground">—</p>
+        )}
+      </div>
+      <div>
+        <p className="text-xs text-muted-foreground">Margen</p>
+        <p className={cn('text-sm font-medium', marginPct === null ? 'text-muted-foreground' : isLoss ? 'text-danger' : 'text-success')}>
+          {marginPct === null ? '—' : `${marginPct}%`}
+        </p>
+      </div>
+    </div>
+  )
 }
 
 /** Editar borrador + publicar (CLAUDE.md paso 7: "publicar (precio + ≥1 foto, muestra el código emitido)"). */
@@ -159,6 +205,8 @@ export function ItemEditDialog({ open, onOpenChange, item }: { open: boolean; on
         </div>
 
         <ItemOriginInfo item={item} />
+
+        <ItemMarginInfo cost={item.cost} salePrice={salePrice} />
 
         <div>
           <label htmlFor="item-name" className="text-sm font-medium text-foreground">

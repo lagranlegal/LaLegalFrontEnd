@@ -18,6 +18,7 @@ export const CONCEPT_LABELS: Record<string, string> = {
   loan_disbursed: 'Desembolso de préstamo',
   expense: 'Gasto',
   sale: 'Venta',
+  purchase: 'Compra a proveedor',
   opening_balance: 'Saldo inicial',
 }
 

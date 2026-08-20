@@ -6,10 +6,13 @@ import { DataTable } from '@/components/shared/DataTable'
 import { StatusBadge } from '@/components/shared/StatusBadge'
 import { Money } from '@/components/shared/Money'
 import { Can } from '@/components/shared/Can'
+import { SearchInput } from '@/components/shared/SearchInput'
 import { Button } from '@/components/ui/button'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { cn } from '@/lib/utils'
 import { formatDateTime } from '@/lib/dates'
+import { useCategories, type Category } from '@/lib/catalogs/categories'
 import { useEntriesList, useExitsList, useItemsList, type Entry, type Exit } from '@/features/inventory/api'
 import type { Item } from '@/lib/inventory/items'
 import { ItemEditDialog } from '@/features/inventory/components/ItemEditDialog'
@@ -31,11 +34,68 @@ const EXIT_TYPE_LABELS: Record<string, string> = {
   internal_use: 'Uso interno',
 }
 
+/**
+ * Un nivel del filtro de categorías. `__all__` como centinela porque Radix
+ * `Select` no admite `value=""` en un `SelectItem` (lo reserva para "sin
+ * valor"), mismo truco que ya usa `EntryFormPage` con `__none__`.
+ */
+function CategorySelect({
+  value,
+  onChange,
+  options,
+  placeholder,
+  disabled,
+}: {
+  value: string
+  onChange: (value: string) => void
+  options: Category[]
+  placeholder: string
+  disabled?: boolean
+}) {
+  return (
+    <Select value={value || '__all__'} onValueChange={(v) => onChange(v === '__all__' ? '' : v)} disabled={disabled}>
+      <SelectTrigger className="w-auto min-w-44">
+        {/* Radix solo resuelve el texto de SelectValue desde un SelectItem ya
+            montado — con un valor puesto por código el trigger se vería vacío
+            sin esto (mismo hallazgo que en ItemEditDialog). */}
+        <SelectValue placeholder={placeholder}>{options.find((c) => c.id === value)?.name ?? placeholder}</SelectValue>
+      </SelectTrigger>
+      <SelectContent>
+        <SelectItem value="__all__">{placeholder}</SelectItem>
+        {options.map((c) => (
+          <SelectItem key={c.id} value={c.id}>
+            {c.name}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
+  )
+}
+
 function ItemsTab() {
   const [status, setStatus] = useState('')
-  const { data, isPending, isError, refetch, hasNextPage, isFetchingNextPage, fetchNextPage } = useItemsList(status)
+  const [q, setQ] = useState('')
+  const [cat1Id, setCat1Id] = useState('')
+  const [cat2Id, setCat2Id] = useState('')
+  const [cat3Id, setCat3Id] = useState('')
+  const { data: categories } = useCategories()
+  const { data, isPending, isError, refetch, hasNextPage, isFetchingNextPage, fetchNextPage } = useItemsList({
+    status,
+    q,
+    // Solo se manda la categoría MÁS específica elegida: el backend filtra por
+    // columna exacta, así que mandar cat1 + cat3 juntos sería redundante y
+    // cat3 ya implica su rama.
+    cat1_id: cat3Id || cat2Id ? '' : cat1Id,
+    cat2_id: cat3Id ? '' : cat2Id,
+    cat3_id: cat3Id,
+  })
   const [editingItem, setEditingItem] = useState<Item | null>(null)
   const [dialogNonce, setDialogNonce] = useState(0)
+
+  const level1Options = (categories ?? []).filter((c) => c.level === 1 && c.active)
+  const level2Options = (categories ?? []).filter((c) => c.level === 2 && c.active && c.parent_id === cat1Id)
+  const level3Options = (categories ?? []).filter((c) => c.level === 3 && c.active && c.parent_id === cat2Id)
+  const hasFilters = !!(q || status || cat1Id)
 
   const items = data?.pages.flatMap((page) => page.items) ?? []
 
@@ -50,7 +110,11 @@ function ItemsTab() {
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex flex-wrap gap-2">
+      {/* Buscar por código es la operación de mostrador: el vendedor lee la
+          etiqueta de la vitrina. Va primero y ocupa el ancho. */}
+      <SearchInput value={q} onChange={setQ} placeholder="Buscar por código o nombre…" />
+
+      <div className="flex flex-wrap items-center gap-2">
         {ITEM_STATUS_TABS.map((tab) => (
           <button
             key={tab.value}
@@ -66,6 +130,47 @@ function ItemsTab() {
         ))}
       </div>
 
+      <div className="flex flex-wrap items-center gap-2">
+        <CategorySelect
+          value={cat1Id}
+          onChange={(v) => {
+            setCat1Id(v)
+            setCat2Id('')
+            setCat3Id('')
+          }}
+          options={level1Options}
+          placeholder="Toda categoría"
+          disabled={!categories}
+        />
+        {cat1Id && (
+          <CategorySelect
+            value={cat2Id}
+            onChange={(v) => {
+              setCat2Id(v)
+              setCat3Id('')
+            }}
+            options={level2Options}
+            placeholder="Toda subcategoría"
+          />
+        )}
+        {cat2Id && <CategorySelect value={cat3Id} onChange={setCat3Id} options={level3Options} placeholder="Todo tipo" />}
+        {hasFilters && (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => {
+              setQ('')
+              setStatus('')
+              setCat1Id('')
+              setCat2Id('')
+              setCat3Id('')
+            }}
+          >
+            Limpiar filtros
+          </Button>
+        )}
+      </div>
+
       <DataTable
         columns={columns}
         data={items}
@@ -73,8 +178,8 @@ function ItemsTab() {
         isLoading={isPending}
         isError={isError}
         onRetry={() => refetch()}
-        emptyTitle={status ? 'No hay artículos con ese estado' : 'Aún no tienes artículos'}
-        emptyDescription={status ? undefined : 'Registra un ingreso para empezar.'}
+        emptyTitle={hasFilters ? 'Ningún artículo coincide' : 'Aún no tienes artículos'}
+        emptyDescription={hasFilters ? 'Prueba con otro código, nombre o categoría.' : 'Registra un ingreso para empezar.'}
         onRowClick={(row) => {
           setEditingItem(row)
           setDialogNonce((n) => n + 1)
