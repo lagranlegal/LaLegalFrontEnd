@@ -836,6 +836,73 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/inventory/products": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Products
+         * @description Inventario agrupado por producto, con el resumen de sus lotes.
+         *
+         *     Es la vista que responde "¿cuántas tengo para vender?" sin que el usuario
+         *     tenga que sumar lotes mentalmente. El detalle por lote —con su costo y su
+         *     proveedor— sale de `GET /products/{id}/lots`.
+         */
+        get: operations["list_products_api_v1_inventory_products_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/inventory/products/{product_id}/lots": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Product Lots
+         * @description Lotes de un producto, del más antiguo al más nuevo — que es el orden en
+         *     que conviene venderlos (FIFO).
+         */
+        get: operations["list_product_lots_api_v1_inventory_products__product_id__lots_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/inventory/products/{product_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Update Product
+         * @description Cambiar el precio acá lo cambia para TODOS los lotes de una vez — antes
+         *     había que editar cada lote por separado, con el riesgo real de dejar uno
+         *     barato por olvido. Las ventas ya hechas no se ven afectadas.
+         */
+        patch: operations["update_product_api_v1_inventory_products__product_id__patch"];
+        trace?: never;
+    };
     "/api/v1/sales": {
         parameters: {
             query?: never;
@@ -1548,6 +1615,13 @@ export interface components {
             /** Next Cursor */
             next_cursor?: string | null;
         };
+        /** CursorPage[ProductOut] */
+        CursorPage_ProductOut_: {
+            /** Items */
+            items: components["schemas"]["ProductOut"][];
+            /** Next Cursor */
+            next_cursor?: string | null;
+        };
         /** CursorPage[SaleOut] */
         CursorPage_SaleOut_: {
             /** Items */
@@ -1986,6 +2060,10 @@ export interface components {
              * Format: date
              */
             entry_date: string;
+            /** Product Id */
+            product_id: string | null;
+            /** Lot Number */
+            lot_number: number | null;
             /**
              * Created At
              * Format: date-time
@@ -2247,6 +2325,76 @@ export interface components {
             };
             /** Active */
             active: boolean;
+        };
+        /**
+         * ProductOut
+         * @description Un producto con el resumen de sus lotes — la vista agrupada del
+         *     inventario. El PRECIO vive acá (aplica a todos los lotes); el COSTO no
+         *     sube nunca a este nivel: cada lote conserva el suyo (identificación
+         *     específica, NIIF) y por eso acá solo se expone el RANGO, como lectura
+         *     informativa y jamás como valor de costeo.
+         */
+        ProductOut: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Code */
+            code: string | null;
+            /** Name */
+            name: string;
+            /**
+             * Cat1 Id
+             * Format: uuid
+             */
+            cat1_id: string;
+            /**
+             * Cat2 Id
+             * Format: uuid
+             */
+            cat2_id: string;
+            /**
+             * Cat3 Id
+             * Format: uuid
+             */
+            cat3_id: string;
+            /** Description */
+            description: string | null;
+            /** Sale Price */
+            sale_price: string | null;
+            /** Is Unique */
+            is_unique: boolean;
+            /** Active */
+            active: boolean;
+            /** Lot Count */
+            lot_count: number;
+            /** Available Quantity */
+            available_quantity: number;
+            /** Min Cost */
+            min_cost: string | null;
+            /** Max Cost */
+            max_cost: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+        };
+        /**
+         * ProductUpdateIn
+         * @description Editar el producto afecta a TODOS sus lotes a la vez — ese es el punto.
+         *     El costo no está acá y nunca lo estará: pertenece al lote.
+         */
+        ProductUpdateIn: {
+            /** Name */
+            name?: string | null;
+            /** Description */
+            description?: string | null;
+            /** Sale Price */
+            sale_price?: number | string | null;
+            /** Active */
+            active?: boolean | null;
         };
         /**
          * ProfitSummaryOut
@@ -4672,6 +4820,108 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ItemOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_products_api_v1_inventory_products_get: {
+        parameters: {
+            query?: {
+                cursor?: string | null;
+                limit?: number;
+                /** @description SKU (prefijo) o nombre (full-text español). */
+                q?: string | null;
+                /** @description Incluir piezas de remate, que son productos de un solo lote. */
+                include_unique?: boolean;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CursorPage_ProductOut_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_product_lots_api_v1_inventory_products__product_id__lots_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                product_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ItemOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_product_api_v1_inventory_products__product_id__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                product_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ProductUpdateIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProductOut"];
                 };
             };
             /** @description Validation Error */

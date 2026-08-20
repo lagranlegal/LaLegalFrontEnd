@@ -139,3 +139,48 @@ export function usePayEntry() {
     invalidateKeys: [['inventory'], ['dashboard'], ['cashbox']],
   })
 }
+
+// ---- Productos (00021) ----
+
+export type Product = components['schemas']['ProductOut']
+export type ProductUpdateIn = components['schemas']['ProductUpdateIn']
+
+export interface ProductFilters {
+  q?: string
+  include_unique?: boolean
+}
+
+/**
+ * Inventario agrupado por producto. Cada fila trae el resumen de sus lotes,
+ * así que el vendedor ve "cuántas tengo" sin sumar a mano — que es lo que
+ * antes obligaba a hacer una lista con una fila por compra.
+ */
+export function useProductsList(filters: ProductFilters = {}) {
+  const query = { q: filters.q?.trim() || undefined, include_unique: filters.include_unique || undefined }
+  return useCursorInfiniteQuery(['inventory', 'products', query] as const, (cursor) =>
+    unwrap(api.GET('/api/v1/inventory/products', { params: { query: { ...query, cursor } } })),
+  )
+}
+
+/** Lotes de un producto, del más antiguo al más nuevo (orden FIFO). */
+export function useProductLots(productId: string | undefined) {
+  return useQuery({
+    queryKey: ['inventory', 'products', productId, 'lots'] as const,
+    queryFn: () => unwrap(api.GET('/api/v1/inventory/products/{product_id}/lots', { params: { path: { product_id: productId! } } })),
+    enabled: !!productId,
+  })
+}
+
+/**
+ * Cambiar el precio acá lo cambia para TODOS los lotes de una vez. Antes
+ * había que editar cada lote por separado, con el riesgo de dejar uno barato
+ * por olvido. Las ventas ya hechas no se ven afectadas.
+ */
+export function useUpdateProduct() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ productId, body }: { productId: string; body: ProductUpdateIn }) =>
+      unwrap(api.PATCH('/api/v1/inventory/products/{product_id}', { params: { path: { product_id: productId } }, body })),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['inventory'] }),
+  })
+}

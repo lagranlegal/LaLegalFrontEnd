@@ -2,6 +2,63 @@
 
 > Registro vivo de qué existe en el código, cómo está armado y por qué se tomó cada decisión — para que cualquiera (humano o Claude Code) pueda retomar el proyecto sin releer todo el historial de commits. Se actualiza en cada paso del "Orden de implementación" de `CLAUDE.md`. No repite lo que ya está en `ARCHITECTURE.md`/`DESIGN_SYSTEM.md` (el qué-debería-ser); esto es el qué-hay-hoy y las decisiones concretas tomadas al construirlo.
 
+## Producto + lote: fases 1 y 2 (20/08/2026)
+
+El cambio de modelo que documenta `docs/propuesta-productos-lotes.html`. El sistema no tenía el concepto de **producto**, solo artículos sueltos — y de ahí salían cuatro síntomas que parecían independientes: la lista no agrupaba, el precio se editaba lote por lote, reponer dependía de escribir el nombre idéntico, y no se podían comparar proveedores del mismo producto.
+
+### Se hizo en fases, a propósito
+
+Expandir → migrar → contraer. Es la disciplina que faltó en 00014 (donde el CHECK llegó antes que el deploy y rompió dev), aplicada esta vez desde el diseño:
+
+| Fase | Qué | Estado |
+|---|---|---|
+| **1** expandir | `product` + `product_id` + `lot_number` + backfill | ✅ |
+| **2** migrar | el modelo se usa; precio en el producto; UI agrupada | ✅ |
+| **3** contraer | quitar de `inventory_item` lo que ya vive en `product` | pendiente |
+
+La fase 1 fue **puramente aditiva**: los 202 tests pasaron sin tocar una línea de código de aplicación. Eso no fue suerte — era el criterio de aceptación.
+
+### Códigos: nada se perdió, se ganó el producto
+
+```
+antes   JOC0001I                 (consecutivo por pieza)
+ahora   JOC0001-01I              SKU + lote + proveedor
+        └─────┘
+        mismo producto
+```
+
+El SKU **no lleva letra de proveedor** porque el proveedor pertenece al lote: el mismo producto comprado a dos proveedores sigue siendo el mismo producto, que es justamente lo que el modelo viejo no podía expresar. El lote conserva la letra, así que la trazabilidad de quién vendió qué queda intacta.
+
+El SKU se emite al publicar el **primer lote**, no al crear el producto: así un producto nacido en un borrador descartado no quema un consecutivo — misma razón por la que el código de pieza ya se emitía al publicar.
+
+### Decisiones que costó tomar bien
+
+**El match de producto ignora mayúsculas y espacios.** El nombre lo escribe una persona; tratar `"Cadena de oro"` y `"cadena de oro "` como productos distintos dispersaría el catálogo justo en el caso más común, que es lo que este cambio viene a evitar.
+
+**Las piezas de remate son productos únicos de un solo lote** (`is_unique`), no un modelo aparte. Un anillo de un contrato no tiene "lote 2". Con `is_unique` la estructura queda uniforme (todo lote pertenece a un producto) y esas piezas nunca agrupan entre sí — ni siquiera con otra del mismo nombre. Se excluyen del listado agrupado por defecto: llenarían la lista de grupos de uno.
+
+**El listado expone rango de costos, nunca promedio.** `min_cost`/`max_cost` son lectura informativa —una dispersión grande avisa que el precio de compra se movió y conviene revisar el de venta— pero el costo jamás sube al nivel de producto. Cada lote conserva el suyo (identificación específica, NIIF), que es lo que sostiene el costo de ventas de 00019.
+
+### Frontend
+
+`/inventario` gana la pestaña **Productos** (por defecto) junto a **Lotes** (la lista plana de siempre). Conviven a propósito: son dos preguntas distintas — *"¿cuánto tengo de esto?"* vs *"¿dónde está esta pieza?"*.
+
+Los lotes se piden **solo al desplegar**, no con la lista: un inventario de 200 productos dispararía 200 requests para un detalle que casi nadie abre.
+
+`ProductPriceDialog` cambia el precio de todos los lotes de una vez, y dice a cuántos aplica y que las ventas ya hechas no cambian — son las dos dudas que surgen al hacerlo por primera vez. Además calcula el margen **sobre el costo más alto**, que es el peor caso: si con el lote más caro la venta deja poco, el precio se quedó corto aunque con los lotes viejos parezca bueno. Es la alerta temprana del escenario de descapitalización que explica la guía del cliente.
+
+### Orden de despliegue, invertido a propósito
+
+Esta vez la **migración fue primero y el código después** — al revés que en 00014/00020. Porque 00021 es aditiva y el código nuevo la necesita; al revés habría roto dev por unos minutos. Backfill verificado en dev: 5 productos, 2 únicos (los remates), 0 artículos huérfanos.
+
+### Comandos de verificación
+
+```bash
+.venv/bin/pytest -q   # 212 passed
+npm run lint && npm run typecheck && npm run test && npm run build   # 84 tests
+npm run dev   # /inventario → pestaña Productos → desplegar un producto, cambiar precio
+```
+
 ## Reponer stock sin retipear — y por qué NO se suma cantidad (20/08/2026)
 
 Punto 6 del cliente: *"comprar más artículos existentes no es posible; si tengo un artículo que existe y es del mismo proveedor debería dejar seleccionármelo"*.

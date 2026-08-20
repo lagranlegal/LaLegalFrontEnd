@@ -13,10 +13,13 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { cn } from '@/lib/utils'
 import { formatDate, formatDateTime } from '@/lib/dates'
 import { useCategories, type Category } from '@/lib/catalogs/categories'
-import { useEntriesList, useExitsList, useItemsList, type Entry, type Exit } from '@/features/inventory/api'
+import { useEntriesList, useExitsList, useItemsList, useProductsList, type Entry, type Exit, type Product } from '@/features/inventory/api'
 import type { Item } from '@/lib/inventory/items'
 import { ItemEditDialog } from '@/features/inventory/components/ItemEditDialog'
 import { EntryDetailDialog } from '@/features/inventory/components/EntryDetailDialog'
+import { ProductRow } from '@/features/inventory/components/ProductRow'
+import { ProductPriceDialog } from '@/features/inventory/components/ProductPriceDialog'
+import { EmptyState } from '@/components/shared/EmptyState'
 import { ExitFormDialog } from '@/features/inventory/components/ExitFormDialog'
 
 const ITEM_STATUS_TABS = [
@@ -69,6 +72,79 @@ function CategorySelect({
         ))}
       </SelectContent>
     </Select>
+  )
+}
+
+/**
+ * Inventario agrupado por producto — la vista que resuelve el síntoma
+ * original: dos compras de la misma cadena eran dos filas sin relación.
+ *
+ * Convive con la pestaña "Lotes" (la lista plana de siempre), que sigue
+ * siendo la correcta para buscar un código puntual o revisar un artículo
+ * específico. Son dos preguntas distintas: "¿cuánto tengo de esto?" vs
+ * "¿dónde está esta pieza?".
+ */
+function ProductsTab() {
+  const [q, setQ] = useState('')
+  const { data, isPending, isError, refetch, hasNextPage, isFetchingNextPage, fetchNextPage } = useProductsList({ q })
+  const [editing, setEditing] = useState<Product | null>(null)
+  const [dialogNonce, setDialogNonce] = useState(0)
+
+  const products = data?.pages.flatMap((page) => page.items) ?? []
+
+  return (
+    <div className="flex flex-col gap-4">
+      <SearchInput value={q} onChange={setQ} placeholder="Buscar producto por código o nombre…" />
+
+      {isPending && (
+        <div className="flex flex-col gap-2">
+          {[0, 1, 2].map((i) => (
+            <div key={i} className="h-16 animate-pulse rounded-card border border-border bg-muted/30" />
+          ))}
+        </div>
+      )}
+
+      {isError && (
+        <div className="flex flex-col items-start gap-2 rounded-card border border-border bg-card p-card">
+          <p className="text-sm text-danger">No se pudieron cargar los productos.</p>
+          <Button variant="outline" size="sm" onClick={() => refetch()}>
+            Reintentar
+          </Button>
+        </div>
+      )}
+
+      {!isPending && !isError && products.length === 0 && (
+        <EmptyState
+          title={q ? 'Ningún producto coincide' : 'Aún no tienes productos'}
+          description={q ? 'Prueba con otro código o nombre.' : 'Registra un ingreso para empezar.'}
+        />
+      )}
+
+      {products.length > 0 && (
+        <div className="flex flex-col gap-2">
+          {products.map((product) => (
+            <ProductRow
+              key={product.id}
+              product={product}
+              onEditPrice={(p) => {
+                setEditing(p)
+                setDialogNonce((n) => n + 1)
+              }}
+            />
+          ))}
+        </div>
+      )}
+
+      {hasNextPage && (
+        <Button variant="ghost" className="w-full" disabled={isFetchingNextPage} onClick={() => fetchNextPage()}>
+          {isFetchingNextPage ? 'Cargando…' : 'Cargar más'}
+        </Button>
+      )}
+
+      {editing && (
+        <ProductPriceDialog key={dialogNonce} open={!!editing} onOpenChange={(open) => !open && setEditing(null)} product={editing} />
+      )}
+    </div>
   )
 }
 
@@ -309,12 +385,16 @@ export function InventoryPage() {
         }
       />
 
-      <Tabs defaultValue="items">
+      <Tabs defaultValue="products">
         <TabsList>
-          <TabsTrigger value="items">Artículos</TabsTrigger>
+          <TabsTrigger value="products">Productos</TabsTrigger>
+          <TabsTrigger value="items">Lotes</TabsTrigger>
           <TabsTrigger value="entries">Ingresos</TabsTrigger>
           <TabsTrigger value="exits">Egresos</TabsTrigger>
         </TabsList>
+        <TabsContent value="products">
+          <ProductsTab />
+        </TabsContent>
         <TabsContent value="items">
           <ItemsTab />
         </TabsContent>
