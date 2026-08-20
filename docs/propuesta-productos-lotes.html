@@ -1,0 +1,450 @@
+<title>Productos y Lotes</title>
+<style>
+  :root {
+    --accent: #00806f;
+    --accent-soft: #00b19e;
+    --accent-wash: #e4f5f3;
+    --ink: #14202d;
+    --ink-soft: #445468;
+    --ink-mute: #7a8798;
+    --ground: #f5f7fa;
+    --surface: #ffffff;
+    --sunk: #edf1f6;
+    --rule: #dde4ec;
+    --rule-soft: #e9eef4;
+    --ok: #1c8d5e;
+    --ok-wash: #e7f5ee;
+    --warn: #a4680d;
+    --warn-wash: #fcf3e3;
+    --crit: #c0392f;
+    --crit-wash: #fdecea;
+    --font: ui-sans-serif, -apple-system, "Segoe UI", Roboto, sans-serif;
+    --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --accent: #5cd6c4;
+      --accent-soft: #2ecdb9;
+      --accent-wash: #0e2f2c;
+      --ink: #e8eef5;
+      --ink-soft: #abb9c9;
+      --ink-mute: #798797;
+      --ground: #0c131b;
+      --surface: #141e29;
+      --sunk: #1b2733;
+      --rule: #26313e;
+      --rule-soft: #1c2631;
+      --ok: #4cc38a;
+      --ok-wash: #12281e;
+      --warn: #e0a850;
+      --warn-wash: #2b2113;
+      --crit: #f2706a;
+      --crit-wash: #321819;
+    }
+  }
+
+  :root[data-theme="dark"] {
+    --accent: #5cd6c4;
+    --accent-soft: #2ecdb9;
+    --accent-wash: #0e2f2c;
+    --ink: #e8eef5;
+    --ink-soft: #abb9c9;
+    --ink-mute: #798797;
+    --ground: #0c131b;
+    --surface: #141e29;
+    --sunk: #1b2733;
+    --rule: #26313e;
+    --rule-soft: #1c2631;
+    --ok: #4cc38a;
+    --ok-wash: #12281e;
+    --warn: #e0a850;
+    --warn-wash: #2b2113;
+    --crit: #f2706a;
+    --crit-wash: #321819;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    background: var(--ground);
+    color: var(--ink-soft);
+    font-family: var(--font);
+    font-size: 16.5px;
+    line-height: 1.68;
+    margin: 0;
+    padding: 0 1.25rem 5rem;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 50rem; margin: 0 auto; }
+
+  header.top { padding: 3.5rem 0 1.75rem; display: flex; flex-direction: column; gap: 1rem; }
+  .eyebrow {
+    font-family: var(--mono);
+    font-size: 0.73rem;
+    letter-spacing: 0.13em;
+    text-transform: uppercase;
+    color: var(--accent);
+    font-weight: 600;
+    margin: 0;
+  }
+  h1 {
+    font-size: clamp(2rem, 5.5vw, 2.9rem);
+    line-height: 1.1;
+    letter-spacing: -0.026em;
+    color: var(--ink);
+    font-weight: 670;
+    margin: 0;
+    text-wrap: balance;
+  }
+  .lede { font-size: 1.1rem; margin: 0; max-width: 40rem; }
+  .divider { height: 2px; background: var(--ink); border: 0; opacity: 0.88; margin: 0; }
+
+  h2 {
+    font-size: 1.4rem;
+    color: var(--ink);
+    font-weight: 640;
+    letter-spacing: -0.018em;
+    margin: 3.25rem 0 1rem;
+    text-wrap: balance;
+  }
+  h3 { font-size: 1.03rem; color: var(--ink); font-weight: 640; margin: 1.9rem 0 0.5rem; }
+  p { margin: 0 0 1.05rem; }
+  strong { color: var(--ink); font-weight: 640; }
+  ul { margin: 0 0 1.05rem; padding-left: 1.25rem; }
+  li { margin-bottom: 0.45rem; }
+  code {
+    font-family: var(--mono);
+    font-size: 0.87em;
+    background: var(--sunk);
+    color: var(--ink);
+    padding: 0.1em 0.38em;
+    border-radius: 4px;
+    white-space: nowrap;
+  }
+
+  /* síntomas → causa */
+  .symptoms {
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    border-radius: 14px;
+    padding: 1.3rem 1.5rem;
+    margin: 1.6rem 0;
+  }
+  .sym {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 0.15rem;
+    padding: 0.7rem 0;
+    border-bottom: 1px solid var(--rule-soft);
+  }
+  .sym:last-child { border-bottom: none; }
+  .sym .q { color: var(--ink); font-weight: 600; font-size: 0.97rem; }
+  .sym .a { font-size: 0.92rem; color: var(--ink-mute); }
+  .root {
+    margin-top: 1.1rem;
+    padding-top: 1.1rem;
+    border-top: 2px solid var(--accent);
+    font-size: 1.05rem;
+    color: var(--ink);
+    font-weight: 620;
+  }
+
+  /* bloque de códigos */
+  .codes {
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    border-radius: 14px;
+    padding: 1.2rem 1.4rem;
+    margin: 1.5rem 0;
+    font-family: var(--mono);
+    font-size: 0.85rem;
+    line-height: 1.9;
+    overflow-x: auto;
+  }
+  .codes .sku { color: var(--ink); font-weight: 700; }
+  .codes .lot { color: var(--accent); }
+  .codes .dim { color: var(--ink-mute); }
+  .codes .cap {
+    display: block;
+    font-family: var(--font);
+    font-size: 0.8rem;
+    color: var(--ink-mute);
+    margin-top: 0.7rem;
+    line-height: 1.5;
+  }
+
+  .callout {
+    border-radius: 13px;
+    padding: 1.4rem 1.5rem;
+    margin: 1.8rem 0;
+    border: 1px solid transparent;
+  }
+  .callout.good { background: var(--accent-wash); border-color: color-mix(in srgb, var(--accent) 26%, transparent); }
+  .callout.warn { background: var(--warn-wash); border-color: color-mix(in srgb, var(--warn) 30%, transparent); }
+  .callout .tag {
+    font-family: var(--mono);
+    font-size: 0.7rem;
+    letter-spacing: 0.11em;
+    text-transform: uppercase;
+    font-weight: 650;
+    display: block;
+    margin-bottom: 0.45rem;
+  }
+  .callout.good .tag { color: var(--accent); }
+  .callout.warn .tag { color: var(--warn); }
+  .callout .big {
+    font-size: 1.15rem;
+    line-height: 1.45;
+    color: var(--ink);
+    font-weight: 620;
+    margin: 0 0 0.7rem;
+    text-wrap: balance;
+  }
+  .callout p { font-size: 0.95rem; }
+  .callout p:last-child { margin-bottom: 0; }
+
+  .tw { overflow-x: auto; border: 1px solid var(--rule); border-radius: 14px; margin: 1.5rem 0; background: var(--surface); }
+  table { border-collapse: collapse; width: 100%; font-size: 0.94rem; }
+  th {
+    text-align: left;
+    font-family: var(--mono);
+    font-size: 0.68rem;
+    letter-spacing: 0.09em;
+    text-transform: uppercase;
+    color: var(--ink-mute);
+    font-weight: 650;
+    padding: 0.75rem 0.95rem;
+    border-bottom: 1px solid var(--rule);
+    white-space: nowrap;
+  }
+  td { padding: 0.75rem 0.95rem; border-bottom: 1px solid var(--rule-soft); vertical-align: top; }
+  tr:last-child td { border-bottom: none; }
+  td:first-child { color: var(--ink); font-weight: 600; }
+  td.num { font-variant-numeric: tabular-nums; white-space: nowrap; text-align: right; }
+
+  .metrics {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(8rem, 1fr));
+    gap: 1px;
+    background: var(--rule);
+    border: 1px solid var(--rule);
+    border-radius: 13px;
+    overflow: hidden;
+    margin: 1.5rem 0;
+  }
+  .metric { background: var(--surface); padding: 1rem 1.1rem; }
+  .metric .k {
+    font-family: var(--mono);
+    font-size: 0.65rem;
+    letter-spacing: 0.09em;
+    text-transform: uppercase;
+    color: var(--ink-mute);
+    display: block;
+    margin-bottom: 0.35rem;
+  }
+  .metric .v {
+    font-size: 1.7rem;
+    font-weight: 670;
+    color: var(--ink);
+    line-height: 1;
+    font-variant-numeric: tabular-nums;
+  }
+  .metric .v.good { color: var(--ok); }
+  .metric .n { display: block; font-size: 0.76rem; color: var(--ink-mute); margin-top: 0.3rem; line-height: 1.4; }
+
+  footer {
+    margin-top: 3.5rem;
+    padding-top: 1.4rem;
+    border-top: 1px solid var(--rule);
+    font-family: var(--mono);
+    font-size: 0.73rem;
+    color: var(--ink-mute);
+    line-height: 1.7;
+  }
+</style>
+
+<div class="wrap">
+
+  <header class="top">
+    <p class="eyebrow">Propuesta de modelo · Inventario</p>
+    <h1>Separar el producto del lote</h1>
+    <p class="lede">
+      Qué cambiaría, qué cuesta migrar, y por qué el momento de decidirlo es ahora y no en seis meses.
+    </p>
+  </header>
+  <hr class="divider">
+
+  <h2>Cuatro problemas que son uno solo</h2>
+
+  <p>
+    Durante la revisión aparecieron cuatro molestias distintas. Todas tienen la misma raíz:
+  </p>
+
+  <div class="symptoms">
+    <div class="sym">
+      <span class="q">La lista muestra dos filas para lo que es “un producto”</span>
+      <span class="a">No hay ningún producto que las agrupe</span>
+    </div>
+    <div class="sym">
+      <span class="q">Subir el precio obliga a editar cada lote uno por uno</span>
+      <span class="a">El precio está guardado en el artículo, no en el producto</span>
+    </div>
+    <div class="sym">
+      <span class="q">Reponer depende de escribir el nombre exactamente igual</span>
+      <span class="a">El nombre es lo único que relaciona dos lotes</span>
+    </div>
+    <div class="sym">
+      <span class="q">No se puede comparar qué proveedor vende más barato lo mismo</span>
+      <span class="a">No existe “lo mismo”</span>
+    </div>
+    <div class="root">
+      El sistema no tiene el concepto de <em>producto</em>. Solo tiene artículos sueltos.
+    </div>
+  </div>
+
+  <p>
+    El código actual es <code>[categoría][consecutivo][proveedor]</code> → <code>JAO0007I</code>, y el
+    consecutivo se genera <strong>por pieza</strong>. Dos compras de la misma cadena salen
+    <code>JAO0007I</code> y <code>JAO0012M</code>, sin nada que las vincule.
+  </p>
+
+  <h2>El modelo estándar: SKU + lote</h2>
+
+  <p>
+    Es como funcionan los ERP (SAP, Odoo, Oracle) y es obligatorio por regulación en farmacia y
+    alimentos. La idea son <strong>dos identidades separadas</strong>: una comercial y una contable.
+  </p>
+
+  <div class="codes">
+    <span class="sku">JAO0007</span> <span class="dim">····</span> Cadena de oro 18k <span class="dim">····</span> precio <span class="sku">$250.000</span><br>
+    &nbsp;&nbsp;<span class="lot">JAO0007-01</span> <span class="dim">Prov. I</span> &nbsp;costo $100.000 &nbsp;3 unid &nbsp;<span class="dim">12/07</span><br>
+    &nbsp;&nbsp;<span class="lot">JAO0007-02</span> <span class="dim">Prov. I</span> &nbsp;costo $105.000 &nbsp;3 unid &nbsp;<span class="dim">20/07</span><br>
+    &nbsp;&nbsp;<span class="lot">JAO0007-03</span> <span class="dim">Prov. M</span> &nbsp;costo $150.000 &nbsp;3 unid &nbsp;<span class="dim">05/08</span>
+    <span class="cap">El SKU lleva el precio y es lo que ve el cliente. El lote lleva el costo, el proveedor y la fecha — y es lo que necesita la contabilidad.</span>
+  </div>
+
+  <div class="tw">
+    <table>
+      <thead>
+        <tr><th>Dato</th><th>Dónde vive</th><th>Cambia</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>Nombre, categoría</td><td>Producto</td><td>Rara vez</td></tr>
+        <tr><td>Precio de venta</td><td>Producto</td><td>Cuando el mercado se mueve</td></tr>
+        <tr><td>Costo</td><td>Lote</td><td><strong>Nunca</strong> — es un hecho histórico</td></tr>
+        <tr><td>Proveedor</td><td>Lote</td><td>Nunca</td></tr>
+        <tr><td>Fecha de entrada</td><td>Lote</td><td>Nunca</td></tr>
+        <tr><td>Cantidad</td><td>Lote (se suma para el producto)</td><td>Con cada venta</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>Las piezas de remate no son productos con lotes</h3>
+
+  <p>
+    Un anillo que salió de un remate es <strong>único</strong>: ese anillo, de ese contrato, con ese
+    peso. No existe un “lote 2” de él. Forzarlo al modelo de producto sería tan incorrecto como lo
+    contrario.
+  </p>
+
+  <p>
+    Los sistemas profesionales manejan las dos cosas: artículos <strong>de catálogo</strong> (con
+    lotes) y artículos <strong>únicos</strong> (serializados). El negocio tiene ambos y el modelo tiene
+    que respetarlo — la mercancía de tienda se repone, las prendas rematadas no.
+  </p>
+
+  <h2>Qué se conserva del trabajo ya hecho</h2>
+
+  <div class="callout good">
+    <span class="tag">Importante</span>
+    <p class="big">El costeo construido esta semana no se pierde: es exactamente lo que este modelo necesita.</p>
+    <p>
+      El costo ya está por pieza y ya se congela en la venta (<code>sale_line.unit_cost</code>). En el
+      modelo nuevo eso pasa a ser “el costo del lote”, que es su lugar natural. Los reportes de
+      utilidad bruta y costo de ventas siguen funcionando igual.
+    </p>
+  </div>
+
+  <p>Lo que sí cambia de forma visible:</p>
+
+  <ul>
+    <li><strong>Formato del código</strong> — de <code>JAO0007I</code> a <code>JAO0007-01</code></li>
+    <li><strong>Etiquetas impresas</strong> — las ya pegadas quedan con el formato viejo</li>
+    <li><strong>Pantalla de ingreso</strong> — se elige un producto existente o se crea uno nuevo, en vez de escribir todo suelto</li>
+    <li><strong>Pantalla de inventario</strong> — pasa a ser una lista de productos que se despliegan en lotes</li>
+  </ul>
+
+  <h2>Cuánto cuesta migrar hoy</h2>
+
+  <p>Estos son los datos reales del ambiente actual, no una estimación:</p>
+
+  <div class="metrics">
+    <div class="metric">
+      <span class="k">Artículos</span>
+      <span class="v">5</span>
+      <span class="n">en total</span>
+    </div>
+    <div class="metric">
+      <span class="k">Códigos impresos</span>
+      <span class="v good">3</span>
+      <span class="n">etiquetas a rehacer</span>
+    </div>
+    <div class="metric">
+      <span class="k">Nombres repetidos</span>
+      <span class="v good">0</span>
+      <span class="n">ningún producto que consolidar</span>
+    </div>
+    <div class="metric">
+      <span class="k">Ventas</span>
+      <span class="v good">1</span>
+      <span class="n">historial a preservar</span>
+    </div>
+  </div>
+
+  <div class="callout warn">
+    <span class="tag">La ventana</span>
+    <p class="big">Migrar hoy cuesta prácticamente nada. En seis meses de operación real, cuesta un proyecto.</p>
+    <p>
+      El costo de este cambio no está en programarlo — está en <strong>convertir los datos y reimprimir
+      las etiquetas</strong>. Con 5 artículos y 3 códigos, eso es media tarde. Con 800 artículos, cada
+      uno con su etiqueta pegada en la vitrina, es una jornada de inventario físico completo.
+    </p>
+  </div>
+
+  <h2>Recomendación</h2>
+
+  <p>
+    <strong>Hacerlo ahora, antes de cargar el inventario real.</strong> No porque el sistema esté mal
+    hoy —funciona—, sino porque las cuatro molestias del principio van a agravarse con el uso, y el
+    costo de arreglarlas crece con cada artículo que se registre.
+  </p>
+
+  <p>La secuencia sensata:</p>
+
+  <ul>
+    <li><strong>Primero el modelo</strong> — producto, lote, y el código nuevo</li>
+    <li><strong>Después la agrupación</strong> — la lista desplegable, que ya sale casi gratis</li>
+    <li><strong>Después el precio por producto</strong> — cambiarlo una vez, no siete</li>
+    <li><strong>Al final el comparativo de proveedores</strong> — que solo es posible con lo anterior</li>
+  </ul>
+
+  <h3>Si se decide no hacerlo</h3>
+
+  <p>
+    Es una opción legítima, pero conviene asumirla con los ojos abiertos: significa que el precio se
+    seguirá editando lote por lote (con el riesgo real de dejar uno barato por olvido), que la lista
+    crecerá una línea por compra, y que la comparación entre proveedores no se podrá construir.
+  </p>
+
+  <p>
+    En ese caso, la mitigación mínima es <strong>arreglar el buscador de reposición</strong> para que
+    encuentre entre todos los proveedores y copie el nombre exacto. No resuelve el fondo, pero evita
+    que los nombres se dispersen — que es lo que haría imposible cualquier consolidación futura.
+  </p>
+
+  <footer>
+    Análisis sobre el modelo de inventario · Cifras tomadas del ambiente de desarrollo al 20 de agosto de 2026.
+  </footer>
+
+</div>
