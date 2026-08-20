@@ -7,6 +7,46 @@
 > **Cuarta revisión (backend, mismo día):** se suma el punto 19 (`ContractItemOut.inventory_item_id`, reportado por el front después de la tercera revisión) — también resuelto.
 >
 > **Quinta revisión (front, mismo día):** puntos 8, 13 y 18 (Reportes/resumen financiero) resueltos del lado del front sin esperar backend nuevo — pantalla `/reportes` construida agregando `GET /reports/closings` + `GET /cashbox/sessions/{id}/report`, client-side, con tope de 90 días. Punto 20 (latencia de `GET /catalogs/categories`) sigue pendiente de backend. Punto 13 se mantiene abierto para rangos >90 días, cartera histórica y series largas.
+>
+> **Sexta revisión (auditoría de código, 19-20/08/2026):** revisión completa de ambos repos pedida por el cliente. Se encontró y cerró un hueco contable serio que no estaba en esta lista (las compras a proveedor nunca generaban movimiento de caja, punto 21) y se resolvieron los puntos 5 y 22 con un solo endpoint nuevo (`/company/settings`). Se agregan los puntos 21 a 24 con lo encontrado y lo que queda abierto.
+
+---
+
+## 21. ✅ Las compras a proveedor no generaban movimiento de caja (RESUELTO)
+
+El enum `cash_concept` define `'purchase'` — *"compra a proveedor (out, store)"* — desde la migración 00007, el día uno. **Nunca se emitía:** `inventory/service.py` jamás llamaba a `cashbox.record_movement` (confirmado con grep sobre todo el backend: `purchase` solo aparecía como `EntryOriginType`).
+
+**Por qué importaba para el negocio:** `expected_cash` = `opening_balance + movimientos en efectivo`. Comprar $3.000.000 de mercancía en efectivo dejaba al sistema esperando esos $3.000.000 en el cajón, y la política es *"sin tolerancia, justificación obligatoria"* — o sea que el operador quedaba obligado a justificar a mano un descuadre **que el propio sistema fabricaba**, todos los días en que se compró mercancía. Eso invalida el acta de cierre.
+
+**✅ Resuelto (20/08/2026):** migraciones 00014-00016. `create_entry` exige sesión de caja abierta cuando `origin_type='purchase'`, pide `payment_method` y emite el movimiento en la misma transacción. Los ingresos `other` y los remates siguen sin tocar caja a propósito (un remate no mueve dinero: el capital ya salió como préstamo). De paso, `POST /inventory/entries` ahora exige `Idempotency-Key` — violaba la regla 4 del propio backend y un doble click duplicaba ingreso, stock y costo.
+
+## 22. ✅ `GET/PATCH /company/settings` (RESUELTO) — cierra también el punto 5
+
+Era el punto 5 de esta lista, arrastrado desde el paso 5. Las columnas `company.signature_url` y `logo_url` existían **desde la migración 00002** (`signature_url` incluso con el comentario *"firma empresarial insertada en los PDF de contratos"*), pero no había endpoint.
+
+**✅ Resuelto (19/08/2026):** módulo `company` nuevo, permiso `company.configure`. Los textos de documentos viven en `company.settings->documents`. `GET /me` también expone firma, razón social, NIT, dirección, teléfono y los textos — **imprimir un contrato lo hace cualquier asesor**, que no tiene `company.configure` ni debería. Requirió la migración 00017: `public.company` tenía RLS forzado con una sola política de `SELECT`, así que el `UPDATE` afectaba cero filas y el endpoint respondía 200 con los datos viejos.
+
+## 23. ✅ Búsqueda y filtros en `GET /inventory/items` (RESUELTO)
+
+Aceptaba únicamente `status`. En el mostrador el vendedor tiene el código impreso en la etiqueta (`JAO0003R`) y no tenía dónde escribirlo.
+
+**✅ Resuelto (20/08/2026):** `q` (código por prefijo case-insensitive + nombre full-text español), `cat1_id`/`cat2_id`/`cat3_id`, `supplier_id` y `origin`. Cuidado con `code`, que es NULL en borradores: `like` sobre NULL da NULL, no false, así que sin `coalesce` un borrador nunca aparecía al buscar por nombre.
+
+Esto además quitó un techo duro real en el POS: `useAvailableItemsSearch` traía 100 artículos disponibles y filtraba en el navegador, así que **con más de 100 disponibles a la vez un artículo no se podía encontrar — ni vender**.
+
+## 24. Lo que sigue abierto después de esta auditoría
+
+En orden de valor:
+
+1. **Costo de ventas / utilidad bruta por período.** `inventory_item.cost` y `sale_line.unit_price` existen; nada los cruza — grep de `cost` en el módulo `sales`: cero resultados. Hoy se puede ver el margen **por pieza** (`ItemMarginInfo`), pero no *"¿cuánto gané este mes sobre lo que vendí?"*. Es la pieza que falta para que Reportes responda la pregunta central del negocio. Ver también punto 13.
+2. **Agregación de caja por rango de fechas** (punto 13.1) — sigue siendo la mejor relación esfuerzo/valor: `GET /cashbox/sessions/{id}/report` ya calcula módulo×concepto×medio para UNA sesión; falta lo mismo sumando N sesiones. Quitaría el N+1 y el tope de 90 días del front.
+3. **`?q=` en `GET /contracts`** (punto 2, sin resolver) — el buscador de contratos sigue siendo un parche client-side de 200 registros que nunca busca por nombre de cliente.
+4. **`GET /platform/companies/{id}/audit-log`** (punto 14) — un super-admin no puede ver la auditoría de otra empresa por RLS. Y la fila de `subscription` se sobrescribe en cada extensión, así que las `notes` de cada una se pierden: conviene una tabla `subscription_event` con monto pagado.
+5. **Conteo por denominación en el cierre de caja** — hoy `counted_cash` es un solo número. Todo software de caja serio pide el conteo por billete y lo suma solo; reduce errores y hace el acta auditable.
+6. **`PATCH /me`** (punto 15) — sigue sin existir; no hay pantalla de perfil.
+7. **Latencia de `GET /catalogs/categories`** (punto 20) — ~4s consistentes en dev.
+
+---
 
 ## 1. Búsqueda de clientes: solo por nombre, no por documento
 

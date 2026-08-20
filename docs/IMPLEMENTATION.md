@@ -2,6 +2,202 @@
 
 > Registro vivo de qué existe en el código, cómo está armado y por qué se tomó cada decisión — para que cualquiera (humano o Claude Code) pueda retomar el proyecto sin releer todo el historial de commits. Se actualiza en cada paso del "Orden de implementación" de `CLAUDE.md`. No repite lo que ya está en `ARCHITECTURE.md`/`DESIGN_SYSTEM.md` (el qué-debería-ser); esto es el qué-hay-hoy y las decisiones concretas tomadas al construirlo.
 
+## Buscador de inventario — y el techo de 100 artículos del POS (20/08/2026)
+
+Cierra el punto 2 del cliente (*"no hay buscador en inventario, por código, categorías, etc."*). No era un olvido del front: `GET /inventory/items` aceptaba **únicamente** `status`. Necesitaba backend.
+
+### Backend: `?q=` + filtros
+
+`GET /inventory/items` acepta ahora `q`, `cat1_id`, `cat2_id`, `cat3_id`, `supplier_id` y `origin`, combinables entre sí y con `status`. Mismo molde que el `?q=` de `GET /customers` resuelto antes:
+
+- **Código: prefijo `ilike`.** Es la búsqueda del mostrador — el vendedor lee `JAO0003R` de la etiqueta de la vitrina y lo tipea completo o a medias. No necesita full-text, y sí necesita tolerar minúsculas.
+- **Nombre: full-text español**, igual que `customer.full_name` (fragmentos, tildes, orden de palabras).
+
+**El detalle que casi se escapa:** `code` es NULL hasta que el artículo se publica, y `like` sobre NULL da NULL, **no false** — sin un `coalesce(code, '')` la condición completa se anulaba y **un borrador nunca aparecía al buscar por nombre**. Hay un test dedicado (`test_search_finds_drafts_by_name_even_though_code_is_null`) porque es el tipo de bug que pasa desapercibido: los artículos publicados sí se encuentran, así que la búsqueda "funciona" hasta que alguien busca un borrador.
+
+El trim del término se hace en el servicio, no en el repositorio: un `?q=` con solo espacios (al borrar el texto del buscador) armaría un `plainto_tsquery('')` que no matchea nada, y el usuario vería "sin resultados" justo al limpiar el filtro. Test para eso también.
+
+### El bug real que apareció de paso: el POS tenía techo de 100 artículos
+
+`useAvailableItemsSearch` (el buscador del carrito de venta y de egresos) traía **la primera página de 100 disponibles y filtraba en el navegador**. Estaba documentado como "hueco conocido" desde que se construyó, pero vale nombrar lo que significaba en la práctica: **con más de 100 artículos disponibles a la vez, un artículo fuera de esa página no se podía encontrar — o sea, no se podía vender.** Para una compraventa en crecimiento eso es una pérdida de venta silenciosa, no una molestia de UX.
+
+Ahora el filtro lo hace Postgres sobre todo el inventario y se piden 8 resultados en vez de 100 registros para descartar 92. `ItemPicker` no necesitó ningún cambio: el hook conservó su forma.
+
+### Frontend
+
+`InventoryPage` gana buscador (ancho completo, primero — es la operación más frecuente) y filtro de categoría en cascada de 3 niveles. Solo se manda al backend la categoría **más específica** elegida: el filtro es por columna exacta, así que `cat3` ya implica su rama y mandar `cat1 + cat3` sería redundante.
+
+Los filtros van dentro de la `queryKey`, así que cada combinación es su propia lista paginada en cache y cambiar un filtro reinicia la paginación en vez de mezclar páginas de dos búsquedas distintas.
+
+`CategorySelect` (local a la página) usa `__all__` como centinela porque Radix `Select` no admite `value=""` en un `SelectItem` — mismo truco que `EntryFormPage` con `__none__`. Y repite el `SelectValue` con children resueltos por el hallazgo ya conocido: Radix solo resuelve el texto desde un item ya montado.
+
+El estado vacío distingue "no coincide nada" de "no tienes artículos", con CTA distinto para cada caso.
+
+### Comandos de verificación
+
+```bash
+# backend
+.venv/bin/ruff check app/ tests/ && .venv/bin/mypy app && .venv/bin/pytest -q   # 181 passed (6 nuevos)
+
+# frontend
+npm run gen:api    # q, cat1_id, cat2_id, cat3_id, supplier_id, origin en GET /inventory/items
+npm run lint && npm run typecheck && npm run test && npm run build   # 84 tests, 0 errores
+```
+
+Desplegado a dev (sin migración — solo query params nuevos, compatible hacia atrás con el front viejo). Verificado en el `/openapi.json` en vivo: los 6 filtros aparecen.
+
+## Las compras aparecen en Reportes — como inversión, no como gasto (20/08/2026)
+
+Cierra el punto 4 del cliente (*"¿cómo hago para que los valores pagados a un proveedor aparezcan en los reportes?"*) y, de paso, dos cabos sueltos que había dejado el trabajo anterior: las compras ya generaban movimiento de caja, pero **nada en el front sabía qué era el concepto `purchase`**.
+
+### El cabo suelto que ya era visible
+
+`CONCEPT_LABELS` (`lib/modules.ts`) no tenía `purchase`, así que en el desglose del acta de cierre la línea salía con el string crudo `purchase` en vez de "Compra a proveedor". El fallback de `conceptLabel` evitó que reventara, pero era un cambio a medio terminar en pantalla.
+
+### La decisión contable, y por qué NO va en gastos
+
+`aggregateFinancialSummary` clasifica ahora `purchase` como **movimiento de capital**, junto a `loan_disbursed` — no como gasto operativo. Comprar mercancía no empobrece al negocio: convierte efectivo en un activo. El costo se vuelve gasto (costo de ventas) **cuando el artículo se vende**, no cuando se compra.
+
+Ponerlo en gastos habría sido el error fácil y silencioso: un mes de reposición fuerte de inventario se vería como un mes de pérdida. Es exactamente el mismo error de modelado que ya se había cometido y corregido con `loan_disbursed` en la primera versión de `/reportes` — hay tests de regresión para ambos ahora (`una compra a proveedor es inversión en inventario, NO un gasto operativo` verifica que con ventas de $300.000, compra de $2.000.000 y gasto de $50.000, la utilidad da **+$250.000** y no −$1.750.000).
+
+### Una sola card, no dos
+
+Préstamos (empeño) y compras (tienda) viven en módulos distintos pero son **la misma idea contable**. En vez de agregar una card suelta de "Inversión en inventario", se generalizó la existente: "Movimiento de capital" con una sola explicación (*"prestar, recuperar o comprar mercancía convierte efectivo en un activo, no cambia la utilidad"*) y las filas que aplican según el filtro Todo/Empeño/Tienda. Antes la card se ocultaba entera bajo "Tienda" (`moduleFilter !== 'store'`) porque solo hablaba de cartera de empeño; ahora bajo "Tienda" muestra las compras.
+
+`EntryDetailDialog` también cierra el círculo: muestra el medio de pago y explica dónde se refleja ("egreso de caja del módulo Tienda → cierre del día → Reportes como inversión en inventario"), para que el operador no tenga que deducirlo.
+
+### Lo que sigue faltando: utilidad bruta real
+
+Esto responde *"cuánto pagué a proveedores en el período"*, que era lo preguntado. **No** responde *"cuánto gané realmente sobre lo vendido"* — para eso hace falta cruzar `inventory_item.cost` contra `sale_line.unit_price` en el momento de la venta (costo de ventas), y ningún endpoint agrega eso hoy. Sigue anotado en `PENDIENTES_BACKEND_INFRA.md` §13. El detalle por pieza sí existe desde el trabajo anterior (`ItemMarginInfo`: costo, utilidad y margen %).
+
+### Comandos de verificación
+
+```bash
+npm run lint && npm run typecheck && npm run test && npm run build   # 84 tests (3 nuevos), 0 errores
+npm run dev   # /reportes: pestaña Tienda → card "Movimiento de capital" con Compras a proveedor;
+              # /inventario → abrir un ingreso de compra → medio de pago + nota;
+              # /caja → acta de cierre → la línea dice "Compra a proveedor", no "purchase"
+```
+
+## Configuración de empresa: firma, documentos y footer (19/08/2026)
+
+Un solo endpoint (`GET/PATCH /api/v1/company/settings`, permiso `company.configure`) cerró tres pendientes que parecían independientes: la firma empresarial (§5 de `PENDIENTES_BACKEND_INFRA.md`, arrastrado desde el paso 5), los textos de los documentos impresos, y el footer de la app.
+
+### Backend: módulo `company` nuevo
+
+Las columnas ya existían **desde la migración 00002** — `company.signature_url` incluso con el comentario *"firma empresarial insertada en los PDF de contratos"*. Nunca hubo endpoint. `logo_url` se leía en `GET /me` pero no había forma de escribirlo.
+
+- Módulo `app/modules/company/` (router/service/repository/schemas), separado de `platform` a propósito: `platform` es el super-admin operando sobre CUALQUIER empresa con sesión de bypass; esto es una empresa editándose a SÍ MISMA con RLS activo. Mezclarlos habría hecho ambigua la autorización.
+- Los textos de documentos viven en `company.settings->documents` (jsonb), no en columnas: son texto de presentación, no datos que alguien vaya a consultar o agregar.
+- **La fusión del jsonb es explícita, no `||`.** `settings` guarda `timezone`, `currency` y `grace_days` junto a los textos; escribir el objeto completo a ciegas al guardar un pie de página habría borrado la zona horaria — que decide el "hoy" de mora, prórrogas y cierres. Hay un test dedicado a eso (`test_patch_does_not_clobber_unsent_settings_keys`).
+- Auditado (regla 6): cambiar la firma altera documentos legales. Se registran los CAMPOS que cambiaron, no su contenido — un `legal_notice` de 1000 caracteres en el log lo vuelve ilegible.
+
+### Bug real encontrado por un test: el UPDATE afectaba cero filas, en silencio
+
+`public.company` tenía RLS **forzado** con una sola política: `company_read_own`, solo `SELECT`. Tenía sentido cuando la única forma de modificar una empresa era `platform` (bypass sin RLS). Al abrirlo al tenant, el `UPDATE` no fallaba — RLS simplemente no encontraba la fila, así que el endpoint **respondía 200 con los datos viejos**. Se encontró porque el test guardaba y volvía a leer; una prueba manual "¿respondió 200? listo" no lo habría detectado. Migración `00017_company_update_policy.sql`.
+
+Qué columnas son editables lo decide `EDITABLE_COLUMNS` (lista blanca) en el repositorio, no la policy — Postgres no restringe columnas desde RLS. `status` queda fuera: suspender o activar una empresa es del super-admin. Test: manda `{"status": "suspended"}` y verifica que sigue `active`.
+
+### `GET /me` también trae la firma, y no es un capricho
+
+`GET /company/settings` exige `company.configure`. Pero **imprimir un contrato lo hace cualquier asesor**, que no tiene ese permiso ni debería. Así que los datos de presentación (firma, razón social, NIT, dirección, teléfono y los tres textos) viajan también en `MeCompanyOut`. Sin esto, `PrintLayout` habría necesitado un permiso de configuración para pintar un encabezado.
+
+### Frontend
+
+- `/configuracion` (guard `company.configure`, mismo patrón que `/auditoria`) — un formulario, un botón de guardar. Reusa `PhotoUploader` con `maxPhotos={1}` para logo y firma en vez de un componente nuevo.
+- Zona horaria y moneda quedan **de solo lectura**, con la explicación de por qué: cambiar la zona horaria afecta contratos ya en curso. No es un ajuste de presentación y no debería vivir junto al logo.
+- `PrintLayout` ahora pinta logo, razón social, NIT, nota de encabezado, pie y aviso legal. `ContractPrintView` **estampa la firma de la empresa** sobre la línea — con degradación limpia: sin firma cargada queda el espacio en blanco de siempre, así que el documento nunca sale peor que antes.
+- **Footer de la app** (`AppFooter` en `AppShell`), genérico porque la plataforma no tiene marca propia: "Sistema de gestión para compraventas" + `me.company.name` + año.
+- **Se quitó el buscador del encabezado.** Era un `<input type="search" disabled>` que nunca estuvo conectado. Un buscador que no busca comunica "a medio hacer" peor que no tener ninguno. La búsqueda global real necesita `?q=` en contratos e inventario, que el backend todavía no expone.
+
+### Bug de flakiness encontrado de paso (y era real, no del test)
+
+Al correr la suite completa empezó a fallar `test_reports` — pero solo si `test_company` corría antes. Causa: `list_items_for_entry` ordenaba por `created_at`, y **en Postgres `now()` devuelve el instante de inicio de la TRANSACCIÓN**, así que todos los ítems de un mismo ingreso comparten timestamp exacto (verificado: `count(distinct ts) = 1`). Con el empate, el orden quedaba a merced del plan de ejecución: `POST /inventory/entries` podía devolver los artículos en distinto orden entre dos llamadas idénticas. Se agregó desempate por `id` y se hizo el test independiente del orden (identifica los ítems por su costo). No da el orden en que el usuario escribió las líneas — para eso haría falta una columna de posición en `inventory_entry_line`; anotado, hoy ninguna pantalla depende de eso.
+
+También se arregló `test_platform::test_get_and_list_companies_include_plan_and_subscription`, que llevaba tiempo fallando y se había dado por "preexistente": hacía `next(...)` sobre la PRIMERA página del listado asumiendo que la empresa recién creada estaría ahí. Con 282 empresas acumuladas en la BD de pruebas y orden por UUID, casi nunca lo estaba. Ahora pagina hasta encontrarla. **La suite quedó en 175/175.**
+
+> **Higiene pendiente:** el Postgres local tiene ~282 empresas huérfanas de corridas cuyo cleanup falló. No rompe nada hoy (los tests ya no dependen del orden) pero conviene un `supabase db reset` local en algún momento.
+
+### Comandos de verificación
+
+```bash
+# backend
+.venv/bin/ruff check app/ tests/ && .venv/bin/ruff format --check app/ tests/
+.venv/bin/mypy app && .venv/bin/pytest -q      # 175 passed
+
+# frontend
+npm run lint && npm run typecheck && npm run test && npm run build   # 81 tests, 0 errores
+```
+
+Desplegado a dev en el orden correcto esta vez (**código primero, migración después**: al revés, `PATCH` habría respondido 200 sin escribir). Verificado en el `/openapi.json` en vivo: `/api/v1/company/settings` existe y `MeCompanyOut` trae los 10 campos.
+
+## La compra a proveedor pasa por caja + costo/margen en el detalle de artículo (19/08/2026)
+
+Auditoría del código de ambos repos (pedida explícitamente: "¿la arquitectura no se ha roto? ¿qué se puede mejorar?"). El resultado de arquitectura fue bueno — **cero** violaciones de la regla 4 (tokens: ni un hex suelto en 16.837 líneas) y **cero** de la regla 6 (fechas) — pero apareció un hueco contable real, no estético.
+
+### El hallazgo: las compras a proveedor nunca tocaban la caja
+
+El enum `cash_concept` define `'purchase'` — *"compra a proveedor (out, store)"* — desde la migración 00007, el día uno. **Nunca se emitía**: `inventory/service.py` jamás llamaba a `cashbox.record_movement` (confirmado con grep de `purchase` sobre todo el backend — solo aparecía como `EntryOriginType`, nunca como concepto de caja).
+
+Consecuencia, que es de negocio y no de código: `expected_cash` se calcula como `opening_balance + movimientos en efectivo` (`cashbox/service.py:120-130`). Comprar $3.000.000 en mercancía pagando efectivo dejaba al sistema esperando esos $3.000.000 en el cajón. Y la política es *"sin tolerancia, justificación obligatoria"* — o sea que **el operador quedaba obligado a justificar a mano un descuadre que el propio sistema fabricaba**, todos los días en que se compró mercancía. Eso invalida el acta de cierre, que es el documento que la app existe para producir.
+
+De paso, `POST /inventory/entries` tampoco exigía `Idempotency-Key`, violando la regla 4 del backend (*"obligatorio en operaciones de dinero"*): un doble click con red inestable duplicaba ingreso, stock y costo, sin `DELETE` con el cual deshacerlo. El comentario que había en `useCreateEntry` documentaba la premisa equivocada que causó ambas cosas: *"No mueve dinero: crea artículos en borrador"*.
+
+### Qué se construyó
+
+**Backend** (migración `00014_inventory_purchase_cash.sql`, dos columnas, sin migración de datos):
+- `inventory_entry.payment_method` — NULLABLE con un CHECK que amarra `origin_type='purchase' ⟺ payment_method not null`. El CHECK va `NOT VALID` a propósito: las compras anteriores tienen NULL y no se pueden backfillear (nadie sabe hoy con qué se pagó cada una), así que la regla aplica hacia adelante sin inventar datos del pasado.
+- `inventory_entry.idempotency_key` + UNIQUE `(company_id, idempotency_key)`, NULLABLE por la misma razón que en 00009.
+- `create_entry` ahora exige sesión de caja abierta y emite `record_movement(module='store', direction='out', concept='purchase')` en la MISMA transacción, y reproduce el ingreso existente ante una key repetida (mismo patrón que `sales.find_by_idempotency_key`).
+
+**Los ingresos que NO son compra siguen sin tocar caja, a propósito.** Un `origin_type='other'` (ajuste, sobrante) no entrega plata a nadie. Y el remate tampoco: ahí el capital ya salió como préstamo en su momento y el artículo entra como conversión de un activo, no como compra nueva — por eso `inventory/integration.py` (camino de `contracts.auction`) quedó intacto. Hay un test que fija exactamente eso.
+
+**Frontend:**
+- `useCreateEntry` pasó de `useMutation` pelado a `useMoneyMutation` (regla 8) e invalida también `['cashbox']`, porque el egreso entra al desglose del cierre.
+- `EntryFormPage`: selector de medio de pago (condicional a "Compra", con validación Zod del mismo tipo que la de proveedor), nota explicando que la compra baja el efectivo esperado del cierre, y manejo de `CASH_SESSION_NOT_OPEN` con `CashSessionRequiredDialog` — mismo patrón que `SaleFormPage`, no uno nuevo.
+
+**`ItemMarginInfo` en `ItemEditDialog`** — el costo ya venía en `ItemOut` y la tabla del listado ya lo mostraba, pero el detalle no, así que *"¿cuánto me gano con esta pieza?"* no tenía respuesta en ninguna pantalla. Muestra costo, utilidad y margen % (sobre el precio de venta, como se lee un margen comercial), en rojo si da pérdida, recalculando mientras se escribe el precio. Aritmética con `subtractMoney` — el dinero no pasa por `parseFloat` (regla 5).
+
+### Nota de infraestructura: el `.venv` del backend se rompió al unificar los repos
+
+`.venv/bin/*` tenía hardcodeado `/Users/mateojaramillo/projects/backend-starter/...`, la ruta anterior a mover los proyectos dentro de `compraventa_app/`. `ruff` corría (instalado aparte) pero `mypy` fallaba con `bad interpreter`. Se recreó el venv. Vale saberlo por si alguna otra herramienta con shebang absoluto aparece rota.
+
+### Comandos de verificación
+
+```bash
+# backend
+.venv/bin/ruff check app/ tests/ && .venv/bin/mypy app && .venv/bin/pytest -q
+# 168 passed (13 en test_inventory.py, 6 de ellos nuevos).
+# test_platform.py::test_get_and_list_companies_include_plan_and_subscription
+# falla ANTES y DESPUÉS de este cambio — preexistente, verificado con git stash.
+
+# frontend
+npm run gen:api    # payment_method aparece en EntryCreateIn y EntryOut, nada más
+npm run lint && npm run typecheck && npm run test && npm run build   # 81 tests, 0 errores
+```
+
+### Desplegado en dev — y por qué terminaron siendo tres migraciones
+
+**El ambiente de trabajo es dev, no local** (aclaración del cliente): el front apunta a `compraventa-backend-dev.fly.dev` y la BD es el Supabase remoto. `.env` del backend apunta ahí también — ojo, porque cualquier script ad-hoc que importe `app.core.db` va a **dev**, mientras que los tests usan el Postgres local (`tests/conftest.py` hace `setdefault` de otro `DATABASE_URL`). Esa asimetría es fácil de no ver.
+
+CI (`ci.yml`) **no despliega**: solo corre lint y tests. `supabase db push` y `fly deploy` son manuales.
+
+El cambio se aplicó a dev en este orden, y quedó registrado en tres migraciones porque el deploy falló a mitad:
+
+| # | Qué hace | Por qué |
+|---|---|---|
+| `00014` | columnas `payment_method` + `idempotency_key` + CHECK | el cambio real |
+| `00015` | **quita** el CHECK | `fly deploy` falló con 401 contra `registry.fly.io`, y dev quedó con esquema nuevo + código viejo: el CHECK rechazaba TODA compra porque el backend viejo no manda `payment_method` |
+| `00016` | **restituye** el CHECK | ya con el código nuevo desplegado y verificado en vivo |
+
+El 401 se resolvió con `fly auth login` (`fly auth docker` y `--remote-only` NO alcanzaron — el token servía para la API pero no para el registry).
+
+**La lección, para la próxima migración que cambie un contrato existente:** este es el patrón estándar de despliegue sin downtime y conviene plantearlo así desde el principio, no como recuperación de un deploy fallido — primero las columnas nullable (compatibles con el código viejo), después el deploy, y solo entonces el constraint que las vuelve obligatorias. Si 00014 hubiera nacido partida en dos, no habría existido ninguna ventana con dev roto.
+
+Verificado en vivo tras el deploy: `GET /openapi.json` de dev muestra `payment_method` en `EntryCreateIn` y `EntryOut`, e `Idempotency-Key` como header requerido de `POST /inventory/entries`. El CHECK quedó `convalidated=false` (NOT VALID) como se diseñó, confirmado consultando `pg_constraint` en dev y en local.
+
+**Falta probar el flujo de punta a punta contra dev** (registrar una compra real y ver el egreso en el cierre): requiere credenciales de una cuenta de la empresa de pruebas, que no se usaron en esta sesión. El comportamiento sí está cubierto por los 6 tests de integración nuevos contra Postgres local.
+
 ## Reportes v2 — filtro por módulo, comparación de período, gastos por categoría, rankings históricos (19/08/2026)
 
 El cliente probó `/reportes` (v1, sección siguiente) y pidió, con una captura de referencia de un software de contabilidad: estética más moderna, un filtro para ver solo Tienda o solo Empeño, más índices (gastos por categoría, prendas más vendidas, categorías más movidas), y "un análisis financiero como un profesional contable" (comparación contra el período anterior).
