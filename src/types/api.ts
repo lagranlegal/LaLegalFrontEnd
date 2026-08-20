@@ -939,6 +939,36 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/reports/pawn-performance": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Pawn Performance
+         * @description Rentabilidad del empeño: intereses cobrados sobre el capital prestado.
+         *
+         *     Complementa `/reports/profit`, que cubre la tienda. Son preguntas
+         *     distintas: la tienda tiene costo de ventas y se mide por margen; el
+         *     empeño no tiene costo de ventas y se mide por rendimiento sobre el
+         *     capital inmovilizado en la cartera.
+         *
+         *     Los intereses salen de `contract_payment` (el documento) y no de los
+         *     movimientos de caja: el desglose de caja solo cubre sesiones cerradas y
+         *     no separa el descuento de interés, que acá importa porque erosiona el
+         *     rendimiento.
+         */
+        get: operations["get_pawn_performance_api_v1_reports_pawn_performance_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/health": {
         parameters: {
             query?: never;
@@ -2023,6 +2053,42 @@ export interface components {
             full_name: string;
             /** Email */
             email: string;
+        };
+        /**
+         * PawnPerformanceOut
+         * @description Rentabilidad del EMPEÑO. Es una pregunta distinta a la de tienda: no hay
+         *     costo de ventas, la rentabilidad son los intereses cobrados sobre el
+         *     capital prestado — rendimiento sobre capital, no margen sobre costo.
+         */
+        PawnPerformanceOut: {
+            /**
+             * From Date
+             * Format: date
+             */
+            from_date: string;
+            /**
+             * To Date
+             * Format: date
+             */
+            to_date: string;
+            /** Interest Collected */
+            interest_collected: string;
+            /** Interest Discounts */
+            interest_discounts: string;
+            /** Capital Recovered */
+            capital_recovered: string;
+            /** Capital Disbursed */
+            capital_disbursed: string;
+            /** Payment Count */
+            payment_count: number;
+            /** Contracts Opened */
+            contracts_opened: number;
+            /** Capital Outstanding */
+            capital_outstanding: string;
+            /** Open Contracts */
+            open_contracts: number;
+            /** Yield On Current Portfolio Pct */
+            yield_on_current_portfolio_pct: string | null;
         };
         /** PaymentCreateIn */
         PaymentCreateIn: {
@@ -4785,6 +4851,40 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ProfitSummaryOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_pawn_performance_api_v1_reports_pawn_performance_get: {
+        parameters: {
+            query: {
+                /** @description Inclusivo, en la zona horaria de la empresa. */
+                from_date: string;
+                /** @description Inclusivo, en la zona horaria de la empresa. */
+                to_date: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PawnPerformanceOut"];
                 };
             };
             /** @description Validation Error */

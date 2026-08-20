@@ -14,7 +14,7 @@ import { todayBogota } from '@/lib/dates'
 import { cn } from '@/lib/utils'
 import { useCategories } from '@/lib/catalogs/categories'
 import { useExpenseCategories } from '@/features/cashbox/api'
-import { useRawSessions, useCarteraActual, useExpensesByCategory, useAllTimeItemSales, useProfitSummary, MAX_RANGE_DAYS } from '@/features/reports/api'
+import { useRawSessions, useCarteraActual, useExpensesByCategory, useAllTimeItemSales, useProfitSummary, usePawnPerformance, MAX_RANGE_DAYS } from '@/features/reports/api'
 import { aggregateFinancialSummary, aggregateExpensesByCategory, computeDelta, daysBetweenDateOnly, previousRangeFor } from '@/features/reports/aggregate'
 import { aggregateItemRanking } from '@/features/reports/rankings'
 import { ModuleSplitBar } from '@/features/reports/components/ModuleSplitBar'
@@ -116,6 +116,59 @@ function ProfitCard({ range }: { range: DateRangeValue | null }) {
           )}
         </p>
       )}
+    </div>
+  )
+}
+
+/**
+ * Rentabilidad del EMPEÑO. Deliberadamente distinta de la card de tienda: no
+ * hay costo de ventas, así que no hay margen — lo que se mide es el
+ * rendimiento de los intereses cobrados sobre el capital que está prestado.
+ *
+ * Los intereses salen del documento (`contract_payment`) y no del desglose de
+ * caja que alimenta los KPIs de arriba, así que ESTE número incluye los abonos
+ * de hoy aunque la caja siga abierta. Puede diferir del KPI "Intereses
+ * cobrados" por esa razón, y es correcto que difiera.
+ */
+function PawnCard({ range }: { range: DateRangeValue | null }) {
+  const { data: pawn, isPending, isError } = usePawnPerformance(range)
+
+  if (isPending) return <div className="h-28 animate-pulse rounded-card border border-border bg-muted/40" />
+  if (isError || !pawn) return null
+
+  return (
+    <div className="rounded-card border border-border bg-card p-card shadow-card">
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-x-4 gap-y-1">
+        <h2 className="text-sm font-medium text-foreground">Rentabilidad del empeño</h2>
+        <span className="text-xs text-muted-foreground">
+          Intereses cobrados sobre el capital prestado. Incluye los abonos de hoy, aunque la caja siga abierta.
+        </span>
+      </div>
+      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+        <KpiCard label="Intereses cobrados" value={<Money value={pawn.interest_collected} tone="in" />} tone="success" />
+        <KpiCard label="Cartera al corte de hoy" value={<Money value={pawn.capital_outstanding} />} />
+        <KpiCard
+          label="Rendimiento del período"
+          value={
+            <span className="tnum">
+              {pawn.yield_on_current_portfolio_pct === null ? '—' : `${Number(pawn.yield_on_current_portfolio_pct).toFixed(2)}%`}
+            </span>
+          }
+          tone={pawn.yield_on_current_portfolio_pct === null ? undefined : 'success'}
+        />
+        <KpiCard label="Contratos abiertos" value={<span className="tnum">{pawn.open_contracts}</span>} />
+      </div>
+      <p className="mt-3 text-xs text-muted-foreground">
+        {pawn.payment_count} {pawn.payment_count === 1 ? 'abono' : 'abonos'} · {pawn.contracts_opened}{' '}
+        {pawn.contracts_opened === 1 ? 'contrato nuevo' : 'contratos nuevos'}
+        {Number(pawn.interest_discounts) > 0 && (
+          <>
+            {' '}
+            · <span className="text-warning">descuentos de interés <Money value={pawn.interest_discounts} /></span>
+          </>
+        )}
+        {' '}· el rendimiento se calcula sobre la cartera actual, no sobre la que había al inicio del rango.
+      </p>
     </div>
   )
 }
@@ -266,6 +319,7 @@ export function ReportesPage() {
           </KpiRow>
 
           {showCapitalTienda && <ProfitCard range={range} />}
+          {showCapitalEmpeño && <PawnCard range={range} />}
 
           {showCapital && (
             <div className="rounded-card border border-border bg-card p-card shadow-card">

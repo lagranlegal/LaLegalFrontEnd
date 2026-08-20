@@ -256,3 +256,13 @@ Era el punto de mayor valor de §24. `inventory_item.cost` y `sale_line.unit_pri
 Decisiones de modelado: solo ventas `completed` (una anulada no generó ingreso ni consumió inventario); el descuento se resta del ingreso y no se trata como gasto; `margin_pct` es `null` —no 0— cuando no hubo ventas.
 
 **Ojo con la UI:** `/reportes` ahora muestra DOS utilidades distintas. La "operativa" (ingresos − gastos) no descuenta el costo de la mercancía; la "bruta de tienda" descuenta el costo pero no los gastos. Están separadas y rotuladas a propósito.
+
+## 27. ✅ Rentabilidad del empeño (RESUELTO, con una limitación conocida)
+
+Complementa el punto 26 (costo de ventas, tienda). El empeño no tiene costo de ventas: se mide por rendimiento sobre el capital prestado.
+
+**✅ Resuelto (20/08/2026):** `GET /reports/pawn-performance?from_date&to_date` — intereses cobrados, descuentos de interés otorgados, capital desembolsado y recuperado, cartera y contratos abiertos, y rendimiento. Sin migración: los datos ya estaban en `contract_payment` y `contract`.
+
+Los intereses salen de `contract_payment` y no del desglose de caja, que solo cubre sesiones cerradas (un abono de hoy no aparecería) y no separa el descuento de interés.
+
+**Limitación conocida, deliberada:** el rendimiento se calcula sobre la cartera de HOY, no sobre el promedio del período. `contract` no tiene `closed_at` ni hay histórico de saldos, así que no se puede saber con exactitud cuánta cartera había en una fecha pasada. Se prefirió rotularlo (`yield_on_current_portfolio_pct`) antes que fabricar una reconstrucción aproximada. **Para hacerlo exacto:** una columna `closed_at` en `contract`, o una tabla de saldos diarios de cartera.

@@ -2,6 +2,41 @@
 
 > Registro vivo de qué existe en el código, cómo está armado y por qué se tomó cada decisión — para que cualquiera (humano o Claude Code) pueda retomar el proyecto sin releer todo el historial de commits. Se actualiza en cada paso del "Orden de implementación" de `CLAUDE.md`. No repite lo que ya está en `ARCHITECTURE.md`/`DESIGN_SYSTEM.md` (el qué-debería-ser); esto es el qué-hay-hoy y las decisiones concretas tomadas al construirlo.
 
+## Rentabilidad del empeño — rendimiento sobre capital (20/08/2026)
+
+Cierra la mitad que quedó abierta tras el costo de ventas. El empeño **no tiene costo de ventas**: su rentabilidad son los intereses cobrados sobre el capital prestado. Es una pregunta distinta —rendimiento sobre capital, no margen sobre costo— y por eso es un endpoint y una card aparte, no una columna más en la de tienda.
+
+### Los intereses salen del documento, no de la caja
+
+`/reportes` ya mostraba un KPI "Intereses cobrados", pero sale del desglose de sesiones de caja. Eso tiene dos límites que importan acá:
+
+- **Solo cubre sesiones CERRADAS.** Un abono de hoy, con la caja todavía abierta, no aparece. Para "¿cuánto llevo cobrado este mes?" eso es un agujero justo en el dato más consultado.
+- **No separa el descuento de interés.** El descuento es interés que se dejó de cobrar, erosiona el rendimiento y es una acción con permiso especial — merece verse.
+
+`GET /reports/pawn-performance` lee `contract_payment` directamente. Los dos números pueden diferir del KPI de arriba, y es correcto que difieran.
+
+### Lo que NO se inventó
+
+El rendimiento ideal sería interés sobre el capital **promedio** del período. No se calcula, porque no se puede calcular bien: `contract` no tiene `closed_at` ni existe un histórico de saldos, así que no hay forma exacta de saber cuánta cartera había en una fecha pasada.
+
+Se podía aproximar (reconstruir con la identidad `cartera_final = cartera_inicial + desembolsos − recuperado − rematado`), pero un número financiero aproximado presentado como exacto es peor que uno ausente — es justo el tipo de error que esta misma auditoría encontró dos veces (`loan_disbursed` como gasto, compras invisibles). Así que el campo se llama `yield_on_current_portfolio_pct`, se calcula sobre la cartera de HOY, y tanto la API como la UI lo rotulan explícitamente: *"el rendimiento se calcula sobre la cartera actual, no sobre la que había al inicio del rango"*.
+
+Para el rango por defecto (este mes) la cartera actual ≈ la del final del período, así que el número es útil. Para rangos históricos, la referencia ya no es la de entonces y hay que leerlo con eso en mente.
+
+**Para hacerlo exacto haría falta** una columna `closed_at` en `contract` o una tabla de saldos diarios. Anotado en `PENDIENTES_BACKEND_INFRA.md`.
+
+`margin_pct` y `yield_...` son `null` —no 0— sin datos: un 0% afirma "presté y no rindió", distinto de "no hay capital contra el cual medir".
+
+### Comandos de verificación
+
+```bash
+.venv/bin/pytest -q   # 193 passed (3 nuevos)
+npm run lint && npm run typecheck && npm run test && npm run build   # 84 tests
+npm run dev   # /reportes con filtro Todo o Empeño → card "Rentabilidad del empeño"
+```
+
+El test cuadra a mano: préstamo de 1.000.000 al 5%, abono de 1 mes (50.000 interés + 200.000 capital) → cartera 800.000 y rendimiento 50.000/800.000 = **6.25%**.
+
 ## Costo de ventas y utilidad bruta — "¿cuánto gané con lo que vendí?" (20/08/2026)
 
 El punto de mayor valor de `PENDIENTES_BACKEND_INFRA.md` §24. `inventory_item.cost` guardaba el costo real por pieza (identificación específica, NIIF) y `sale_line.unit_price` el precio de venta, pero **nada los cruzaba** — un grep de `cost` en todo el módulo `sales` daba cero resultados. La pregunta central de una compraventa no tenía respuesta en la app.

@@ -125,3 +125,27 @@ export function useProfitSummary(range: { from: string; to: string } | null) {
     enabled: !!range,
   })
 }
+
+export type PawnPerformance = components['schemas']['PawnPerformanceOut']
+
+/**
+ * Rentabilidad del empeño: intereses cobrados sobre el capital prestado.
+ * Complementa `useProfitSummary` (tienda) — son preguntas distintas: la tienda
+ * se mide por margen sobre costo, el empeño por rendimiento sobre capital.
+ *
+ * Los intereses salen de `contract_payment` y no del desglose de caja que usa
+ * el resto de esta pantalla, así que incluye los abonos de HOY (el desglose
+ * solo cubre sesiones ya cerradas).
+ */
+export function usePawnPerformance(range: { from: string; to: string } | null) {
+  return useQuery({
+    queryKey: ['reports', 'pawn-performance', range?.from, range?.to] as const,
+    queryFn: () =>
+      unwrap(
+        api.GET('/api/v1/reports/pawn-performance', {
+          params: { query: { from_date: range!.from, to_date: range!.to } },
+        }),
+      ),
+    enabled: !!range,
+  })
+}
