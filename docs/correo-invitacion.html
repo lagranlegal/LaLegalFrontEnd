@@ -1,0 +1,136 @@
+<!--
+  PLANTILLA DEL CORREO DE INVITACIÓN
+  ==================================
+
+  Dónde se pega: Supabase → Authentication → Email Templates → "Invite user".
+  Se reemplaza TODO el contenido del campo "Message body" por esto.
+
+  Asunto sugerido (campo "Subject heading"):
+      Activa tu cuenta para empezar a trabajar
+
+  VARIABLES DISPONIBLES
+    {{ .ConfirmationURL }}  el link de activación (obligatorio, no quitarlo)
+    {{ .Data.full_name }}   el nombre de la persona invitada — llega porque el
+                            backend lo manda en el payload de la invitación
+                            (`identity/auth_admin.py`)
+    {{ .Email }}            el correo del invitado
+    {{ .SiteURL }}          la Site URL del proyecto Supabase
+
+  POR QUÉ ESTÁ ESCRITO ASÍ
+  - Tablas y estilos EN LÍNEA: los clientes de correo (Outlook, Gmail) ignoran
+    hojas de estilo y muchos rompen con flex/grid. Es feo de escribir pero es
+    lo único que se ve igual en todas partes.
+  - Ancho fijo de 560px y una sola columna: se lee bien en móvil sin media
+    queries, que varios clientes tampoco soportan.
+  - El botón es una tabla con fondo, no un <button>: los clientes de correo no
+    ejecutan nada y un <button> se vería como texto plano.
+  - Se repite el link como texto abajo: si el botón no renderiza (modo texto,
+    imágenes bloqueadas), la persona igual puede entrar.
+  - Sin imágenes externas: se bloquean por defecto en la mayoría de clientes,
+    y un correo que depende de ellas llega roto.
+
+  QUÉ PERSONALIZAR
+  Reemplazar "Compraventa" por el nombre real del negocio en el encabezado y
+  en el pie. Si se quiere el logo, tiene que ser una URL pública permanente
+  (no el bucket privado de Storage, que exige firma y expira).
+-->
+
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#f5f7fa;margin:0;padding:32px 12px;font-family:-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
+  <tr>
+    <td align="center">
+
+      <table role="presentation" width="560" cellpadding="0" cellspacing="0" style="width:560px;max-width:100%;background-color:#ffffff;border-radius:14px;border:1px solid #e5eaf0;overflow:hidden;">
+
+        <!-- Encabezado -->
+        <tr>
+          <td style="padding:28px 32px 0 32px;">
+            <p style="margin:0;font-size:13px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;color:#00806f;">
+              Compraventa
+            </p>
+          </td>
+        </tr>
+
+        <!-- Mensaje -->
+        <tr>
+          <td style="padding:20px 32px 0 32px;">
+            <h1 style="margin:0 0 16px 0;font-size:26px;line-height:1.25;color:#1e2a3b;font-weight:600;">
+              Hola {{ .Data.full_name }}, te damos la bienvenida
+            </h1>
+
+            <p style="margin:0 0 16px 0;font-size:16px;line-height:1.6;color:#44546a;">
+              Te crearon una cuenta para trabajar en el sistema de gestión de la compraventa. Desde ahí vas a
+              atender clientes, registrar contratos de empeño, vender en la tienda y manejar la caja del día,
+              según el rol que te asignaron.
+            </p>
+
+            <p style="margin:0 0 24px 0;font-size:16px;line-height:1.6;color:#44546a;">
+              Para empezar solo falta que crees tu contraseña.
+            </p>
+          </td>
+        </tr>
+
+        <!-- Botón -->
+        <tr>
+          <td style="padding:0 32px;">
+            <table role="presentation" cellpadding="0" cellspacing="0">
+              <tr>
+                <td style="background-color:#00b19e;border-radius:9999px;">
+                  <a href="{{ .ConfirmationURL }}"
+                     style="display:inline-block;padding:14px 32px;font-size:16px;font-weight:600;color:#ffffff;text-decoration:none;">
+                    Crear mi contraseña
+                  </a>
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+
+        <!-- Respaldo del link -->
+        <tr>
+          <td style="padding:24px 32px 0 32px;">
+            <p style="margin:0 0 6px 0;font-size:13px;line-height:1.5;color:#8a97a8;">
+              Si el botón no funciona, copia y pega esta dirección en tu navegador:
+            </p>
+            <p style="margin:0;font-size:13px;line-height:1.5;word-break:break-all;">
+              <a href="{{ .ConfirmationURL }}" style="color:#00806f;">{{ .ConfirmationURL }}</a>
+            </p>
+          </td>
+        </tr>
+
+        <!-- Aviso de seguridad -->
+        <tr>
+          <td style="padding:24px 32px 0 32px;">
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#f5f7fa;border-radius:10px;">
+              <tr>
+                <td style="padding:14px 16px;">
+                  <p style="margin:0;font-size:13px;line-height:1.6;color:#44546a;">
+                    <strong style="color:#1e2a3b;">Este enlace es personal y temporal.</strong>
+                    No lo compartas con nadie. Si vence antes de que puedas usarlo, pídele a tu
+                    administrador que te reenvíe la invitación.
+                  </p>
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+
+        <!-- Pie -->
+        <tr>
+          <td style="padding:24px 32px 28px 32px;">
+            <p style="margin:0;border-top:1px solid #e5eaf0;padding-top:16px;font-size:12px;line-height:1.6;color:#8a97a8;">
+              Recibiste este correo porque alguien de tu equipo creó una cuenta a nombre de
+              {{ .Email }}. Si no esperabas esta invitación, puedes ignorar este mensaje: la cuenta
+              no se activa hasta que crees tu contraseña.
+            </p>
+          </td>
+        </tr>
+
+      </table>
+
+      <p style="margin:16px 0 0 0;font-size:12px;color:#8a97a8;">
+        Sistema de gestión para compraventas
+      </p>
+
+    </td>
+  </tr>
+</table>
