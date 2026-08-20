@@ -2,6 +2,37 @@
 
 > Registro vivo de qué existe en el código, cómo está armado y por qué se tomó cada decisión — para que cualquiera (humano o Claude Code) pueda retomar el proyecto sin releer todo el historial de commits. Se actualiza en cada paso del "Orden de implementación" de `CLAUDE.md`. No repite lo que ya está en `ARCHITECTURE.md`/`DESIGN_SYSTEM.md` (el qué-debería-ser); esto es el qué-hay-hoy y las decisiones concretas tomadas al construirlo.
 
+## Métricas en el detalle del contrato + indicador de refetch (20/08/2026)
+
+Punto 13 del cliente: *"métricas dentro del detalle de un contrato, cuánto se ha pagado de interés, porcentajes, margen de ganancia, con gráficas"*. **Sin backend nuevo** — todo sale de datos que `GET /contracts/{id}` y `GET /contracts/{id}/payments` ya devuelven.
+
+### La distinción que el panel existe para hacer visible
+
+**Los intereses son ingreso; el capital recuperado no lo es.** Un contrato de $1.000.000 que devolvió todo el capital y pagó $150.000 de interés no generó $1.150.000 — generó **$150.000**. El resto solo volvió a casa.
+
+Es el mismo error de modelado que ya se corrigió dos veces en `/reportes` (préstamos contados como gasto, capital abonado contado como ingreso). Acá se previene por diseño: cada número va rotulado por separado y **no existe un "total cobrado" grande** que invite a leerlo como ganancia. La dona lo refuerza mostrando el reparto entre interés y capital.
+
+### Qué muestra
+
+- **KPIs**: intereses cobrados, rendimiento (intereses ÷ capital prestado), capital pendiente, e interés del próximo mes — calculado sobre el **saldo actual**, no sobre el principal, que es la regla del contrato.
+- **Capital devuelto**: barra de progreso con la aclaración de que devolver capital reduce deuda, no es ganancia.
+- **Descuentos de interés**, cuando los hay: interés que se dejó de cobrar.
+- **Evolución del saldo**: gráfica escalonada (`stepAfter`) a propósito — el saldo no baja de a poco, baja de golpe con cada abono a capital. Una curva suave mentiría sobre la forma del dato.
+
+La gráfica usa `new_capital_balance`, el saldo que el **backend** calculó en cada abono, no uno reconstruido en el front. Así la curva no puede divergir de la verdad aunque cambie una regla de cálculo.
+
+### Detalle de fechas que se evitó
+
+`daysSinceStart` parsea la fecha a mano en vez de usar `new Date(string)`: el constructor interpreta `"2026-05-01"` como UTC y `"2026-05-01T00:00"` como hora local, así que en Bogotá (UTC-5) la cuenta salía con un día de menos. Es la misma trampa que `lib/dates.ts` evita en el resto de la app.
+
+11 tests sobre las funciones puras, con números verificables a mano.
+
+### Indicador de carga en refetch
+
+Hueco encontrado probando la vista de productos: **`isPending` de React Query solo es `true` en la PRIMERA carga**. Al buscar, cambiar un filtro o refrescar tras guardar un precio, hay datos viejos en pantalla y `isPending` es `false` — la interfaz se quedaba idéntica mientras la request viajaba. Con el backend arrancando en frío eso son segundos en los que parece que el filtro no hizo nada.
+
+`RefreshingBar` cubre exactamente ese caso. **No reemplaza al esqueleto**: el esqueleto es para cuando no hay nada que mostrar, esta barra es para cuando lo que se ve está a punto de cambiar. Vaciar la tabla en cada refetch habría sido peor — el contenido saltaría y se perdería el scroll. Se agregó también como prop opcional de `DataTable`, así que cualquier listado puede usarla, y respeta `prefers-reduced-motion`.
+
 ## Fase 3: se elimina la duplicación entre lote y producto (20/08/2026)
 
 Cierra el cambio de modelo. `inventory_item` pierde `name`, `cat1/2/3_id`, `description` y `sale_price`: desde 00021 esos datos viven en `product` y estaban duplicados.

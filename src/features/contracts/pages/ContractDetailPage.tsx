@@ -21,6 +21,7 @@ import { effectiveContractStatus, isReadyForAuction } from '@/features/contracts
 import { useContract } from '@/lib/contracts/reference'
 import { useCustomer } from '@/lib/customers/search'
 import { PaymentOptionsPanel } from '@/features/contracts/components/PaymentOptionsPanel'
+import { ContractMetricsPanel } from '@/features/contracts/components/ContractMetricsPanel'
 import { ContractEditDialog } from '@/features/contracts/components/ContractEditDialog'
 import { ContractPrintView } from '@/features/contracts/components/ContractPrintView'
 
@@ -245,6 +246,17 @@ export function ContractDetailPage() {
           <div className="mt-3">
             <PaymentOptionsPanel contractId={contractId} />
           </div>
+        </div>
+      )}
+
+      {/* Las métricas van ANTES del historial: responden "¿cómo va este
+          contrato?" de un vistazo, mientras que la tabla de abonos es para
+          consultar un movimiento puntual. Se calculan de los mismos abonos que
+          la tabla, así que solo tienen sentido cuando ya cargaron. */}
+      {!paymentsPending && !paymentsError && (
+        <div>
+          <h2 className="mb-3 text-sm font-medium text-foreground">Cómo va este contrato</h2>
+          <ContractMetricsPanel contract={contract} payments={payments} />
         </div>
       )}
 
