@@ -14,7 +14,7 @@ import { todayBogota } from '@/lib/dates'
 import { cn } from '@/lib/utils'
 import { useCategories } from '@/lib/catalogs/categories'
 import { useExpenseCategories } from '@/features/cashbox/api'
-import { useRawSessions, useCarteraActual, useExpensesByCategory, useAllTimeItemSales, MAX_RANGE_DAYS } from '@/features/reports/api'
+import { useRawSessions, useCarteraActual, useExpensesByCategory, useAllTimeItemSales, useProfitSummary, MAX_RANGE_DAYS } from '@/features/reports/api'
 import { aggregateFinancialSummary, aggregateExpensesByCategory, computeDelta, daysBetweenDateOnly, previousRangeFor } from '@/features/reports/aggregate'
 import { aggregateItemRanking } from '@/features/reports/rankings'
 import { ModuleSplitBar } from '@/features/reports/components/ModuleSplitBar'
@@ -57,6 +57,65 @@ function CardShell({ title, subtitle, children }: { title: string; subtitle?: st
         {subtitle && <span className="text-xs text-muted-foreground">{subtitle}</span>}
       </div>
       {children}
+    </div>
+  )
+}
+
+/**
+ * Utilidad BRUTA de la tienda: lo que entró por ventas menos lo que costó la
+ * mercancía vendida. Es la respuesta a "¿cuánto gané con lo que vendí?", que
+ * hasta ahora no existía en ninguna pantalla.
+ *
+ * NO es lo mismo que la "utilidad operativa" de los KPIs de arriba, y por eso
+ * lleva su propia card con la aclaración: aquella es ingresos − gastos (luz,
+ * arriendo, nómina) y NO descuenta el costo de la mercancía; esta descuenta el
+ * costo pero no los gastos. Mezclarlas o presentarlas sin distinguir sería
+ * dar dos "utilidades" distintas en la misma pantalla sin decir cuál es cuál.
+ *
+ * Se pide aparte y no sale de `aggregateFinancialSummary` porque el costo de
+ * ventas no es un movimiento de caja: vive en `sale_line.unit_cost`, congelado
+ * al momento de vender.
+ */
+function ProfitCard({ range }: { range: DateRangeValue | null }) {
+  const { data: profit, isPending, isError } = useProfitSummary(range)
+
+  if (isPending) return <div className="h-28 animate-pulse rounded-card border border-border bg-muted/40" />
+  if (isError || !profit) return null
+
+  const loss = Number(profit.gross_profit) < 0
+
+  return (
+    <div className="rounded-card border border-border bg-card p-card shadow-card">
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-x-4 gap-y-1">
+        <h2 className="text-sm font-medium text-foreground">Utilidad bruta de tienda</h2>
+        <span className="text-xs text-muted-foreground">
+          Ventas menos el costo de la mercancía vendida. No descuenta gastos operativos.
+        </span>
+      </div>
+      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+        <KpiCard label="Ingreso por ventas" value={<Money value={profit.net_revenue} tone="in" />} />
+        <KpiCard label="Costo de lo vendido" value={<Money value={profit.cost_of_goods_sold} tone="out" />} />
+        <KpiCard label="Utilidad bruta" value={<Money value={profit.gross_profit} />} tone={loss ? 'danger' : 'success'} />
+        <KpiCard
+          label="Margen"
+          // `null` cuando no hubo ventas: un 0% afirmaría "vendí sin ganar",
+          // que es distinto de "no hay datos en el período".
+          value={<span className="tnum">{profit.margin_pct === null ? '—' : `${Number(profit.margin_pct).toFixed(1)}%`}</span>}
+          tone={profit.margin_pct === null ? undefined : loss ? 'danger' : 'success'}
+        />
+      </div>
+      {profit.sale_count > 0 && (
+        <p className="mt-3 text-xs text-muted-foreground">
+          {profit.sale_count} {profit.sale_count === 1 ? 'venta' : 'ventas'} · {profit.units_sold}{' '}
+          {profit.units_sold === 1 ? 'artículo' : 'artículos'}
+          {Number(profit.discounts) > 0 && (
+            <>
+              {' '}
+              · descuentos aplicados <Money value={profit.discounts} />
+            </>
+          )}
+        </p>
+      )}
     </div>
   )
 }
@@ -205,6 +264,8 @@ export function ReportesPage() {
             <KpiCard label="Intereses cobrados" value={<Money value={summary.intereses} />} delta={delta(summary.intereses, previousSummary?.intereses, 'up')} />
             <KpiCard label="Ventas" value={<Money value={summary.ventas} />} tone="brand" delta={delta(summary.ventas, previousSummary?.ventas, 'up')} />
           </KpiRow>
+
+          {showCapitalTienda && <ProfitCard range={range} />}
 
           {showCapital && (
             <div className="rounded-card border border-border bg-card p-card shadow-card">

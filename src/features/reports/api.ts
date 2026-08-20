@@ -6,6 +6,7 @@ import type { DateRangeValue } from '@/components/shared/DateRangePicker'
 import { daysBetweenDateOnly } from '@/features/reports/aggregate'
 import type { SessionReport, Expense } from '@/features/cashbox/api'
 import type { Sale } from '@/lib/sales/void'
+import type { components } from '@/types/api'
 import type { Item } from '@/lib/inventory/items'
 
 export const MAX_RANGE_DAYS = 90
@@ -98,5 +99,29 @@ export function useAllTimeItemSales() {
       ])
       return { sales, items }
     },
+  })
+}
+
+export type ProfitSummary = components['schemas']['ProfitSummaryOut']
+
+/**
+ * Utilidad BRUTA del período: ventas menos el costo de la mercancía vendida.
+ *
+ * A diferencia del resto de esta pantalla —que agrega sesiones de caja con un
+ * N+1 acotado y por eso tiene tope de 90 días— esto es UNA consulta agregada
+ * en Postgres (`GET /reports/profit`), así que no depende del tope ni del
+ * número de sesiones del rango. Se pide igual con el rango elegido para que
+ * los números se lean junto a los demás.
+ */
+export function useProfitSummary(range: { from: string; to: string } | null) {
+  return useQuery({
+    queryKey: ['reports', 'profit', range?.from, range?.to] as const,
+    queryFn: () =>
+      unwrap(
+        api.GET('/api/v1/reports/profit', {
+          params: { query: { from_date: range!.from, to_date: range!.to } },
+        }),
+      ),
+    enabled: !!range,
   })
 }

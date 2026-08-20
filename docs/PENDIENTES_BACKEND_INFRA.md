@@ -38,7 +38,7 @@ Esto además quitó un techo duro real en el POS: `useAvailableItemsSearch` tra�
 
 En orden de valor:
 
-1. **Costo de ventas / utilidad bruta por período.** `inventory_item.cost` y `sale_line.unit_price` existen; nada los cruza — grep de `cost` en el módulo `sales`: cero resultados. Hoy se puede ver el margen **por pieza** (`ItemMarginInfo`), pero no *"¿cuánto gané este mes sobre lo que vendí?"*. Es la pieza que falta para que Reportes responda la pregunta central del negocio. Ver también punto 13.
+1. ~~**Costo de ventas / utilidad bruta por período.**~~ **✅ Resuelto (20/08/2026)** — migración 00019 (`sale_line.unit_cost`, congelado al vender) + `GET /reports/profit?from_date&to_date`. Ver punto 26. Queda pendiente la rentabilidad del **empeño** (intereses cobrados contra capital inmovilizado), que es una pregunta distinta: rendimiento sobre capital, no margen sobre costo.
 2. **Agregación de caja por rango de fechas** (punto 13.1) — sigue siendo la mejor relación esfuerzo/valor: `GET /cashbox/sessions/{id}/report` ya calcula módulo×concepto×medio para UNA sesión; falta lo mismo sumando N sesiones. Quitaría el N+1 y el tope de 90 días del front.
 3. **`?q=` en `GET /contracts`** (punto 2, sin resolver) — el buscador de contratos sigue siendo un parche client-side de 200 registros que nunca busca por nombre de cliente.
 4. **`GET /platform/companies/{id}/audit-log`** (punto 14) — un super-admin no puede ver la auditoría de otra empresa por RLS. **El lado de suscripciones ya se resolvió** con la tabla `subscription_event` (migración 00018, ver punto 25): altas, renovaciones con monto y notas, suspensiones, reactivaciones y vencimientos. Lo que sigue faltando es la auditoría de SEGURIDAD de otra empresa (cambios de roles, remates, anulaciones) — son cosas distintas.
@@ -244,3 +244,15 @@ Encontrado probando en vivo la edición de categoría de artículos (punto 17): 
 **Posible causa:** el catálogo de categorías es chico (12 filas en la empresa de prueba) y no debería tardar segundos — huele a N+1 o falta de índice en `parent_id`/`company_id`, no a volumen de datos. No se investigó más a fondo del lado del backend porque está fuera del alcance del front.
 
 **Sugerencia:** perfilar la query de `GET /catalogs/categories` — con un catálogo de este tamaño (decenas de filas, no miles) debería responder en milisegundos.
+
+## 26. ✅ Costo de ventas y utilidad bruta (RESUELTO)
+
+Era el punto de mayor valor de §24. `inventory_item.cost` y `sale_line.unit_price` existían pero nada los cruzaba, así que la pregunta central del negocio —*"¿cuánto gané con lo que vendí?"*— no tenía respuesta.
+
+**✅ Resuelto (20/08/2026):** migración 00019 agrega `sale_line.unit_cost`, copiado del artículo **al momento de vender** (snapshot, mismo criterio que los contratos). Leerlo del artículo al reportar habría hecho que un reporte de un período cerrado cambiara si alguien corrige un costo hoy. El backfill fue posible porque `inventory_item.cost` es inmutable en la práctica (ningún endpoint lo edita).
+
+`GET /reports/profit?from_date&to_date` devuelve `gross_revenue`, `discounts`, `net_revenue`, `cost_of_goods_sold`, `gross_profit` y `margin_pct`. Es una sola consulta agregada, así que **no hereda el tope de 90 días** del resto de `/reportes`.
+
+Decisiones de modelado: solo ventas `completed` (una anulada no generó ingreso ni consumió inventario); el descuento se resta del ingreso y no se trata como gasto; `margin_pct` es `null` —no 0— cuando no hubo ventas.
+
+**Ojo con la UI:** `/reportes` ahora muestra DOS utilidades distintas. La "operativa" (ingresos − gastos) no descuenta el costo de la mercancía; la "bruta de tienda" descuenta el costo pero no los gastos. Están separadas y rotuladas a propósito.

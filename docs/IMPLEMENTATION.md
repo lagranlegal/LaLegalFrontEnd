@@ -2,6 +2,60 @@
 
 > Registro vivo de qué existe en el código, cómo está armado y por qué se tomó cada decisión — para que cualquiera (humano o Claude Code) pueda retomar el proyecto sin releer todo el historial de commits. Se actualiza en cada paso del "Orden de implementación" de `CLAUDE.md`. No repite lo que ya está en `ARCHITECTURE.md`/`DESIGN_SYSTEM.md` (el qué-debería-ser); esto es el qué-hay-hoy y las decisiones concretas tomadas al construirlo.
 
+## Costo de ventas y utilidad bruta — "¿cuánto gané con lo que vendí?" (20/08/2026)
+
+El punto de mayor valor de `PENDIENTES_BACKEND_INFRA.md` §24. `inventory_item.cost` guardaba el costo real por pieza (identificación específica, NIIF) y `sale_line.unit_price` el precio de venta, pero **nada los cruzaba** — un grep de `cost` en todo el módulo `sales` daba cero resultados. La pregunta central de una compraventa no tenía respuesta en la app.
+
+### El costo se congela en la venta, no se lee al reportar
+
+Migración 00019: `sale_line.unit_cost`, copiado desde el artículo **en el momento de vender**. Es el mismo criterio de snapshot legal que ya usan los contratos (que congelan tasa, plazo y ventana de mora al crearse).
+
+La alternativa —leer `inventory_item.cost` al generar el reporte— tenía un defecto silencioso: **un reporte de un período ya cerrado cambiaría** si alguien corrige el costo de un artículo hoy. Los números de un mes contable no deben moverse.
+
+El backfill sí se pudo hacer, a diferencia del `payment_method` de 00014: `inventory_item.cost` es inmutable en la práctica (se fija al ingresar o al rematar, y `ItemUpdateIn` acepta nombre, descripción, precio, fotos y categoría — nunca el costo), así que copiarlo reconstruye el histórico con el valor correcto.
+
+### `GET /reports/profit?from_date&to_date`
+
+Una sola consulta agregada en Postgres, así que **no hereda el tope de 90 días** del resto de `/reportes` (que agrega sesión por sesión con un N+1 acotado): un rango de un año no cuesta más que uno de un día. Tope propio de 366 días.
+
+Tres decisiones de modelado que vale la pena dejar escritas:
+
+- **Solo ventas `completed`.** Una anulada no generó ingreso ni consumió inventario (la anulación repone el stock); incluirla inflaría ambos lados y ensuciaría el margen.
+- **El descuento se resta del ingreso, no se trata como gasto** — es un menor ingreso real. Vive en `sale`, no en la línea, así que se agrega en un subquery aparte: un join plano con las líneas repetiría el descuento por cada línea de la venta.
+- **`margin_pct` es `null` y no 0 cuando no hubo ventas.** Un 0% afirma "vendí sin ganar", que es una afirmación distinta de "no hay datos".
+
+Las fechas se comparan en la zona horaria de la **empresa**, no en UTC: `sold_at` es timestamptz y el día del negocio termina a medianoche de Bogotá.
+
+### La distinción que la UI tenía que dejar clara
+
+`/reportes` ya mostraba una "utilidad operativa" (ingresos − gastos). Ahora hay una segunda utilidad, y **no son lo mismo**:
+
+| | Qué descuenta | Qué NO descuenta |
+|---|---|---|
+| **Utilidad operativa** (KPIs de arriba) | gastos: arriendo, nómina, servicios | el costo de la mercancía |
+| **Utilidad bruta de tienda** (card nueva) | el costo de la mercancía vendida | los gastos operativos |
+
+Presentar dos "utilidades" en la misma pantalla sin decir cuál es cuál sería peor que no tener la segunda. Por eso la card lleva su propia explicación (*"Ventas menos el costo de la mercancía vendida. No descuenta gastos operativos."*) y solo aparece bajo los filtros Todo/Tienda — el empeño no tiene costo de ventas, su rentabilidad son los intereses cobrados.
+
+La card se pide aparte y no sale de `aggregateFinancialSummary` porque **el costo de ventas no es un movimiento de caja**: no pasa por ninguna sesión, vive en la línea de venta.
+
+### Lo que sigue faltando
+
+Esto responde la utilidad bruta de **tienda**. La rentabilidad del **empeño** (intereses cobrados contra el capital inmovilizado en cartera) sigue sin calcularse, y es una pregunta distinta: no es un margen sobre costo sino un rendimiento sobre capital prestado.
+
+### Comandos de verificación
+
+```bash
+# backend
+.venv/bin/ruff check app/ tests/ && .venv/bin/mypy app && .venv/bin/pytest -q   # 190 passed (3 nuevos)
+
+# frontend
+npm run lint && npm run typecheck && npm run test && npm run build   # 84 tests, 0 errores
+npm run dev   # /reportes con filtro Todo o Tienda → card "Utilidad bruta de tienda"
+```
+
+Desplegado a dev (código primero, migración después) y verificado en el `/openapi.json` en vivo: `/api/v1/reports/profit` existe con sus 10 campos y `SaleLineOut` trae `unit_cost`.
+
 ## Historial de suscripciones en el panel de plataforma (20/08/2026)
 
 Cierra el punto 8 del cliente (*"histórico de activaciones o suscripciones de empresas, así como las suspensiones o demás movimientos"*) y el punto 14 de `PENDIENTES_BACKEND_INFRA.md`.

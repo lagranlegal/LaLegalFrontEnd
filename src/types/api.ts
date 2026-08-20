@@ -913,6 +913,32 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/reports/profit": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Profit Summary
+         * @description Utilidad BRUTA del período: lo que entró por ventas menos lo que
+         *     costó la mercancía vendida. Responde "¿cuánto gané con lo que vendí?",
+         *     que hasta ahora no tenía respuesta en ningún endpoint.
+         *
+         *     No descuenta gastos operativos (esos viven en caja y se reportan aparte)
+         *     ni cubre el módulo de empeño, cuya rentabilidad son los intereses
+         *     cobrados y no tiene costo de ventas asociado.
+         */
+        get: operations["get_profit_summary_api_v1_reports_profit_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/health": {
         parameters: {
             query?: never;
@@ -2113,6 +2139,42 @@ export interface components {
             /** Active */
             active: boolean;
         };
+        /**
+         * ProfitSummaryOut
+         * @description Utilidad BRUTA (ingreso por ventas − costo de ventas). NO es la
+         *     utilidad neta: no descuenta gastos operativos, que viven en caja y ya se
+         *     reportan aparte en /reportes. Y cubre solo el módulo Tienda — la
+         *     rentabilidad del empeño son los intereses cobrados, que no tienen costo de
+         *     ventas asociado.
+         */
+        ProfitSummaryOut: {
+            /**
+             * From Date
+             * Format: date
+             */
+            from_date: string;
+            /**
+             * To Date
+             * Format: date
+             */
+            to_date: string;
+            /** Sale Count */
+            sale_count: number;
+            /** Units Sold */
+            units_sold: number;
+            /** Gross Revenue */
+            gross_revenue: string;
+            /** Discounts */
+            discounts: string;
+            /** Net Revenue */
+            net_revenue: string;
+            /** Cost Of Goods Sold */
+            cost_of_goods_sold: string;
+            /** Gross Profit */
+            gross_profit: string;
+            /** Margin Pct */
+            margin_pct: string | null;
+        };
         /** RoleCreateIn */
         RoleCreateIn: {
             /** Name */
@@ -2194,6 +2256,8 @@ export interface components {
             quantity: number;
             /** Unit Price */
             unit_price: string;
+            /** Unit Cost */
+            unit_cost: string;
             /** Subtotal */
             subtotal: string;
         };
@@ -4687,6 +4751,40 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["CursorPage_ClosingHistoryOut_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_profit_summary_api_v1_reports_profit_get: {
+        parameters: {
+            query: {
+                /** @description Inclusivo, en la zona horaria de la empresa. */
+                from_date: string;
+                /** @description Inclusivo, en la zona horaria de la empresa. */
+                to_date: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProfitSummaryOut"];
                 };
             };
             /** @description Validation Error */
