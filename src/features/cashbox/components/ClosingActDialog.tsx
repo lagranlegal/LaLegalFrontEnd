@@ -18,8 +18,23 @@ import { SessionReportPanel } from '@/features/cashbox/components/SessionReportP
  * sin importar el `display` propio del hijo. `window.print()` no necesita
  * cerrar el diálogo primero: el modal se oculta solo vía `print:hidden`.
  */
+/** Mismo alto y forma que `SessionReportPanel` para que el contenido no salte al llegar. */
+function SessionReportSkeleton() {
+  return (
+    <div className="flex flex-col gap-3" aria-busy="true" aria-label="Cargando desglose del cierre">
+      <div className="h-10 animate-pulse rounded-input bg-muted/50" />
+      <div className="overflow-hidden rounded-input border border-border">
+        <div className="h-9 animate-pulse bg-muted/50" />
+        {[0, 1, 2, 3].map((i) => (
+          <div key={i} className="h-9 animate-pulse border-t border-border bg-muted/30" />
+        ))}
+      </div>
+    </div>
+  )
+}
+
 export function ClosingActDialog({ open, onOpenChange, closing }: { open: boolean; onOpenChange: (open: boolean) => void; closing: ClosingHistory }) {
-  const { data: report } = useSessionReport(open ? closing.session_id : undefined)
+  const { data: report, isPending, isError, refetch } = useSessionReport(open ? closing.session_id : undefined)
   const hasDifference = Number(closing.difference) !== 0
 
   return (
@@ -30,9 +45,11 @@ export function ClosingActDialog({ open, onOpenChange, closing }: { open: boolea
         title="Acta de cierre"
         description={formatDate(closing.session_date)}
         size="lg"
+        // Sin el desglose cargado el acta saldría incompleta: el botón se
+        // deshabilita en vez de imprimir media hoja.
         footer={
-          <Button type="button" className="w-full rounded-pill" onClick={() => window.print()}>
-            Imprimir
+          <Button type="button" className="w-full rounded-pill" disabled={!report} onClick={() => window.print()}>
+            {report ? 'Imprimir' : 'Cargando desglose…'}
           </Button>
         }
       >
@@ -59,6 +76,20 @@ export function ClosingActDialog({ open, onOpenChange, closing }: { open: boolea
             <div>
               <p className="text-xs text-muted-foreground">Justificación</p>
               <p className="text-sm text-foreground">{closing.difference_reason}</p>
+            </div>
+          )}
+          {/* El desglose se pide aparte (`GET /cashbox/sessions/:id/report`),
+              así que llega después de que el diálogo ya abrió. Antes acá había
+              solo `{report && ...}`: el modal se abría con media pantalla
+              vacía y el contenido aparecía de golpe, sin nada que dijera que
+              estaba cargando. */}
+          {isPending && <SessionReportSkeleton />}
+          {isError && (
+            <div className="flex flex-col items-start gap-2 rounded-input bg-danger-soft px-3 py-2">
+              <p className="text-sm text-danger">No se pudo cargar el desglose del cierre.</p>
+              <Button type="button" variant="outline" size="sm" onClick={() => refetch()}>
+                Reintentar
+              </Button>
             </div>
           )}
           {report && <SessionReportPanel report={report} />}

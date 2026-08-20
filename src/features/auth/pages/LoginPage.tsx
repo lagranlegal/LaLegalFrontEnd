@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useForm } from 'react-hook-form'
 import { z } from 'zod'
@@ -27,12 +28,27 @@ export function LoginPage() {
     formState: { errors },
   } = useForm<LoginFormValues>({ resolver: zodResolver(loginSchema) })
 
+  // El submit tiene DOS fases y `login.isPending` solo cubre la primera:
+  // autenticar contra Supabase es rápido, pero después `navigate()` dispara el
+  // `beforeLoad` del layout, que hace `await ensureQueryData(meQueryOptions())`
+  // — y eso puede tardar segundos (la máquina de Fly duerme con
+  // `min_machines_running = 0` y arranca en frío).
+  //
+  // Con solo `login.isPending`, el usuario veía: "Ingresando…" → "Ingresar" →
+  // pausa larga → adentro. El botón volviendo a su estado normal en medio
+  // parece que el intento falló, e invita a hacer click de nuevo. Este estado
+  // cubre las dos fases; no se limpia en el camino feliz porque la navegación
+  // desmonta la pantalla.
+  const [submitting, setSubmitting] = useState(false)
+
   async function onSubmit(values: LoginFormValues) {
+    setSubmitting(true)
     try {
       await login.mutateAsync(values)
       await navigate({ to: search.redirect || '/' })
     } catch {
       // login.error ya queda disponible para mostrarlo abajo — no hace falta relanzar.
+      setSubmitting(false)
     }
   }
 
@@ -80,8 +96,11 @@ export function LoginPage() {
           <p className="rounded-input bg-danger-soft px-3 py-2 text-sm text-danger">Correo o contraseña incorrectos.</p>
         )}
 
-        <Button type="submit" disabled={login.isPending} className="mt-2 w-full rounded-pill">
-          {login.isPending ? 'Ingresando…' : 'Ingresar'}
+        <Button type="submit" disabled={submitting} className="mt-2 w-full rounded-pill">
+          {/* Dos textos distintos: autenticar es rápido, cargar la sesión puede
+              tardar. Decir qué está pasando evita que la espera se lea como
+              que algo se colgó. */}
+          {submitting ? (login.isPending ? 'Ingresando…' : 'Preparando tu sesión…') : 'Ingresar'}
         </Button>
       </form>
 
