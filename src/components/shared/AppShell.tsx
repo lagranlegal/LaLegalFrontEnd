@@ -49,8 +49,29 @@ const NAV_ITEMS: NavItem[] = [
   { label: 'Identidad', icon: UserCog, to: '/identidad', anyPermission: ['identity.manage_users', 'identity.manage_roles'] },
   { label: 'Reportes', icon: BarChart3, to: '/reportes', anyPermission: ['reports.view'] },
   { label: 'Auditoría', icon: History, to: '/auditoria', anyPermission: ['audit.view'] },
-  { label: 'Configuración', icon: Settings },
+  { label: 'Configuración', icon: Settings, to: '/configuracion', anyPermission: ['company.configure'] },
 ]
+
+/**
+ * Pie genérico: la plataforma no tiene marca propia todavía, así que se
+ * nombra por lo que hace y se acompaña del nombre de la empresa del usuario
+ * (`me.company.name`) para que se sienta suya sin inventar un nombre
+ * comercial. `print:hidden` como el resto del shell — los documentos
+ * imprimibles llevan su propio pie, configurable desde /configuracion.
+ */
+function AppFooter() {
+  const { data: me } = useMe()
+  const year = new Date().getFullYear()
+
+  return (
+    <footer className="border-t border-border px-4 py-3 text-xs text-muted-foreground print:hidden">
+      <div className="flex flex-col items-center justify-between gap-1 sm:flex-row">
+        <span>Sistema de gestión para compraventas</span>
+        <span>{me?.company.name ? `${me.company.name} · ${year}` : year}</span>
+      </div>
+    </footer>
+  )
+}
 
 function SidebarContent({ collapsed, onNavigate }: { collapsed: boolean; onNavigate?: () => void }) {
   const { data: me } = useMe()
@@ -158,14 +179,12 @@ export function AppShell() {
             <Menu className="size-5" />
           </Button>
 
-          <div className="hidden flex-1 justify-center lg:flex">
-            <input
-              type="search"
-              placeholder="Buscar…"
-              disabled
-              className="w-full max-w-md rounded-input border border-border bg-background px-3 py-1.5 text-sm text-muted-foreground outline-none"
-            />
-          </div>
+          {/* Acá vivía un <input type="search" disabled> que nunca estuvo
+              conectado a nada. Un buscador que no busca comunica "esto está a
+              medio hacer" peor que no tener buscador: se quitó. La búsqueda
+              global real necesita `?q=` en contratos e inventario, que el
+              backend todavía no expone (docs/PENDIENTES_BACKEND_INFRA.md). */}
+          <div className="flex-1" />
 
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -197,6 +216,8 @@ export function AppShell() {
         <main className="flex-1 p-page print:p-0">
           <Outlet />
         </main>
+
+        <AppFooter />
       </div>
     </div>
   )

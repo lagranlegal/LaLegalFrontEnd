@@ -1,12 +1,37 @@
 import { PrintLayout } from '@/components/shared/PrintLayout'
 import { Money } from '@/components/shared/Money'
 import { formatDate } from '@/lib/dates'
+import { useMe } from '@/lib/auth/me'
+import { useSignedPhotoUrl } from '@/lib/storage/photos'
 import type { Contract } from '@/features/contracts/api'
 import type { Customer } from '@/lib/customers/search'
 import type { Category } from '@/lib/catalogs/categories'
 
 function categoryName(categories: Category[] | undefined, categoryId: string): string {
   return categories?.find((c) => c.id === categoryId)?.name ?? '—'
+}
+
+/**
+ * Firma de la empresa sobre la línea. Si no hay ninguna cargada en
+ * /configuracion, queda el espacio en blanco de siempre — el documento nunca
+ * sale peor que antes de que existiera esta función.
+ */
+function CompanySignature() {
+  const { data: me } = useMe()
+  const signaturePath = me?.company.signature_url ?? null
+  const { data: signatureUrl } = useSignedPhotoUrl(signaturePath)
+
+  return (
+    <div>
+      <div className="flex h-16 items-end justify-center">
+        {signatureUrl && <img src={signatureUrl} alt="" className="max-h-16 object-contain" />}
+      </div>
+      <div className="border-t border-black/40 pt-2 text-center">
+        Firma de la empresa
+        {me?.company.legal_name && <span className="block text-xs text-black/60">{me.company.legal_name}</span>}
+      </div>
+    </div>
+  )
 }
 
 function months(count: number): string {
@@ -19,12 +44,14 @@ function months(count: number): string {
  * que `ClosingActDialog` (paso 6): vive como hermano de cualquier diálogo,
  * nunca anidado (`print:hidden` en un ancestro lo taparía).
  *
- * **No incluye la firma/sello de la empresa** — `docs/pending/API_GUIDE.md`
- * §15 confirma que `GET/PATCH /company/settings` (donde viviría esa imagen)
- * todavía no existe; CONTEXTO.md pedía que se insertara automáticamente,
- * pero no hay dónde cargarla todavía. Deja dos líneas de firma en blanco
- * (cliente + empresa) para firmar a mano sobre el impreso, y el operador
- * sube la foto del documento ya firmado desde "Editar" → `signed_photo_url`.
+ * **La firma de la empresa ya se estampa automáticamente** cuando está
+ * cargada en /configuracion (`company.signature_url`, vía `GET /me`) — es lo
+ * que CONTEXTO.md §3 pedía desde el principio y que estuvo bloqueado hasta
+ * que existió `GET/PATCH /company/settings`. Si no hay firma cargada, cae a
+ * la línea en blanco de siempre para firmar a mano, así que el documento
+ * nunca queda peor que antes. El cliente sigue firmando el impreso (fase 1,
+ * sin firma en pantalla) y el operador sube la foto del documento ya firmado
+ * desde "Editar" → `signed_photo_url`.
  */
 export function ContractPrintView({ contract, customer, categories }: { contract: Contract; customer: Customer | undefined; categories: Category[] | undefined }) {
   return (
@@ -94,9 +121,12 @@ export function ContractPrintView({ contract, customer, categories }: { contract
 
       {contract.notes && <p className="mt-4 text-sm">Notas: {contract.notes}</p>}
 
-      <section className="mt-16 grid grid-cols-2 gap-8 text-sm">
-        <div className="border-t border-black/40 pt-2 text-center">Firma del cliente</div>
-        <div className="border-t border-black/40 pt-2 text-center">Firma de la empresa</div>
+      <section className="mt-16 grid grid-cols-2 items-end gap-8 text-sm">
+        <div>
+          <div className="h-16" />
+          <div className="border-t border-black/40 pt-2 text-center">Firma del cliente</div>
+        </div>
+        <CompanySignature />
       </section>
     </PrintLayout>
   )
