@@ -2,6 +2,36 @@
 
 > Registro vivo de qué existe en el código, cómo está armado y por qué se tomó cada decisión — para que cualquiera (humano o Claude Code) pueda retomar el proyecto sin releer todo el historial de commits. Se actualiza en cada paso del "Orden de implementación" de `CLAUDE.md`. No repite lo que ya está en `ARCHITECTURE.md`/`DESIGN_SYSTEM.md` (el qué-debería-ser); esto es el qué-hay-hoy y las decisiones concretas tomadas al construirlo.
 
+## Reponer stock sin retipear — y por qué NO se suma cantidad (20/08/2026)
+
+Punto 6 del cliente: *"comprar más artículos existentes no es posible; si tengo un artículo que existe y es del mismo proveedor debería dejar seleccionármelo"*.
+
+### La implementación intuitiva habría roto el costeo
+
+Lo que suena natural es sumarle cantidad al artículo existente. **No se hizo, y la razón es contable, no técnica.**
+
+El sistema usa **identificación específica** (`CONTEXTO.md` §3, `CLAUDE.md` del backend): *"cada pieza/lote conserva su costo real de compra (estándar joyero, NIIF); nunca promediar"*. Fusionar dos compras a costos distintos obliga a promediar — y eso falsearía:
+
+- la **utilidad bruta de cada venta** (`ItemMarginInfo`),
+- el **costo de ventas del período** (`sale_line.unit_cost`, migración 00019),
+
+que son justo las dos cosas que se construyeron horas antes. Un artículo comprado a $100.000 y otro a $150.000 no son el mismo artículo aunque se llamen igual.
+
+Además, cada artículo publicado tiene un **código único e inmutable**: dos lotes comprados en fechas distintas no pueden compartir uno.
+
+### Lo que sí resuelve el problema real
+
+El problema real del cliente no era "quiero un solo registro", era **no retipear**. Así que `RestockPicker` busca entre los artículos ya comprados y **copia** nombre, categoría y descripción a la línea nueva — lo único que sí es idéntico entre dos lotes. Se crea un artículo NUEVO con su propio costo y su propio código.
+
+El costo del artículo anterior se precarga **como sugerencia**, no como valor impuesto: el del lote nuevo casi nunca es el mismo, y es precisamente el dato que el usuario debe revisar.
+
+### Dos detalles de la búsqueda
+
+- **Incluye artículos vendidos**, al revés que `useAvailableItemsSearch` (que alimenta el carrito de venta y filtra `available`). El artículo que uno quiere volver a comprar es, típicamente, el que se **agotó** — filtrarlo por disponible haría inútil el buscador justo en el caso más común.
+- **Se acota al proveedor** ya elegido en el ingreso, que es literalmente lo que pidió el cliente. Si no hay coincidencias con ese proveedor, lo dice explícitamente en vez de mostrar un vacío ambiguo.
+
+Esto fue posible sin backend nuevo porque el `?q=` y el filtro `supplier_id` de `GET /inventory/items` ya existían desde el buscador de inventario.
+
 ## Compras: separar cuándo llegó la mercancía de cuándo salió la plata (20/08/2026)
 
 Punto 10 del cliente: *"algunas veces los admin ingresan esa info de días anteriores o lo hacen a horas de la noche"*. Desde 00014 una compra exigía caja abierta y quedaba con fecha de hoy, así que ese flujo —que es el normal del negocio— no se podía registrar.

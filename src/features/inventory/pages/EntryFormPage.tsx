@@ -9,6 +9,9 @@ import { PageHeader } from '@/components/shared/PageHeader'
 import { AppDialog } from '@/components/shared/AppDialog'
 import { MoneyInput } from '@/components/shared/MoneyInput'
 import { DatePicker } from '@/components/shared/DatePicker'
+import { SearchInput } from '@/components/shared/SearchInput'
+import { StatusBadge } from '@/components/shared/StatusBadge'
+import { useItemsForRestock, type Item } from '@/lib/inventory/items'
 import { Money } from '@/components/shared/Money'
 import { CashSessionRequiredDialog } from '@/components/shared/CashSessionRequiredDialog'
 import { Button } from '@/components/ui/button'
@@ -69,6 +72,68 @@ const inputClass =
 
 function emptyLine(): EntryFormValues['lines'][number] {
   return { name: '', cat1_id: '', cat2_id: '', cat3_id: '', description: '', unit_cost: '0.00', quantity: 1 }
+}
+
+/**
+ * Copia los datos de un artículo ya comprado antes, para no retipear al
+ * reponer stock.
+ *
+ * IMPORTANTE — POR QUÉ COPIA Y NO SUMA CANTIDAD: el pedido original fue
+ * "si tengo un artículo que existe y es del mismo proveedor debería dejar
+ * seleccionármelo". Lo intuitivo sería sumarle cantidad al artículo existente,
+ * pero eso rompería el costeo: el sistema usa IDENTIFICACIÓN ESPECÍFICA
+ * (CONTEXTO.md §3, estándar joyero/NIIF) — cada pieza o lote conserva su
+ * costo real de compra y NUNCA se promedia. Fusionar dos compras a costos
+ * distintos obligaría a promediar, lo que falsearía la utilidad bruta de cada
+ * venta y el costo de ventas del período.
+ *
+ * Además, cada artículo publicado tiene un código único e inmutable: dos lotes
+ * comprados en fechas distintas no pueden compartir uno.
+ *
+ * Así que se crea un artículo NUEVO con su propio costo y su propio código, y
+ * lo único que se reutiliza es lo que sí es idéntico: nombre, categoría y
+ * descripción. Eso resuelve el problema real (no retipear) sin romper la
+ * contabilidad.
+ */
+function RestockPicker({ supplierId, onPick }: { supplierId?: string; onPick: (item: Item) => void }) {
+  const [q, setQ] = useState('')
+  const { data, isFetching } = useItemsForRestock(q, supplierId)
+
+  return (
+    <div className="relative mb-3">
+      <SearchInput value={q} onChange={setQ} placeholder="¿Ya lo compraste antes? Búscalo para copiar sus datos…" />
+      {q.trim() && (
+        <div className="absolute z-10 mt-1 w-full overflow-hidden rounded-input border border-border bg-card shadow-card">
+          {isFetching && <p className="px-3 py-2 text-sm text-muted-foreground">Buscando…</p>}
+          {!isFetching && data?.length === 0 && (
+            <p className="px-3 py-2 text-sm text-muted-foreground">
+              Sin coincidencias{supplierId ? ' con este proveedor' : ''}. Llena los datos abajo.
+            </p>
+          )}
+          {!isFetching &&
+            data?.map((item) => (
+              <button
+                key={item.id}
+                type="button"
+                className="flex w-full items-center justify-between gap-3 px-3 py-2 text-left text-sm hover:bg-accent"
+                onClick={() => {
+                  onPick(item)
+                  setQ('')
+                }}
+              >
+                <span className="min-w-0">
+                  <span className="block truncate font-medium text-foreground">{item.name}</span>
+                  <span className="block text-xs text-muted-foreground">
+                    {item.code ? `${item.code} · ` : ''}último costo <Money value={item.cost} />
+                  </span>
+                </span>
+                <StatusBadge status={item.status} />
+              </button>
+            ))}
+        </div>
+      )}
+    </div>
+  )
 }
 
 export function EntryFormPage() {
@@ -296,6 +361,24 @@ export function EntryFormPage() {
                       </Button>
                     )}
                   </div>
+                  {/* Reponer algo que ya se compró antes: copia los datos y
+                      evita retipear. NO suma cantidad al artículo existente —
+                      ver el comentario de RestockPicker. */}
+                  <RestockPicker
+                    supplierId={watch('supplier_id')}
+                    onPick={(item) => {
+                      setValue(`lines.${index}.name`, item.name)
+                      setValue(`lines.${index}.description`, item.description ?? '')
+                      setValue(`lines.${index}.cat1_id`, item.cat1_id)
+                      setValue(`lines.${index}.cat2_id`, item.cat2_id)
+                      setValue(`lines.${index}.cat3_id`, item.cat3_id)
+                      // El costo se sugiere como referencia, no se impone: el
+                      // del lote nuevo casi nunca es el mismo, y es el dato
+                      // que el usuario DEBE revisar.
+                      setValue(`lines.${index}.unit_cost`, item.cost)
+                    }}
+                  />
+
                   <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                     <div className="sm:col-span-2">
                       <label className="text-sm font-medium text-foreground">Nombre</label>

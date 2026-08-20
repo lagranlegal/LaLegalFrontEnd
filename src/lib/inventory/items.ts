@@ -41,3 +41,28 @@ export function useAvailableItemsSearch(q: string) {
     select: (page) => page.items,
   })
 }
+
+/**
+ * Búsqueda para REPONER: incluye artículos de cualquier estado, no solo los
+ * disponibles. Es lo contrario a `useAvailableItemsSearch` (que alimenta el
+ * carrito de venta y por eso filtra `available`): el artículo que uno quiere
+ * volver a comprar es, típicamente, el que se AGOTÓ.
+ *
+ * Opcionalmente acota a un proveedor, que es el caso que pidió el cliente:
+ * "si tengo un artículo que existe y es del mismo proveedor, debería dejar
+ * seleccionármelo".
+ */
+export function useItemsForRestock(q: string, supplierId?: string) {
+  const query = q.trim()
+  return useQuery({
+    queryKey: ['inventory', 'items', 'restock-search', query, supplierId ?? null] as const,
+    queryFn: () =>
+      unwrap(
+        api.GET('/api/v1/inventory/items', {
+          params: { query: { q: query, supplier_id: supplierId || undefined, limit: 8 } },
+        }),
+      ),
+    enabled: query.length > 0,
+    select: (page) => page.items,
+  })
+}
