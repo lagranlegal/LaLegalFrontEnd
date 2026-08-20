@@ -11,7 +11,7 @@ import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { cn } from '@/lib/utils'
-import { formatDateTime } from '@/lib/dates'
+import { formatDate, formatDateTime } from '@/lib/dates'
 import { useCategories, type Category } from '@/lib/catalogs/categories'
 import { useEntriesList, useExitsList, useItemsList, type Entry, type Exit } from '@/features/inventory/api'
 import type { Item } from '@/lib/inventory/items'
@@ -205,7 +205,22 @@ function EntriesTab() {
     { accessorKey: 'origin_type', header: 'Origen', cell: (info) => (info.getValue<string>() === 'purchase' ? 'Compra' : 'Otro') },
     { accessorKey: 'items', header: 'Artículos', cell: (info) => info.row.original.items.length },
     { accessorKey: 'total_cost', header: 'Costo total', cell: (info) => <Money value={info.getValue<string>()} /> },
-    { accessorKey: 'created_at', header: 'Fecha', cell: (info) => formatDateTime(info.getValue<string>()) },
+    // La fecha de ENTRADA de la mercancía, no la de digitación: puede ser
+    // anterior, y es la que importa para inventario y costo de ventas.
+    { accessorKey: 'entry_date', header: 'Entrada', cell: (info) => formatDate(info.getValue<string>()) },
+    {
+      id: 'payment',
+      header: 'Pago',
+      cell: (info) => {
+        const entry = info.row.original
+        if (entry.origin_type !== 'purchase') return <span className="text-muted-foreground">—</span>
+        return entry.paid_at ? (
+          <span className="text-success">Pagado</span>
+        ) : (
+          <span className="rounded-pill bg-warning-soft px-2 py-0.5 text-xs font-medium text-warning">Por pagar</span>
+        )
+      },
+    },
   ]
 
   return (

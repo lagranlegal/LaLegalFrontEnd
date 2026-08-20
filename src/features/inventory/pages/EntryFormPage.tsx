@@ -8,6 +8,7 @@ import { Plus, Trash2 } from 'lucide-react'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { AppDialog } from '@/components/shared/AppDialog'
 import { MoneyInput } from '@/components/shared/MoneyInput'
+import { DatePicker } from '@/components/shared/DatePicker'
 import { Money } from '@/components/shared/Money'
 import { CashSessionRequiredDialog } from '@/components/shared/CashSessionRequiredDialog'
 import { Button } from '@/components/ui/button'
@@ -16,6 +17,7 @@ import { ApiError } from '@/lib/api/client'
 import { useCategories } from '@/lib/catalogs/categories'
 import { useSuppliers } from '@/lib/catalogs/suppliers'
 import { sumMoney, multiplyMoney } from '@/lib/money'
+import { todayBogota } from '@/lib/dates'
 import { PAYMENT_METHOD_LABELS } from '@/lib/paymentMethods'
 import { applyServerErrors } from '@/lib/forms/applyServerErrors'
 import { useCreateEntry } from '@/features/inventory/api'
@@ -37,7 +39,10 @@ const entrySchema = z
     origin_type: z.enum(['purchase', 'other']),
     supplier_id: z.string().optional(),
     supplier_invoice: z.string().optional(),
-    payment_method: z.enum(['cash', 'transfer', 'other']).optional(),
+    // '' = pendiente de pago. No es lo mismo que "sin elegir": es una
+    // decisión explícita del usuario, así que tiene su propia opción visible.
+    payment_method: z.enum(['cash', 'transfer', 'other', '']).optional(),
+    entry_date: z.string().min(1, 'Indica cuándo entró la mercancía'),
     notes: z.string().optional(),
     lines: z.array(entryLineSchema).min(1, 'Agrega al menos un artículo'),
   })
@@ -49,12 +54,12 @@ const entrySchema = z
     message: 'Un ingreso de tipo "Compra" necesita un proveedor',
     path: ['supplier_id'],
   })
-  // Misma forma condicional: una compra entrega plata al proveedor y genera
-  // su egreso de caja, así que el medio de pago es obligatorio ahí (y no
-  // aplica a un ingreso "Otro", que no mueve dinero).
-  .refine((data) => data.origin_type !== 'purchase' || !!data.payment_method, {
-    message: 'Indica con qué medio se pagó la compra',
-    path: ['payment_method'],
+  // El medio de pago YA NO es obligatorio en una compra: dejarlo vacío la
+  // registra como pendiente de pago, que es el camino para cargar facturas de
+  // días anteriores o de noche con la caja cerrada.
+  .refine((data) => data.entry_date <= todayBogota(), {
+    message: 'La mercancía no puede haber entrado en una fecha futura',
+    path: ['entry_date'],
   })
 
 type EntryFormValues = z.infer<typeof entrySchema>
@@ -90,6 +95,7 @@ export function EntryFormPage() {
       supplier_id: '',
       supplier_invoice: '',
       payment_method: 'cash',
+      entry_date: todayBogota(),
       notes: '',
       lines: [emptyLine()],
     },
@@ -116,7 +122,8 @@ export function EntryFormPage() {
         supplier_invoice: values.supplier_invoice || null,
         // Solo la compra lo lleva — el backend rechaza un 'other' con medio
         // de pago (CHECK de la migración 00014).
-        payment_method: values.origin_type === 'purchase' ? (values.payment_method ?? null) : null,
+        payment_method: values.origin_type === 'purchase' && values.payment_method ? values.payment_method : null,
+        entry_date: values.entry_date,
         notes: values.notes || null,
         lines: values.lines.map((line) => ({
           name: line.name,
@@ -209,43 +216,57 @@ export function EntryFormPage() {
             </div>
           </div>
 
-          {/* Solo la compra entrega plata: el medio de pago decide si el
-              egreso baja el efectivo esperado del cierre o se concilia por
-              otro medio. Un ingreso "Otro" no mueve caja. */}
-          {isPurchase && (
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-              <div>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+            <div>
+              <label htmlFor="entry_date" className="text-sm font-medium text-foreground">
+                Fecha de entrada
+              </label>
+              <Controller
+                control={control}
+                name="entry_date"
+                render={({ field }) => <DatePicker id="entry_date" value={field.value} onChange={field.onChange} maxDate={todayBogota()} />}
+              />
+              <p className="mt-1 text-xs text-muted-foreground">Cuándo llegó la mercancía, no cuándo la registras.</p>
+              {errors.entry_date && <p className="mt-1 text-sm text-danger">{errors.entry_date.message}</p>}
+            </div>
+
+            {/* El medio de pago es OPCIONAL: vacío = pendiente de pago. Ese es
+                el camino para cargar facturas de días anteriores o de noche
+                con la caja cerrada, sin inventarle un movimiento a la caja. */}
+            {isPurchase && (
+              <div className="sm:col-span-2">
                 <label htmlFor="payment_method" className="text-sm font-medium text-foreground">
-                  Medio de pago
+                  Pago
                 </label>
                 <Controller
                   control={control}
                   name="payment_method"
                   render={({ field }) => (
-                    <Select value={field.value ?? ''} onValueChange={field.onChange}>
+                    <Select value={field.value || '__pending__'} onValueChange={(v) => field.onChange(v === '__pending__' ? '' : v)}>
                       <SelectTrigger id="payment_method" className="mt-1 w-full">
-                        <SelectValue placeholder="Selecciona…">
-                          {field.value ? PAYMENT_METHOD_LABELS[field.value] : undefined}
+                        <SelectValue>
+                          {field.value ? `Pagado — ${PAYMENT_METHOD_LABELS[field.value as 'cash' | 'transfer' | 'other']}` : 'Pendiente de pago'}
                         </SelectValue>
                       </SelectTrigger>
                       <SelectContent>
+                        <SelectItem value="__pending__">Pendiente de pago</SelectItem>
                         {Object.entries(PAYMENT_METHOD_LABELS).map(([value, label]) => (
                           <SelectItem key={value} value={value}>
-                            {label}
+                            Pagado — {label}
                           </SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
                   )}
                 />
-                {errors.payment_method && <p className="mt-1 text-sm text-danger">{errors.payment_method.message}</p>}
+                <p className="mt-1 text-xs text-muted-foreground">
+                  {watch('payment_method')
+                    ? 'Sale de la caja ahora, así que requiere la caja abierta. Registra las compras en efectivo el mismo día: la caja se cuadra contra el conteo físico.'
+                    : 'No toca la caja. Queda en “por pagar” y la saldas cuando entregues la plata — sirve para cargar facturas de días anteriores o con la caja cerrada.'}
+                </p>
               </div>
-              <p className="text-xs text-muted-foreground sm:col-span-2 sm:self-end sm:pb-2">
-                La compra queda registrada como egreso de caja del módulo Tienda, así que el cierre del día ya la
-                descuenta. Requiere la caja abierta.
-              </p>
-            </div>
-          )}
+            )}
+          </div>
         </section>
 
         <section className="flex flex-col gap-4 rounded-card border border-border bg-card p-card shadow-card">

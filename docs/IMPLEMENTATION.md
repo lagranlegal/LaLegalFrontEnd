@@ -2,6 +2,56 @@
 
 > Registro vivo de qué existe en el código, cómo está armado y por qué se tomó cada decisión — para que cualquiera (humano o Claude Code) pueda retomar el proyecto sin releer todo el historial de commits. Se actualiza en cada paso del "Orden de implementación" de `CLAUDE.md`. No repite lo que ya está en `ARCHITECTURE.md`/`DESIGN_SYSTEM.md` (el qué-debería-ser); esto es el qué-hay-hoy y las decisiones concretas tomadas al construirlo.
 
+## Compras: separar cuándo llegó la mercancía de cuándo salió la plata (20/08/2026)
+
+Punto 10 del cliente: *"algunas veces los admin ingresan esa info de días anteriores o lo hacen a horas de la noche"*. Desde 00014 una compra exigía caja abierta y quedaba con fecha de hoy, así que ese flujo —que es el normal del negocio— no se podía registrar.
+
+### La solución que se descartó, y por qué importa
+
+La salida aparente era **backdatear el movimiento de caja** al día real de la compra. No sirve, y la razón es de diseño, no técnica: **una sesión de caja cerrada es inmutable** (00007; `get_open_session` solo devuelve sesiones `open`). El acta ya se imprimió y se cuadró contra el efectivo contado — insertarle un movimiento después invalidaría un documento firmado.
+
+Conclusión que hay que tener presente: **una compra registrada tarde NO puede afectar la caja de aquel día.** Ninguna solución honesta puede prometer lo contrario.
+
+### Lo que sí se hizo
+
+Separar dos hechos que en contabilidad ya son distintos:
+
+| Campo | Qué es | Para qué importa |
+|---|---|---|
+| `entry_date` | cuándo **entró la mercancía** | inventario y costo de ventas |
+| `paid_at` | cuándo **salió la plata** | la caja |
+
+Con eso, el medio de pago pasa a ser **opcional** en una compra: si viene, se paga en el acto (exige caja abierta, como antes); si no, la compra queda **pendiente** y no toca caja. `POST /inventory/entries/{id}/pay` la salda después, con idempotencia, y el egreso cae en la sesión de **hoy**.
+
+El CHECK de 00014 se reemplazó: una compra puede nacer sin medio de pago, pero un ingreso que **no** es compra sigue sin poder tenerlo (un remate con medio de pago no tendría cómo interpretarse en el acta). Se sumó un CHECK de coherencia: `payment_method` y `paid_at` van juntos o ninguno.
+
+### El caso sin solución perfecta
+
+**Pagó en efectivo un día pasado y lo registra hoy.** Registrarlo como "pagado" hoy sacaría la plata de la caja de HOY — y como el efectivo ya salió aquel día, hoy le **sobraría** al contar. Se movería el descuadre de un día a otro en vez de arreglarlo.
+
+Por eso la recomendación operativa es una regla, no una función: **las compras en efectivo se registran el mismo día, antes de cerrar caja.** La UI lo dice en el formulario. Para lo demás (crédito, transferencia) la separación funciona sin distorsión, porque una transferencia no está en el conteo físico del cajón.
+
+### Frontend
+
+- `EntryFormPage`: selector de **fecha de entrada** (tope hoy, `maxDate`) y el pago como un solo `Select` con "Pendiente de pago" primero. El texto de ayuda cambia según la opción, e incluye la advertencia sobre efectivo.
+- `EntryDetailDialog`: bloque "Pendiente de pago" con medio de pago y botón de saldar, que dice explícitamente que el egreso queda en la caja de hoy — es la parte contraintuitiva.
+- `InventoryPage`: columnas "Entrada" (la fecha real de la mercancía, no la de digitación) y "Pago" con chip "Por pagar".
+
+Como efecto secundario útil, la lista de pendientes es **cuentas por pagar a proveedores**, que antes no existía.
+
+### Un test que hubo que invertir
+
+`test_purchase_without_payment_method_is_rejected`, escrito con 00014, afirmaba exactamente el comportamiento que este cambio invierte. Se reemplazó por el de la regla que sí sigue vigente (solo una compra puede llevar medio de pago).
+
+### Comandos de verificación
+
+```bash
+.venv/bin/pytest -q   # 202 passed (6 nuevos)
+npm run lint && npm run typecheck && npm run test && npm run build   # 84 tests
+```
+
+Desplegado a dev con la migración 00020. Guía para el cliente: `docs/GUIA_COMPRAS.md`.
+
 ## Rentabilidad del empeño — rendimiento sobre capital (20/08/2026)
 
 Cierra la mitad que quedó abierta tras el costo de ventas. El empeño **no tiene costo de ventas**: su rentabilidad son los intereses cobrados sobre el capital prestado. Es una pregunta distinta —rendimiento sobre capital, no margen sobre costo— y por eso es un endpoint y una card aparte, no una columna más en la de tienda.

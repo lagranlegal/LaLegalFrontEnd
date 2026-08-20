@@ -723,6 +723,32 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/inventory/entries/{entry_id}/pay": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Pay Entry
+         * @description Salda una compra registrada como pendiente de pago.
+         *
+         *     El egreso cae en la sesión de caja abierta de HOY, no en la fecha de la
+         *     compra: una sesión cerrada es inmutable y meterle un movimiento
+         *     invalidaría un acta ya cuadrada. Una compra puede tener `entry_date` de la
+         *     semana pasada y su pago aparecer en el cierre de hoy — la mercancía entró
+         *     entonces, la plata sale ahora.
+         */
+        post: operations["pay_entry_api_v1_inventory_entries__entry_id__pay_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/inventory/entries/{entry_id}": {
         parameters: {
             query?: never;
@@ -1684,6 +1710,8 @@ export interface components {
             notes?: string | null;
             /** Payment Method */
             payment_method?: ("cash" | "transfer" | "other") | null;
+            /** Entry Date */
+            entry_date?: string | null;
             /** Lines */
             lines: components["schemas"]["EntryLineIn"][];
         };
@@ -1742,12 +1770,27 @@ export interface components {
             /** Payment Method */
             payment_method: string | null;
             /**
+             * Entry Date
+             * Format: date
+             */
+            entry_date: string;
+            /** Paid At */
+            paid_at: string | null;
+            /**
              * Created At
              * Format: date-time
              */
             created_at: string;
             /** Items */
             items: components["schemas"]["ItemOut"][];
+        };
+        /** EntryPayIn */
+        EntryPayIn: {
+            /**
+             * Payment Method
+             * @enum {string}
+             */
+            payment_method: "cash" | "transfer" | "other";
         };
         /** ExitCreateIn */
         ExitCreateIn: {
@@ -4349,6 +4392,43 @@ export interface operations {
         responses: {
             /** @description Successful Response */
             201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EntryOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    pay_entry_api_v1_inventory_entries__entry_id__pay_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: string | null;
+            };
+            path: {
+                entry_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EntryPayIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
                 headers: {
                     [name: string]: unknown;
                 };

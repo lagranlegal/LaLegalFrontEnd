@@ -115,3 +115,27 @@ export function usePublishItem() {
     },
   })
 }
+
+export type EntryPayIn = components['schemas']['EntryPayIn']
+
+/**
+ * Salda una compra que quedó pendiente de pago.
+ *
+ * Es mutación de dinero: genera el egreso de caja. El egreso cae en la sesión
+ * abierta de HOY, no en la fecha de la compra — una sesión cerrada es
+ * inmutable, así que no hay forma (ni debería haberla) de afectar la caja de
+ * un día ya cuadrado y firmado.
+ */
+export function usePayEntry() {
+  return useMoneyMutation<Entry, { entryId: string; body: EntryPayIn }>({
+    mutationFn: ({ entryId, body }, idempotencyKey) =>
+      unwrap(
+        api.POST('/api/v1/inventory/entries/{entry_id}/pay', {
+          params: { path: { entry_id: entryId } },
+          body,
+          headers: { 'Idempotency-Key': idempotencyKey },
+        }),
+      ),
+    invalidateKeys: [['inventory'], ['dashboard'], ['cashbox']],
+  })
+}
