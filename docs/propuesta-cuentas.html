@@ -1,0 +1,350 @@
+<title>Cuentas y Conciliación</title>
+<style>
+  :root {
+    --accent: #00806f;
+    --accent-wash: #e4f5f3;
+    --ink: #14202d;
+    --ink-soft: #445468;
+    --ink-mute: #7a8798;
+    --ground: #f5f7fa;
+    --surface: #ffffff;
+    --sunk: #edf1f6;
+    --rule: #dde4ec;
+    --rule-soft: #e9eef4;
+    --ok: #1c8d5e;
+    --ok-wash: #e7f5ee;
+    --warn: #a4680d;
+    --warn-wash: #fcf3e3;
+    --crit: #c0392f;
+    --crit-wash: #fdecea;
+    --font: ui-sans-serif, -apple-system, "Segoe UI", Roboto, sans-serif;
+    --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --accent: #5cd6c4; --accent-wash: #0e2f2c;
+      --ink: #e8eef5; --ink-soft: #abb9c9; --ink-mute: #798797;
+      --ground: #0c131b; --surface: #141e29; --sunk: #1b2733;
+      --rule: #26313e; --rule-soft: #1c2631;
+      --ok: #4cc38a; --ok-wash: #12281e;
+      --warn: #e0a850; --warn-wash: #2b2113;
+      --crit: #f2706a; --crit-wash: #321819;
+    }
+  }
+  :root[data-theme="dark"] {
+    --accent: #5cd6c4; --accent-wash: #0e2f2c;
+    --ink: #e8eef5; --ink-soft: #abb9c9; --ink-mute: #798797;
+    --ground: #0c131b; --surface: #141e29; --sunk: #1b2733;
+    --rule: #26313e; --rule-soft: #1c2631;
+    --ok: #4cc38a; --ok-wash: #12281e;
+    --warn: #e0a850; --warn-wash: #2b2113;
+    --crit: #f2706a; --crit-wash: #321819;
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    background: var(--ground); color: var(--ink-soft); font-family: var(--font);
+    font-size: 16.5px; line-height: 1.68; margin: 0; padding: 0 1.25rem 5rem;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 50rem; margin: 0 auto; }
+
+  header.top { padding: 3.5rem 0 1.75rem; display: flex; flex-direction: column; gap: 1rem; }
+  .eyebrow {
+    font-family: var(--mono); font-size: 0.73rem; letter-spacing: 0.13em;
+    text-transform: uppercase; color: var(--accent); font-weight: 600; margin: 0;
+  }
+  h1 {
+    font-size: clamp(2rem, 5.5vw, 2.9rem); line-height: 1.1; letter-spacing: -0.026em;
+    color: var(--ink); font-weight: 670; margin: 0; text-wrap: balance;
+  }
+  .lede { font-size: 1.1rem; margin: 0; max-width: 40rem; }
+  .divider { height: 2px; background: var(--ink); border: 0; opacity: 0.88; margin: 0; }
+
+  h2 {
+    font-size: 1.4rem; color: var(--ink); font-weight: 640; letter-spacing: -0.018em;
+    margin: 3.25rem 0 1rem; text-wrap: balance;
+  }
+  h3 { font-size: 1.03rem; color: var(--ink); font-weight: 640; margin: 1.9rem 0 0.5rem; }
+  p { margin: 0 0 1.05rem; }
+  strong { color: var(--ink); font-weight: 640; }
+  ul { margin: 0 0 1.05rem; padding-left: 1.25rem; }
+  li { margin-bottom: 0.45rem; }
+  code {
+    font-family: var(--mono); font-size: 0.87em; background: var(--sunk);
+    color: var(--ink); padding: 0.1em 0.38em; border-radius: 4px; white-space: nowrap;
+  }
+
+  .metrics {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr)); gap: 1px;
+    background: var(--rule); border: 1px solid var(--rule); border-radius: 13px;
+    overflow: hidden; margin: 1.5rem 0;
+  }
+  .metric { background: var(--surface); padding: 1rem 1.1rem; }
+  .metric .k {
+    font-family: var(--mono); font-size: 0.65rem; letter-spacing: 0.09em;
+    text-transform: uppercase; color: var(--ink-mute); display: block; margin-bottom: 0.35rem;
+  }
+  .metric .v { font-size: 1.55rem; font-weight: 670; color: var(--ink); line-height: 1.1; font-variant-numeric: tabular-nums; }
+  .metric .v.bad { color: var(--crit); }
+  .metric .n { display: block; font-size: 0.76rem; color: var(--ink-mute); margin-top: 0.3rem; line-height: 1.4; }
+
+  .callout { border-radius: 13px; padding: 1.4rem 1.5rem; margin: 1.8rem 0; border: 1px solid transparent; }
+  .callout.good { background: var(--accent-wash); border-color: color-mix(in srgb, var(--accent) 26%, transparent); }
+  .callout.warn { background: var(--warn-wash); border-color: color-mix(in srgb, var(--warn) 30%, transparent); }
+  .callout .tag {
+    font-family: var(--mono); font-size: 0.7rem; letter-spacing: 0.11em; text-transform: uppercase;
+    font-weight: 650; display: block; margin-bottom: 0.45rem;
+  }
+  .callout.good .tag { color: var(--accent); }
+  .callout.warn .tag { color: var(--warn); }
+  .callout .big {
+    font-size: 1.15rem; line-height: 1.45; color: var(--ink); font-weight: 620;
+    margin: 0 0 0.7rem; text-wrap: balance;
+  }
+  .callout p { font-size: 0.95rem; }
+  .callout p:last-child { margin-bottom: 0; }
+
+  .tw { overflow-x: auto; border: 1px solid var(--rule); border-radius: 14px; margin: 1.5rem 0; background: var(--surface); }
+  table { border-collapse: collapse; width: 100%; font-size: 0.94rem; }
+  th {
+    text-align: left; font-family: var(--mono); font-size: 0.68rem; letter-spacing: 0.09em;
+    text-transform: uppercase; color: var(--ink-mute); font-weight: 650;
+    padding: 0.75rem 0.95rem; border-bottom: 1px solid var(--rule); white-space: nowrap;
+  }
+  td { padding: 0.75rem 0.95rem; border-bottom: 1px solid var(--rule-soft); vertical-align: top; }
+  tr:last-child td { border-bottom: none; }
+  td:first-child { color: var(--ink); font-weight: 600; }
+
+  .opt {
+    background: var(--surface); border: 1px solid var(--rule); border-left: 4px solid var(--sev, var(--rule));
+    border-radius: 0 13px 13px 0; padding: 1.3rem 1.5rem; margin-bottom: 1rem;
+  }
+  .opt.a { --sev: var(--ink-mute); }
+  .opt.b { --sev: var(--ok); }
+  .opt.c { --sev: var(--accent); }
+  .opt-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.7rem; margin-bottom: 0.5rem; }
+  .opt-title { font-size: 1.06rem; font-weight: 640; color: var(--ink); margin: 0; }
+  .chip {
+    font-family: var(--mono); font-size: 0.65rem; letter-spacing: 0.08em; text-transform: uppercase;
+    font-weight: 650; padding: 0.2rem 0.5rem; border-radius: 999px; white-space: nowrap;
+  }
+  .chip.small { background: var(--ok-wash); color: var(--ok); }
+  .chip.mid { background: var(--warn-wash); color: var(--warn); }
+  .chip.big { background: var(--crit-wash); color: var(--crit); }
+  .opt p { font-size: 0.96rem; }
+  .opt p:last-child { margin-bottom: 0; }
+
+  footer {
+    margin-top: 3.5rem; padding-top: 1.4rem; border-top: 1px solid var(--rule);
+    font-family: var(--mono); font-size: 0.73rem; color: var(--ink-mute); line-height: 1.7;
+  }
+</style>
+
+<div class="wrap">
+
+  <header class="top">
+    <p class="eyebrow">Propuesta · Caja y medios de pago</p>
+    <h1>Cuentas para desembolsos y pagos</h1>
+    <p class="lede">
+      Qué se rompe hoy con las transferencias, por qué el banco no se concilia como el efectivo,
+      y tres caminos con costos muy distintos.
+    </p>
+  </header>
+  <hr class="divider">
+
+  <h2>El agujero de hoy</h2>
+
+  <p>
+    El cierre de caja calcula el efectivo esperado, lo compara contra lo que se cuenta físicamente en
+    el cajón y exige justificar cualquier diferencia. Funciona bien — <strong>para el efectivo</strong>.
+  </p>
+
+  <p>
+    Todo lo que entra o sale por transferencia queda registrado, se ve en el desglose del acta…
+    <strong>y nadie lo verifica nunca contra nada.</strong> El código lo dice literal: al calcular el
+    esperado, cualquier movimiento cuyo medio no sea efectivo se salta.
+  </p>
+
+  <div class="metrics">
+    <div class="metric">
+      <span class="k">Movimientos en efectivo</span>
+      <span class="v">14</span>
+      <span class="n">$5.305.000 · conciliados a diario</span>
+    </div>
+    <div class="metric">
+      <span class="k">Por transferencia</span>
+      <span class="v bad">1</span>
+      <span class="n">$1.000.000 · nunca verificado</span>
+    </div>
+  </div>
+
+  <p>
+    Ese millón es real, está en el ambiente de pruebas, y nadie lo ha cuadrado contra un extracto
+    bancario. Con volumen de operación de verdad, ese hueco crece en la misma proporción.
+  </p>
+
+  <h2>Por qué el banco no se concilia como el efectivo</h2>
+
+  <p>
+    Esta es la parte que decide el diseño, y es fácil de pasar por alto: <strong>los dos se cuadran de
+    formas distintas y en ritmos distintos.</strong>
+  </p>
+
+  <div class="tw">
+    <table>
+      <thead>
+        <tr><th></th><th>Efectivo</th><th>Cuenta bancaria</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Cómo se verifica</td>
+          <td>Contando billetes</td>
+          <td>Contra el extracto del banco</td>
+        </tr>
+        <tr>
+          <td>Cada cuánto</td>
+          <td>Todos los días, al cerrar</td>
+          <td>Cuando llega el extracto — normalmente mensual</td>
+        </tr>
+        <tr>
+          <td>Quién puede</td>
+          <td>Quien tiene el cajón</td>
+          <td>Quien tiene acceso al banco</td>
+        </tr>
+        <tr>
+          <td>Diferencias</td>
+          <td>Faltante o sobrante real</td>
+          <td>Casi siempre movimientos en tránsito, no errores</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="callout warn">
+    <span class="tag">La trampa a evitar</span>
+    <p class="big">Meter las cuentas bancarias dentro del cierre diario sería un error.</p>
+    <p>
+      Obligaría al cajero a “cuadrar el banco” cada noche, sin extracto y sin acceso, contra un
+      número que el sistema mismo calculó. Sería un trámite vacío: firmar que algo cuadra cuando no
+      hay con qué compararlo. Y peor, acostumbraría al equipo a aprobar cuadres sin mirar — que es
+      exactamente lo que hace inútil un control.
+    </p>
+  </div>
+
+  <p>
+    El diseño correcto los separa: <strong>el efectivo sigue en el cierre diario</strong>, y las cuentas
+    bancarias llevan su saldo corriente con una conciliación aparte, contra extracto, cuando
+    corresponda.
+  </p>
+
+  <h2>Tres caminos</h2>
+
+  <div class="opt a">
+    <div class="opt-head">
+      <p class="opt-title">No hacer nada</p>
+      <span class="chip small">Costo cero</span>
+    </div>
+    <p>
+      Las transferencias se siguen registrando y se ven en el desglose, simplemente nadie las cuadra.
+      Es viable mientras el volumen por transferencia sea marginal y una persona sola revise el banco
+      por su cuenta.
+    </p>
+    <p>
+      <strong>Deja de ser viable</strong> cuando haya más de una persona moviendo plata por
+      transferencia, o cuando el monto sea suficiente para que un error pase desapercibido.
+    </p>
+  </div>
+
+  <div class="opt b">
+    <div class="opt-head">
+      <p class="opt-title">Conciliar los otros medios en el cierre</p>
+      <span class="chip small">Cambio chico</span>
+    </div>
+    <p>
+      Sin catálogo de cuentas. El acta pasa a mostrar, por cada medio de pago, cuánto <em>esperaba</em>
+      el sistema, y deja registrar cuánto se verificó. El efectivo sigue igual; transferencias y otros
+      quedan con su casilla.
+    </p>
+    <p>
+      Cierra el hueco de “nadie lo mira jamás” sin tocar el modelo de datos: el medio de pago sigue
+      siendo el enum de tres valores que ya existe. <strong>Da la mayor parte del valor por una
+      fracción del trabajo.</strong>
+    </p>
+    <p>
+      Lo que <strong>no</strong> da: saber a cuál banco entró la plata, ni el saldo por cuenta.
+    </p>
+  </div>
+
+  <div class="opt c">
+    <div class="opt-head">
+      <p class="opt-title">Catálogo de cuentas completo</p>
+      <span class="chip big">Proyecto grande</span>
+    </div>
+    <p>
+      Una tabla de cuentas (caja, Bancolombia, Nequi…), cada operación de dinero elige una, cada
+      cuenta lleva su saldo, y las bancarias se concilian contra extracto en su propia pantalla.
+    </p>
+    <p>
+      Es el modelo correcto a largo plazo y el que usa cualquier software contable. También es el más
+      caro: <code>payment_method</code> vive hoy en <strong>cinco tablas</strong> —ventas, abonos de
+      contrato, gastos, ingresos de inventario y movimientos de caja— y todas tendrían que apuntar a
+      una cuenta. Toca cada pantalla donde hoy se elige “efectivo / transferencia / otro”.
+    </p>
+  </div>
+
+  <h2>Qué cambia en la caja actual</h2>
+
+  <p>Respuesta corta a tu pregunta: <strong>el efectivo no cambia en ninguno de los tres caminos.</strong></p>
+
+  <ul>
+    <li>La caja física sigue siendo una sola, con su base única y su conteo diario</li>
+    <li>El acta de cierre sigue exigiendo justificar descuadres de efectivo, sin tolerancia</li>
+    <li>Lo que se suma es <em>otra</em> capa: los medios que no son efectivo dejan de ser invisibles</li>
+  </ul>
+
+  <p>
+    En el camino del catálogo completo, “Caja principal” pasa a ser simplemente <em>una cuenta más</em>
+    —de tipo efectivo— y es la única que entra al cierre diario. Las demás viven aparte.
+  </p>
+
+  <h2>Recomendación</h2>
+
+  <div class="callout good">
+    <span class="tag">Sugerencia</span>
+    <p class="big">Empezar por conciliar los otros medios en el cierre. El catálogo de cuentas, cuando haya más de una cuenta real.</p>
+    <p>
+      El valor de un catálogo crece con el número de cuentas. Hoy hay <strong>una</strong> transferencia
+      registrada: construir un catálogo para eso es resolver un problema que todavía no tienes, con un
+      costo que sí es real desde el primer día.
+    </p>
+  </div>
+
+  <p>
+    Hay además una razón de secuencia: <strong>conciliar por medio de pago es un paso hacia el
+    catálogo, no un desvío.</strong> La pantalla de conciliación, la idea de “esperado contra
+    verificado” y el hábito de revisarlo son los mismos. Si después se agregan cuentas, ese trabajo se
+    reusa: lo que cambia es de qué se agrupa, no cómo se concilia.
+  </p>
+
+  <h3>Cuándo saltar directo al catálogo</h3>
+
+  <p>Si alguna de estas ya es cierta, la recomendación se invierte y conviene ir directo:</p>
+
+  <ul>
+    <li>Hay <strong>dos o más cuentas bancarias</strong> en uso, y confundirlas sería un problema real</li>
+    <li>Se paga a proveedores desde una cuenta distinta de la que recibe ventas</li>
+    <li>Hay más de una persona moviendo plata por transferencia</li>
+    <li>Se necesita saber el saldo disponible por cuenta antes de comprometer un pago</li>
+  </ul>
+
+  <p>
+    Ninguna de esas se puede responder desde el código — dependen de cómo opera el negocio hoy. Es la
+    pregunta que conviene contestar antes de decidir.
+  </p>
+
+  <footer>
+    Análisis sobre medios de pago y conciliación · Cifras del ambiente de desarrollo al 20 de agosto de 2026.
+  </footer>
+
+</div>
