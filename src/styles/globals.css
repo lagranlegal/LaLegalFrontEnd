@@ -109,3 +109,12 @@
     font-variant-numeric: tabular-nums;
   }
 }
+
+/* Barra indeterminada de `RefreshingBar` — indica que una lista con datos
+   está pidiendo otros (buscar, filtrar, refrescar tras guardar). Vive acá y
+   no en el componente porque Tailwind v4 resuelve las animaciones desde CSS.
+   `prefers-reduced-motion` lo maneja el propio componente con `motion-reduce`. */
+@keyframes refreshing {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(300%); }
+}

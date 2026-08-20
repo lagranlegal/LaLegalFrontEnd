@@ -7,6 +7,7 @@ import { StatusBadge } from '@/components/shared/StatusBadge'
 import { Money } from '@/components/shared/Money'
 import { Can } from '@/components/shared/Can'
 import { SearchInput } from '@/components/shared/SearchInput'
+import { RefreshingBar } from '@/components/shared/RefreshingBar'
 import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
@@ -86,7 +87,7 @@ function CategorySelect({
  */
 function ProductsTab() {
   const [q, setQ] = useState('')
-  const { data, isPending, isError, refetch, hasNextPage, isFetchingNextPage, fetchNextPage } = useProductsList({ q })
+  const { data, isPending, isFetching, isError, refetch, hasNextPage, isFetchingNextPage, fetchNextPage } = useProductsList({ q })
   const [editing, setEditing] = useState<Product | null>(null)
   const [dialogNonce, setDialogNonce] = useState(0)
 
@@ -95,6 +96,12 @@ function ProductsTab() {
   return (
     <div className="flex flex-col gap-4">
       <SearchInput value={q} onChange={setQ} placeholder="Buscar producto por código o nombre…" />
+
+      {/* `isPending` solo es true en la PRIMERA carga: al buscar o al refrescar
+          tras guardar un precio hay datos viejos en pantalla y nada indicaría
+          que algo está pasando. Con el backend arrancando en frío eso son
+          segundos en los que parece que el filtro no hizo nada. */}
+      <RefreshingBar active={isFetching && !isPending} />
 
       {isPending && (
         <div className="flex flex-col gap-2">
@@ -155,7 +162,7 @@ function ItemsTab() {
   const [cat2Id, setCat2Id] = useState('')
   const [cat3Id, setCat3Id] = useState('')
   const { data: categories } = useCategories()
-  const { data, isPending, isError, refetch, hasNextPage, isFetchingNextPage, fetchNextPage } = useItemsList({
+  const { data, isPending, isFetching, isError, refetch, hasNextPage, isFetchingNextPage, fetchNextPage } = useItemsList({
     status,
     q,
     // Solo se manda la categoría MÁS específica elegida: el backend filtra por
@@ -252,6 +259,7 @@ function ItemsTab() {
         data={items}
         getRowId={(row) => row.id}
         isLoading={isPending}
+        isRefreshing={isFetching && !isPending}
         isError={isError}
         onRetry={() => refetch()}
         emptyTitle={hasFilters ? 'Ningún artículo coincide' : 'Aún no tienes artículos'}

@@ -3,6 +3,7 @@ import { type ColumnDef, flexRender, getCoreRowModel, useReactTable } from '@tan
 import { Button } from '@/components/ui/button'
 import { EmptyState } from '@/components/shared/EmptyState'
 import { cn } from '@/lib/utils'
+import { RefreshingBar } from '@/components/shared/RefreshingBar'
 
 function DataTableSkeleton({ columnsCount }: { columnsCount: number }) {
   return (
@@ -30,6 +31,7 @@ export function DataTable<T>({
   data,
   getRowId,
   isLoading,
+  isRefreshing,
   isError,
   onRetry,
   emptyTitle = 'Aún no tienes nada acá',
@@ -44,6 +46,8 @@ export function DataTable<T>({
   data: T[]
   getRowId: (row: T) => string
   isLoading?: boolean
+  /** Ya hay datos en pantalla pero se está pidiendo otra página/filtro. */
+  isRefreshing?: boolean
   isError?: boolean
   onRetry?: () => void
   emptyTitle?: string
@@ -86,6 +90,9 @@ export function DataTable<T>({
 
   return (
     <div className="overflow-hidden rounded-card border border-border bg-card shadow-card">
+      {/* Los datos que se ven siguen siendo válidos, solo están por cambiar:
+          una barra delgada arriba avisa sin vaciar la tabla ni hacerla saltar. */}
+      <RefreshingBar active={!!isRefreshing} />
       <table className="hidden w-full text-sm md:table">
         <thead className="bg-background text-left text-xs text-muted-foreground">
           {table.getHeaderGroups().map((headerGroup) => (
