@@ -20,12 +20,20 @@ export interface CursorPage<T> {
  * `<DataTable>` consume `data.pages` + `fetchNextPage`/`hasNextPage` para
  * "Cargar más" / scroll infinito.
  */
-export function useCursorInfiniteQuery<T>(queryKey: QueryKey, fetchPage: (cursor: string | undefined) => Promise<CursorPage<T>>) {
+export function useCursorInfiniteQuery<T>(
+  queryKey: QueryKey,
+  fetchPage: (cursor: string | undefined) => Promise<CursorPage<T>>,
+  // `enabled` para listados que dependen de un id que puede no existir todavía
+  // (ej. el historial de una empresa antes de abrir su diálogo) — sin esto
+  // habría que llamar el hook con un id falso o duplicar useInfiniteQuery.
+  options?: { enabled?: boolean },
+) {
   return useInfiniteQuery({
     queryKey,
     queryFn: ({ pageParam }) => fetchPage(pageParam),
     initialPageParam: undefined as string | undefined,
     getNextPageParam: (lastPage) => lastPage.next_cursor ?? undefined,
+    enabled: options?.enabled,
   })
 }
 

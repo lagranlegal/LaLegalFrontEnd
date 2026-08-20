@@ -2,6 +2,52 @@
 
 > Registro vivo de qué existe en el código, cómo está armado y por qué se tomó cada decisión — para que cualquiera (humano o Claude Code) pueda retomar el proyecto sin releer todo el historial de commits. Se actualiza en cada paso del "Orden de implementación" de `CLAUDE.md`. No repite lo que ya está en `ARCHITECTURE.md`/`DESIGN_SYSTEM.md` (el qué-debería-ser); esto es el qué-hay-hoy y las decisiones concretas tomadas al construirlo.
 
+## Historial de suscripciones en el panel de plataforma (20/08/2026)
+
+Cierra el punto 8 del cliente (*"histórico de activaciones o suscripciones de empresas, así como las suspensiones o demás movimientos"*) y el punto 14 de `PENDIENTES_BACKEND_INFRA.md`.
+
+### Por qué no bastaba con el `audit_log`
+
+El rastro **ya se estaba escribiendo**: `extend_subscription` y `set_company_status` insertan en `audit_log` correctamente. Pero no servía como historial comercial por dos razones distintas:
+
+1. **Es tenant-scoped por RLS.** Un super-admin de plataforma jamás puede leer el `audit_log` de una empresa que no es la suya, sin importar el filtro. O sea: el rastro existía y era **inalcanzable desde el panel**.
+2. **Solo guarda `expires_at`.** Las `notes` de cada extensión —el campo donde el super-admin anota *"pagó por transferencia el 3 de marzo"*— no van en el `after` y se pierden. Y la fila de `subscription` tampoco las conserva: hay un índice único que permite una sola suscripción `active` por empresa, y extender hace `UPDATE` sobre ella, así que `expires_at`, `extended_by` y `notes` se **sobrescriben** en cada renovación. La única foto que quedaba era la última.
+
+### La decisión: tabla propia, no reconstruir desde el audit
+
+Migración 00018, tabla `subscription_event`. Son **dos registros con propósitos distintos y conviene no forzar a uno a hacer de otro**: `audit_log` es el registro de SEGURIDAD (quién tocó qué, inmutable, por empresa) y responde a una auditoría; `subscription_event` es el registro COMERCIAL de la relación con el cliente y responde a *"¿esta empresa está al día y cuánto ha pagado?"*.
+
+Se registran los cinco eventos, no solo las renovaciones: `created` (alta), `extended`, `suspended`, `activated` y `expired` (el job nocturno). Sin el evento de alta, una empresa que nunca renovó tendría historial vacío y no se distinguiría de una a la que se le perdieron los eventos. Sin `expired`, el panel mostraría una empresa cortada sin ninguna línea que explique cuándo dejó de estar vigente.
+
+Suspender y activar se guardan **sin fechas** (`previous_expires_at`/`new_expires_at` en NULL), porque no mueven el vencimiento — así el historial distingue de un vistazo "renovó hasta X" de "le cortaron el acceso".
+
+`amount` es opcional a propósito: el cobro es 100% manual y fuera del sistema (CONTEXTO.md §3), así que registrarlo da trazabilidad básica de pagos sin construir un módulo de facturación. Una extensión sin monto sigue siendo válida y hay test para eso. En el front, `MoneyInput` deja `"0.00"` cuando el campo queda vacío, así que se manda `null` en vez de `0` — un monto de cero sería un dato falso, distinto de "no se registró".
+
+**RLS habilitado y forzado SIN políticas.** Se escribe y se lee solo desde `platform`, que corre con sesión de bypass. Ningún tenant puede leer esta tabla ni siquiera la suya, porque incluye montos pagados y es información de la relación comercial entre la plataforma y sus clientes, no de la operación de la compraventa. Si más adelante se decide mostrarle a una empresa su propio historial de pagos, se agrega una política de `SELECT` acotada — queda anotado como decisión de producto, no como olvido.
+
+### Frontend
+
+`SubscriptionHistory` dentro de `CompanyDetailDialog`: lista paginada, más recientes primero, con chip de color por tipo de evento (renovar y cortar el acceso no se leen igual de un vistazo), la transición de fechas (`vencimiento: X → Y`), el monto y las notas. El formulario de extender gana el campo de monto.
+
+`useCursorInfiniteQuery` ganó una opción `enabled`: el historial depende de un `companyId` que no existe hasta abrir el diálogo, y sin eso habría que llamar el hook con un id falso o duplicar `useInfiniteQuery`.
+
+### Lo que sigue faltando del punto 14
+
+`max_users` / límite de usuarios en `PlanOut` — necesita columna nueva. Y sigue sin existir `GET /platform/companies/{id}/audit-log`: el historial comercial cubre las suscripciones, pero un super-admin todavía no puede ver la auditoría de seguridad de otra empresa (cambios de roles, remates, anulaciones). Son cosas distintas y esta sesión resolvió solo la primera.
+
+### Comandos de verificación
+
+```bash
+# backend
+.venv/bin/ruff check app/ tests/ && .venv/bin/mypy app && .venv/bin/pytest -q   # 187 passed (6 nuevos)
+
+# frontend
+npm run lint && npm run typecheck && npm run test && npm run build   # 84 tests, 0 errores
+npm run dev   # /platform → abrir una empresa → historial; extender con monto y notas → nueva línea
+```
+
+Desplegado a dev en el orden correcto (código primero, migración después). Verificado en el `/openapi.json` en vivo: el endpoint existe, `SubscriptionExtendIn` trae `amount` y `SubscriptionEventOut` sus 8 campos.
+
 ## Buscador de inventario — y el techo de 100 artículos del POS (20/08/2026)
 
 Cierra el punto 2 del cliente (*"no hay buscador en inventario, por código, categorías, etc."*). No era un olvido del front: `GET /inventory/items` aceptaba **únicamente** `status`. Necesitaba backend.

@@ -90,6 +90,29 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/platform/companies/{company_id}/subscription/events": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Subscription Events
+         * @description Historial comercial de la empresa: altas, renovaciones (con monto y
+         *     notas), suspensiones, reactivaciones y vencimientos. Distinto del
+         *     `audit_log`, que es el registro de seguridad y además es tenant-scoped
+         *     por RLS — un super-admin no puede leer el de otra empresa.
+         */
+        get: operations["list_subscription_events_api_v1_platform_companies__company_id__subscription_events_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/platform/plans": {
         parameters: {
             query?: never;
@@ -1457,6 +1480,13 @@ export interface components {
             /** Next Cursor */
             next_cursor?: string | null;
         };
+        /** CursorPage[SubscriptionEventOut] */
+        CursorPage_SubscriptionEventOut_: {
+            /** Items */
+            items: components["schemas"]["SubscriptionEventOut"][];
+            /** Next Cursor */
+            next_cursor?: string | null;
+        };
         /** CursorPage[SupplierOut] */
         CursorPage_SupplierOut_: {
             /** Items */
@@ -2287,6 +2317,31 @@ export interface components {
             /** Lines */
             lines: components["schemas"]["BreakdownLineOut"][];
         };
+        /** SubscriptionEventOut */
+        SubscriptionEventOut: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Event Type */
+            event_type: string;
+            /** Previous Expires At */
+            previous_expires_at: string | null;
+            /** New Expires At */
+            new_expires_at: string | null;
+            /** Amount */
+            amount: string | null;
+            /** Notes */
+            notes: string | null;
+            /** Created By */
+            created_by: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+        };
         /** SubscriptionExtendIn */
         SubscriptionExtendIn: {
             /**
@@ -2296,6 +2351,8 @@ export interface components {
             new_expires_at: string;
             /** Notes */
             notes?: string | null;
+            /** Amount */
+            amount?: number | string | null;
         };
         /** SupplierCreateIn */
         SupplierCreateIn: {
@@ -2601,6 +2658,40 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_subscription_events_api_v1_platform_companies__company_id__subscription_events_get: {
+        parameters: {
+            query?: {
+                cursor?: string | null;
+                limit?: number;
+            };
+            header?: never;
+            path: {
+                company_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CursorPage_SubscriptionEventOut_"];
+                };
             };
             /** @description Validation Error */
             422: {

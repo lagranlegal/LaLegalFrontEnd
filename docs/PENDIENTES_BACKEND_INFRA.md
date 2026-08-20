@@ -41,10 +41,21 @@ En orden de valor:
 1. **Costo de ventas / utilidad bruta por período.** `inventory_item.cost` y `sale_line.unit_price` existen; nada los cruza — grep de `cost` en el módulo `sales`: cero resultados. Hoy se puede ver el margen **por pieza** (`ItemMarginInfo`), pero no *"¿cuánto gané este mes sobre lo que vendí?"*. Es la pieza que falta para que Reportes responda la pregunta central del negocio. Ver también punto 13.
 2. **Agregación de caja por rango de fechas** (punto 13.1) — sigue siendo la mejor relación esfuerzo/valor: `GET /cashbox/sessions/{id}/report` ya calcula módulo×concepto×medio para UNA sesión; falta lo mismo sumando N sesiones. Quitaría el N+1 y el tope de 90 días del front.
 3. **`?q=` en `GET /contracts`** (punto 2, sin resolver) — el buscador de contratos sigue siendo un parche client-side de 200 registros que nunca busca por nombre de cliente.
-4. **`GET /platform/companies/{id}/audit-log`** (punto 14) — un super-admin no puede ver la auditoría de otra empresa por RLS. Y la fila de `subscription` se sobrescribe en cada extensión, así que las `notes` de cada una se pierden: conviene una tabla `subscription_event` con monto pagado.
+4. **`GET /platform/companies/{id}/audit-log`** (punto 14) — un super-admin no puede ver la auditoría de otra empresa por RLS. **El lado de suscripciones ya se resolvió** con la tabla `subscription_event` (migración 00018, ver punto 25): altas, renovaciones con monto y notas, suspensiones, reactivaciones y vencimientos. Lo que sigue faltando es la auditoría de SEGURIDAD de otra empresa (cambios de roles, remates, anulaciones) — son cosas distintas.
 5. **Conteo por denominación en el cierre de caja** — hoy `counted_cash` es un solo número. Todo software de caja serio pide el conteo por billete y lo suma solo; reduce errores y hace el acta auditable.
 6. **`PATCH /me`** (punto 15) — sigue sin existir; no hay pantalla de perfil.
 7. **Latencia de `GET /catalogs/categories`** (punto 20) — ~4s consistentes en dev.
+8. **`max_users` en `PlanOut`** (punto 14) — necesita columna nueva; el resto de `PlanOut` ya se resolvió.
+
+## 25. ✅ Historial comercial de la suscripción (RESUELTO)
+
+Cierra la mitad del punto 14. El `audit_log` **sí** registraba las extensiones, pero no servía como historial por dos razones distintas: es tenant-scoped por RLS (un super-admin nunca puede leer el de otra empresa, así que el rastro existía y era inalcanzable) y solo guarda `expires_at`, así que las `notes` de cada renovación se perdían — la fila de `subscription` también las sobrescribe, porque extender hace `UPDATE` sobre la única fila `active`.
+
+**✅ Resuelto (20/08/2026):** migración 00018, tabla `subscription_event` + `GET /platform/companies/{id}/subscription/events`. Registra los cinco eventos (`created`, `extended`, `suspended`, `activated`, `expired`), con monto pagado y notas por renovación. `SubscriptionExtendIn` acepta `amount` opcional.
+
+Son dos registros con propósitos distintos y se dejaron separados a propósito: `audit_log` es el registro de seguridad (responde a una auditoría), `subscription_event` es el comercial (responde a "¿esta empresa está al día y cuánto ha pagado?").
+
+RLS habilitado y forzado **sin políticas**: solo `platform` lo toca, con sesión de bypass. Ningún tenant puede leerlo ni siquiera el suyo, porque incluye montos de la relación comercial con la plataforma. Si se decide mostrarle a una empresa su propio historial de pagos, se agrega una política de `SELECT` acotada — es decisión de producto, no un olvido.
 
 ---
 
