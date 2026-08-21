@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { Controller, useForm } from 'react-hook-form'
+import { Controller, useForm, useWatch } from 'react-hook-form'
 import { z } from 'zod'
 import { toast } from 'sonner'
 import { AppDialog } from '@/components/shared/AppDialog'
@@ -11,6 +11,7 @@ import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { applyServerErrors } from '@/lib/forms/applyServerErrors'
 import { ApiError } from '@/lib/api/client'
+import { AccountPicker } from '@/components/shared/AccountPicker'
 import { PAYMENT_METHOD_LABELS } from '@/lib/paymentMethods'
 import { MODULE_LABELS } from '@/lib/modules'
 import { useCreateExpense, useCreateExpenseCategory, useExpenseCategories } from '@/features/cashbox/api'
@@ -20,6 +21,7 @@ const expenseSchema = z.object({
   description: z.string().min(1, 'La descripción es obligatoria'),
   amount: z.string().refine((v) => Number(v) > 0, 'El monto debe ser mayor a cero'),
   payment_method: z.enum(['cash', 'transfer', 'other']),
+  account_id: z.string().nullable(),
   module: z.enum(['pawn', 'store', 'general']),
   receipt: z.array(z.string()),
 })
@@ -103,8 +105,12 @@ export function ExpenseFormDialog({ open, onOpenChange }: { open: boolean; onOpe
     formState: { errors },
   } = useForm<ExpenseFormValues>({
     resolver: zodResolver(expenseSchema),
-    defaultValues: { category_id: '', description: '', amount: '0.00', payment_method: 'cash', module: 'general', receipt: [] },
+    defaultValues: { category_id: '', description: '', amount: '0.00', payment_method: 'cash', account_id: null, module: 'general', receipt: [] },
   })
+
+  // `useWatch` y no `watch()`: este último devuelve una función que el React
+  // Compiler no puede memoizar (ver el warning de EntryFormPage).
+  const selectedMethod = useWatch({ control, name: 'payment_method' })
 
   async function onSubmit(values: ExpenseFormValues) {
     setFormError(null)
@@ -179,6 +185,20 @@ export function ExpenseFormDialog({ open, onOpenChange }: { open: boolean; onOpe
                 )}
               />
             </div>
+          </div>
+          {/* De qué cuenta salió: un gasto pagado por transferencia no toca
+              el cajón, y contarlo ahí dejaba el arqueo descuadrado. */}
+          <div>
+            <label htmlFor="expense-account" className="text-sm font-medium text-foreground">
+              ¿De dónde sale?
+            </label>
+            <Controller
+              control={control}
+              name="account_id"
+              render={({ field }) => (
+                <AccountPicker id="expense-account" paymentMethod={selectedMethod} value={field.value} onChange={field.onChange} />
+              )}
+            />
           </div>
           <div>
             <label htmlFor="expense-module" className="text-sm font-medium text-foreground">

@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react'
 import { useNavigate, useBlocker } from '@tanstack/react-router'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { Controller, useFieldArray, useForm } from 'react-hook-form'
+import { Controller, useFieldArray, useForm, useWatch } from 'react-hook-form'
 import { z } from 'zod'
 import { toast } from 'sonner'
 import { Plus, Trash2 } from 'lucide-react'
@@ -21,6 +21,7 @@ import { useCategories } from '@/lib/catalogs/categories'
 import { useSuppliers } from '@/lib/catalogs/suppliers'
 import { sumMoney, multiplyMoney } from '@/lib/money'
 import { todayBogota } from '@/lib/dates'
+import { AccountPicker } from '@/components/shared/AccountPicker'
 import { PAYMENT_METHOD_LABELS } from '@/lib/paymentMethods'
 import { applyServerErrors } from '@/lib/forms/applyServerErrors'
 import { useCreateEntry } from '@/features/inventory/api'
@@ -45,6 +46,7 @@ const entrySchema = z
     // '' = pendiente de pago. No es lo mismo que "sin elegir": es una
     // decisión explícita del usuario, así que tiene su propia opción visible.
     payment_method: z.enum(['cash', 'transfer', 'other', '']).optional(),
+    account_id: z.string().nullable().optional(),
     entry_date: z.string().min(1, 'Indica cuándo entró la mercancía'),
     notes: z.string().optional(),
     lines: z.array(entryLineSchema).min(1, 'Agrega al menos un artículo'),
@@ -160,6 +162,7 @@ export function EntryFormPage() {
       supplier_id: '',
       supplier_invoice: '',
       payment_method: 'cash',
+      account_id: null,
       entry_date: todayBogota(),
       notes: '',
       lines: [emptyLine()],
@@ -168,6 +171,9 @@ export function EntryFormPage() {
   const { fields, append, remove } = useFieldArray({ control, name: 'lines' })
   const lines = watch('lines')
   const originType = watch('origin_type')
+  // `useWatch` para lo nuevo: `watch()` devuelve una función que el React
+  // Compiler no puede memoizar (ya hay un warning por eso en este archivo).
+  const paymentMethod = useWatch({ control, name: 'payment_method' })
   const isPurchase = originType === 'purchase'
 
   const blocker = useBlocker({
@@ -188,6 +194,9 @@ export function EntryFormPage() {
         // Solo la compra lo lleva — el backend rechaza un 'other' con medio
         // de pago (CHECK de la migración 00014).
         payment_method: values.origin_type === 'purchase' && values.payment_method ? values.payment_method : null,
+        // Sin medio de pago la compra queda "por pagar": no hay movimiento
+        // todavía, así que tampoco hay cuenta de la cual salga.
+        account_id: values.origin_type === 'purchase' && values.payment_method ? (values.account_id ?? null) : null,
         entry_date: values.entry_date,
         notes: values.notes || null,
         lines: values.lines.map((line) => ({
@@ -329,6 +338,22 @@ export function EntryFormPage() {
                     ? 'Sale de la caja ahora, así que requiere la caja abierta. Registra las compras en efectivo el mismo día: la caja se cuadra contra el conteo físico.'
                     : 'No toca la caja. Queda en “por pagar” y la saldas cuando entregues la plata — sirve para cargar facturas de días anteriores o con la caja cerrada.'}
                 </p>
+              </div>
+            )}
+            {/* Solo si se paga ahora: una compra "por pagar" todavía no mueve
+                plata, así que no hay cuenta de la cual salga. */}
+            {isPurchase && paymentMethod && (
+              <div className="sm:col-span-2">
+                <label htmlFor="entry-account" className="text-sm font-medium text-foreground">
+                  ¿De dónde sale?
+                </label>
+                <Controller
+                  control={control}
+                  name="account_id"
+                  render={({ field }) => (
+                    <AccountPicker id="entry-account" paymentMethod={paymentMethod} value={field.value ?? null} onChange={field.onChange} />
+                  )}
+                />
               </div>
             )}
           </div>

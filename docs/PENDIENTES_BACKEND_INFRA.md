@@ -34,6 +34,19 @@ Aceptaba únicamente `status`. En el mostrador el vendedor tiene el código impr
 
 Esto además quitó un techo duro real en el POS: `useAvailableItemsSearch` traía 100 artículos disponibles y filtraba en el navegador, así que **con más de 100 disponibles a la vez un artículo no se podía encontrar — ni vender**.
 
+## 28. ✅ Cuentas: dónde está la plata (RESUELTO — back y front)
+
+Punto 8 del cliente (*"¿qué posibilidad hay de agregar cuentas con las cuales hacer los desembolsos?"*), vuelto urgente porque **el cliente vende con Sistecrédito**: el comprador se lleva el artículo, Sistecrédito asume el riesgo y le paga a la compraventa después, menos comisión. Con solo `payment_method` eso caía en `Otro`, indistinguible de un cobro por Nequi — y no es plata que entró, es plata que **te deben**.
+
+**Backend** (migraciones 00024–00027): catálogo `account` con tres tipos (`cash`/`bank`/`settlement`), `account_id` en las cinco tablas de dinero, saldo **derivado** (nunca almacenado), `POST /accounts/{id}/settle` para liquidar convenios con comisión derivada, y `account_id` ya obligatorio en `cash_movement`. Detalle en `backend-starter/docs/ARCHITECTURE.md` §12 y `API_GUIDE.md` §13.
+
+**Front**: pantalla `/cuentas` (listado por tipo con saldo, alta/edición, liquidación) y `AccountPicker` en los cinco puntos de cobro. Ver `docs/IMPLEMENTATION.md`, bloque "Cuentas: dónde está la plata".
+
+Dos cosas quedaron **fuera de alcance a propósito**:
+
+- **Datáfono.** El cliente confirmó que hoy no usa. El tipo `settlement` ya lo modela cuando lo tenga (un datáfono es exactamente lo mismo: cobras hoy, el adquirente te consigna después menos comisión).
+- **Conciliación bancaria** (importar extracto y casar movimientos). El saldo por cuenta es la base necesaria; el casado automático es otro proyecto.
+
 ## 24. Lo que sigue abierto después de esta auditoría
 
 En orden de valor:

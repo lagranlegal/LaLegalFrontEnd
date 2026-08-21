@@ -28,6 +28,9 @@ export interface DayTotal {
 // efectivo en inventario — un activo. El costo se vuelve gasto (costo de
 // ventas) cuando el artículo SE VENDE, no cuando se compra. Meterlo acá haría
 // que un mes con mucha compra pareciera un mes de pérdida.
+/** Movimiento sin medio de pago: plata que solo cambió de cuenta. */
+export const INTER_ACCOUNT = 'inter_account'
+
 const REVENUE_CONCEPTS = new Set(['interest_payment', 'sale'])
 const EXPENSE_CONCEPTS = new Set(['expense'])
 
@@ -92,12 +95,17 @@ export function aggregateFinancialSummary(sessions: { sessionDate: string; repor
 
   function addLine(sessionDate: string, line: BreakdownLine) {
     if (moduleFilter && line.module !== moduleFilter) return
-    const key = `${line.module}|${line.concept}|${line.payment_method}|${line.direction}`
+    // `payment_method` es opcional desde 00027: un movimiento entre cuentas
+    // (liquidar un convenio) no se cobró por ningún medio, solo cambió de
+    // contenedor. Se agrupa bajo su propia etiqueta en vez de caer en "Otro",
+    // que ya significa otra cosa.
+    const paymentMethod = line.payment_method ?? INTER_ACCOUNT
+    const key = `${line.module}|${line.concept}|${paymentMethod}|${line.direction}`
     const existing = conceptMap.get(key)
     conceptMap.set(key, {
       module: line.module,
       concept: line.concept,
-      paymentMethod: line.payment_method,
+      paymentMethod,
       direction: line.direction as 'in' | 'out',
       total: sumMoney(existing?.total, line.total),
     })
@@ -113,7 +121,7 @@ export function aggregateFinancialSummary(sessions: { sessionDate: string; repor
       day.ingresos = sumMoney(day.ingresos, line.total)
       ingresosOperativos = sumMoney(ingresosOperativos, line.total)
       if (line.module in moduleRevenue) moduleRevenue[line.module as Module] = sumMoney(moduleRevenue[line.module as Module], line.total)
-      paymentMethodRevenue.set(line.payment_method, sumMoney(paymentMethodRevenue.get(line.payment_method), line.total))
+      paymentMethodRevenue.set(paymentMethod, sumMoney(paymentMethodRevenue.get(paymentMethod), line.total))
     } else if (isExpense) {
       day.gastos = sumMoney(day.gastos, line.total)
       gastosOperativos = sumMoney(gastosOperativos, line.total)

@@ -5,6 +5,7 @@ import {
   FileText,
   History,
   Home,
+  Landmark,
   Menu,
   Package,
   PanelLeftClose,
@@ -42,6 +43,7 @@ const NAV_ITEMS: NavItem[] = [
   { label: 'Inventario', icon: Package, to: '/inventario' },
   { label: 'Clientes', icon: Users, to: '/clientes' },
   { label: 'Caja', icon: Wallet, to: '/caja' },
+  { label: 'Cuentas', icon: Landmark, to: '/cuentas', anyPermission: ['cashbox.view'] },
   { label: 'Catálogos', icon: Tags, to: '/catalogos' },
   // Primer ítem de nav filtrado por permiso — el catálogo real llegó en el
   // paso 8 (`GET /identity/permissions`). El resto de ítems con pantalla

@@ -2,6 +2,73 @@
 
 > Registro vivo de qué existe en el código, cómo está armado y por qué se tomó cada decisión — para que cualquiera (humano o Claude Code) pueda retomar el proyecto sin releer todo el historial de commits. Se actualiza en cada paso del "Orden de implementación" de `CLAUDE.md`. No repite lo que ya está en `ARCHITECTURE.md`/`DESIGN_SYSTEM.md` (el qué-debería-ser); esto es el qué-hay-hoy y las decisiones concretas tomadas al construirlo.
 
+## Cuentas: dónde está la plata (20/08/2026)
+
+Punto 8 del cliente: *"¿qué posibilidad hay de agregar cuentas con las cuales hacer los desembolsos?"*, más el dato que lo volvió urgente: **el cliente usa Sistecrédito** para vender.
+
+### El problema que resuelve
+
+Hasta ahora la app solo sabía `payment_method` (`Efectivo` | `Transferencia` | `Otro`). Eso alcanza para decir "entró en efectivo", pero no para decir **a dónde** entró ni **cuánto hay** en cada lado.
+
+Con Sistecrédito la insuficiencia se vuelve un agujero de plata: el cliente sale con el artículo, Sistecrédito asume el riesgo y le paga a la compraventa **después**, menos una comisión. Con `payment_method` solo, esa venta cae en `Otro` — indistinguible de un cobro por Nequi. Y no es plata que entró: es plata que **te deben**.
+
+> **La cuenta es DÓNDE está la plata; el medio es CÓMO se cobró.** Los dos conviven a propósito — ver `backend-starter/docs/API_GUIDE.md` §13 y `backend-starter/docs/ARCHITECTURE.md` §12.
+
+### Qué se construyó
+
+**`/cuentas`** (`features/accounts/`) — listado agrupado **por tipo**, no una tabla plana:
+
+- `Efectivo` — lo que debería haber en el cajón *ahora*.
+- `Banco` — saldo acumulado, se concilia contra el extracto.
+- `Por cobrar` — Sistecrédito y similares: plata que todavía no está.
+
+Cada grupo lleva su **propio subtotal** y su propia explicación, y **no hay un total general en ninguna parte**. Es deliberado: sumar los tres mentiría, porque lo que Sistecrédito te debe no es plata que tengas. Es la misma trampa que el panel de métricas del contrato evita al no mostrar un "total cobrado" (bloque anterior).
+
+**Liquidar un convenio** (`SettleAccountDialog`) — se piden **dos** cifras: cuánto de lo pendiente cubre el pago y cuánto entró realmente. **La comisión no se digita**: es la diferencia y la deriva el backend. Pedirla sería pedir el mismo dato dos veces y arriesgar que no cuadre; y una comisión configurada a mano queda desactualizada apenas cambie el contrato con el convenio. Va por `useMoneyMutation` (`Idempotency-Key`, CLAUDE.md regla 8) porque mueve plata real.
+
+**`AccountPicker`** (`components/shared/`) — el que de verdad hace útil todo lo demás. Vive en `shared/` porque aparece en **todos** los puntos de cobro, que son features que no pueden importarse entre sí (regla 3):
+
+| Dónde | Pregunta |
+|---|---|
+| Venta (POS) | ¿A dónde entra? |
+| Abono a contrato (interés y capital) | ¿A dónde entra? |
+| Desembolso de contrato | ¿De dónde sale? |
+| Gasto de caja | ¿De dónde sale? |
+| Compra a proveedor (al crear y al saldar) | ¿De dónde sale? |
+
+Va **junto** al selector de medio de pago, nunca en su lugar, y filtra por el tipo que ese medio implica — elegir "Efectivo" y mandarlo a una cuenta bancaria descuadraría el arqueo. Con medio `Otro` ofrece bancos **y** cuentas por cobrar: ahí es donde el usuario decide si esa plata ya entró o si se la deben.
+
+El hook de listado vive en `lib/accounts/list.ts` y no en la feature, justamente porque lo consume este componente compartido.
+
+### Detalles no obvios
+
+- **La preselección no es la regla.** Si el usuario no toca nada se propone la cuenta por defecto de ese tipo, que es exactamente lo que el backend hace cuando no recibe `account_id`. La correspondencia está en `lib/accounts/types.ts::defaultAccountTypeFor` y **tiene test**: si se desincroniza del backend, la UI mostraría un destino y la plata caería en otro.
+- **Si cambia el medio de pago, la cuenta se reposiciona.** Pasar de efectivo a transferencia dejaría apuntando al cajón — el picker vuelve a la predeterminada del tipo nuevo en vez de quedar en un valor que el backend rechazaría.
+- **En una compra "por pagar" no se pide cuenta.** Todavía no se movió plata; no hay de dónde salga.
+- **El destino de una liquidación nunca es otra cuenta por cobrar** — eso sería mover una deuda a otra deuda, no cobrarla.
+- **El tipo de cuenta no se puede editar**, y el formulario lo dice: cambiarlo reinterpretaría todos los movimientos históricos de esa cuenta.
+- **El saldo inicial solo se pide al crear.** Editarlo después movería un saldo sin ningún movimiento que lo respalde.
+- **Guard de ruta por `cashbox.view`, no por `company.configure`.** Un asesor que solo cobra necesita ver a qué cuenta manda la plata aunque no pueda administrar el catálogo; crear y editar sí van gateados por botón.
+
+### Un cambio de tipos que el compilador destapó
+
+Al regenerar `src/types/api.ts` aparecieron tres errores en `features/reports/aggregate.ts`: **`payment_method` pasó a ser opcional**. Es correcto — un movimiento entre cuentas (liquidar un convenio) no se cobró por ningún medio, solo cambió de contenedor.
+
+Se agrupa bajo su propia etiqueta (`Entre cuentas`) en vez de caer en `Otro`, que ya significa otra cosa. `paymentMethodLabel` acepta ahora `string | null`. Con test.
+
+> Las fixtures de `tests/` **no** pasan por `tsc` (`tsconfig.app.json` incluye solo `src`), así que un campo nuevo en un tipo de la API no rompe los tests aunque las fixtures queden incompletas. Por eso el caso nulo se cubrió con un test explícito y no se dio por probado.
+
+### Verificación
+
+```
+npm run typecheck   # limpio
+npm run lint        # 0 errores (7 warnings preexistentes del React Compiler)
+npm run test        # 101/101
+npm run build       # sin errores
+```
+
+Para el código nuevo se usó `useWatch` en vez de `watch()` de React Hook Form: este último devuelve una función que el React Compiler no puede memoizar (es la causa de los warnings preexistentes).
+
 ## Métricas en el detalle del contrato + indicador de refetch (20/08/2026)
 
 Punto 13 del cliente: *"métricas dentro del detalle de un contrato, cuánto se ha pagado de interés, porcentajes, margen de ganancia, con gráficas"*. **Sin backend nuevo** — todo sale de datos que `GET /contracts/{id}` y `GET /contracts/{id}/payments` ya devuelven.

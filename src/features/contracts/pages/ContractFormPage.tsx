@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react'
 import { useNavigate, useBlocker } from '@tanstack/react-router'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { Controller, useForm } from 'react-hook-form'
+import { Controller, useForm, useWatch } from 'react-hook-form'
 import { z } from 'zod'
 import { toast } from 'sonner'
 import { PageHeader } from '@/components/shared/PageHeader'
@@ -19,6 +19,7 @@ import type { Customer } from '@/lib/customers/search'
 import { CustomerPicker } from '@/components/shared/CustomerPicker'
 import { ContractItemsFields } from '@/features/contracts/components/ContractItemsFields'
 import { contractItemSchema, emptyContractItem } from '@/features/contracts/contractItemSchema'
+import { AccountPicker } from '@/components/shared/AccountPicker'
 import { PAYMENT_METHOD_LABELS } from '@/lib/paymentMethods'
 
 const contractSchema = z.object({
@@ -26,6 +27,7 @@ const contractSchema = z.object({
   interest_rate_pct: z.string().refine((v) => Number(v) > 0, 'La tasa de interés debe ser mayor a cero'),
   appraisal_value: z.string().optional(),
   payment_method: z.enum(['cash', 'transfer', 'other']),
+  account_id: z.string().nullable(),
   extension_months: z.number().int().min(0),
   notes: z.string().optional(),
   items: z.array(contractItemSchema).min(1, 'Agrega al menos una prenda'),
@@ -61,12 +63,16 @@ export function ContractFormPage() {
       interest_rate_pct: '',
       appraisal_value: '',
       payment_method: 'cash',
+      account_id: null,
       extension_months: 1,
       notes: '',
       items: [emptyContractItem()],
     },
   })
   const principal = watch('principal')
+  // `useWatch` y no `watch()` para lo nuevo: este último devuelve una función
+  // que el React Compiler no puede memoizar.
+  const disbursementMethod = useWatch({ control, name: 'payment_method' })
 
   const blocker = useBlocker({
     shouldBlockFn: () => (isDirty || customer !== null) && !submittedRef.current,
@@ -88,6 +94,7 @@ export function ContractFormPage() {
         interest_rate_pct: values.interest_rate_pct,
         appraisal_value: values.appraisal_value || null,
         payment_method: values.payment_method,
+        account_id: values.account_id,
         extension_months: values.extension_months,
         notes: values.notes || null,
         items: values.items.map((item) => ({
@@ -176,6 +183,19 @@ export function ContractFormPage() {
                       ))}
                     </SelectContent>
                   </Select>
+                )}
+              />
+            </div>
+            {/* De qué cuenta SALE el préstamo — el desembolso es un egreso. */}
+            <div>
+              <label htmlFor="contract-account" className="text-sm font-medium text-foreground">
+                ¿De dónde sale?
+              </label>
+              <Controller
+                control={control}
+                name="account_id"
+                render={({ field }) => (
+                  <AccountPicker id="contract-account" paymentMethod={disbursementMethod} value={field.value} onChange={field.onChange} />
                 )}
               />
             </div>

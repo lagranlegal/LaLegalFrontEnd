@@ -30,6 +30,7 @@ import { SaleFormPage } from '@/features/sales/pages/SaleFormPage'
 import { IdentityPage } from '@/features/identity/pages/IdentityPage'
 import { AuditPage } from '@/features/audit/pages/AuditPage'
 import { ReportesPage } from '@/features/reports/pages/ReportesPage'
+import { AccountsPage } from '@/features/accounts/pages/AccountsPage'
 import { SettingsPage } from '@/features/settings/pages/SettingsPage'
 import { CompaniesPage } from '@/features/platform/pages/CompaniesPage'
 
@@ -260,6 +261,22 @@ const settingsRoute = createRoute({
   },
 })
 
+// Ver cuentas y saldos es `cashbox.view`; crearlas/editarlas es
+// `company.configure` y se gatea por botón dentro de la pantalla. El guard de
+// ruta usa el permiso de LECTURA: un asesor que solo cobra necesita ver a qué
+// cuenta está mandando la plata, aunque no pueda administrar el catálogo.
+const accountsRoute = createRoute({
+  getParentRoute: () => appLayoutRoute,
+  path: '/cuentas',
+  component: AccountsPage,
+  beforeLoad: ({ context }) => {
+    const me = context.queryClient.getQueryData(meQueryOptions().queryKey)
+    if (me && !me.permissions.includes('cashbox.view')) {
+      throw redirect({ to: '/' })
+    }
+  },
+})
+
 // `GET /reports/closings` (docs/ARCHITECTURE.md §5) — mismo patrón que `auditRoute`.
 const reportesRoute = createRoute({
   getParentRoute: () => appLayoutRoute,
@@ -324,6 +341,7 @@ const routeTree = rootRoute.addChildren([
     identityRoute,
     reportesRoute,
     auditRoute,
+    accountsRoute,
     settingsRoute,
   ]),
 ])

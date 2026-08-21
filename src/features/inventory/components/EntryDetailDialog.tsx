@@ -5,6 +5,7 @@ import { formatDate, formatDateTime } from '@/lib/dates'
 import { PAYMENT_METHOD_LABELS, paymentMethodLabel } from '@/lib/paymentMethods'
 import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { AccountPicker } from '@/components/shared/AccountPicker'
 import { CashSessionRequiredDialog } from '@/components/shared/CashSessionRequiredDialog'
 import { ApiError } from '@/lib/api/client'
 import { usePayEntry } from '@/features/inventory/api'
@@ -22,6 +23,7 @@ const ORIGIN_TYPE_LABELS: Record<string, string> = { purchase: 'Compra', other: 
  */
 function PayPendingPurchase({ entry }: { entry: Entry }) {
   const [method, setMethod] = useState<'cash' | 'transfer' | 'other'>('cash')
+  const [accountId, setAccountId] = useState<string | null>(null)
   const [cashDialogOpen, setCashDialogOpen] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const payEntry = usePayEntry()
@@ -29,7 +31,7 @@ function PayPendingPurchase({ entry }: { entry: Entry }) {
   async function handlePay() {
     setError(null)
     try {
-      await payEntry.mutateAsync({ entryId: entry.id, body: { payment_method: method } })
+      await payEntry.mutateAsync({ entryId: entry.id, body: { payment_method: method, account_id: accountId } })
       toast.success('Compra pagada — el egreso quedó en la caja de hoy')
     } catch (err) {
       if (err instanceof ApiError && err.code === 'CASH_SESSION_NOT_OPEN') {
@@ -64,6 +66,10 @@ function PayPendingPurchase({ entry }: { entry: Entry }) {
               ))}
             </SelectContent>
           </Select>
+        </div>
+        <div className="min-w-52">
+          <label className="text-xs text-muted-foreground">¿De dónde sale?</label>
+          <AccountPicker paymentMethod={method} value={accountId} onChange={setAccountId} />
         </div>
         <Button type="button" className="rounded-pill" disabled={payEntry.isPending} onClick={handlePay}>
           {payEntry.isPending ? 'Registrando…' : 'Registrar pago'}

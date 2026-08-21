@@ -13,6 +13,7 @@ import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { ApiError } from '@/lib/api/client'
 import { multiplyMoney, subtractMoney, sumMoney } from '@/lib/money'
+import { AccountPicker } from '@/components/shared/AccountPicker'
 import { PAYMENT_METHOD_LABELS } from '@/lib/paymentMethods'
 import { useCreateSale } from '@/features/sales/api'
 import type { Item } from '@/lib/inventory/items'
@@ -35,6 +36,7 @@ export function SaleFormPage() {
   const [discountAmount, setDiscountAmount] = useState('0.00')
   const [discountReason, setDiscountReason] = useState('')
   const [formError, setFormError] = useState<string | null>(null)
+  const [accountId, setAccountId] = useState<string | null>(null)
   const [cashDialogOpen, setCashDialogOpen] = useState(false)
 
   function addToCart(item: Item) {
@@ -74,6 +76,7 @@ export function SaleFormPage() {
       const sale = await createSale.mutateAsync({
         customer_id: customer?.id ?? null,
         payment_method: paymentMethod,
+        account_id: accountId,
         lines: cart.map((line) => ({ item_id: line.item.id, quantity: line.quantity, unit_price: line.item.sale_price ?? '0.00' })),
         discount_amount: hasDiscount ? discountAmount : null,
         discount_reason: hasDiscount ? discountReason : null,
@@ -158,6 +161,17 @@ export function SaleFormPage() {
                   ))}
                 </SelectContent>
               </Select>
+            </div>
+
+            {/* El medio dice CÓMO se cobró; la cuenta, DÓNDE quedó la plata
+                (docs/ARCHITECTURE.md §12). Con Sistecrédito la diferencia es
+                el negocio entero: el medio es "Otro" y la cuenta es el
+                convenio que todavía te la debe. */}
+            <div>
+              <label htmlFor="sale-account" className="text-sm font-medium text-foreground">
+                ¿A dónde entra?
+              </label>
+              <AccountPicker id="sale-account" paymentMethod={paymentMethod} value={accountId} onChange={setAccountId} />
             </div>
 
             <Can permission="sales.apply_discount">

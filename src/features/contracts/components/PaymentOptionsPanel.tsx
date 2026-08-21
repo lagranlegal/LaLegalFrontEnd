@@ -11,10 +11,17 @@ import { ApiError } from '@/lib/api/client'
 import { formatCOP, sumMoney } from '@/lib/money'
 import { cn } from '@/lib/utils'
 import { usePaymentOptions, useCreatePayment, type PaymentOption } from '@/features/contracts/api'
+import { AccountPicker } from '@/components/shared/AccountPicker'
 import { PAYMENT_METHOD_LABELS } from '@/lib/paymentMethods'
 
-function PaymentMethodField({ value, onChange }: { value: 'cash' | 'transfer' | 'other'; onChange: (value: 'cash' | 'transfer' | 'other') => void }) {
+/**
+ * Medio de pago + cuenta, siempre juntos: el medio dice CÓMO pagó el cliente,
+ * la cuenta DÓNDE quedó esa plata (docs/ARCHITECTURE.md §12). Van en el mismo
+ * componente para que ningún punto de cobro pueda quedarse a medias.
+ */
+function PaymentMethodField({ value, onChange, accountId, onAccountChange }: { value: 'cash' | 'transfer' | 'other'; onChange: (value: 'cash' | 'transfer' | 'other') => void; accountId: string | null; onAccountChange: (accountId: string | null) => void }) {
   return (
+    <>
     <div>
       <label className="text-sm font-medium text-foreground">Medio de pago</label>
       <Select value={value} onValueChange={(v) => onChange(v as typeof value)}>
@@ -30,6 +37,11 @@ function PaymentMethodField({ value, onChange }: { value: 'cash' | 'transfer' | 
         </SelectContent>
       </Select>
     </div>
+    <div>
+      <label className="text-sm font-medium text-foreground">¿A dónde entra?</label>
+      <AccountPicker paymentMethod={value} value={accountId} onChange={onAccountChange} />
+    </div>
+    </>
   )
 }
 
@@ -49,6 +61,7 @@ function CapitalOnlyPaymentForm({ contractId }: { contractId: string }) {
   const createPayment = useCreatePayment(contractId)
   const [capitalAmount, setCapitalAmount] = useState('0.00')
   const [paymentMethod, setPaymentMethod] = useState<'cash' | 'transfer' | 'other'>('cash')
+  const [accountId, setAccountId] = useState<string | null>(null)
   const [cashDialogOpen, setCashDialogOpen] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -64,7 +77,7 @@ function CapitalOnlyPaymentForm({ contractId }: { contractId: string }) {
     if (!result.confirmed) return
 
     try {
-      await createPayment.mutateAsync({ months_covered: 0, capital_amount: capitalAmount, payment_method: paymentMethod })
+      await createPayment.mutateAsync({ months_covered: 0, capital_amount: capitalAmount, payment_method: paymentMethod, account_id: accountId })
       toast.success('Abono a capital registrado')
       setCapitalAmount('0.00')
     } catch (err) {
@@ -85,7 +98,7 @@ function CapitalOnlyPaymentForm({ contractId }: { contractId: string }) {
             <label className="text-sm font-medium text-foreground">Abono a capital</label>
             <MoneyInput className="mt-1" value={capitalAmount} onChange={setCapitalAmount} autoFocus />
           </div>
-          <PaymentMethodField value={paymentMethod} onChange={setPaymentMethod} />
+          <PaymentMethodField value={paymentMethod} onChange={setPaymentMethod} accountId={accountId} onAccountChange={setAccountId} />
           {error && <p className="text-sm text-danger">{error}</p>}
           <Button className="w-full rounded-pill" disabled={!hasAmount || createPayment.isPending} onClick={handleConfirm}>
             {createPayment.isPending ? (
@@ -115,6 +128,7 @@ export function PaymentOptionsPanel({ contractId }: { contractId: string }) {
   const createPayment = useCreatePayment(contractId)
   const [selected, setSelected] = useState<PaymentOption | null>(null)
   const [paymentMethod, setPaymentMethod] = useState<'cash' | 'transfer' | 'other'>('cash')
+  const [accountId, setAccountId] = useState<string | null>(null)
   const [capitalAmount, setCapitalAmount] = useState('0.00')
   const [cashDialogOpen, setCashDialogOpen] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -169,6 +183,7 @@ export function PaymentOptionsPanel({ contractId }: { contractId: string }) {
       await createPayment.mutateAsync({
         months_covered: selected.months,
         capital_amount: hasCapital ? capitalAmount : null,
+        account_id: accountId,
         payment_method: paymentMethod,
       })
       toast.success('Abono registrado')
@@ -207,7 +222,7 @@ export function PaymentOptionsPanel({ contractId }: { contractId: string }) {
 
         {selected && (
           <div className="flex flex-col gap-3 rounded-input border border-border p-3">
-            <PaymentMethodField value={paymentMethod} onChange={setPaymentMethod} />
+            <PaymentMethodField value={paymentMethod} onChange={setPaymentMethod} accountId={accountId} onAccountChange={setAccountId} />
 
             {selected.allows_capital && (
               <div>
