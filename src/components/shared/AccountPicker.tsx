@@ -2,6 +2,7 @@ import { useEffect } from 'react'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Money } from '@/components/shared/Money'
 import { useAccounts } from '@/lib/accounts/list'
+import { isPermissionError } from '@/lib/api/isPermissionError'
 import { accountTypeLabel, defaultAccountTypeFor } from '@/lib/accounts/types'
 
 /**
@@ -33,7 +34,7 @@ export function AccountPicker({
   id?: string
   disabled?: boolean
 }) {
-  const { data: accounts, isPending } = useAccounts()
+  const { data: accounts, isPending, error } = useAccounts()
   const wantedType = defaultAccountTypeFor(paymentMethod)
 
   // Una cuenta `settlement` (Sistecrédito) se cobra con medio "otro", igual
@@ -60,6 +61,14 @@ export function AccountPicker({
 
   if (isPending) {
     return <div className="mt-1 h-10 w-full animate-pulse rounded-input bg-muted" aria-hidden />
+  }
+
+  // Sin `accounts.view` el selector desaparece y la operación sigue: el
+  // backend resuelve la cuenta predeterminada cuando no recibe `account_id`.
+  // Bloquear una venta porque el cajero no puede LEER el catálogo de cuentas
+  // sería castigarlo por un permiso que no necesita para cobrar.
+  if (isPermissionError(error)) {
+    return null
   }
 
   if (options.length === 0) {

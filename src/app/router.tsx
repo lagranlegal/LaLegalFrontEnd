@@ -270,17 +270,18 @@ const settingsRoute = createRoute({
   },
 })
 
-// Ver cuentas y saldos es `cashbox.view`; crearlas/editarlas es
-// `company.configure` y se gatea por botón dentro de la pantalla. El guard de
-// ruta usa el permiso de LECTURA: un asesor que solo cobra necesita ver a qué
-// cuenta está mandando la plata, aunque no pueda administrar el catálogo.
+// El módulo tiene permisos propios desde 00029 (antes se colaba por
+// `cashbox.view`/`company.configure`, lo que lo hacía imposible de otorgar
+// solo). El guard de ruta usa el de LECTURA: un asesor que cobra necesita ver
+// a qué cuenta manda la plata, aunque no administre el catálogo ni liquide
+// convenios — esas dos se gatean por botón dentro de la pantalla.
 const accountsRoute = createRoute({
   getParentRoute: () => appLayoutRoute,
   path: '/cuentas',
   component: AccountsPage,
   beforeLoad: ({ context }) => {
     const me = context.queryClient.getQueryData(meQueryOptions().queryKey)
-    if (me && !me.permissions.includes('cashbox.view')) {
+    if (me && !me.permissions.includes('accounts.view')) {
       throw redirect({ to: '/' })
     }
   },

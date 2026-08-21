@@ -2,6 +2,54 @@
 
 > Registro vivo de qué existe en el código, cómo está armado y por qué se tomó cada decisión — para que cualquiera (humano o Claude Code) pueda retomar el proyecto sin releer todo el historial de commits. Se actualiza en cada paso del "Orden de implementación" de `CLAUDE.md`. No repite lo que ya está en `ARCHITECTURE.md`/`DESIGN_SYSTEM.md` (el qué-debería-ser); esto es el qué-hay-hoy y las decisiones concretas tomadas al construirlo.
 
+## El módulo de cuentas no aparecía en la matriz de permisos (21/08/2026)
+
+Reportado revisando los permisos: *"creaste el módulo de cuentas pero no le agregaste ningún tipo de permisos ni es parametrizable desde identidad"*. Correcto — y la revisión destapó algo más grave de lo reportado.
+
+### Lo reportado
+
+Las cuentas se construyeron reusando permisos de otros módulos: `cashbox.view` para leer y `company.configure` para administrar. Funciona, pero deja el módulo **fuera de la matriz de roles**: un admin no puede darle acceso a las cuentas a alguien sin darle además toda la caja, ni dejarlo administrarlas sin darle también logo, firma y textos de documentos. Un módulo que no aparece en la matriz es invisible para quien configura los roles.
+
+### Lo que apareció al revisar
+
+**`POST /accounts/{id}/settle` exigía `cashbox.view`.** Liquidar un convenio mueve plata —genera dos movimientos y baja el saldo por cobrar— pero colgaba de un permiso de **solo lectura**. Cualquiera que pudiera *mirar* la caja podía liquidar Sistecrédito.
+
+Ese era el bug de verdad, y estaba escondido detrás del que se reportó.
+
+### Migración 00029
+
+Tres permisos propios, con la misma separación del resto del catálogo — ver / administrar / la acción sensible aparte (`is_special`, igual que `cashbox.reopen` o `contracts.auction`):
+
+| Permiso | Qué habilita |
+|---|---|
+| `accounts.view` | Ver cuentas y saldos |
+| `accounts.manage` | Crear y editar cuentas |
+| `accounts.settle` | Liquidar cuentas por cobrar |
+
+**Nadie pierde lo que ya tenía:** la migración otorga los nuevos a los roles que tuvieran los equivalentes. Si solo se insertaran los permisos, todos los roles existentes perderían el acceso de un día para otro sin que nadie tocara una regla de negocio.
+
+**Con una excepción deliberada:** `accounts.settle` va a quien tiene `cashbox.open_close` (responsable de caja), **no** a quien tiene `cashbox.view`. Conservar el mapeo anterior sería conservar el agujero.
+
+### En el front
+
+Los gates pasaron a los permisos nuevos (ruta, ítem de menú, botones de crear/editar/liquidar). Y dos detalles de comportamiento:
+
+- **La página de cuentas** distingue el 403 y no ofrece "Reintentar", que no puede funcionar.
+- **El `AccountPicker` desaparece** sin `accounts.view`, y la operación sigue: el backend resuelve la cuenta predeterminada cuando no recibe `account_id`. Bloquear una venta porque el cajero no puede *leer* el catálogo de cuentas sería castigarlo por un permiso que no necesita para cobrar.
+
+### La regla que queda
+
+Quedó escrito en `backend-starter/docs/ARCHITECTURE.md` §12 y en el protocolo 8 de `DESIGN_SYSTEM.md`: **un módulo nuevo trae sus propios permisos desde el día uno**, aunque parezcan redundantes. Reusar el de otro módulo sale caro por tres lados — el módulo desaparece de la matriz, acopla cosas que no van juntas, y deja colar acciones sensibles detrás de permisos de lectura.
+
+### Verificación
+
+```
+pytest -q            # 233/233 (dos tests nuevos: ver no alcanza para liquidar ni para crear)
+npm run typecheck    # limpio, tras regenerar tipos
+npm run test         # 104/104
+npm run build        # sin errores
+```
+
 ## "Caja cerrada" cuando la caja estaba abierta (21/08/2026)
 
 Reportado probando con un usuario nuevo: el admin veía la caja abierta, pero el usuario recién invitado veía **"Caja cerrada — no se pueden registrar operaciones de dinero"**, y el inventario le fallaba al cargar.

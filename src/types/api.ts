@@ -2652,6 +2652,11 @@ export interface components {
             is_seed: boolean;
             /** Active */
             active: boolean;
+            /**
+             * Permission Count
+             * @default 0
+             */
+            permission_count: number;
         };
         /** RolePermissionsIn */
         RolePermissionsIn: {

@@ -11,6 +11,7 @@ import { ACCOUNT_TYPE_HINTS, ACCOUNT_TYPE_LABELS } from '@/lib/accounts/types'
 import { sumMoney } from '@/lib/money'
 import { AccountFormDialog } from '@/features/accounts/components/AccountFormDialog'
 import { SettleAccountDialog } from '@/features/accounts/components/SettleAccountDialog'
+import { isPermissionError } from '@/lib/api/isPermissionError'
 import { useAccounts, type Account, type AccountType } from '@/features/accounts/api'
 
 const TYPE_ORDER: AccountType[] = ['cash', 'bank', 'settlement']
@@ -41,14 +42,14 @@ function AccountCard({
 
       <div className="flex shrink-0 items-center gap-3">
         <Money value={account.balance} className="text-base font-semibold text-foreground" />
-        <Can permission="cashbox.open_close">
+        <Can permission="accounts.settle">
           {account.type === 'settlement' && (
             <Button size="sm" variant="outline" onClick={onSettle}>
               Liquidar
             </Button>
           )}
         </Can>
-        <Can permission="company.configure">
+        <Can permission="accounts.manage">
           <Button size="sm" variant="ghost" onClick={onEdit} aria-label={`Editar ${account.name}`}>
             <Pencil className="size-4" />
           </Button>
@@ -69,7 +70,7 @@ function AccountCard({
  */
 export function AccountsPage() {
   const [includeInactive, setIncludeInactive] = useState(false)
-  const { data: accounts, isPending, isFetching, isError, refetch } = useAccounts({ includeInactive })
+  const { data: accounts, isPending, isFetching, isError, error, refetch } = useAccounts({ includeInactive })
   const [formOpen, setFormOpen] = useState(false)
   const [editing, setEditing] = useState<Account | undefined>(undefined)
   const [settling, setSettling] = useState<Account | null>(null)
@@ -89,7 +90,7 @@ export function AccountsPage() {
         title="Cuentas"
         description="Dónde está la plata: el cajón, los bancos y lo que te deben."
         actions={
-          <Can permission="company.configure">
+          <Can permission="accounts.manage">
             <Button onClick={openNew}>
               <Plus className="size-4" />
               Nueva cuenta
@@ -113,17 +114,24 @@ export function AccountsPage() {
         </div>
       )}
 
-      {isError && (
-        <EmptyState
-          title="No se pudieron cargar las cuentas"
-          description="Revisa tu conexión e inténtalo otra vez."
-          action={
-            <Button variant="outline" onClick={() => void refetch()}>
-              Reintentar
-            </Button>
-          }
-        />
-      )}
+      {isError &&
+        (isPermissionError(error) ? (
+          // Reintentar no cambia un permiso que no existe.
+          <EmptyState
+            title="No tienes permiso para ver las cuentas"
+            description="Pídele a un administrador que te habilite el permiso 'Ver cuentas y sus saldos'."
+          />
+        ) : (
+          <EmptyState
+            title="No se pudieron cargar las cuentas"
+            description="Revisa tu conexión e inténtalo otra vez."
+            action={
+              <Button variant="outline" onClick={() => void refetch()}>
+                Reintentar
+              </Button>
+            }
+          />
+        ))}
 
       {accounts && accounts.length === 0 && (
         <EmptyState
@@ -131,7 +139,7 @@ export function AccountsPage() {
           title="No hay cuentas"
           description="Cada empresa nace con sus cuentas básicas. Si no ves ninguna, crea la primera."
           action={
-            <Can permission="company.configure">
+            <Can permission="accounts.manage">
               <Button onClick={openNew}>Nueva cuenta</Button>
             </Can>
           }
