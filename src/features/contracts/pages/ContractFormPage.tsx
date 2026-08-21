@@ -195,7 +195,13 @@ export function ContractFormPage() {
                 control={control}
                 name="account_id"
                 render={({ field }) => (
-                  <AccountPicker id="contract-account" paymentMethod={disbursementMethod} value={field.value} onChange={field.onChange} />
+                  <AccountPicker
+                    id="contract-account"
+                    paymentMethod={disbursementMethod}
+                    direction="out"
+                    value={field.value}
+                    onChange={field.onChange}
+                  />
                 )}
               />
             </div>

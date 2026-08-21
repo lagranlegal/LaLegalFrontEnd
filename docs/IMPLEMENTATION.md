@@ -2,6 +2,69 @@
 
 > Registro vivo de qué existe en el código, cómo está armado y por qué se tomó cada decisión — para que cualquiera (humano o Claude Code) pueda retomar el proyecto sin releer todo el historial de commits. Se actualiza en cada paso del "Orden de implementación" de `CLAUDE.md`. No repite lo que ya está en `ARCHITECTURE.md`/`DESIGN_SYSTEM.md` (el qué-debería-ser); esto es el qué-hay-hoy y las decisiones concretas tomadas al construirlo.
 
+## Tanda A de los diez frentes: tres bugs de dinero y de inventario (21/08/2026)
+
+Primera tanda de la revisión de diez puntos (`docs/propuesta-diez-frentes.html`, que tiene el análisis completo y el orden propuesto). Son los arreglos **sin migraciones**: se despliegan solos.
+
+### 1. El precio de venta se perdía de verdad
+
+Reportado como *"toca volver a entrar para publicarlo y el valor a vender no se quedó guardado"*. No era percepción. `ItemEditDialog` mostraba un campo **"Precio de venta"** junto a un único botón **"Guardar fotos"**, y ese botón llamaba a `PATCH /inventory/items/{id}` mandando **solo `{photos}`** — porque `ItemUpdateIn` del backend solo acepta fotos: desde 00022 el precio es del **producto**, no del lote. El precio digitado nunca salía del navegador.
+
+Encima, `canPublish` exigía `!hasUnsavedPhotos`, o sea que había que guardar las fotos **primero** y publicar **después**: dos actos para una sola intención, y tres pasos en total.
+
+**La corrección no fue mandar el precio en el PATCH del lote** —ahí no pertenece, y meterlo habría reintroducido la divergencia entre lotes que 00022 vino a cerrar—. Fue que el diálogo haga las llamadas que hagan falta sin que el usuario tenga que saber en qué tabla vive cada dato: `handlePublish` guarda las fotos si cambiaron y luego publica (que ya fija el precio en el producto). Un botón, una intención.
+
+`canPublish` mira ahora `photos` (lo que hay en pantalla) y no `item.photos` (lo guardado), así que subir una foto ya habilita publicar. "Guardar y seguir en borrador" queda como secundario, para dejar el trabajo a medias a propósito.
+
+### 2. Los remates rehacían trabajo ya hecho — el hallazgo más grande
+
+Al crear un contrato se suben las fotos de cada prenda y quedan en `contract_item.photos`. Al rematar, `AuctionItemInput` llevaba categoría, descripción y avalúo… **y no las fotos**. El `inventory_item` nacía con `photos=[]`.
+
+Como publicar exige ≥1 foto, **toda pieza rematada nacía bloqueada** esperando que alguien volviera a fotografiar una prenda que ya estaba fotografiada desde que se firmó el contrato. Y en una compraventa los rematados son buena parte del inventario.
+
+Ahora se heredan. Es casi una línea, y elimina de raíz el *"toca subir la imagen si no, no deja"* para todo el flujo de remate. Test: `test_auction_inherits_contract_item_photos` verifica además que el borrador ya se publica **sin subir nada**, que es lo que la corrección venía a desbloquear.
+
+### 3. Sistecrédito se ofrecía para pagarle a proveedores
+
+`AccountPicker` filtraba solo por medio de pago: con `other` ofrecía las cuentas `bank` **y** las `settlement`, sin mirar si la plata entraba o salía. Así se podía elegir "pagarle al proveedor con Sistecrédito" — una operación que no existe: una cuenta `settlement` es una cuenta **por cobrar**, plata que todavía te deben, no un saldo disponible.
+
+Arreglado en las **dos capas**, porque la UI oculta pero no protege (CLAUDE.md regla 7):
+
+- **Front:** `AccountPicker` recibe `direction: 'in' | 'out'`. Los cuatro puntos de pago la pasan (`EntryFormPage`, `EntryDetailDialog`, `ExpenseFormDialog`, `ContractFormPage`); venta y abono se quedan con el default `in`.
+- **Backend:** `resolve_account_for_movement` rechaza una `settlement` como origen de una salida con código propio `ACCOUNT_CANNOT_FUND_PAYMENT`. La única salida legítima de una cuenta por cobrar es su **liquidación**, que tiene endpoint propio y no pasa por ahí.
+
+El test cubre además la contraparte: **cobrar** hacia esa cuenta sigue funcionando. Si eso se rompiera, el arreglo habría inutilizado el módulo en vez de corregirlo.
+
+### 4. Filtros que ya existían y nadie veía
+
+`GET /inventory/items` aceptaba `supplier_id` y `origin` desde antes, y ninguna pantalla los ofrecía. Exponerlos no tocó backend. La barra de filtros de la pestaña **Lotes** los tiene ahora, con un cruce: elegir origen "Remate" apaga el selector de proveedor, porque un artículo de remate no tiene proveedor y esa combinación nunca devuelve nada.
+
+`CategorySelect` se generalizó a `FilterSelect` sobre `{value,label}`: tres selectores idénticos con tres componentes distintos era la forma de que se fueran separando.
+
+### 5. Las cuentas genéricas dejan de sembrarse
+
+*"¿Para qué tenemos 'Otros medios' o 'Transferencias' si se supone que las debemos crear?"* — respuesta: eran un **artefacto de la migración 00024**, que tenía que mapear el enum viejo de medios de pago a cuentas reales para no perder el histórico de las empresas que ya existían. Ahí tenían todo el sentido.
+
+Para una empresa **nueva** no lo tienen: no hay historia que mapear, y el módulo de cuentas existe justamente para responder **dónde está la plata** — cosa que un nombre como "Transferencias" no hace. Sembrar nombres genéricos invita a dejarlos así, que es volver al enum de tres valores con otro disfraz.
+
+`insert_default_accounts` crea ahora **solo `Caja principal`**. Sin ella no se puede registrar un cobro. Las bancarias las crea el dueño con el nombre de su banco. La red de seguridad de `_default_account_for` (que crea una al vuelo si alguien registra una transferencia sin tener ninguna) se conserva: perder el registro de un movimiento de dinero sería peor que crear una cuenta implícita.
+
+### Verificación
+
+```
+pytest -q            # 235/235 (233 previos + 2 nuevos)
+ruff check . && mypy app
+npm run typecheck && npm run lint && npm run test   # 104/104
+```
+
+Los dos tests nuevos: `test_auction_inherits_contract_item_photos` y `test_settlement_account_cannot_fund_a_payment`. `test_create_company_defaults_...` se actualizó — fijaba las tres cuentas viejas.
+
+### Lo que NO se tocó, y por qué
+
+El **renombrado de las cuentas existentes** quedó pendiente: las dos empresas de la dev (`Compraventa de Prueba QA` y `Empresa Demo Front`) son demo/QA, no un cliente real, así que ponerles el nombre de un banco de verdad no aplica todavía. La decisión operativa —qué hacer con las cuentas genéricas que ya existen— va cuando exista la empresa del cliente.
+
+---
+
 ## Auditoría de permisos: el menú prometía módulos que el backend rechazaba (21/08/2026)
 
 Reportado probando roles: *"al quitarle a un rol los permisos de contratos, me sigue apareciendo el módulo"*. Confirmado, y la auditoría completa encontró que el problema era más ancho que contratos y que había además dos huecos en el catálogo del backend.

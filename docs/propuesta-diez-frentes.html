@@ -1,0 +1,750 @@
+<title>Diez Frentes Abiertos</title>
+<style>
+  :root {
+    --accent: #00806f;
+    --accent-wash: #e4f5f3;
+    --ink: #14202d;
+    --ink-soft: #445468;
+    --ink-mute: #7a8798;
+    --ground: #f5f7fa;
+    --surface: #ffffff;
+    --sunk: #edf1f6;
+    --rule: #dde4ec;
+    --rule-soft: #e9eef4;
+    --ok: #1c8d5e;
+    --ok-wash: #e7f5ee;
+    --warn: #a4680d;
+    --warn-wash: #fcf3e3;
+    --crit: #c0392f;
+    --crit-wash: #fdecea;
+    --font: ui-sans-serif, -apple-system, "Segoe UI", Roboto, sans-serif;
+    --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --accent: #5cd6c4; --accent-wash: #0e2f2c;
+      --ink: #e8eef5; --ink-soft: #abb9c9; --ink-mute: #798797;
+      --ground: #0c131b; --surface: #141e29; --sunk: #1b2733;
+      --rule: #26313e; --rule-soft: #1c2631;
+      --ok: #4cc38a; --ok-wash: #12281e;
+      --warn: #e0a850; --warn-wash: #2b2113;
+      --crit: #f2706a; --crit-wash: #321819;
+    }
+  }
+  :root[data-theme="dark"] {
+    --accent: #5cd6c4; --accent-wash: #0e2f2c;
+    --ink: #e8eef5; --ink-soft: #abb9c9; --ink-mute: #798797;
+    --ground: #0c131b; --surface: #141e29; --sunk: #1b2733;
+    --rule: #26313e; --rule-soft: #1c2631;
+    --ok: #4cc38a; --ok-wash: #12281e;
+    --warn: #e0a850; --warn-wash: #2b2113;
+    --crit: #f2706a; --crit-wash: #321819;
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    background: var(--ground); color: var(--ink-soft); font-family: var(--font);
+    font-size: 16.5px; line-height: 1.68; margin: 0; padding: 0 1.25rem 5rem;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 50rem; margin: 0 auto; }
+
+  header.top { padding: 3.5rem 0 1.75rem; display: flex; flex-direction: column; gap: 1rem; }
+  .eyebrow {
+    font-family: var(--mono); font-size: 0.73rem; letter-spacing: 0.13em;
+    text-transform: uppercase; color: var(--accent); font-weight: 600; margin: 0;
+  }
+  h1 {
+    font-size: clamp(2rem, 5.5vw, 2.9rem); line-height: 1.1; letter-spacing: -0.026em;
+    color: var(--ink); font-weight: 670; margin: 0; text-wrap: balance;
+  }
+  .lede { font-size: 1.1rem; margin: 0; max-width: 40rem; }
+  .divider { height: 2px; background: var(--ink); border: 0; opacity: 0.88; margin: 0; }
+
+  h2 {
+    font-size: 1.4rem; color: var(--ink); font-weight: 640; letter-spacing: -0.018em;
+    margin: 3.25rem 0 1rem; text-wrap: balance;
+  }
+  h3 { font-size: 1.03rem; color: var(--ink); font-weight: 640; margin: 1.9rem 0 0.5rem; }
+  p { margin: 0 0 1.05rem; }
+  strong { color: var(--ink); font-weight: 640; }
+  ul, ol { margin: 0 0 1.05rem; padding-left: 1.25rem; }
+  li { margin-bottom: 0.45rem; }
+  code {
+    font-family: var(--mono); font-size: 0.87em; background: var(--sunk);
+    color: var(--ink); padding: 0.1em 0.38em; border-radius: 4px; white-space: nowrap;
+  }
+
+  .metrics {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr)); gap: 1px;
+    background: var(--rule); border: 1px solid var(--rule); border-radius: 13px;
+    overflow: hidden; margin: 1.5rem 0;
+  }
+  .metric { background: var(--surface); padding: 1rem 1.1rem; }
+  .metric .k {
+    font-family: var(--mono); font-size: 0.65rem; letter-spacing: 0.09em;
+    text-transform: uppercase; color: var(--ink-mute); display: block; margin-bottom: 0.35rem;
+  }
+  .metric .v { font-size: 1.55rem; font-weight: 670; color: var(--ink); line-height: 1.1; font-variant-numeric: tabular-nums; }
+  .metric .v.bad { color: var(--crit); }
+  .metric .v.ok { color: var(--ok); }
+  .metric .n { display: block; font-size: 0.76rem; color: var(--ink-mute); margin-top: 0.3rem; line-height: 1.4; }
+
+  .callout { border-radius: 13px; padding: 1.4rem 1.5rem; margin: 1.8rem 0; border: 1px solid transparent; }
+  .callout.good { background: var(--accent-wash); border-color: color-mix(in srgb, var(--accent) 26%, transparent); }
+  .callout.warn { background: var(--warn-wash); border-color: color-mix(in srgb, var(--warn) 30%, transparent); }
+  .callout.crit { background: var(--crit-wash); border-color: color-mix(in srgb, var(--crit) 30%, transparent); }
+  .callout .tag {
+    font-family: var(--mono); font-size: 0.7rem; letter-spacing: 0.11em; text-transform: uppercase;
+    font-weight: 650; display: block; margin-bottom: 0.45rem;
+  }
+  .callout.good .tag { color: var(--accent); }
+  .callout.warn .tag { color: var(--warn); }
+  .callout.crit .tag { color: var(--crit); }
+  .callout .big {
+    font-size: 1.15rem; line-height: 1.45; color: var(--ink); font-weight: 620;
+    margin: 0 0 0.7rem; text-wrap: balance;
+  }
+  .callout p { font-size: 0.95rem; }
+  .callout p:last-child { margin-bottom: 0; }
+
+  .tw { overflow-x: auto; border: 1px solid var(--rule); border-radius: 14px; margin: 1.5rem 0; background: var(--surface); }
+  table { border-collapse: collapse; width: 100%; font-size: 0.94rem; }
+  th {
+    text-align: left; font-family: var(--mono); font-size: 0.68rem; letter-spacing: 0.09em;
+    text-transform: uppercase; color: var(--ink-mute); font-weight: 650;
+    padding: 0.75rem 0.95rem; border-bottom: 1px solid var(--rule); white-space: nowrap;
+  }
+  td { padding: 0.75rem 0.95rem; border-bottom: 1px solid var(--rule-soft); vertical-align: top; }
+  tr:last-child td { border-bottom: none; }
+  td:first-child { color: var(--ink); font-weight: 600; }
+
+  .opt {
+    background: var(--surface); border: 1px solid var(--rule); border-left: 4px solid var(--sev, var(--rule));
+    border-radius: 0 13px 13px 0; padding: 1.3rem 1.5rem; margin-bottom: 1rem;
+  }
+  .opt.a { --sev: var(--ink-mute); }
+  .opt.b { --sev: var(--ok); }
+  .opt.c { --sev: var(--accent); }
+  .opt.d { --sev: var(--crit); }
+  .opt-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.7rem; margin-bottom: 0.5rem; }
+  .opt-title { font-size: 1.06rem; font-weight: 640; color: var(--ink); margin: 0; }
+  .chip {
+    font-family: var(--mono); font-size: 0.65rem; letter-spacing: 0.08em; text-transform: uppercase;
+    font-weight: 650; padding: 0.2rem 0.5rem; border-radius: 999px; white-space: nowrap;
+  }
+  .chip.small { background: var(--ok-wash); color: var(--ok); }
+  .chip.mid { background: var(--warn-wash); color: var(--warn); }
+  .chip.big { background: var(--crit-wash); color: var(--crit); }
+  .chip.neutral { background: var(--sunk); color: var(--ink-mute); }
+  .opt p { font-size: 0.96rem; }
+  .opt p:last-child { margin-bottom: 0; }
+
+  .flow {
+    background: var(--sunk); border-radius: 13px; padding: 1.2rem 1.4rem; margin: 1.4rem 0;
+    font-family: var(--mono); font-size: 0.86rem; line-height: 1.9; color: var(--ink-soft);
+    overflow-x: auto;
+  }
+  .flow .bad { color: var(--crit); font-weight: 650; }
+  .flow .good { color: var(--ok); font-weight: 650; }
+
+  footer {
+    margin-top: 3.5rem; padding-top: 1.4rem; border-top: 1px solid var(--rule);
+    font-family: var(--mono); font-size: 0.73rem; color: var(--ink-mute); line-height: 1.7;
+  }
+</style>
+
+<div class="wrap">
+
+  <header class="top">
+    <p class="eyebrow">Revisión · Inventario, compras, caja y cuentas</p>
+    <h1>Diez frentes abiertos</h1>
+    <p class="lede">
+      Qué encontró la revisión del código detrás de cada punto: cuáles son bugs reales,
+      cuáles ya están construidos y no se ven, cuáles son decisiones de diseño pendientes —
+      y en qué orden conviene atacarlos.
+    </p>
+  </header>
+  <hr class="divider">
+
+  <h2>El resumen en una tabla</h2>
+
+  <p>
+    De los diez puntos, <strong>tres son bugs</strong> con causa identificada en el código,
+    <strong>dos ya están construidos</strong> y el problema es que no se ven, y
+    <strong>cinco son huecos de diseño</strong> que exigen decidir antes de programar.
+  </p>
+
+  <div class="metrics">
+    <div class="metric">
+      <span class="k">Bugs confirmados</span>
+      <span class="v bad">3</span>
+      <span class="n">Precio perdido · Sistecrédito como fuente de pago · remate sin fotos</span>
+    </div>
+    <div class="metric">
+      <span class="k">Ya existe, no se ve</span>
+      <span class="v ok">2</span>
+      <span class="n">Compra multi-artículo · filtros del backend sin exponer</span>
+    </div>
+    <div class="metric">
+      <span class="k">Decisiones de diseño</span>
+      <span class="v">5</span>
+      <span class="n">Traslados · permisos · tipos de ingreso · reportes · ficha de proveedor</span>
+    </div>
+  </div>
+
+  <div class="tw">
+    <table>
+      <thead>
+        <tr><th>#</th><th>Tema</th><th>Veredicto</th><th>Tamaño</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>1</td><td>Filtros de inventario</td><td>Mitad ya existe en el backend y el front no la usa; falta filtrar Ingresos y Productos</td><td>Mediano</td></tr>
+        <tr><td>2</td><td>Historial de compras</td><td>No existe ninguna ficha de proveedor. El cliente sí la tiene</td><td>Mediano</td></tr>
+        <tr><td>3</td><td>Comprar varios artículos</td><td><strong>Ya se puede.</strong> El formulario lo soporta desde siempre — es un problema de forma</td><td>Chico</td></tr>
+        <tr><td>4</td><td>Consignar el efectivo</td><td>La operación <strong>no existe</strong>. Hoy no hay forma correcta de registrarlo</td><td>Mediano</td></tr>
+        <tr><td>5</td><td>Histórico de caja con permiso</td><td>Hueco real: <code>cashbox.view</code> lo abarca todo</td><td>Chico</td></tr>
+        <tr><td>7</td><td>Flujo de crear artículos</td><td><strong>Bug + rediseño.</strong> El precio se pierde de verdad</td><td>Grande</td></tr>
+        <tr><td>8</td><td>Sistecrédito en compras</td><td><strong>Bug.</strong> Una cuenta por cobrar se ofrece como fuente de pago</td><td>Chico</td></tr>
+        <tr><td>9</td><td>Cuentas genéricas</td><td>Son un residuo de la migración. Ya no deberían sembrarse</td><td>Chico</td></tr>
+        <tr><td>10</td><td>Tipos de ingreso</td><td>Faltan al menos tres, y uno es urgente</td><td>Mediano</td></tr>
+        <tr><td>11</td><td>Reportes contables</td><td>Falta lo primero que pediría un contador: cuentas por pagar</td><td>Grande</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <p style="font-size:0.9rem;color:var(--ink-mute)">
+    El punto 6 no vino en la lista — quedó pendiente de definir.
+  </p>
+
+  <hr class="divider" style="margin-top:2.5rem">
+
+  <h2>Primero: lo que está roto</h2>
+
+  <h3>7 · El precio de venta se pierde. No es percepción.</h3>
+
+  <p>
+    Es un bug con línea exacta. El diálogo del lote muestra un campo <strong>“Precio de venta”</strong>
+    y un botón <strong>“Guardar fotos”</strong>. Ese botón llama a <code>PATCH /inventory/items/{id}</code>
+    mandando <strong>solo las fotos</strong> — y el esquema del backend, <code>ItemUpdateIn</code>,
+    literalmente solo acepta <code>photos</code>. El precio digitado nunca sale del navegador.
+  </p>
+
+  <div class="flow">
+    Compra a proveedor  →  lote en <span class="bad">borrador</span><br>
+    ↓ abre el lote, escribe precio, sube fotos<br>
+    ↓ el único botón dice “Guardar fotos”  →  <span class="bad">el precio se descarta</span><br>
+    ↓ vuelve a entrar  →  el precio está vacío otra vez<br>
+    ↓ escribe el precio DE NUEVO  →  ahora sí “Publicar” se habilita
+  </div>
+
+  <p>
+    Y hay una segunda fricción encima: “Publicar” exige que las fotos ya estén
+    <strong>guardadas</strong>, no solo subidas. O sea que hay que guardar primero y publicar después,
+    en dos actos. Tres pasos donde debería haber uno.
+  </p>
+
+  <div class="callout crit">
+    <span class="tag">La causa de fondo</span>
+    <p class="big">El borrador dejó de ser una excepción y se volvió el estado normal.</p>
+    <p>
+      El ingreso no pregunta precio ni fotos, aunque es justo el momento en que la mercancía
+      está en la mano. Así, toda compra nace incompleta por diseño, y alguien tiene que volver
+      artículo por artículo a terminarla. Un artículo olvidado en borrador es invisible: no está
+      en la vitrina y nadie se entera.
+    </p>
+  </div>
+
+  <h3>El rediseño</h3>
+
+  <ol>
+    <li><strong>Pedir precio y fotos en el ingreso.</strong> <code>EntryLineIn</code> gana
+      <code>sale_price</code> y <code>photos</code>, ambos opcionales. Si el producto ya existe
+      y ya tiene precio, no se vuelve a preguntar — se muestra el vigente.</li>
+    <li><strong>Publicar solo si está completo.</strong> Si la línea trae lo necesario, el ingreso
+      publica el lote de una: emite el código y queda <code>available</code>. El borrador vuelve a
+      significar lo que debería: “a esto le falta algo”.</li>
+    <li><strong>Un solo botón en el diálogo.</strong> “Publicar” guarda precio, guarda fotos y publica
+      por dentro. Que sean tres llamadas al backend es problema del código, no del usuario.</li>
+    <li><strong>Bandeja de pendientes.</strong> Contador visible “N artículos sin publicar” en
+      Inventario, con filtro directo.</li>
+  </ol>
+
+  <h3>Y el hallazgo grande: los remates rehacen trabajo ya hecho</h3>
+
+  <p>
+    Al crear un contrato de empeño se suben las fotos de cada prenda; quedan en
+    <code>contract_item.photos</code>. Al rematar, el sistema crea el artículo de inventario
+    <strong>sin copiarlas</strong>: <code>AuctionItemInput</code> lleva categoría, descripción y avalúo,
+    pero no las fotos.
+  </p>
+
+  <div class="callout good">
+    <span class="tag">Una línea de código, mucha fricción menos</span>
+    <p class="big">Las fotos del remate ya existen. Solo hay que copiarlas.</p>
+    <p>
+      Eso elimina de raíz el “toca subir la imagen si no, no deja” para todo artículo rematado —
+      que en una compraventa es buena parte del inventario. Además el costo ya lo calcula el remate
+      (saldo de capital + intereses), así que el precio sugerido puede salir de ahí con un margen.
+    </p>
+  </div>
+
+  <h3>8 · Sistecrédito no puede pagar a un proveedor</h3>
+
+  <p>
+    Confirmado en <code>AccountPicker.tsx</code>: cuando el medio de pago es “otro”, el selector ofrece
+    las cuentas <code>bank</code> <strong>y</strong> las <code>settlement</code>, sin mirar si la plata
+    entra o sale. Y una cuenta <code>settlement</code> es <strong>una cuenta por cobrar</strong>:
+    representa plata que alguien te debe. Nunca puede ser la fuente de un pago.
+  </p>
+
+  <p>
+    El arreglo son dos capas, porque la UI oculta pero no protege:
+  </p>
+
+  <ul>
+    <li><strong>Front:</strong> <code>AccountPicker</code> recibe la dirección del movimiento
+      (<code>in</code> / <code>out</code>) y con <code>out</code> excluye las cuentas por cobrar.</li>
+    <li><strong>Backend:</strong> <code>resolve_account_for_movement</code> rechaza una cuenta
+      <code>settlement</code> como origen de una salida, con código propio
+      <code>ACCOUNT_CANNOT_FUND_PAYMENT</code>. La única salida legítima de esa cuenta es la
+      liquidación, que ya tiene su propio endpoint.</li>
+  </ul>
+
+  <hr class="divider" style="margin-top:2.5rem">
+
+  <h2>Segundo: lo que ya existe y no se ve</h2>
+
+  <h3>3 · Comprar varios artículos a un proveedor ya funciona</h3>
+
+  <p>
+    El formulario de ingreso tiene un botón <strong>“Agregar artículo”</strong> y el backend recibe una
+    lista de líneas. Un ingreso es una compra con N artículos, un solo costo total y un solo movimiento
+    de caja. La capacidad está completa.
+  </p>
+
+  <p>El problema es la forma:</p>
+
+  <ul>
+    <li>Cada línea es un bloque enorme: nombre, tres selectores de categoría en cascada, costo,
+      cantidad y descripción. Diez artículos son una pantalla interminable.</li>
+    <li>El buscador de “ya lo compré antes” está <strong>dentro de cada línea</strong>. Para reponer
+      diez productos conocidos hay que crear diez bloques y buscar diez veces.</li>
+  </ul>
+
+  <div class="opt c">
+    <div class="opt-head">
+      <p class="opt-title">Convertirlo en un carrito de compra</p>
+      <span class="chip small">Chico</span>
+    </div>
+    <p>
+      Un buscador <strong>arriba, uno solo</strong>, que agrega líneas. Se elige el producto ya
+      conocido y la línea entra llena: solo pide costo y cantidad, colapsada a una fila de tabla.
+      Si el producto no existe, “Crear nuevo” abre el bloque completo. Las líneas resueltas se ven
+      como filas compactas y se expanden al tocarlas — diez artículos caben en pantalla.
+    </p>
+    <p>
+      Con el proveedor elegido arriba, el buscador se filtra a lo que ya se le compró. Y un botón
+      <strong>“Repetir última compra”</strong> precarga todas las líneas del pedido anterior, que es
+      lo que hace cualquier ERP y es exactamente el caso de reposición.
+    </p>
+  </div>
+
+  <h3>1 · La mitad de los filtros ya está en el backend</h3>
+
+  <p>
+    <code>GET /inventory/items</code> acepta hoy <code>status</code>, <code>q</code>,
+    <code>cat1/2/3_id</code>, <code>supplier_id</code> y <code>origin</code>.
+    El front usa los primeros cuatro. <strong>Proveedor y origen ya funcionan y nadie los ve</strong> —
+    exponerlos no toca el backend.
+  </p>
+
+  <p>Los huecos reales están en otro lado:</p>
+
+  <div class="tw">
+    <table>
+      <thead>
+        <tr><th>Vista</th><th>Filtros hoy</th><th>Lo que falta</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Lotes</td>
+          <td>estado, texto, categorías</td>
+          <td>Exponer proveedor y origen; agregar rango de fechas</td>
+        </tr>
+        <tr>
+          <td>Productos <em>(la pestaña principal)</em></td>
+          <td>solo texto</td>
+          <td>Categorías, proveedor, “solo con stock”, activos</td>
+        </tr>
+        <tr>
+          <td>Ingresos</td>
+          <td><strong>ninguno</strong></td>
+          <td>Proveedor, tipo, <strong>estado de pago</strong>, rango de fechas, nº de factura</td>
+        </tr>
+        <tr>
+          <td>Egresos</td>
+          <td><strong>ninguno</strong></td>
+          <td>Tipo de egreso, rango de fechas</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <p>
+    El más grave es Ingresos sin filtro de estado de pago: significa que
+    <strong>“¿qué compras tengo por pagar?” no tiene respuesta en la app</strong>, aunque el dato
+    esté guardado en cada fila. Se enlaza directo con el punto 11.
+  </p>
+
+  <p>
+    Detalle de diseño que conviene resolver de una vez: <strong>guardar los filtros en la URL</strong>
+    (search params del router). Así sobreviven a un F5 y un filtro útil se puede pasar por WhatsApp
+    como un link.
+  </p>
+
+  <hr class="divider" style="margin-top:2.5rem">
+
+  <h2>Tercero: lo que no existe y hace falta</h2>
+
+  <h3>4 · Consignar el efectivo — hoy no hay forma correcta de registrarlo</h3>
+
+  <p>
+    El módulo de cuentas sabe liquidar una cuenta por cobrar (Sistecrédito consigna lo que debía),
+    pero <strong>no sabe mover plata entre dos cuentas propias</strong>. Sacar el efectivo del cajón
+    y llevarlo al banco no tiene operación. Quedan dos salidas y las dos son malas:
+  </p>
+
+  <ul>
+    <li><strong>Registrarlo como gasto</strong> — falsea la utilidad. Es exactamente el error que
+      el proyecto ya se ganó a los golpes con el capital de los contratos.</li>
+    <li><strong>No registrarlo</strong> — el saldo del banco queda mentiroso y el efectivo esperado
+      del día siguiente queda inflado, así que el arqueo descuadra sin culpa del cajero.</li>
+  </ul>
+
+  <div class="callout good">
+    <span class="tag">El principio</span>
+    <p class="big">Un traslado no es ingreso ni gasto: es la misma plata en otro bolsillo.</p>
+    <p>
+      No toca el estado de resultados, solo mueve saldos. Es el mismo razonamiento que ya está
+      escrito en el proyecto — “el interés es ingreso; el capital recuperado no” — aplicado al
+      efectivo.
+    </p>
+  </div>
+
+  <p>La forma profesional, concreta:</p>
+
+  <ul>
+    <li><code>POST /accounts/transfers</code> con origen, destino, monto, fecha y nota.
+      Permiso propio <code>accounts.transfer</code> (especial: mueve plata), idempotente y auditado.</li>
+    <li>Genera dos movimientos con conceptos <strong>nuevos</strong> <code>transfer_out</code> y
+      <code>transfer_in</code>, módulo <code>general</code>. Conceptos nuevos y no
+      <code>adjustment</code>: un ajuste significa “el sistema no cuadra con la realidad”, y un
+      traslado sí cuadra. Además así los reportes pueden excluirlos del cálculo de ingresos y gastos
+      sin ambigüedad.</li>
+    <li>Si el origen es efectivo, exige caja abierta y <strong>baja el efectivo esperado del cierre</strong> —
+      que es justo lo correcto: se consignó, ya no está en el cajón.</li>
+    <li>En el acta de cierre, sección propia <strong>“Traslados”</strong>, separada de gastos.</li>
+  </ul>
+
+  <div class="callout warn">
+    <span class="tag">Cuidado con el orden</span>
+    <p class="big">El traslado va antes del cierre, nunca después.</p>
+    <p>
+      Una sesión cerrada es inmutable — meterle un movimiento invalidaría un acta ya cuadrada e
+      impresa. Así que el flujo natural es un botón <strong>“Consignar efectivo”</strong> en el panel
+      de caja, y el cierre lo ve ya reflejado. El ritual real de una compraventa —dejar una base fija
+      en el cajón y consignar el resto— se puede ofrecer ahí mismo: “base para mañana: $200.000,
+      consignar: el resto”.
+    </p>
+  </div>
+
+  <h3>5 · Histórico de caja con permiso propio</h3>
+
+  <p>
+    Hoy <code>cashbox.view</code> abre todo: la sesión de hoy, el listado completo de sesiones y el
+    reporte de cualquier cierre pasado. No hay forma de dar “solo el día de hoy”.
+  </p>
+
+  <p>La partición correcta:</p>
+
+  <div class="tw">
+    <table>
+      <thead>
+        <tr><th>Endpoint</th><th>Permiso hoy</th><th>Permiso propuesto</th></tr>
+      </thead>
+      <tbody>
+        <tr><td><code>/sessions/current</code></td><td><code>cashbox.view</code></td><td>igual</td></tr>
+        <tr><td><code>/sessions</code> (listado)</td><td><code>cashbox.view</code></td><td><code>cashbox.view_history</code></td></tr>
+        <tr><td><code>/sessions/{id}</code> y <code>/report</code></td><td><code>cashbox.view</code></td><td><code>view</code> si es la sesión de hoy; <code>view_history</code> si no</td></tr>
+        <tr><td><code>/reports/closings</code></td><td><code>reports.view</code></td><td>+ <code>cashbox.view_history</code></td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="callout warn">
+    <span class="tag">La trampa</span>
+    <p class="big">Si se cierra la caja y se deja abierto el reporte, el permiso no sirve de nada.</p>
+    <p>
+      <code>/reports/closings</code> expone exactamente el mismo dato desde el módulo de reportes.
+      Quitarle el histórico al cajero por un lado y dejárselo por el otro es teatro. Los dos caminos
+      tienen que exigir lo mismo.
+    </p>
+  </div>
+
+  <p>
+    Y siguiendo la regla que el proyecto ya fijó al crear <code>catalogs.view</code>:
+    <strong>nadie pierde lo que ya tenía</strong>. La migración le otorga
+    <code>cashbox.view_history</code> a todos los roles que hoy tienen <code>cashbox.view</code>.
+    Lo que se gana no es restringir hoy, sino que el permiso <em>exista</em> y se pueda quitar a
+    conciencia desde la matriz.
+  </p>
+
+  <h3>10 · Qué tipos de ingreso de mercancía debería haber</h3>
+
+  <p>
+    Hoy son dos visibles: <strong>Compra</strong> y <strong>Otro</strong> (más <code>auction</code>,
+    que usa el remate por dentro). “Otro” es un cajón de sastre, y un cajón de sastre hace imposible
+    responder de dónde salió la mercancía — que es media contabilidad de inventario.
+  </p>
+
+  <p>
+    Lo que tendría un sistema contable, y cuáles aplican a este negocio:
+  </p>
+
+  <div class="tw">
+    <table>
+      <thead>
+        <tr><th>Tipo</th><th>Toca caja</th><th>Costo del lote</th><th>¿Aplica?</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>Compra a proveedor</td><td>Sí, o queda por pagar</td><td>Lo pagado</td><td>Ya existe</td></tr>
+        <tr><td>Remate de contrato</td><td>No</td><td>Capital + intereses</td><td>Ya existe</td></tr>
+        <tr><td><strong>Inventario inicial</strong></td><td>No</td><td>Declarado por el dueño</td><td><strong>Urgente</strong></td></tr>
+        <tr><td><strong>Sobrante de conteo</strong></td><td>No</td><td>Costo estimado</td><td><strong>Sí</strong></td></tr>
+        <tr><td>Devolución de cliente</td><td>Sí, sale plata</td><td>El costo original del lote</td><td>Sí, fase 2</td></tr>
+        <tr><td>Traslado entre bodegas</td><td>No</td><td>Costo de origen</td><td>No — una sola sede</td></tr>
+        <tr><td>Producción / armado</td><td>No</td><td>Suma de componentes</td><td>No</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <p><strong>Inventario inicial es el urgente</strong>, y por una razón de entrega: cuando la
+  compraventa arranque con el sistema ya tiene mercancía en la vitrina. Hoy solo puede cargarla como
+  “Otro” —que no dice nada— o como una compra falsa, que además le sacaría plata a la caja que nunca
+  salió. Debe existir, no tocar caja, y quedar marcado para que no contamine el costo de mercancía
+  comprada del período.</p>
+
+  <p><strong>Sobrante de conteo</strong> cierra una asimetría evidente: hoy existe el egreso por
+  ajuste, así que el inventario físico solo puede <em>bajar</em>. Si al contar sobra una pieza, no hay
+  cómo registrarla.</p>
+
+  <p>Y en la contraparte, los <strong>egresos</strong> —hoy ajuste, daño, devolución a proveedor y uso
+  interno— deberían ganar <strong>pérdida / hurto</strong>, que contablemente no es lo mismo que un
+  daño y suele necesitar denuncia.</p>
+
+  <p>
+    Sobre “Otro”: conviene conservarlo, pero <strong>exigiendo motivo</strong>. Un cajón de sastre que
+    obliga a explicarse al menos deja rastro.
+  </p>
+
+  <h3>9 · “Transferencias” y “Otros medios” son un residuo de la migración</h3>
+
+  <p>
+    Vienen de la migración que creó el catálogo de cuentas. Había que mapear el enum viejo de medios
+    de pago (efectivo / transferencia / otro) a cuentas reales para no perder el histórico, así que se
+    fabricó una cuenta por cada valor del enum. Tenía todo el sentido <em>ahí</em>.
+  </p>
+
+  <p>
+    El problema es que el alta de empresas nuevas las sigue creando. Y una empresa nueva no tiene
+    historia que mapear: nace con una cuenta llamada “Transferencias”, que es precisamente lo que el
+    módulo de cuentas vino a eliminar. <strong>Una cuenta debe decir dónde está la plata</strong> —
+    “Bancolombia ahorros 1234”, no “Transferencias”.
+  </p>
+
+  <ul>
+    <li><strong>Empresas nuevas:</strong> sembrar solo <strong>“Caja principal”</strong>. Sin ella no
+      se puede cobrar. Las demás las crea el dueño con el nombre real de su banco, en un paso de
+      arranque: “¿dónde recibes la plata?”.</li>
+    <li><strong>La empresa actual:</strong> no se pueden borrar si ya tienen movimientos enlazados —
+      se <strong>renombran</strong>. “Transferencias” pasa a ser el banco real. “Otros medios”, si no
+      tiene movimientos, se desactiva; si los tiene, se renombra a algo honesto y se desactiva para
+      que no se ofrezca en operaciones nuevas.</li>
+  </ul>
+
+  <hr class="divider" style="margin-top:2.5rem">
+
+  <h2>Cuarto: los reportes que faltan</h2>
+
+  <h3>2 · El proveedor es el hermano pobre del cliente</h3>
+
+  <p>
+    El cliente tiene ficha con historial cruzado de contratos y compras. El proveedor tiene un
+    formulario de creación y nada más. No hay forma de responder <em>“¿cuánto le he comprado a este
+    proveedor?”</em> ni <em>“¿quién me vende más barato este producto?”</em> — aunque el dato está
+    completo en la base.
+  </p>
+
+  <ul>
+    <li><strong>Ficha de proveedor</strong>, espejo de la del cliente: total comprado, número de
+      compras, <strong>saldo pendiente de pago</strong>, últimas compras y productos que le compras.</li>
+    <li><strong>Historial de compras por producto</strong>: fecha, proveedor, cantidad y costo
+      unitario. Eso responde cómo se movió el costo y a quién conviene comprarle. La lista de
+      productos ya insinúa esto mostrando el rango de costos entre lotes, pero no deja abrirlo.</li>
+  </ul>
+
+  <h3>11 · Lo que pediría un contador, en orden</h3>
+
+  <div class="opt d">
+    <div class="opt-head">
+      <p class="opt-title">1. Cuentas por pagar</p>
+      <span class="chip big">Lo primero</span>
+    </div>
+    <p>
+      Cada compra ya sabe si está pagada o pendiente, pero no hay ninguna pantalla que sume
+      <em>“¿cuánto debo, a quién, y desde hace cuánto?”</em>. Agrupado por proveedor y con antigüedad
+      (0–30 / 31–60 / +60 días). Es el reporte que convierte un dato guardado en información útil.
+    </p>
+  </div>
+
+  <div class="opt b">
+    <div class="opt-head">
+      <p class="opt-title">2. Valorización del inventario</p>
+      <span class="chip small">Barato</span>
+    </div>
+    <p>
+      “¿Cuánta plata tengo en mercancía?” — la suma del costo por la cantidad disponible. El cálculo
+      es trivial y el valor es alto: es el activo más grande del negocio y hoy no se puede consultar.
+    </p>
+  </div>
+
+  <div class="opt c">
+    <div class="opt-head">
+      <p class="opt-title">3. Kardex por producto</p>
+      <span class="chip mid">Mediano</span>
+    </div>
+    <p>
+      Todos los movimientos de un producto en orden —entradas, salidas, ventas, ajustes— con saldo
+      corriente de unidades y de costo. Es <em>la</em> vista contable de inventario. Los datos ya
+      existen repartidos en tres tablas; falta unificarlos en una línea de tiempo.
+    </p>
+  </div>
+
+  <div class="opt c">
+    <div class="opt-head">
+      <p class="opt-title">4. Mercancía sin rotación</p>
+      <span class="chip small">Chico</span>
+    </div>
+    <p>
+      Artículos disponibles con más de N días sin venderse. En una compraventa eso es plata congelada
+      en la vitrina, y es la base de cualquier decisión de descuento o remate.
+    </p>
+  </div>
+
+  <div class="opt a">
+    <div class="opt-head">
+      <p class="opt-title">5. Estado de resultados unificado</p>
+      <span class="chip mid">Mediano</span>
+    </div>
+    <p>
+      Hoy la utilidad de tienda y el rendimiento del empeño viven en dos reportes separados —
+      correctamente, porque se miden distinto. Falta la vista de arriba: ingresos − costo de ventas −
+      gastos = utilidad, con los dos módulos y su comparación contra el período anterior.
+    </p>
+  </div>
+
+  <div class="opt a">
+    <div class="opt-head">
+      <p class="opt-title">6. Extracto por cuenta</p>
+      <span class="chip small">Chico</span>
+    </div>
+    <p>
+      Movimientos de una cuenta con saldo corriente, para conciliar contra el extracto del banco.
+      Hoy la cuenta muestra su saldo pero no cómo llegó a él, que es justo lo que se necesita para
+      cuadrar.
+    </p>
+  </div>
+
+  <hr class="divider" style="margin-top:2.5rem">
+
+  <h2>El orden propuesto</h2>
+
+  <p>
+    Cuatro tandas. La primera son arreglos de bugs sin migraciones: se puede desplegar sola y ya se
+    siente. La segunda toca el modelo, así que va junta para no encadenar migraciones.
+  </p>
+
+  <div class="opt b">
+    <div class="opt-head">
+      <p class="opt-title">Tanda A · Bugs y ganancias inmediatas</p>
+      <span class="chip small">Hecha · 21/08/2026</span>
+    </div>
+    <p>
+      El precio que se perdía (7 parcial) · Sistecrédito fuera de los pagos, en front y backend (8) ·
+      las fotos del contrato heredadas al rematar (7) · los filtros de proveedor y origen expuestos
+      (1 parcial) · las cuentas genéricas dejan de sembrarse (9).
+    </p>
+    <p>
+      Sin migraciones, así que se despliega sola. <strong>235 tests backend</strong> (dos nuevos) y
+      104 front, todo en verde. Detalle en <code>docs/IMPLEMENTATION.md</code>.
+    </p>
+    <p>
+      Quedó fuera el <strong>renombrado de las cuentas que ya existen</strong>: las dos empresas de la
+      base de desarrollo son demo y QA, no un cliente real, así que ponerles el nombre de un banco de
+      verdad no aplica todavía. Esa decisión va cuando exista la empresa del cliente.
+    </p>
+  </div>
+
+  <div class="opt c">
+    <div class="opt-head">
+      <p class="opt-title">Tanda B · Modelo y permisos</p>
+      <span class="chip mid">3 migraciones</span>
+    </div>
+    <p>
+      Permiso de histórico de caja (5) · traslados entre cuentas y su reflejo en el cierre (4) ·
+      tipos de ingreso nuevos, empezando por inventario inicial (10). Van juntas porque las tres
+      tocan enums y catálogo de permisos, y el orden de despliegue importa.
+    </p>
+  </div>
+
+  <div class="opt b">
+    <div class="opt-head">
+      <p class="opt-title">Tanda C · Flujos</p>
+      <span class="chip mid">Front pesado</span>
+    </div>
+    <p>
+      El rediseño completo del ingreso: precio y fotos en la compra, publicación automática (7) ·
+      el carrito de compra multi-artículo (3) · filtros completos con estado en la URL (1).
+    </p>
+  </div>
+
+  <div class="opt a">
+    <div class="opt-head">
+      <p class="opt-title">Tanda D · Información</p>
+      <span class="chip neutral">Incremental</span>
+    </div>
+    <p>
+      Ficha de proveedor e historial por producto (2) · cuentas por pagar, valorización, kardex y
+      el resto de reportes (11). Cada uno entrega valor solo, así que puede irse soltando de a poco.
+    </p>
+  </div>
+
+  <div class="callout good">
+    <span class="tag">Si hubiera que elegir una sola cosa</span>
+    <p class="big">Copiar las fotos del contrato al rematar, y arreglar el precio que se pierde.</p>
+    <p>
+      Son las dos correcciones más pequeñas de toda la lista y juntas eliminan la mayor parte de la
+      fricción del punto 7, que es el que más duele todos los días.
+    </p>
+  </div>
+
+  <footer>
+    Revisión del código de <code>backend-starter</code> y <code>frontend-starter</code> · 21/08/2026<br>
+    Fuentes principales: <code>inventory/service.py</code>, <code>inventory/schemas.py</code>,
+    <code>accounts/service.py</code>, <code>cashbox/router.py</code>, <code>contracts/service.py</code>,
+    <code>AccountPicker.tsx</code>, <code>ItemEditDialog.tsx</code>, <code>EntryFormPage.tsx</code>,
+    migraciones <code>00006</code>, <code>00007</code>, <code>00024</code>, <code>00030</code>.
+  </footer>
+
+</div>

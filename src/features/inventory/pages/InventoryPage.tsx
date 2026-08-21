@@ -14,6 +14,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { cn } from '@/lib/utils'
 import { formatDate, formatDateTime } from '@/lib/dates'
 import { useCategories, type Category } from '@/lib/catalogs/categories'
+import { useSuppliers } from '@/lib/catalogs/suppliers'
 import { useEntriesList, useExitsList, useItemsList, useProductsList, type Entry, type Exit, type Product } from '@/features/inventory/api'
 import type { Item } from '@/lib/inventory/items'
 import { ItemEditDialog } from '@/features/inventory/components/ItemEditDialog'
@@ -39,11 +40,56 @@ const EXIT_TYPE_LABELS: Record<string, string> = {
   internal_use: 'Uso interno',
 }
 
+/** De dónde salió el artículo. Espeja el enum `item_origin` del backend. */
+const ORIGIN_OPTIONS = [
+  { value: 'supplier', label: 'Comprado a proveedor' },
+  { value: 'auction', label: 'Remate de contrato' },
+  { value: 'other', label: 'Otro origen' },
+]
+
 /**
- * Un nivel del filtro de categorías. `__all__` como centinela porque Radix
+ * Un filtro desplegable de la barra. `__all__` como centinela porque Radix
  * `Select` no admite `value=""` en un `SelectItem` (lo reserva para "sin
  * valor"), mismo truco que ya usa `EntryFormPage` con `__none__`.
+ *
+ * Genérico sobre `{value,label}` y no sobre `Category`: la barra filtra
+ * también por proveedor y por origen, y tres selectores idénticos con tres
+ * componentes distintos era la forma de que se fueran separando.
  */
+function FilterSelect({
+  value,
+  onChange,
+  options,
+  placeholder,
+  disabled,
+}: {
+  value: string
+  onChange: (value: string) => void
+  options: { value: string; label: string }[]
+  placeholder: string
+  disabled?: boolean
+}) {
+  return (
+    <Select value={value || '__all__'} onValueChange={(v) => onChange(v === '__all__' ? '' : v)} disabled={disabled}>
+      <SelectTrigger className="w-auto min-w-44">
+        {/* Radix solo resuelve el texto de SelectValue desde un SelectItem ya
+            montado — con un valor puesto por código el trigger se vería vacío
+            sin esto (mismo hallazgo que en ItemEditDialog). */}
+        <SelectValue placeholder={placeholder}>{options.find((o) => o.value === value)?.label ?? placeholder}</SelectValue>
+      </SelectTrigger>
+      <SelectContent>
+        <SelectItem value="__all__">{placeholder}</SelectItem>
+        {options.map((o) => (
+          <SelectItem key={o.value} value={o.value}>
+            {o.label}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
+  )
+}
+
+/** Un nivel del árbol de categorías, sobre `FilterSelect`. */
 function CategorySelect({
   value,
   onChange,
@@ -58,22 +104,13 @@ function CategorySelect({
   disabled?: boolean
 }) {
   return (
-    <Select value={value || '__all__'} onValueChange={(v) => onChange(v === '__all__' ? '' : v)} disabled={disabled}>
-      <SelectTrigger className="w-auto min-w-44">
-        {/* Radix solo resuelve el texto de SelectValue desde un SelectItem ya
-            montado — con un valor puesto por código el trigger se vería vacío
-            sin esto (mismo hallazgo que en ItemEditDialog). */}
-        <SelectValue placeholder={placeholder}>{options.find((c) => c.id === value)?.name ?? placeholder}</SelectValue>
-      </SelectTrigger>
-      <SelectContent>
-        <SelectItem value="__all__">{placeholder}</SelectItem>
-        {options.map((c) => (
-          <SelectItem key={c.id} value={c.id}>
-            {c.name}
-          </SelectItem>
-        ))}
-      </SelectContent>
-    </Select>
+    <FilterSelect
+      value={value}
+      onChange={onChange}
+      options={options.map((c) => ({ value: c.id, label: c.name }))}
+      placeholder={placeholder}
+      disabled={disabled}
+    />
   )
 }
 
@@ -171,7 +208,14 @@ function ItemsTab() {
   const [cat1Id, setCat1Id] = useState('')
   const [cat2Id, setCat2Id] = useState('')
   const [cat3Id, setCat3Id] = useState('')
+  // Proveedor y origen YA existían como filtros del backend (`supplier_id`,
+  // `origin` en `GET /inventory/items`) y ninguna pantalla los ofrecía.
+  // Exponerlos no costó backend: responden "¿qué le compré a este proveedor?"
+  // y "¿qué de esto salió de un remate?", que eran preguntas sin respuesta.
+  const [supplierId, setSupplierId] = useState('')
+  const [origin, setOrigin] = useState('')
   const { data: categories } = useCategories()
+  const { data: suppliers } = useSuppliers()
   const { data, isPending, isFetching, isError, error, refetch, hasNextPage, isFetchingNextPage, fetchNextPage } = useItemsList({
     status,
     q,
@@ -181,6 +225,8 @@ function ItemsTab() {
     cat1_id: cat3Id || cat2Id ? '' : cat1Id,
     cat2_id: cat3Id ? '' : cat2Id,
     cat3_id: cat3Id,
+    supplier_id: supplierId,
+    origin,
   })
   const [editingItem, setEditingItem] = useState<Item | null>(null)
   const [dialogNonce, setDialogNonce] = useState(0)
@@ -188,7 +234,17 @@ function ItemsTab() {
   const level1Options = (categories ?? []).filter((c) => c.level === 1 && c.active)
   const level2Options = (categories ?? []).filter((c) => c.level === 2 && c.active && c.parent_id === cat1Id)
   const level3Options = (categories ?? []).filter((c) => c.level === 3 && c.active && c.parent_id === cat2Id)
-  const hasFilters = !!(q || status || cat1Id)
+  const hasFilters = !!(q || status || cat1Id || supplierId || origin)
+
+  function clearFilters() {
+    setQ('')
+    setStatus('')
+    setCat1Id('')
+    setCat2Id('')
+    setCat3Id('')
+    setSupplierId('')
+    setOrigin('')
+  }
 
   const items = data?.pages.flatMap((page) => page.items) ?? []
 
@@ -247,18 +303,31 @@ function ItemsTab() {
           />
         )}
         {cat2Id && <CategorySelect value={cat3Id} onChange={setCat3Id} options={level3Options} placeholder="Todo tipo" />}
+
+        {/* Origen y proveedor se cruzan: un artículo de remate no tiene
+            proveedor, así que elegir "Remate" apaga el otro selector en vez de
+            ofrecer una combinación que nunca devuelve nada. */}
+        <FilterSelect
+          value={origin}
+          onChange={(v) => {
+            setOrigin(v)
+            if (v === 'auction') setSupplierId('')
+          }}
+          options={ORIGIN_OPTIONS}
+          placeholder="Todo origen"
+        />
+        {origin !== 'auction' && (
+          <FilterSelect
+            value={supplierId}
+            onChange={setSupplierId}
+            options={(suppliers ?? []).filter((s) => s.active).map((s) => ({ value: s.id, label: s.name }))}
+            placeholder="Todo proveedor"
+            disabled={!suppliers}
+          />
+        )}
+
         {hasFilters && (
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => {
-              setQ('')
-              setStatus('')
-              setCat1Id('')
-              setCat2Id('')
-              setCat3Id('')
-            }}
-          >
+          <Button variant="ghost" size="sm" onClick={clearFilters}>
             Limpiar filtros
           </Button>
         )}

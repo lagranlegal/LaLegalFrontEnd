@@ -196,7 +196,13 @@ export function ExpenseFormDialog({ open, onOpenChange }: { open: boolean; onOpe
               control={control}
               name="account_id"
               render={({ field }) => (
-                <AccountPicker id="expense-account" paymentMethod={selectedMethod} value={field.value} onChange={field.onChange} />
+                <AccountPicker
+                  id="expense-account"
+                  paymentMethod={selectedMethod}
+                  direction="out"
+                  value={field.value}
+                  onChange={field.onChange}
+                />
               )}
             />
           </div>

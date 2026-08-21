@@ -351,7 +351,13 @@ export function EntryFormPage() {
                   control={control}
                   name="account_id"
                   render={({ field }) => (
-                    <AccountPicker id="entry-account" paymentMethod={paymentMethod} value={field.value ?? null} onChange={field.onChange} />
+                    <AccountPicker
+                      id="entry-account"
+                      paymentMethod={paymentMethod}
+                      direction="out"
+                      value={field.value ?? null}
+                      onChange={field.onChange}
+                    />
                   )}
                 />
               </div>

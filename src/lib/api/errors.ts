@@ -37,6 +37,12 @@ export const API_ERROR_CODES = [
   // correos. No hay nada roto, hay que esperar — decirle "no se pudo
   // invitar" al admin lo manda a buscar un problema que no existe.
   'INVITE_RATE_LIMITED',
+  // Se intentó pagar (compra, gasto, desembolso) desde una cuenta POR COBRAR
+  // —Sistecrédito, datáfono—, que es plata que todavía te deben y no un saldo
+  // disponible. El selector ya no las ofrece al pagar; este código cubre el
+  // caso de que llegue igual. Cae al banner genérico: el mensaje del backend
+  // ya explica qué elegir en su lugar.
+  'ACCOUNT_CANNOT_FUND_PAYMENT',
 ] as const
 
 export type ApiErrorCode = (typeof API_ERROR_CODES)[number]

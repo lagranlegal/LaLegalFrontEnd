@@ -99,26 +99,55 @@ export function ItemEditDialog({ open, onOpenChange, item }: { open: boolean; on
 
   const categoria = categories?.find((c) => c.id === item.cat3_id)?.name
   const hasUnsavedPhotos = JSON.stringify(photos) !== JSON.stringify(item.photos)
-  const canPublish = item.status === 'draft' && item.photos.length > 0 && Number(salePrice) > 0 && !hasUnsavedPhotos
+  // Se mira `photos` (lo que hay en pantalla) y no `item.photos` (lo guardado):
+  // publicar ahora guarda las fotos por dentro, así que subir una foto ya
+  // habilita el botón. Antes exigía además `!hasUnsavedPhotos`, lo que obligaba
+  // a guardar primero y publicar después — dos actos para una sola intención.
+  const canPublish = item.status === 'draft' && photos.length > 0 && Number(salePrice) > 0
+  const busy = updateItem.isPending || publishItem.isPending
 
-  async function handleSavePhotos() {
+  /**
+   * Publicar = fijar precio + guardar fotos + emitir código, en ese orden.
+   *
+   * POR QUÉ VAN LAS TRES JUNTAS: antes el diálogo mostraba el campo "Precio de
+   * venta" al lado de un único botón que decía "Guardar fotos", y ese botón
+   * mandaba SOLO las fotos (`ItemUpdateIn` del backend no acepta precio: el
+   * precio es del producto, no del lote). El precio digitado se descartaba en
+   * silencio y había que volver a escribirlo — el usuario lo reportó como "el
+   * valor a vender no se quedó guardado", y era literal.
+   *
+   * La corrección no es mandar el precio en el PATCH del lote —ahí no
+   * pertenece—, sino que el diálogo haga las llamadas que hagan falta sin que
+   * el usuario tenga que saber en qué tabla vive cada dato. `publish` ya fija
+   * el precio en el producto, así que basta con guardar las fotos antes.
+   */
+  async function handlePublish() {
+    if (!canPublish || busy) return
     setFormError(null)
     try {
-      await updateItem.mutateAsync({ itemId: item.id, body: { photos } })
-      toast.success('Fotos actualizadas')
-    } catch {
-      setFormError('No se pudieron guardar las fotos. Intenta de nuevo.')
-    }
-  }
-
-  async function handlePublish() {
-    if (!canPublish) return
-    try {
+      if (hasUnsavedPhotos) {
+        await updateItem.mutateAsync({ itemId: item.id, body: { photos } })
+      }
       const published = await publishItem.mutateAsync({ itemId: item.id, body: { sale_price: salePrice } })
       toast.success(`Lote publicado — código ${published.code}`)
       onOpenChange(false)
     } catch {
-      toast.error('No se pudo publicar el lote. Intenta de nuevo.')
+      setFormError('No se pudo publicar el lote. Revisa el precio y las fotos, e intenta de nuevo.')
+    }
+  }
+
+  /**
+   * Guardar sin publicar. Sigue existiendo porque a veces se sube la foto y el
+   * precio todavía no está decidido — pero ya no es un paso obligatorio del
+   * camino normal, solo una salida para dejar el trabajo a medias.
+   */
+  async function handleSaveDraft() {
+    setFormError(null)
+    try {
+      await updateItem.mutateAsync({ itemId: item.id, body: { photos } })
+      toast.success('Fotos guardadas — el lote sigue en borrador')
+    } catch {
+      setFormError('No se pudieron guardar las fotos. Intenta de nuevo.')
     }
   }
 
@@ -131,12 +160,14 @@ export function ItemEditDialog({ open, onOpenChange, item }: { open: boolean; on
       footer={
         item.status === 'draft' ? (
           <div className="flex w-full flex-col gap-2">
-            <Button type="button" className="w-full rounded-pill" disabled={!canPublish || publishItem.isPending} onClick={handlePublish}>
-              {publishItem.isPending ? 'Publicando…' : 'Publicar'}
+            <Button type="button" className="w-full rounded-pill" disabled={!canPublish || busy} onClick={handlePublish}>
+              {busy ? 'Publicando…' : 'Publicar'}
             </Button>
+            {/* Secundario y solo cuando hay algo sin guardar: el camino normal
+                es publicar de una. */}
             {hasUnsavedPhotos && (
-              <Button type="button" variant="outline" className="w-full rounded-pill" disabled={updateItem.isPending} onClick={handleSavePhotos}>
-                {updateItem.isPending ? 'Guardando…' : 'Guardar fotos'}
+              <Button type="button" variant="ghost" className="w-full rounded-pill" disabled={busy} onClick={handleSaveDraft}>
+                {updateItem.isPending ? 'Guardando…' : 'Guardar y seguir en borrador'}
               </Button>
             )}
           </div>
@@ -197,15 +228,17 @@ export function ItemEditDialog({ open, onOpenChange, item }: { open: boolean; on
                 Precio de venta
               </label>
               <MoneyInput id="item-sale-price" className="mt-1" value={salePrice} onChange={setSalePrice} />
-              <p className="mt-1 text-xs text-muted-foreground">Al publicar, este precio queda como el del producto.</p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Al publicar, este precio queda como el del producto y aplica a todos sus lotes.
+              </p>
             </div>
 
             <div>
               <p className="text-sm font-medium text-foreground">Fotos</p>
               <div className="mt-1">
-                <PhotoUploader value={photos} onChange={setPhotos} folder={`inventory/${item.id}`} disabled={updateItem.isPending} />
+                <PhotoUploader value={photos} onChange={setPhotos} folder={`inventory/${item.id}`} disabled={busy} />
               </div>
-              {hasUnsavedPhotos && photos.length > 0 && <p className="mt-1 text-xs text-muted-foreground">Guarda las fotos para poder publicar.</p>}
+              {photos.length === 0 && <p className="mt-1 text-xs text-muted-foreground">Se necesita al menos una foto para publicar.</p>}
             </div>
           </>
         )}

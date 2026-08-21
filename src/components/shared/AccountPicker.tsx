@@ -22,6 +22,7 @@ import { accountTypeLabel, defaultAccountTypeFor } from '@/lib/accounts/types'
  */
 export function AccountPicker({
   paymentMethod,
+  direction = 'in',
   value,
   onChange,
   id,
@@ -29,6 +30,18 @@ export function AccountPicker({
 }: {
   /** `cash` | `transfer` | `other` — decide qué cuentas se ofrecen. */
   paymentMethod: string
+  /**
+   * Hacia dónde va la plata. `in` cobra (venta, abono, liquidación recibida),
+   * `out` paga (compra a proveedor, gasto, desembolso de préstamo).
+   *
+   * Existe por una sola razón, y es un bug que se encontró en uso real: una
+   * cuenta `settlement` es una cuenta POR COBRAR —plata que Sistecrédito o el
+   * datáfono todavía te deben—, no un saldo disponible. Ofrecerla como origen
+   * de un pago dejaba elegir "pagarle al proveedor con Sistecrédito", que no
+   * existe como operación. El backend también lo rechaza ahora
+   * (`ACCOUNT_CANNOT_FUND_PAYMENT`): acá se oculta, allá se protege.
+   */
+  direction?: 'in' | 'out'
   value: string | null
   onChange: (accountId: string | null) => void
   id?: string
@@ -37,14 +50,15 @@ export function AccountPicker({
   const { data: accounts, isPending, error } = useAccounts()
   const wantedType = defaultAccountTypeFor(paymentMethod)
 
-  // Una cuenta `settlement` (Sistecrédito) se cobra con medio "otro", igual
-  // que Nequi o un bono — así que con `other` se ofrecen ambas: el usuario
-  // elige si esa plata ya entró al banco o si todavía se la deben.
-  const options = (accounts ?? []).filter((account) =>
-    paymentMethod === 'cash'
-      ? account.type === 'cash'
-      : account.type === 'bank' || account.type === 'settlement',
-  )
+  // Una cuenta `settlement` (Sistecrédito) se COBRA con medio "otro", igual
+  // que Nequi o un bono — así que al cobrar se ofrecen ambas y el usuario
+  // elige si esa plata ya entró al banco o si todavía se la deben. Al PAGAR
+  // nunca aparece: no se puede gastar lo que no ha llegado.
+  const options = (accounts ?? []).filter((account) => {
+    if (paymentMethod === 'cash') return account.type === 'cash'
+    if (account.type === 'settlement') return direction === 'in'
+    return account.type === 'bank'
+  })
 
   // Si el medio de pago cambia, la cuenta elegida puede dejar de ser válida
   // (pasar de efectivo a transferencia deja apuntando al cajón). Se

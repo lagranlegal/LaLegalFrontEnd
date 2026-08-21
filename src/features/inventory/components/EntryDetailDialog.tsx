@@ -69,7 +69,7 @@ function PayPendingPurchase({ entry }: { entry: Entry }) {
         </div>
         <div className="min-w-52">
           <label className="text-xs text-muted-foreground">¿De dónde sale?</label>
-          <AccountPicker paymentMethod={method} value={accountId} onChange={setAccountId} />
+          <AccountPicker paymentMethod={method} direction="out" value={accountId} onChange={setAccountId} />
         </div>
         <Button type="button" className="rounded-pill" disabled={payEntry.isPending} onClick={handlePay}>
           {payEntry.isPending ? 'Registrando…' : 'Registrar pago'}
