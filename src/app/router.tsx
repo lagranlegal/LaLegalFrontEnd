@@ -48,16 +48,19 @@ const rootRoute = createRootRouteWithContext<RouterContext>()({
 
 // ---- /auth/* — sin sesión requerida, sin sidebar (§9) ----
 
+// SIN guard de sesión en el layout: `/auth/callback` es hijo de esta ruta y
+// **necesita** una sesión para funcionar. `detectSessionInUrl` la crea al
+// procesar el link del correo ANTES de que corra cualquier `beforeLoad`, así
+// que un guard acá expulsaba al invitado a `/` y la pantalla de "Crea tu
+// contraseña" no se renderizaba nunca: el usuario entraba a la app sin
+// contraseña y, al cerrar sesión, no podía volver a entrar.
+//
+// El guard vive ahora en `loginRoute`, que es donde tiene sentido: lo que no
+// queremos es mostrarle el formulario de login a alguien que ya entró.
 const authLayoutRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/auth',
   component: AuthLayout,
-  beforeLoad: async () => {
-    const {
-      data: { session },
-    } = await supabase.auth.getSession()
-    if (session) throw redirect({ to: '/' })
-  },
 })
 
 const loginSearchSchema = z.object({
@@ -70,6 +73,12 @@ const loginRoute = createRoute({
   path: '/login',
   validateSearch: loginSearchSchema,
   component: LoginPage,
+  beforeLoad: async () => {
+    const {
+      data: { session },
+    } = await supabase.auth.getSession()
+    if (session) throw redirect({ to: '/' })
+  },
 })
 
 const authCallbackRoute = createRoute({

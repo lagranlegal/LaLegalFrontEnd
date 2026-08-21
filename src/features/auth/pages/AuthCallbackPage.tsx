@@ -20,11 +20,23 @@ const setPasswordSchema = z
 type SetPasswordValues = z.infer<typeof setPasswordSchema>
 
 /**
- * El correo de invitación de Supabase trae la sesión en la URL —
- * `detectSessionInUrl: true` (lib/auth/supabase.ts) ya la procesó al cargar
- * el cliente. Acá solo falta confirmar que quedó activa y pedir contraseña
- * (docs/ARCHITECTURE.md §4.3). El primer request al backend activa al
- * usuario (`invited → active`) automáticamente.
+ * Pantalla de "crea tu contraseña" — sirve para DOS flujos: la invitación
+ * inicial y la recuperación de contraseña. En ambos, Supabase trae la sesión
+ * en la URL y `detectSessionInUrl: true` (lib/auth/supabase.ts) ya la procesó
+ * al cargar el cliente; acá solo falta confirmar que quedó activa y pedir la
+ * contraseña. El primer request al backend activa al usuario
+ * (`invited → active`) automáticamente.
+ *
+ * El texto es deliberadamente neutro entre los dos casos en vez de detectar
+ * cuál es: `detectSessionInUrl` consume el fragmento de la URL al inicializar
+ * el cliente, antes de que este componente monte, así que cualquier detección
+ * basada en leer el hash sería frágil — y equivocarse mostraría un mensaje
+ * que contradice el correo que la persona acaba de abrir.
+ *
+ * OJO: esta ruta NO puede estar detrás de un guard de "si hay sesión, redirige
+ * a /". Tener sesión es su condición de funcionamiento, no un error. Ese guard
+ * vivía en el layout padre y hacía que el invitado entrara a la app sin haber
+ * puesto contraseña — y sin poder volver a entrar después de cerrar sesión.
  */
 export function AuthCallbackPage() {
   const navigate = useNavigate()
@@ -55,7 +67,10 @@ export function AuthCallbackPage() {
     return (
       <div className="w-full max-w-sm rounded-card border border-border bg-card p-card text-center shadow-card">
         <h1 className="text-xl font-semibold text-foreground">Link inválido o expirado</h1>
-        <p className="mt-2 text-sm text-muted-foreground">Pide a tu administrador que reenvíe la invitación.</p>
+        <p className="mt-2 text-sm text-muted-foreground">
+          Los enlaces caducan por seguridad. Vuelve a pedir uno desde “¿Olvidaste tu contraseña?” en la pantalla de
+          ingreso, o pide a tu administrador que reenvíe la invitación.
+        </p>
       </div>
     )
   }
@@ -63,7 +78,9 @@ export function AuthCallbackPage() {
   return (
     <div className="w-full max-w-sm rounded-card border border-border bg-card p-card shadow-card">
       <h1 className="text-2xl font-semibold text-foreground">Crea tu contraseña</h1>
-      <p className="mt-1 text-sm text-muted-foreground">Último paso para activar tu cuenta.</p>
+      <p className="mt-1 text-sm text-muted-foreground">
+        Con ella entrarás a tu cuenta de ahora en adelante.
+      </p>
 
       <form className="mt-6 flex flex-col gap-4" onSubmit={handleSubmit(onSubmit)} noValidate>
         <div>
@@ -97,7 +114,7 @@ export function AuthCallbackPage() {
         {setPassword.isError && <p className="rounded-input bg-danger-soft px-3 py-2 text-sm text-danger">No se pudo guardar la contraseña. Intenta de nuevo.</p>}
 
         <Button type="submit" disabled={setPassword.isPending} className="mt-2 w-full rounded-pill">
-          {setPassword.isPending ? 'Guardando…' : 'Activar cuenta'}
+          {setPassword.isPending ? 'Guardando…' : 'Guardar contraseña'}
         </Button>
       </form>
     </div>

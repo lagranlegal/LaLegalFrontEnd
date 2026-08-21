@@ -4,7 +4,7 @@ import { useForm } from 'react-hook-form'
 import { z } from 'zod'
 import { useNavigate, useSearch } from '@tanstack/react-router'
 import { Button } from '@/components/ui/button'
-import { useLogin } from '@/features/auth/api'
+import { useLogin, useRequestPasswordReset } from '@/features/auth/api'
 
 const loginSchema = z.object({
   email: z.string().min(1, 'El correo es obligatorio').email('Correo inválido'),
@@ -22,11 +22,24 @@ export function LoginPage() {
   const navigate = useNavigate()
   const search = useSearch({ from: '/auth/login' })
   const login = useLogin()
+  const requestReset = useRequestPasswordReset()
   const {
     register,
     handleSubmit,
+    getValues,
+    trigger,
     formState: { errors },
   } = useForm<LoginFormValues>({ resolver: zodResolver(loginSchema) })
+
+  /**
+   * Reusa el correo que ya está escrito arriba en vez de abrir otra pantalla
+   * que lo vuelva a pedir: quien llega acá es alguien que ya intentó entrar.
+   * Valida solo ese campo — la contraseña no hace falta para recuperarla.
+   */
+  async function onForgotPassword() {
+    if (!(await trigger('email'))) return
+    await requestReset.mutateAsync(getValues('email'))
+  }
 
   // El submit tiene DOS fases y `login.isPending` solo cubre la primera:
   // autenticar contra Supabase es rápido, pero después `navigate()` dispara el
@@ -94,6 +107,23 @@ export function LoginPage() {
 
         {login.isError && (
           <p className="rounded-input bg-danger-soft px-3 py-2 text-sm text-danger">Correo o contraseña incorrectos.</p>
+        )}
+
+        {/* Mismo mensaje exista o no la cuenta: confirmar cuáles correos están
+            registrados convertiría esta pantalla en un detector de usuarios. */}
+        {requestReset.isSuccess ? (
+          <p className="rounded-input bg-success-soft px-3 py-2 text-sm text-success">
+            Si ese correo tiene una cuenta, le llegará un enlace para crear una contraseña nueva.
+          </p>
+        ) : (
+          <button
+            type="button"
+            onClick={onForgotPassword}
+            disabled={requestReset.isPending}
+            className="self-start text-sm text-primary underline-offset-2 hover:underline disabled:opacity-60"
+          >
+            {requestReset.isPending ? 'Enviando…' : '¿Olvidaste tu contraseña?'}
+          </button>
         )}
 
         <Button type="submit" disabled={submitting} className="mt-2 w-full rounded-pill">

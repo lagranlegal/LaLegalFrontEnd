@@ -2,6 +2,48 @@
 
 > Registro vivo de qué existe en el código, cómo está armado y por qué se tomó cada decisión — para que cualquiera (humano o Claude Code) pueda retomar el proyecto sin releer todo el historial de commits. Se actualiza en cada paso del "Orden de implementación" de `CLAUDE.md`. No repite lo que ya está en `ARCHITECTURE.md`/`DESIGN_SYSTEM.md` (el qué-debería-ser); esto es el qué-hay-hoy y las decisiones concretas tomadas al construirlo.
 
+## El invitado entraba sin contraseña (21/08/2026)
+
+Encontrado probando el flujo de invitación de punta a punta: el usuario acepta, **queda dentro de la app sin que nadie le pida una contraseña**, y al cerrar sesión no puede volver a entrar nunca.
+
+### La causa
+
+`/auth/callback` es hijo de `authLayoutRoute`, que tenía un guard: *"si hay sesión, redirige a `/`"*. Perfectamente razonable para la pantalla de login — y letal para esta.
+
+`detectSessionInUrl: true` procesa el link del correo y **crea la sesión al inicializar el cliente de Supabase**, antes de que corra cualquier `beforeLoad`. Así que el guard veía sesión y expulsaba al invitado a `/`: `AuthCallbackPage` —la pantalla de "Crea tu contraseña", que existía y estaba bien hecha— **no se renderizaba jamás**.
+
+El guard pensado para que un usuario logueado no vea el formulario de login estaba bloqueando la única pantalla de auth cuya condición de funcionamiento **es** tener sesión.
+
+**El arreglo es mover el guard de `authLayoutRoute` a `loginRoute`**, que es donde su intención tiene sentido. Queda un comentario en la ruta explicando por qué no puede volver al layout.
+
+### Lo que el bug destapó: no había forma de volver a entrar
+
+Al revisar, no existía **ningún** camino de recuperación: sin "¿olvidaste tu contraseña?", sin reenvío de invitación, y sin endpoint para que el admin ayude. Un usuario sin contraseña (o que la olvidara) quedaba bloqueado de forma permanente.
+
+Se agregó recuperación por correo:
+
+- **`useRequestPasswordReset`** → `supabase.auth.resetPasswordForEmail`.
+- **Enlace en `LoginPage`**, que reusa el correo ya escrito arriba en vez de abrir otra pantalla a pedirlo: quien llega ahí es alguien que ya intentó entrar. Valida solo ese campo.
+- **Mismo mensaje exista o no la cuenta.** Confirmar qué correos están registrados convertiría la pantalla de login en un detector de usuarios.
+- **Redirige al MISMO `/auth/callback`.** Supabase crea la sesión desde el link en los dos flujos, así que la pantalla sirve para ambos: una ruta menos que mantener y una menos que registrar en la lista de Redirect URLs permitidas.
+
+### Por qué el texto de la pantalla es neutro y no detecta el flujo
+
+`AuthCallbackPage` ahora atiende invitación y recuperación. Detectar cuál es sería frágil: `detectSessionInUrl` **consume el fragmento de la URL** al inicializar el cliente, antes de que el componente monte, así que leer el hash no es confiable. Y equivocarse mostraría un mensaje que contradice el correo que la persona acaba de abrir.
+
+El texto quedó correcto para los dos casos ("Con ella entrarás a tu cuenta de ahora en adelante") en vez de adivinar. El estado de link inválido también menciona las dos salidas.
+
+### Verificación
+
+```
+npm run typecheck   # limpio
+npm run lint        # 0 errores
+npm run test        # 104/104
+npm run build       # sin errores
+```
+
+La prueba real es de navegador y la hace el cliente: aceptar una invitación nueva debe mostrar "Crea tu contraseña" **antes** de entrar a la app.
+
 ## Movimiento como token + gráficas (20/08/2026)
 
 Puntos 3 y 4 del cliente (*"mejorar todo el ui/ux animaciones en responsive"*, *"mejorar el diseño de gráficas y reportes"*). Pasada acotada y verificable, **no** un rediseño visual: eso es una decisión estética que hay que tomar con el cliente y referencias a la vista.

@@ -21,6 +21,31 @@ export function useSetPassword() {
   })
 }
 
+/**
+ * Recuperación de contraseña — la única salida para quien la olvidó.
+ *
+ * Sin esto un usuario queda bloqueado para siempre: el admin no puede
+ * cambiarle la contraseña (no existe endpoint) y no hay otro camino de vuelta.
+ *
+ * El correo lleva al MISMO `/auth/callback` que la invitación: Supabase crea
+ * la sesión desde el link en los dos casos y la pantalla solo cambia el texto.
+ * Una ruta menos que mantener, y una menos que registrar en la lista de
+ * Redirect URLs permitidas del proyecto (ver docs/DEPLOY.md).
+ *
+ * Nunca revela si el correo existe — responde igual en ambos casos, para no
+ * convertir la pantalla en un detector de cuentas.
+ */
+export function useRequestPasswordReset() {
+  return useMutation({
+    mutationFn: async (email: string) => {
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${window.location.origin}/auth/callback`,
+      })
+      if (error) throw error
+    },
+  })
+}
+
 export function useLogout() {
   const queryClient = useQueryClient()
   return useMutation({
