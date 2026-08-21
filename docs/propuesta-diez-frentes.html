@@ -696,15 +696,25 @@
     </p>
   </div>
 
-  <div class="opt c">
+  <div class="opt b">
     <div class="opt-head">
       <p class="opt-title">Tanda B · Modelo y permisos</p>
-      <span class="chip mid">3 migraciones</span>
+      <span class="chip small">Hecha · 21/08/2026</span>
     </div>
     <p>
-      Permiso de histórico de caja (5) · traslados entre cuentas y su reflejo en el cierre (4) ·
-      tipos de ingreso nuevos, empezando por inventario inicial (10). Van juntas porque las tres
-      tocan enums y catálogo de permisos, y el orden de despliegue importa.
+      Permiso de histórico de caja (5) · traslados entre cuentas, con su reflejo en el arqueo y
+      excluidos del flujo en Reportes (4) · inventario inicial, sobrante de conteo y pérdida (10).
+    </p>
+    <p>
+      Migraciones <code>00031</code>–<code>00033</code>, todas aditivas, aplicadas a la dev antes
+      del deploy. <strong>243 tests backend</strong> (ocho nuevos) y 106 front.
+    </p>
+    <p>
+      Dos hallazgos que no estaban en este análisis y salieron al construir: el front deducía
+      “¿ya cerré hoy?” del histórico de cierres, así que el permiso nuevo le habría
+      <strong>roto la pantalla</strong> al cajero en vez de acotarla (se agregó
+      <code>/cashbox/sessions/today</code>); y el flujo de caja de Reportes sumaba todos los
+      movimientos, así que un traslado habría inflado entradas y salidas por el mismo monto.
     </p>
   </div>
 
