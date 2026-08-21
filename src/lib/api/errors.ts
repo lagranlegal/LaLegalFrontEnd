@@ -29,10 +29,14 @@ export const API_ERROR_CODES = [
   'IMPORT_CAPITAL_EXCEEDS_PRINCIPAL',
   'IMPORT_DATES_MISALIGNED',
   // Invitar usuario (paso 8): el backend envuelve cualquier fallo de
-  // Supabase Auth Admin (incluido rate limit de envío de correos) en este
-  // código con 502 — sin modal específico, cae al banner genérico con
-  // `error.message` (ya trae el mensaje real en español).
+  // Supabase Auth Admin en este código con 502 — sin modal específico, cae
+  // al banner genérico con `error.message` (ya trae el mensaje real en
+  // español).
   'AUTH_ADMIN_ERROR',
+  // Caso aparte de AUTH_ADMIN_ERROR y no un 502: Supabase limitó el envío de
+  // correos. No hay nada roto, hay que esperar — decirle "no se pudo
+  // invitar" al admin lo manda a buscar un problema que no existe.
+  'INVITE_RATE_LIMITED',
 ] as const
 
 export type ApiErrorCode = (typeof API_ERROR_CODES)[number]

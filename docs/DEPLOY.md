@@ -101,6 +101,12 @@ Tiene que coincidir **exactamente** con `FRONTEND_URL` del backend (`fly secrets
 
 **Sin comodín para los previews de Vercel**, por decisión: `https://…-*.vercel.app/auth/callback` funcionaría, pero significa que cualquier deploy de preview podría recibir tokens de autenticación. El alias de la rama `dev` es estable, así que no hace falta.
 
+### El correo de invitación tiene un límite de envíos
+
+El servicio de correo **incluido** de Supabase está pensado para pruebas y limita los envíos a unos pocos por hora. Al pasarse devuelve `429` y el backend responde `INVITE_RATE_LIMITED` (429) con "espera unos minutos e invita de nuevo" — no es una falla, hay que esperar.
+
+**Antes de tener usuarios reales hay que configurar un SMTP propio** (Resend, SendGrid, Amazon SES…) en Authentication → Emails → SMTP Settings. Sin eso, una compraventa que dé de alta a cinco empleados en la misma tarde se queda a mitad de camino, y los correos del servicio compartido tienen mucha más probabilidad de caer en spam.
+
 ### Cuidado: hay dos cuentas de Supabase en juego
 
 El proyecto que usa la app es **`driyubkodnsqxbtxcmaz`** (*lagranlegal's Dev*) — es el que está en `SUPABASE_URL` del backend y en `VITE_SUPABASE_URL` del front.
