@@ -36,18 +36,24 @@ interface NavItem {
 }
 
 // Orden aprobado por el cliente el 15/08/2026 (docs/DESIGN_SYSTEM.md §3).
+// TODO ítem con pantalla lleva `anyPermission`. Sin eso el menú promete
+// módulos que el backend va a rechazar: quitarle contratos a un rol dejaba el
+// ítem visible igual, y el usuario entraba a una pantalla que solo sabía
+// fallar. El permiso que gatea es siempre el de LECTURA del módulo — las
+// acciones (crear, editar, anular) se gatean por botón dentro de la pantalla.
+//
+// `Inicio` es la única excepción y es deliberada: es el destino al que
+// redirigen todos los guards, así que gatearlo podría dejar a un usuario sin
+// ningún lugar a donde ir.
 const NAV_ITEMS: NavItem[] = [
   { label: 'Inicio', icon: Home, to: '/' },
-  { label: 'Contratos', icon: FileText, to: '/contratos' },
-  { label: 'Ventas', icon: ShoppingCart, to: '/ventas' },
-  { label: 'Inventario', icon: Package, to: '/inventario' },
-  { label: 'Clientes', icon: Users, to: '/clientes' },
-  { label: 'Caja', icon: Wallet, to: '/caja' },
+  { label: 'Contratos', icon: FileText, to: '/contratos', anyPermission: ['contracts.view'] },
+  { label: 'Ventas', icon: ShoppingCart, to: '/ventas', anyPermission: ['sales.view'] },
+  { label: 'Inventario', icon: Package, to: '/inventario', anyPermission: ['inventory.view'] },
+  { label: 'Clientes', icon: Users, to: '/clientes', anyPermission: ['customers.view'] },
+  { label: 'Caja', icon: Wallet, to: '/caja', anyPermission: ['cashbox.view'] },
   { label: 'Cuentas', icon: Landmark, to: '/cuentas', anyPermission: ['accounts.view'] },
-  { label: 'Catálogos', icon: Tags, to: '/catalogos' },
-  // Primer ítem de nav filtrado por permiso — el catálogo real llegó en el
-  // paso 8 (`GET /identity/permissions`). El resto de ítems con pantalla
-  // sigue sin gate (pendiente sistemático, ver docs/IMPLEMENTATION.md paso 6).
+  { label: 'Catálogos', icon: Tags, to: '/catalogos', anyPermission: ['catalogs.view'] },
   { label: 'Identidad', icon: UserCog, to: '/identidad', anyPermission: ['identity.manage_users', 'identity.manage_roles'] },
   { label: 'Reportes', icon: BarChart3, to: '/reportes', anyPermission: ['reports.view'] },
   { label: 'Auditoría', icon: History, to: '/auditoria', anyPermission: ['audit.view'] },

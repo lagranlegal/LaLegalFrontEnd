@@ -136,6 +136,12 @@ const customersRoute = createRoute({
   getParentRoute: () => appLayoutRoute,
   path: '/clientes',
   component: CustomersPage,
+  beforeLoad: ({ context }) => {
+    const me = context.queryClient.getQueryData(meQueryOptions().queryKey)
+    if (me && !me.permissions.includes('customers.view')) {
+      throw redirect({ to: '/' })
+    }
+  },
 })
 
 // Hermana de `customersRoute`, no anidada (mismo motivo que contratos: la
@@ -145,12 +151,24 @@ const customerDetailRoute = createRoute({
   getParentRoute: () => appLayoutRoute,
   path: '/clientes/$customerId',
   component: CustomerDetailPage,
+  beforeLoad: ({ context }) => {
+    const me = context.queryClient.getQueryData(meQueryOptions().queryKey)
+    if (me && !me.permissions.includes('customers.view')) {
+      throw redirect({ to: '/' })
+    }
+  },
 })
 
 const catalogsRoute = createRoute({
   getParentRoute: () => appLayoutRoute,
   path: '/catalogos',
   component: CatalogsPage,
+  beforeLoad: ({ context }) => {
+    const me = context.queryClient.getQueryData(meQueryOptions().queryKey)
+    if (me && !me.permissions.includes('catalogs.view')) {
+      throw redirect({ to: '/' })
+    }
+  },
 })
 
 // Hermanas de appLayoutRoute (no anidadas entre sí): si `contractNewRoute`/
@@ -163,12 +181,24 @@ const contractsRoute = createRoute({
   getParentRoute: () => appLayoutRoute,
   path: '/contratos',
   component: ContractsListPage,
+  beforeLoad: ({ context }) => {
+    const me = context.queryClient.getQueryData(meQueryOptions().queryKey)
+    if (me && !me.permissions.includes('contracts.view')) {
+      throw redirect({ to: '/' })
+    }
+  },
 })
 
 const contractNewRoute = createRoute({
   getParentRoute: () => appLayoutRoute,
   path: '/contratos/nuevo',
   component: ContractFormPage,
+  beforeLoad: ({ context }) => {
+    const me = context.queryClient.getQueryData(meQueryOptions().queryKey)
+    if (me && !me.permissions.includes('contracts.create')) {
+      throw redirect({ to: '/' })
+    }
+  },
 })
 
 // Guard por permiso (no solo ocultar el botón) — primera ruta que lo necesita
@@ -192,36 +222,72 @@ const contractDetailRoute = createRoute({
   getParentRoute: () => appLayoutRoute,
   path: '/contratos/$contractId',
   component: ContractDetailPage,
+  beforeLoad: ({ context }) => {
+    const me = context.queryClient.getQueryData(meQueryOptions().queryKey)
+    if (me && !me.permissions.includes('contracts.view')) {
+      throw redirect({ to: '/' })
+    }
+  },
 })
 
 const cashboxRoute = createRoute({
   getParentRoute: () => appLayoutRoute,
   path: '/caja',
   component: CashboxPage,
+  beforeLoad: ({ context }) => {
+    const me = context.queryClient.getQueryData(meQueryOptions().queryKey)
+    if (me && !me.permissions.includes('cashbox.view')) {
+      throw redirect({ to: '/' })
+    }
+  },
 })
 
 const inventoryRoute = createRoute({
   getParentRoute: () => appLayoutRoute,
   path: '/inventario',
   component: InventoryPage,
+  beforeLoad: ({ context }) => {
+    const me = context.queryClient.getQueryData(meQueryOptions().queryKey)
+    if (me && !me.permissions.includes('inventory.view')) {
+      throw redirect({ to: '/' })
+    }
+  },
 })
 
 const entryNewRoute = createRoute({
   getParentRoute: () => appLayoutRoute,
   path: '/inventario/ingresos/nuevo',
   component: EntryFormPage,
+  beforeLoad: ({ context }) => {
+    const me = context.queryClient.getQueryData(meQueryOptions().queryKey)
+    if (me && !me.permissions.includes('inventory.create')) {
+      throw redirect({ to: '/' })
+    }
+  },
 })
 
 const salesRoute = createRoute({
   getParentRoute: () => appLayoutRoute,
   path: '/ventas',
   component: SalesListPage,
+  beforeLoad: ({ context }) => {
+    const me = context.queryClient.getQueryData(meQueryOptions().queryKey)
+    if (me && !me.permissions.includes('sales.view')) {
+      throw redirect({ to: '/' })
+    }
+  },
 })
 
 const saleNewRoute = createRoute({
   getParentRoute: () => appLayoutRoute,
   path: '/ventas/nueva',
   component: SaleFormPage,
+  beforeLoad: ({ context }) => {
+    const me = context.queryClient.getQueryData(meQueryOptions().queryKey)
+    if (me && !me.permissions.includes('sales.create')) {
+      throw redirect({ to: '/' })
+    }
+  },
 })
 
 // Guard por permiso (mismo patrón de `contractImportRoute`, §1.6): sin

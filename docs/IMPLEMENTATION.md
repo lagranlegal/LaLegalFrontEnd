@@ -2,6 +2,49 @@
 
 > Registro vivo de qué existe en el código, cómo está armado y por qué se tomó cada decisión — para que cualquiera (humano o Claude Code) pueda retomar el proyecto sin releer todo el historial de commits. Se actualiza en cada paso del "Orden de implementación" de `CLAUDE.md`. No repite lo que ya está en `ARCHITECTURE.md`/`DESIGN_SYSTEM.md` (el qué-debería-ser); esto es el qué-hay-hoy y las decisiones concretas tomadas al construirlo.
 
+## Auditoría de permisos: el menú prometía módulos que el backend rechazaba (21/08/2026)
+
+Reportado probando roles: *"al quitarle a un rol los permisos de contratos, me sigue apareciendo el módulo"*. Confirmado, y la auditoría completa encontró que el problema era más ancho que contratos y que había además dos huecos en el catálogo del backend.
+
+### Contratos estaba bien… en el backend
+
+`GET /contracts` → `contracts.view`, crear → `contracts.create`, editar → `contracts.edit`, abonar → `payments.create`, rematar → `contracts.auction`, importar → `contracts.import`. Cada endpoint con el suyo. **El hueco era del front.**
+
+### El hueco real: seis módulos sin gate, y el comentario ya lo admitía
+
+`AppShell` tenía `anyPermission` solo en Identidad, Reportes, Auditoría, Configuración y Cuentas. **Contratos, Ventas, Inventario, Clientes, Caja y Catálogos no tenían ninguno** — y un comentario en el propio archivo lo reconocía como "pendiente sistemático".
+
+Peor: **ninguna de esas seis rutas tenía `beforeLoad`**, así que escribir la URL a mano entraba igual. Ocultar el ítem del menú nunca fue protección; la protección es el guard.
+
+Ahora los catorce ítems llevan permiso, y las once rutas de módulo llevan guard. `Inicio` es la única excepción deliberada: es el destino al que redirigen todos los guards, así que gatearlo podría dejar a alguien sin ningún lugar a donde ir.
+
+### Dos huecos en el catálogo del backend
+
+**`sales` no tenía `sales.view`.** Listar ventas exigía `sales.create` — no se podía tener a alguien que solo revisara sin dejarlo además registrar. Es el error **inverso** al de `accounts.settle` (00029): allá una escritura colgaba de un permiso de lectura; acá una lectura colgaba de uno de escritura.
+
+**`catalogs` no tenía `catalogs.view`, y sus cuatro GET no exigían NADA** (`Depends(get_current_user)` pelado). Viola la regla 3 de `CLAUDE.md` — *"endpoint sin permiso explícito = error de revisión"* — y dejaba categorías y proveedores legibles por cualquier usuario autenticado de la empresa.
+
+`catalogs.view` se otorga a **todos** los roles existentes, a propósito: esos endpoints eran abiertos, así que restringirlos de golpe rompería a cualquier asesor (necesita leer las categorías para elegir la de la prenda al crear un contrato). Lo que se gana no es restringir hoy, sino que el permiso **exista** y se pueda quitar a conciencia mañana.
+
+### El caso borde que abrió tener guards
+
+Con los guards puestos, un rol muy restringido termina redirigido a `/` — que necesita `reports.view`. Sin él veía "No se pudo cargar el dashboard": otra vez un mensaje que dice "roto" cuando el problema es un permiso. Ahora lo saluda por su nombre y lo manda al menú, que sí muestra lo que puede hacer.
+
+### Por qué el cambio de permisos tarda hasta un minuto en verse
+
+`/me` tiene `staleTime` de 60s en el front y el backend cachea los permisos por rol otro tanto. Es deliberado (CLAUDE.md: "cache de permisos TTL 60s") y está alineado a propósito entre los dos lados. Al probar, contar hasta 60 o recargar — no es que el cambio no se haya guardado.
+
+### Verificación
+
+```
+pytest -q            # 233/233
+npm run typecheck    # limpio, tras regenerar tipos
+npm run test         # 104/104
+npm run build        # sin errores
+```
+
+Comprobado además con un script que recorre `router.tsx` y lista las rutas de `appLayoutRoute` sin `beforeLoad`: solo queda `/`, que es la excepción documentada.
+
 ## El módulo de cuentas no aparecía en la matriz de permisos (21/08/2026)
 
 Reportado revisando los permisos: *"creaste el módulo de cuentas pero no le agregaste ningún tipo de permisos ni es parametrizable desde identidad"*. Correcto — y la revisión destapó algo más grave de lo reportado.

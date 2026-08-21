@@ -5,6 +5,7 @@ import { PageHeader } from '@/components/shared/PageHeader'
 import { KpiCard, KpiRow } from '@/components/shared/KpiCard'
 import { Money } from '@/components/shared/Money'
 import { EmptyState } from '@/components/shared/EmptyState'
+import { isPermissionError } from '@/lib/api/isPermissionError'
 import { ContractsStatusChart, type StatusDatum } from '@/components/shared/charts/ContractsStatusChart'
 import { Button } from '@/components/ui/button'
 import { formatDate } from '@/lib/dates'
@@ -28,12 +29,25 @@ function DashboardSkeleton() {
 
 export function DashboardPage() {
   const { data: me } = useMe()
-  const { data, isPending, isError, refetch } = useDashboard()
+  const { data, isPending, isError, error, refetch } = useDashboard()
   const { data: readyForAuction } = useReadyForAuction()
 
   if (isPending) return <DashboardSkeleton />
 
   if (isError) {
+    // `/` es el destino al que redirigen TODOS los guards de ruta, así que es
+    // la pantalla que ve un usuario cuyo rol no le da acceso a casi nada. Sin
+    // `reports.view` el dashboard no carga, y decirle "no se pudo" lo deja
+    // creyendo que la app está rota — cuando en realidad no tiene permiso.
+    // Se le explica y se le señala el menú, que sí muestra lo que sí puede.
+    if (isPermissionError(error)) {
+      return (
+        <EmptyState
+          title={`Hola, ${me?.user.full_name ?? ''}`.trim()}
+          description="Tu rol no incluye el resumen del inicio. Usa el menú de la izquierda para ir a lo que sí tienes habilitado, o pídele a un administrador el permiso 'Dashboard y reportes'."
+        />
+      )
+    }
     return (
       <div className="flex flex-col items-center gap-3 rounded-card border border-border bg-card p-card text-center">
         <p className="text-sm text-muted-foreground">No se pudo cargar el dashboard.</p>
