@@ -4,6 +4,7 @@ import { OpenSessionDialog } from '@/features/cashbox/components/OpenSessionDial
 import { Can } from '@/components/shared/Can'
 import { Button } from '@/components/ui/button'
 import { formatTime } from '@/lib/dates'
+import { isPermissionError } from '@/lib/api/isPermissionError'
 
 /**
  * Franja global bajo la topbar: estado de caja visible en toda la app
@@ -11,11 +12,28 @@ import { formatTime } from '@/lib/dates'
  * permanente — contratos y ventas dependen de que haya una sesión abierta.
  */
 export function CashSessionBanner() {
-  const { data: session, isPending } = useCashboxCurrent()
+  const { data: session, isPending, error } = useCashboxCurrent()
   const [openDialog, setOpenDialog] = useState(false)
 
   if (isPending) {
     return <div className="h-9 animate-pulse bg-background" />
+  }
+
+  // Sin `cashbox.view` no se puede saber si la caja está abierta, así que no
+  // se afirma nada: la franja desaparece. Antes este caso caía en el mensaje
+  // de "Caja cerrada" de abajo y le decía al usuario justo lo contrario de la
+  // realidad — la caja estaba abierta, lo que faltaba era el permiso.
+  if (isPermissionError(error)) {
+    return null
+  }
+
+  // Cualquier otro fallo (red, backend caído) tampoco es "caja cerrada".
+  if (error) {
+    return (
+      <div className="flex h-9 items-center justify-center bg-muted px-4 text-sm text-muted-foreground">
+        No se pudo consultar el estado de la caja.
+      </div>
+    )
   }
 
   if (session) {

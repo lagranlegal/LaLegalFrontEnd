@@ -21,6 +21,7 @@ import { EntryDetailDialog } from '@/features/inventory/components/EntryDetailDi
 import { ProductRow } from '@/features/inventory/components/ProductRow'
 import { ProductPriceDialog } from '@/features/inventory/components/ProductPriceDialog'
 import { EmptyState } from '@/components/shared/EmptyState'
+import { isPermissionError } from '@/lib/api/isPermissionError'
 import { ExitFormDialog } from '@/features/inventory/components/ExitFormDialog'
 
 const ITEM_STATUS_TABS = [
@@ -87,7 +88,7 @@ function CategorySelect({
  */
 function ProductsTab() {
   const [q, setQ] = useState('')
-  const { data, isPending, isFetching, isError, refetch, hasNextPage, isFetchingNextPage, fetchNextPage } = useProductsList({ q })
+  const { data, isPending, isFetching, isError, error, refetch, hasNextPage, isFetchingNextPage, fetchNextPage } = useProductsList({ q })
   const [editing, setEditing] = useState<Product | null>(null)
   const [dialogNonce, setDialogNonce] = useState(0)
 
@@ -113,10 +114,19 @@ function ProductsTab() {
 
       {isError && (
         <div className="flex flex-col items-start gap-2 rounded-card border border-border bg-card p-card">
-          <p className="text-sm text-danger">No se pudieron cargar los productos.</p>
-          <Button variant="outline" size="sm" onClick={() => refetch()}>
-            Reintentar
-          </Button>
+          {isPermissionError(error) ? (
+            // Reintentar no va a cambiar un permiso que no existe.
+            <p className="text-sm text-muted-foreground">
+              Tu rol no tiene permiso para ver el inventario. Pídele a un administrador que te lo habilite.
+            </p>
+          ) : (
+            <>
+              <p className="text-sm text-danger">No se pudieron cargar los productos.</p>
+              <Button variant="outline" size="sm" onClick={() => refetch()}>
+                Reintentar
+              </Button>
+            </>
+          )}
         </div>
       )}
 
@@ -162,7 +172,7 @@ function ItemsTab() {
   const [cat2Id, setCat2Id] = useState('')
   const [cat3Id, setCat3Id] = useState('')
   const { data: categories } = useCategories()
-  const { data, isPending, isFetching, isError, refetch, hasNextPage, isFetchingNextPage, fetchNextPage } = useItemsList({
+  const { data, isPending, isFetching, isError, error, refetch, hasNextPage, isFetchingNextPage, fetchNextPage } = useItemsList({
     status,
     q,
     // Solo se manda la categoría MÁS específica elegida: el backend filtra por
@@ -261,6 +271,7 @@ function ItemsTab() {
         isLoading={isPending}
         isRefreshing={isFetching && !isPending}
         isError={isError}
+        error={error}
         onRetry={() => refetch()}
         emptyTitle={hasFilters ? 'Ningún artículo coincide' : 'Aún no tienes artículos'}
         emptyDescription={hasFilters ? 'Prueba con otro código, nombre o categoría.' : 'Registra un ingreso para empezar.'}
@@ -279,7 +290,7 @@ function ItemsTab() {
 }
 
 function EntriesTab() {
-  const { data, isPending, isError, refetch, hasNextPage, isFetchingNextPage, fetchNextPage } = useEntriesList()
+  const { data, isPending, isError, error, refetch, hasNextPage, isFetchingNextPage, fetchNextPage } = useEntriesList()
   const [viewingEntry, setViewingEntry] = useState<Entry | null>(null)
 
   const entries = data?.pages.flatMap((page) => page.items) ?? []
@@ -315,6 +326,7 @@ function EntriesTab() {
         getRowId={(row) => row.id}
         isLoading={isPending}
         isError={isError}
+        error={error}
         onRetry={() => refetch()}
         emptyTitle="Aún no tienes ingresos registrados"
         onRowClick={(row) => setViewingEntry(row)}
@@ -329,7 +341,7 @@ function EntriesTab() {
 }
 
 function ExitsTab() {
-  const { data, isPending, isError, refetch, hasNextPage, isFetchingNextPage, fetchNextPage } = useExitsList()
+  const { data, isPending, isError, error, refetch, hasNextPage, isFetchingNextPage, fetchNextPage } = useExitsList()
   const [dialogOpen, setDialogOpen] = useState(false)
   const [dialogNonce, setDialogNonce] = useState(0)
 
@@ -364,6 +376,7 @@ function ExitsTab() {
         getRowId={(row) => row.id}
         isLoading={isPending}
         isError={isError}
+        error={error}
         onRetry={() => refetch()}
         emptyTitle="Aún no tienes egresos registrados"
         hasNextPage={hasNextPage}

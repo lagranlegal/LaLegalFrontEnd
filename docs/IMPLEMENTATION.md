@@ -2,6 +2,40 @@
 
 > Registro vivo de qué existe en el código, cómo está armado y por qué se tomó cada decisión — para que cualquiera (humano o Claude Code) pueda retomar el proyecto sin releer todo el historial de commits. Se actualiza en cada paso del "Orden de implementación" de `CLAUDE.md`. No repite lo que ya está en `ARCHITECTURE.md`/`DESIGN_SYSTEM.md` (el qué-debería-ser); esto es el qué-hay-hoy y las decisiones concretas tomadas al construirlo.
 
+## "Caja cerrada" cuando la caja estaba abierta (21/08/2026)
+
+Reportado probando con un usuario nuevo: el admin veía la caja abierta, pero el usuario recién invitado veía **"Caja cerrada — no se pueden registrar operaciones de dinero"**, y el inventario le fallaba al cargar.
+
+### No era un bug de caja ni de inventario
+
+El rol que se le asignó ("Cajero Temporal") se creó **sin marcar ningún permiso**: 0. Sin `cashbox.view` la consulta de la sesión responde 403, y sin `inventory.view` el listado también.
+
+El problema real es que **la app tradujo los 403 a mensajes que afirmaban cosas falsas**:
+
+- `CashSessionBanner` no tenía rama de error. Cualquier fallo dejaba `session` en `undefined` y caía en el mensaje de "Caja cerrada" — diciéndole al usuario exactamente lo contrario de la realidad.
+- `DataTable` recibía `isError` como booleano, sin acceso al error, así que un 403 se veía igual que un backend caído: "No se pudo cargar la lista" y un botón de **Reintentar** que no podía funcionar nunca.
+
+### Los tres arreglos
+
+**1. `lib/api/isPermissionError.ts`** — distinguir "no tienes permiso" de "algo se rompió", en un solo lugar.
+
+**2. Mensajes honestos.** El banner de caja **desaparece** sin `cashbox.view`: si no se puede saber el estado, no se afirma nada (y afirmar lo contrario era el bug). Otro tipo de fallo dice "No se pudo consultar el estado de la caja". `DataTable` acepta ahora el error real y, en un 403, dice qué pasa y a quién pedírselo — **sin botón de reintentar**, porque reintentar no cambia un permiso que no existe.
+
+**3. La causa de raíz: un rol vacío era invisible.** En el listado de roles se veía idéntico a uno bien configurado. Ahora `RoleOut` trae `permission_count` y la tabla muestra un chip ámbar **"Sin permisos"**. Eso es lo que habría evitado el problema desde el principio.
+
+### La lección
+
+Los tres síntomas venían de tratar un 403 como si fuera una falla. Un permiso faltante es una **respuesta correcta del backend**, no un error — y decirle al usuario "esto está roto" cuando en realidad le falta un permiso lo manda a buscar un problema inexistente, además de esconder el arreglo real (que es de un minuto: marcar las casillas del rol).
+
+### Verificación
+
+```
+pytest -q            # 231/231 (test nuevo: un rol recién creado reporta 0)
+npm run typecheck    # limpio, tras regenerar tipos
+npm run test         # 104/104
+npm run build        # sin errores
+```
+
 ## Invitar por enlace, sin depender del correo (21/08/2026)
 
 El servicio de correo incluido de Supabase limita los envíos a unos pocos por hora, y probando el flujo de invitación se agotó la cuota: `429`. Sin dominio propio no hay SMTP externo que montar todavía (el remitente de prueba de Resend solo entrega a la dirección del dueño de la cuenta), así que hacía falta una salida.

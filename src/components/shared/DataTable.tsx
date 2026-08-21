@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react'
 import { type ColumnDef, flexRender, getCoreRowModel, useReactTable } from '@tanstack/react-table'
 import { Button } from '@/components/ui/button'
+import { isPermissionError } from '@/lib/api/isPermissionError'
 import { EmptyState } from '@/components/shared/EmptyState'
 import { cn } from '@/lib/utils'
 import { RefreshingBar } from '@/components/shared/RefreshingBar'
@@ -33,6 +34,7 @@ export function DataTable<T>({
   isLoading,
   isRefreshing,
   isError,
+  error,
   onRetry,
   emptyTitle = 'Aún no tienes nada acá',
   emptyDescription,
@@ -49,6 +51,8 @@ export function DataTable<T>({
   /** Ya hay datos en pantalla pero se está pidiendo otra página/filtro. */
   isRefreshing?: boolean
   isError?: boolean
+  /** El error real, para distinguir "no tienes permiso" de "algo se rompió". */
+  error?: unknown
   onRetry?: () => void
   emptyTitle?: string
   emptyDescription?: string
@@ -68,10 +72,18 @@ export function DataTable<T>({
   if (isLoading) return <DataTableSkeleton columnsCount={columns.length} />
 
   if (isError) {
+    // Un 403 no es una falla: reintentar no va a cambiar nada, y "no se pudo
+    // cargar" manda al usuario a buscar un problema que no existe. Se le dice
+    // qué pasa y a quién pedírselo.
+    const sinPermiso = isPermissionError(error)
     return (
       <div className="flex flex-col items-center gap-3 rounded-card border border-border bg-card p-card text-center">
-        <p className="text-sm text-muted-foreground">No se pudo cargar la lista.</p>
-        {onRetry && (
+        <p className="text-sm text-muted-foreground">
+          {sinPermiso
+            ? 'Tu rol no tiene permiso para ver esto. Pídele a un administrador que te lo habilite.'
+            : 'No se pudo cargar la lista.'}
+        </p>
+        {onRetry && !sinPermiso && (
           <Button variant="outline" onClick={onRetry}>
             Reintentar
           </Button>

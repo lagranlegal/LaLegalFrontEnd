@@ -92,12 +92,28 @@ function UsersTab() {
 const roleColumns: ColumnDef<Role>[] = [
   { accessorKey: 'name', header: 'Nombre' },
   { accessorKey: 'description', header: 'Descripción', cell: (info) => info.getValue<string | null>() ?? '—' },
+  {
+    accessorKey: 'permission_count',
+    header: 'Permisos',
+    // Un rol en 0 no sirve para nada: quien lo tenga no puede ver la caja ni
+    // el inventario, y la app le muestra pantallas que parecen rotas. Se
+    // marca en ámbar para que salte a la vista en el listado — sin esto, un
+    // rol vacío se ve idéntico a uno bien configurado.
+    cell: (info) => {
+      const count = info.getValue<number>()
+      return count === 0 ? (
+        <span className="rounded-pill bg-warning-soft px-2 py-0.5 text-xs text-warning">Sin permisos</span>
+      ) : (
+        <span className="tnum">{count}</span>
+      )
+    },
+  },
   { accessorKey: 'is_seed', header: 'Predeterminado', cell: (info) => (info.getValue<boolean>() ? 'Sí' : 'No') },
   { accessorKey: 'active', header: 'Activo', cell: (info) => (info.getValue<boolean>() ? 'Sí' : 'No') },
 ]
 
 function RolesTab() {
-  const { data: roles, isPending, isError, refetch } = useRoles()
+  const { data: roles, isPending, isError, error, refetch } = useRoles()
   const canManageRoles = usePermission('identity.manage_roles')
   const [formOpen, setFormOpen] = useState(false)
   const [formNonce, setFormNonce] = useState(0)
@@ -154,6 +170,7 @@ function RolesTab() {
         getRowId={(row) => row.id}
         isLoading={isPending}
         isError={isError}
+        error={error}
         onRetry={() => refetch()}
         emptyTitle="Aún no tienes roles"
         emptyDescription="Crea el primero para poder invitar usuarios."
