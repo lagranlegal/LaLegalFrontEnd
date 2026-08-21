@@ -47,6 +47,27 @@ Dos cosas quedaron **fuera de alcance a propósito**:
 - **Datáfono.** El cliente confirmó que hoy no usa. El tipo `settlement` ya lo modela cuando lo tenga (un datáfono es exactamente lo mismo: cobras hoy, el adquirente te consigna después menos comisión).
 - **Conciliación bancaria** (importar extracto y casar movimientos). El saldo por cuenta es la base necesaria; el casado automático es otro proyecto.
 
+## 29. ✅ Permisos: auditoría completa del catálogo (RESUELTO)
+
+Salió de dos reportes seguidos: el módulo de cuentas no aparecía en la matriz de roles, y quitarle contratos a un rol dejaba el módulo visible igual. La revisión completa encontró cuatro cosas:
+
+- **Cuentas sin permisos propios** (migración 00029). Reusaba `cashbox.view`/`company.configure`, así que no era parametrizable. Y `settle` —que MUEVE PLATA— colgaba de un permiso de lectura: quien pudiera mirar la caja podía liquidar Sistecrédito.
+- **`sales` sin `sales.view`** (00030). Listar ventas exigía `sales.create`: imposible tener un rol que solo revisara.
+- **`catalogs` sin `catalogs.view`, y sus cuatro GET sin ningún permiso** (00030). Violaba la regla 3 de `CLAUDE.md`.
+- **Seis módulos del front sin gate de menú ni guard de ruta**: Contratos, Ventas, Inventario, Clientes, Caja y Catálogos — el comentario del propio `AppShell` ya lo reconocía como "pendiente sistemático".
+
+Contratos, en cambio, **estaba bien por el backend** desde siempre: cada endpoint con su permiso.
+
+**Regla que queda** (`backend-starter/docs/ARCHITECTURE.md` §12): un módulo nuevo trae sus propios permisos desde el día uno, con la separación mínima `view`/`manage` más un permiso aparte (`is_special`) por cada acción que mueva plata o sea irreversible. Al agregarlos a un módulo ya en producción, la migración debe otorgarlos a quien tuviera los equivalentes — salvo cuando el mapeo viejo *era* el error, que se documenta explícitamente.
+
+## 30. Pendientes operativos para entregar a un cliente (ninguno es de código)
+
+Detalle en `ESTADO.md`, en la raíz del workspace. En orden, y el primero desbloquea a los demás:
+
+1. **Dominio propio.** Desbloquea el SMTP (Resend), quitar el candado de Vercel Deployment Protection —que hoy impide que un invitado externo abra siquiera la app— y dejar de mostrar una URL de preview a un cliente.
+2. **Ambiente de producción**: proyecto Supabase de prod + `compraventa-backend-prod` en Fly + variables en Vercel. Sin tocar código.
+3. **SMTP propio.** El correo incluido de Supabase limita los envíos y no sirve para producción. Mitigado mientras tanto por el botón "Generar enlace" al invitar, que no manda correo ni consume cuota.
+
 ## 24. Lo que sigue abierto después de esta auditoría
 
 En orden de valor:
