@@ -46,6 +46,20 @@ export function formatDate(dateOnly: string): string {
 }
 
 /**
+ * `dd/MM`, sin año — para ejes de gráficas donde la fecha se repite en cada
+ * punto y el año es ruido: el rango ya está escrito arriba, en el selector.
+ * Mismo tratamiento sin `Date` que `formatDate`, por el mismo motivo.
+ */
+export function formatDateShort(dateOnly: string): string {
+  const match = DATE_ONLY_RE.exec(dateOnly)
+  if (!match) {
+    throw new Error(`formatDateShort: se esperaba "yyyy-MM-dd", llegó ${JSON.stringify(dateOnly)}`)
+  }
+  const [, , month, day] = match
+  return `${day}/${month}`
+}
+
+/**
  * Timestamps con hora (`created_at`, `updated_at`…) se convierten a la zona
  * de la empresa y se formatean `dd/MM/yyyy h:mm a`.
  */

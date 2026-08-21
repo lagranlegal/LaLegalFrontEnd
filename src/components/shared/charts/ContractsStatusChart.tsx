@@ -1,4 +1,5 @@
 import { Bar, BarChart, CartesianGrid, Cell, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
+import { usePrefersReducedMotion } from '@/lib/usePrefersReducedMotion'
 
 export interface StatusDatum {
   key: string
@@ -13,6 +14,7 @@ export interface StatusDatum {
  * inline (docs/DESIGN_SYSTEM.md §5). Card "Contratos por estado".
  */
 export function ContractsStatusChart({ data }: { data: StatusDatum[] }) {
+  const prefersReducedMotion = usePrefersReducedMotion()
   return (
     <div className="h-64 w-full">
       <ResponsiveContainer width="100%" height="100%">
@@ -21,7 +23,7 @@ export function ContractsStatusChart({ data }: { data: StatusDatum[] }) {
           <XAxis dataKey="label" tick={{ fontSize: 12, fill: 'var(--text-muted)' }} axisLine={false} tickLine={false} />
           <YAxis allowDecimals={false} tick={{ fontSize: 12, fill: 'var(--text-muted)' }} axisLine={false} tickLine={false} width={28} />
           <Tooltip cursor={{ fill: 'var(--bg-app)' }} contentStyle={{ borderRadius: 'var(--radius-card)', borderColor: 'var(--border)', fontSize: 12 }} />
-          <Bar dataKey="count" radius={[6, 6, 0, 0]}>
+          <Bar dataKey="count" radius={[6, 6, 0, 0]} isAnimationActive={!prefersReducedMotion}>
             {data.map((d) => (
               <Cell key={d.key} fill={d.color} />
             ))}

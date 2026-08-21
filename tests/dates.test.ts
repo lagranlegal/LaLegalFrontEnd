@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { addMonthsToDateOnly, BOGOTA_TZ, formatDate, formatDateTime, formatTime, getActiveTimezone, setActiveTimezone, todayBogota } from '@/lib/dates'
+import { addMonthsToDateOnly, BOGOTA_TZ, formatDate, formatDateShort, formatDateTime, formatTime, getActiveTimezone, setActiveTimezone, todayBogota } from '@/lib/dates'
 
 describe('todayBogota', () => {
   afterEach(() => {
@@ -110,5 +110,22 @@ describe('addMonthsToDateOnly (import de contratos, paso 5b)', () => {
 
   it('lanza si no recibe el formato esperado', () => {
     expect(() => addMonthsToDateOnly('15/08/2026', 1)).toThrow()
+  })
+})
+
+describe('formatDateShort', () => {
+  it('omite el año — en un eje diario se repite en cada punto y es ruido', () => {
+    expect(formatDateShort('2026-08-20')).toBe('20/08')
+    expect(formatDateShort('2026-01-05')).toBe('05/01')
+  })
+
+  it('no pasa por Date, así que no se corre un día por UTC', () => {
+    // El 1 de enero a medianoche Bogotá es 31 de diciembre en UTC — un
+    // `new Date("2026-01-01")` formateado en local mostraría 31/12.
+    expect(formatDateShort('2026-01-01')).toBe('01/01')
+  })
+
+  it('rechaza un formato que no sea yyyy-MM-dd en vez de inventar una fecha', () => {
+    expect(() => formatDateShort('20/08/2026')).toThrow()
   })
 })

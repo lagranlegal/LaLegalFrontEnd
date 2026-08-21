@@ -91,6 +91,11 @@
   /* Espaciado de layout (p-page, gap-card…) */
   --spacing-page: var(--space-page);
   --spacing-card: var(--space-card);
+
+  /* Movimiento — habilita duration-fast/base/slow y ease-out como utilidades,
+     para que ninguna feature vuelva a escribir `duration-[200ms]`. */
+  --animate-duration-fast: var(--duration-fast);
+  --ease-out: var(--ease-out);
 }
 
 @layer base {
@@ -117,4 +122,45 @@
 @keyframes refreshing {
   0% { transform: translateX(-100%); }
   100% { transform: translateX(300%); }
+}
+
+/* Aparición de contenido cargado: el card no "salta", sube unos píxeles
+   mientras entra. Se aplica al contenedor, no a cada hijo — animar veinte
+   filas por separado convierte una lista en un espectáculo. */
+@keyframes enter-up {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@utility enter-up {
+  animation: enter-up var(--duration-base) var(--ease-out) both;
+}
+
+/*
+ * Respeto a `prefers-reduced-motion`, una sola vez y para toda la app.
+ *
+ * Va acá y no componente por componente porque es una preferencia de
+ * accesibilidad del sistema operativo (WCAG 2.1, protocolo 8 del sistema de
+ * diseño): confiar en que cada pantalla nueva se acuerde de `motion-reduce`
+ * garantiza que tarde o temprano alguna se olvide.
+ *
+ * No se anula la animación: se reduce a un salto instantáneo. Poner
+ * `animation: none` rompe las que dependen de su estado final (los diálogos
+ * de Radix quedarían invisibles, porque su estado de entrada es opacidad 0).
+ */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }

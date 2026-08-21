@@ -1,5 +1,6 @@
 import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from 'recharts'
 import { formatCOP } from '@/lib/money'
+import { usePrefersReducedMotion } from '@/lib/usePrefersReducedMotion'
 
 export interface DonutDatum {
   key: string
@@ -19,6 +20,7 @@ const DONUT_COLORS = ['var(--chart-3)', 'var(--chart-4)', 'var(--chart-5)', 'var
  * nativa de Recharts, para poder mostrar el monto en pesos junto al color.
  */
 export function DonutChart({ data }: { data: DonutDatum[] }) {
+  const prefersReducedMotion = usePrefersReducedMotion()
   const total = data.reduce((sum, d) => sum + d.value, 0)
   if (total === 0) {
     return <p className="py-8 text-center text-sm text-muted-foreground">Sin datos en este rango todavía.</p>
@@ -29,7 +31,7 @@ export function DonutChart({ data }: { data: DonutDatum[] }) {
       <div className="h-40 w-40 shrink-0">
         <ResponsiveContainer width="100%" height="100%">
           <PieChart>
-            <Pie data={data} dataKey="value" nameKey="label" innerRadius={44} outerRadius={68} paddingAngle={2} strokeWidth={0}>
+            <Pie data={data} dataKey="value" nameKey="label" innerRadius={44} outerRadius={68} paddingAngle={2} strokeWidth={0} isAnimationActive={!prefersReducedMotion}>
               {data.map((d, i) => (
                 <Cell key={d.key} fill={DONUT_COLORS[i % DONUT_COLORS.length]} />
               ))}

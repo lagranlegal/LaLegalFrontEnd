@@ -60,6 +60,19 @@
   --shadow-card: 0 1px 3px rgb(30 42 59 / 0.06);
   --shadow-modal: 0 20px 50px rgb(30 42 59 / 0.18);
 
+  /* ==== Movimiento ====
+     El movimiento es diseño y también sale de acá (regla 4): sin estos
+     tokens cada pantalla inventaba su propia duración y la app se sentía
+     hecha por manos distintas. Tres duraciones, no más — si algo necesita
+     una cuarta, casi siempre es que está animando de más.
+
+     La curva es la misma en todo: salida rápida, entrada suave. Es la que
+     hace que un panel se sienta "colocado" y no "disparado". */
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --duration-fast: 120ms; /* hover, focus, press — debe sentirse instantáneo */
+  --duration-base: 200ms; /* aparición de cards, tabs, chips */
+  --duration-slow: 320ms; /* modales, drawers, lo que ocupa la pantalla */
+
   /* ==== Tipografía y espaciado ==== */
   --font-sans: 'Inter', system-ui, sans-serif; /* cifras de KPI con font-feature "tnum" */
   --space-page: 24px;

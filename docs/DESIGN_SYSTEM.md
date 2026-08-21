@@ -61,13 +61,29 @@ CSS variables consumidas por Tailwind (`@theme` en Tailwind v4). Las features us
   --shadow-card: 0 1px 3px rgb(30 42 59 / .06);
   --shadow-modal: 0 20px 50px rgb(30 42 59 / .18);
 
+  /* ==== Movimiento ==== */
+  --ease-out: cubic-bezier(.16, 1, .3, 1);   /* salida rápida, entrada suave */
+  --duration-fast: 120ms;   /* hover, focus, press — debe sentirse instantáneo */
+  --duration-base: 200ms;   /* aparición de cards, tabs, chips */
+  --duration-slow: 320ms;   /* modales, drawers, lo que ocupa la pantalla */
+
   /* ==== Tipografía y espaciado ==== */
   --font-sans: "Inter", system-ui, sans-serif;   /* cifras de KPI con font-feature "tnum" */
   --space-page: 24px;  --space-card: 20px;
 }
 ```
 
-Dark mode: no es requisito, pero la estructura ya lo permite (`[data-theme=dark]` redefine las mismas variables). No invertir esfuerzo ahora; no romper el mecanismo tampoco (por eso: nunca hex sueltos).
+**El movimiento también es un token.** Sin estas cuatro líneas cada pantalla inventaba su propia duración y la app se sentía hecha por manos distintas. Tres duraciones y una sola curva — si algo pide una cuarta, casi siempre es que está animando de más.
+
+Utilidad `enter-up` (definida en `globals.css`): el contenido cargado sube unos píxeles mientras aparece, en vez de saltar. Se aplica **al contenedor, no a cada hijo** — animar veinte filas por separado convierte una lista en un espectáculo y retrasa la lectura.
+
+Dark mode: no es requisito, pero la estructura ya lo permite (`[data-theme=dark]` redefine las mismas variables). No invertir esfuerzo ahora; no romper el mecanismo tampoco (por eso: nunca hex sueltos). **Hoy el bloque `[data-theme='dark']` está vacío y no hay toggle** — verificarlo antes de "arreglar" cualquier cosa que solo se rompa en oscuro.
+
+### `prefers-reduced-motion`
+
+Se respeta **una sola vez y para toda la app**, en `globals.css`: confiar en que cada pantalla nueva se acuerde de `motion-reduce` garantiza que tarde o temprano alguna se olvide. La regla **no anula** las animaciones, las reduce a un salto instantáneo — poner `animation: none` rompería las que dependen de su estado final (los diálogos de Radix quedarían invisibles, porque su estado de entrada es opacidad 0).
+
+**Excepción: Recharts.** Anima desde JavaScript interpolando valores, así que ninguna regla de CSS lo alcanza. Los wrappers de `charts/` preguntan la preferencia con `usePrefersReducedMotion()` y pasan `isAnimationActive={!prefersReducedMotion}`. Cualquier gráfica nueva debe hacer lo mismo.
 
 ## 3. Inventario de componentes compartidos (`components/shared`)
 
@@ -123,7 +139,7 @@ Recharts con wrapper propio `components/shared/charts/` que lee colores de los t
 - `KpiRow`: Ingresos operativos, Gastos operativos, Utilidad operativa, Intereses cobrados, Ventas — **excluye a propósito** el movimiento de capital (desembolsos/abonos), que vive en su propia card separada con una nota explícita ("no es ingreso ni gasto") — mezclar ambos daría una utilidad falsa (prestar dinero no es un gasto, recuperarlo no es ingreso). Cada KPI trae `delta` vs el período inmediatamente anterior de igual duración (`▲/▼ N%`, verde/rojo según si es favorable para ESE indicador específico).
 - Card "Empeño vs Tienda" (solo con módulo "Todo"): `ModuleSplitBar` — barra de 2 segmentos en CSS puro (no Recharts) con el % de participación en ingresos operativos.
 - Card "Cartera actual" (módulo "Todo"/"Empeño"): snapshot de HOY (`GET /reports/dashboard`, no depende del rango elegido — rotulado explícitamente para no confundir), reusa `ContractsStatusChart`.
-- Card "Tendencia diaria": `DailyTrendChart` — área con relleno degradado (`type="monotone"`, curvas suaves), ingresos vs gastos operativos por día, `--chart-1`/`--chart-2`.
+- Card "Tendencia diaria": `DailyTrendChart` — área con relleno degradado (`type="monotone"`, curvas suaves), ingresos vs gastos operativos por día, `--chart-1`/`--chart-2`. Eje X en `dd/MM` (`formatDateShort`): el año se repite en cada punto y es ruido — el rango completo ya está escrito arriba, en el selector. `minTickGap` deja que Recharts descarte etiquetas antes de encimarlas (con 90 días no caben todas). Sin puntos fijos por dato: `activeDot` al pasar el mouse basta, y con rangos largos los puntos convertían la línea en un collar.
 - Cards "Gastos por categoría" / "Medio de pago (ingresos)": `DonutChart` — dos donas lado a lado. "Medio de pago" muestra solo ingreso OPERATIVO (nunca capital recuperado, para que cuadre exactamente con el KPI de arriba).
 - Card "Desglose por módulo, concepto y medio de pago": tabla, mismo shell que `SessionReportPanel` (Caja) pero agregada sobre TODO el rango.
 - Sección "Histórico completo" (al final, visualmente separada, NO depende del rango elegido arriba — `GET /sales` no tiene filtro de fecha en el backend): "Prendas más vendidas" y "Categorías más movidas", listas rankeadas con barra de progreso relativa al primer puesto (mismo espíritu simple que `ModuleSplitBar`, no una gráfica nueva).

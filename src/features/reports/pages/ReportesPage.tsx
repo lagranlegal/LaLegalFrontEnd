@@ -51,7 +51,9 @@ function ReportesSkeleton() {
 
 function CardShell({ title, subtitle, children }: { title: string; subtitle?: string; children: ReactNode }) {
   return (
-    <div className="rounded-card border border-border bg-card p-card shadow-card">
+    // `enter-up` en el card, no en cada fila o segmento: animar cada dato por
+    // separado convierte un reporte en un espectáculo y retrasa la lectura.
+    <div className="enter-up rounded-card border border-border bg-card p-card shadow-card">
       <div className="mb-3 flex items-center justify-between gap-2">
         <h2 className="text-sm font-medium text-foreground">{title}</h2>
         {subtitle && <span className="text-xs text-muted-foreground">{subtitle}</span>}

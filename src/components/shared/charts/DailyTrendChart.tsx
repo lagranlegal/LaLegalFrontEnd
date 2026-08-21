@@ -1,6 +1,7 @@
 import { Area, AreaChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import { formatCOP } from '@/lib/money'
-import { formatDate } from '@/lib/dates'
+import { formatDate, formatDateShort } from '@/lib/dates'
+import { usePrefersReducedMotion } from '@/lib/usePrefersReducedMotion'
 
 export interface DailyTrendDatum {
   date: string
@@ -18,6 +19,9 @@ export interface DailyTrendDatum {
  * cliente de un look más moderno, mismo dato de siempre.
  */
 export function DailyTrendChart({ data }: { data: DailyTrendDatum[] }) {
+  // Recharts anima desde JavaScript, así que la regla de `prefers-reduced-motion`
+  // de globals.css no lo alcanza — hay que apagarlo a mano.
+  const prefersReducedMotion = usePrefersReducedMotion()
   const chartData = data.map((d) => ({ date: d.date, Ingresos: Number(d.ingresos), Gastos: Number(d.gastos) }))
   return (
     <div className="h-64 w-full">
@@ -34,7 +38,7 @@ export function DailyTrendChart({ data }: { data: DailyTrendDatum[] }) {
             </linearGradient>
           </defs>
           <CartesianGrid vertical={false} stroke="var(--border)" />
-          <XAxis dataKey="date" tickFormatter={formatDate} tick={{ fontSize: 12, fill: 'var(--text-muted)' }} axisLine={false} tickLine={false} />
+          <XAxis dataKey="date" tickFormatter={formatDateShort} minTickGap={24} tick={{ fontSize: 12, fill: 'var(--text-muted)' }} axisLine={false} tickLine={false} />
           <YAxis tickFormatter={(v: number) => formatCOP(v, { maximumFractionDigits: 0 })} tick={{ fontSize: 11, fill: 'var(--text-muted)' }} axisLine={false} tickLine={false} width={72} />
           <Tooltip
             contentStyle={{ borderRadius: 'var(--radius-card)', borderColor: 'var(--border)', fontSize: 12 }}
@@ -42,8 +46,8 @@ export function DailyTrendChart({ data }: { data: DailyTrendDatum[] }) {
             labelFormatter={(label) => formatDate(String(label))}
           />
           <Legend wrapperStyle={{ fontSize: 12 }} />
-          <Area type="monotone" dataKey="Ingresos" stroke="var(--chart-1)" strokeWidth={2} fill="url(#reportesIngresosFill)" dot={{ r: 3, fill: 'var(--chart-1)' }} />
-          <Area type="monotone" dataKey="Gastos" stroke="var(--chart-2)" strokeWidth={2} fill="url(#reportesGastosFill)" dot={{ r: 3, fill: 'var(--chart-2)' }} />
+          <Area type="monotone" dataKey="Ingresos" stroke="var(--chart-1)" strokeWidth={2} fill="url(#reportesIngresosFill)" dot={false} activeDot={{ r: 4 }} isAnimationActive={!prefersReducedMotion} />
+          <Area type="monotone" dataKey="Gastos" stroke="var(--chart-2)" strokeWidth={2} fill="url(#reportesGastosFill)" dot={false} activeDot={{ r: 4 }} isAnimationActive={!prefersReducedMotion} />
         </AreaChart>
       </ResponsiveContainer>
     </div>

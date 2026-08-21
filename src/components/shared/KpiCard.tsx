@@ -36,7 +36,7 @@ export function KpiCard({ label, value, tone = 'default', delta }: { label: stri
 
 export function KpiRow({ children }: { children: ReactNode }) {
   return (
-    <div className="grid grid-cols-2 gap-4 rounded-card border border-border bg-card p-card shadow-card sm:grid-cols-3 lg:flex lg:gap-0 lg:divide-x lg:divide-border">
+    <div className="enter-up grid grid-cols-2 gap-4 rounded-card border border-border bg-card p-card shadow-card sm:grid-cols-3 lg:flex lg:gap-0 lg:divide-x lg:divide-border">
       {children}
     </div>
   )

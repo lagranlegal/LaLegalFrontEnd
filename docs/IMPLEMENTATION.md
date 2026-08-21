@@ -2,6 +2,50 @@
 
 > Registro vivo de qué existe en el código, cómo está armado y por qué se tomó cada decisión — para que cualquiera (humano o Claude Code) pueda retomar el proyecto sin releer todo el historial de commits. Se actualiza en cada paso del "Orden de implementación" de `CLAUDE.md`. No repite lo que ya está en `ARCHITECTURE.md`/`DESIGN_SYSTEM.md` (el qué-debería-ser); esto es el qué-hay-hoy y las decisiones concretas tomadas al construirlo.
 
+## Movimiento como token + gráficas (20/08/2026)
+
+Puntos 3 y 4 del cliente (*"mejorar todo el ui/ux animaciones en responsive"*, *"mejorar el diseño de gráficas y reportes"*). Pasada acotada y verificable, **no** un rediseño visual: eso es una decisión estética que hay que tomar con el cliente y referencias a la vista.
+
+### El hueco real: no había tokens de movimiento
+
+La regla 4 de `CLAUDE.md` dice que todo el diseño sale de `tokens.css` — color, radio, sombra, espaciado, tipografía. **El movimiento era la única dimensión sin tokens**, así que cada pantalla inventaba su duración y la app se sentía hecha por manos distintas.
+
+Se agregaron una curva y tres duraciones (`--ease-out`, `--duration-fast/base/slow`), más la utilidad `enter-up`. Detalle y criterio: `docs/DESIGN_SYSTEM.md` §2.
+
+`enter-up` se aplica **al contenedor**, no a cada hijo: animar cada KPI o cada fila por separado convierte un reporte en un espectáculo y retrasa la lectura. Hoy lo usan `KpiRow` (compartido: dashboard y reportes) y el `CardShell` de Reportes.
+
+### `prefers-reduced-motion`, una vez para toda la app
+
+Estaba resuelto pantalla por pantalla (`motion-reduce` en `RefreshingBar`), que es exactamente el patrón que garantiza que alguna se olvide. Ahora es una regla global en `globals.css`.
+
+Dos detalles que no son obvios:
+
+- **No se anulan las animaciones, se reducen a un salto instantáneo.** `animation: none` rompería las que dependen de su estado final: los diálogos de Radix quedarían **invisibles**, porque su estado de entrada es opacidad 0.
+- **Recharts no lo respeta y no puede.** Anima desde JavaScript interpolando valores; ninguna regla de CSS lo alcanza. Se agregó `lib/usePrefersReducedMotion.ts` y los tres wrappers de `charts/` pasan `isAnimationActive={!prefersReducedMotion}`. El hook **escucha cambios** en vez de leer una vez: en macOS es un interruptor de accesibilidad que la gente prende justo cuando el movimiento le está molestando.
+
+### Gráficas
+
+- **Eje X de la tendencia diaria en `dd/MM`** (`formatDateShort`, nuevo en `lib/dates.ts`, con test). El año se repetía en cada punto siendo ruido: el rango ya está escrito arriba en el selector. Mismo tratamiento sin `Date` que `formatDate`, por el mismo motivo de corrimiento por UTC — y con test para el 1 de enero, que es donde ese bug aparece.
+- **`minTickGap`**: con un rango de 90 días las fechas se encimaban. Ahora Recharts descarta etiquetas antes de solaparlas.
+- **Sin puntos fijos por dato** (`dot={false}` + `activeDot`): en rangos largos los puntos convertían la línea en un collar. Al pasar el mouse el punto activo sigue apareciendo.
+
+### Lo que NO se hizo, y por qué
+
+El rediseño visual "parecido a Alegra" **no** se tocó. Es una decisión estética, subjetiva y de alcance grande — necesita referencias concretas del cliente (capturas de qué le gusta de Alegra) antes de invertir en ella. Cambiar la marca completa ya es barato por construcción (`tokens.css`, 6 líneas), así que no hay deuda técnica bloqueando esa conversación.
+
+### Un falso positivo que vale la pena registrar
+
+Los tooltips de Recharts traen `backgroundColor: '#fff'` **hardcodeado** en su estilo por defecto y ninguno de los wrappers lo sobrescribe — parecía un bug de modo oscuro. **No lo es**: el bloque `[data-theme='dark']` de `tokens.css` está vacío y no hay toggle en ninguna parte. Verificar eso antes de "arreglar" cualquier cosa que solo se rompa en oscuro.
+
+### Verificación
+
+```
+npm run typecheck   # limpio
+npm run lint        # 0 errores (7 warnings preexistentes del React Compiler)
+npm run test        # 104/104
+npm run build       # sin errores; .enter-up y la media query salen en el CSS compilado
+```
+
 ## Cuentas: dónde está la plata (20/08/2026)
 
 Punto 8 del cliente: *"¿qué posibilidad hay de agregar cuentas con las cuales hacer los desembolsos?"*, más el dato que lo volvió urgente: **el cliente usa Sistecrédito** para vender.
