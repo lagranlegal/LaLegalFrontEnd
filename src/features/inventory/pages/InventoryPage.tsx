@@ -5,6 +5,7 @@ import { PageHeader } from '@/components/shared/PageHeader'
 import { DataTable } from '@/components/shared/DataTable'
 import { StatusBadge } from '@/components/shared/StatusBadge'
 import { Money } from '@/components/shared/Money'
+import { sumMoney } from '@/lib/money'
 import { Can } from '@/components/shared/Can'
 import { SearchInput } from '@/components/shared/SearchInput'
 import { RefreshingBar } from '@/components/shared/RefreshingBar'
@@ -15,7 +16,7 @@ import { cn } from '@/lib/utils'
 import { formatDate, formatDateTime } from '@/lib/dates'
 import { useCategories, type Category } from '@/lib/catalogs/categories'
 import { useSuppliers } from '@/lib/catalogs/suppliers'
-import { ENTRY_ORIGIN_LABELS, EXIT_TYPE_LABELS } from '@/lib/inventory/entryTypes'
+import { entryOriginLabel, exitTypeLabel, SELECTABLE_ENTRY_ORIGINS, SELECTABLE_EXIT_TYPES } from '@/lib/inventory/entryTypes'
 import { useEntriesList, useExitsList, useItemsList, useProductsList, type Entry, type Exit, type Product } from '@/features/inventory/api'
 import type { Item } from '@/lib/inventory/items'
 import { ItemEditDialog } from '@/features/inventory/components/ItemEditDialog'
@@ -83,6 +84,23 @@ function FilterSelect({
   )
 }
 
+/** Filtro de sí/no, como píldora. Para lo que no es una lista de opciones. */
+function FilterToggle({ active, onToggle, label }: { active: boolean; onToggle: () => void; label: string }) {
+  return (
+    <button
+      type="button"
+      onClick={onToggle}
+      aria-pressed={active}
+      className={cn(
+        'rounded-pill px-3 py-1.5 text-sm font-medium transition-colors',
+        active ? 'bg-primary text-primary-foreground' : 'bg-background text-muted-foreground hover:bg-accent',
+      )}
+    >
+      {label}
+    </button>
+  )
+}
+
 /** Un nivel del árbol de categorías, sobre `FilterSelect`. */
 function CategorySelect({
   value,
@@ -119,15 +137,88 @@ function CategorySelect({
  */
 function ProductsTab() {
   const [q, setQ] = useState('')
-  const { data, isPending, isFetching, isError, error, refetch, hasNextPage, isFetchingNextPage, fetchNextPage } = useProductsList({ q })
+  const [cat1Id, setCat1Id] = useState('')
+  const [cat2Id, setCat2Id] = useState('')
+  const [cat3Id, setCat3Id] = useState('')
+  const [supplierId, setSupplierId] = useState('')
+  const [inStock, setInStock] = useState(false)
+  const { data: categories } = useCategories()
+  const { data: suppliers } = useSuppliers()
+  const { data, isPending, isFetching, isError, error, refetch, hasNextPage, isFetchingNextPage, fetchNextPage } = useProductsList({
+    q,
+    // Solo la categoría MÁS específica: el backend filtra por columna exacta.
+    cat1_id: cat3Id || cat2Id ? '' : cat1Id,
+    cat2_id: cat3Id ? '' : cat2Id,
+    cat3_id: cat3Id,
+    supplier_id: supplierId,
+    in_stock: inStock,
+  })
   const [editing, setEditing] = useState<Product | null>(null)
   const [dialogNonce, setDialogNonce] = useState(0)
+
+  const level1Options = (categories ?? []).filter((c) => c.level === 1 && c.active)
+  const level2Options = (categories ?? []).filter((c) => c.level === 2 && c.active && c.parent_id === cat1Id)
+  const level3Options = (categories ?? []).filter((c) => c.level === 3 && c.active && c.parent_id === cat2Id)
+  const hasFilters = !!(q || cat1Id || supplierId || inStock)
 
   const products = data?.pages.flatMap((page) => page.items) ?? []
 
   return (
     <div className="flex flex-col gap-4">
       <SearchInput value={q} onChange={setQ} placeholder="Buscar producto por código o nombre…" />
+
+      {/* La pestaña principal del inventario no tenía más filtro que el texto,
+          así que "¿qué tengo de joyería en oro?" o "¿qué puedo vender hoy?"
+          no se podían responder sin leer la lista entera. */}
+      <div className="flex flex-wrap items-center gap-2">
+        <CategorySelect
+          value={cat1Id}
+          onChange={(v) => {
+            setCat1Id(v)
+            setCat2Id('')
+            setCat3Id('')
+          }}
+          options={level1Options}
+          placeholder="Toda categoría"
+          disabled={!categories}
+        />
+        {cat1Id && (
+          <CategorySelect
+            value={cat2Id}
+            onChange={(v) => {
+              setCat2Id(v)
+              setCat3Id('')
+            }}
+            options={level2Options}
+            placeholder="Toda subcategoría"
+          />
+        )}
+        {cat2Id && <CategorySelect value={cat3Id} onChange={setCat3Id} options={level3Options} placeholder="Todo tipo" />}
+        <FilterSelect
+          value={supplierId}
+          onChange={setSupplierId}
+          options={(suppliers ?? []).filter((sp) => sp.active).map((sp) => ({ value: sp.id, label: sp.name }))}
+          placeholder="Todo proveedor"
+          disabled={!suppliers}
+        />
+        <FilterToggle active={inStock} onToggle={() => setInStock((v) => !v)} label="Solo con stock" />
+        {hasFilters && (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => {
+              setQ('')
+              setCat1Id('')
+              setCat2Id('')
+              setCat3Id('')
+              setSupplierId('')
+              setInStock(false)
+            }}
+          >
+            Limpiar filtros
+          </Button>
+        )}
+      </div>
 
       {/* `isPending` solo es true en la PRIMERA carga: al buscar o al refrescar
           tras guardar un precio hay datos viejos en pantalla y nada indicaría
@@ -163,8 +254,8 @@ function ProductsTab() {
 
       {!isPending && !isError && products.length === 0 && (
         <EmptyState
-          title={q ? 'Ningún producto coincide' : 'Aún no tienes productos'}
-          description={q ? 'Prueba con otro código o nombre.' : 'Registra un ingreso para empezar.'}
+          title={hasFilters ? 'Ningún producto coincide' : 'Aún no tienes productos'}
+          description={hasFilters ? 'Prueba con otros filtros.' : 'Registra un ingreso para empezar.'}
         />
       )}
 
@@ -352,15 +443,32 @@ function ItemsTab() {
   )
 }
 
+const PAYMENT_STATUS_TABS = [
+  { value: '', label: 'Todos' },
+  { value: 'pending', label: 'Por pagar' },
+  { value: 'paid', label: 'Pagados' },
+]
+
 function EntriesTab() {
-  const { data, isPending, isError, error, refetch, hasNextPage, isFetchingNextPage, fetchNextPage } = useEntriesList()
+  const [paymentStatus, setPaymentStatus] = useState('')
+  const [supplierId, setSupplierId] = useState('')
+  const [originType, setOriginType] = useState('')
+  const [q, setQ] = useState('')
+  const { data: suppliers } = useSuppliers()
+  const { data, isPending, isError, error, refetch, hasNextPage, isFetchingNextPage, fetchNextPage } = useEntriesList({
+    payment_status: paymentStatus,
+    supplier_id: supplierId,
+    origin_type: originType,
+    q,
+  })
   const [viewingEntry, setViewingEntry] = useState<Entry | null>(null)
+  const hasFilters = !!(paymentStatus || supplierId || originType || q)
 
   const entries = data?.pages.flatMap((page) => page.items) ?? []
 
   const columns: ColumnDef<Entry>[] = [
     { accessorKey: 'number', header: 'Número', cell: (info) => `#${info.getValue<number>()}` },
-    { accessorKey: 'origin_type', header: 'Origen', cell: (info) => ENTRY_ORIGIN_LABELS[info.getValue<string>()] ?? info.getValue<string>() },
+    { accessorKey: 'origin_type', header: 'Origen', cell: (info) => entryOriginLabel(info.getValue<string>()) },
     { accessorKey: 'items', header: 'Artículos', cell: (info) => info.row.original.items.length },
     { accessorKey: 'total_cost', header: 'Costo total', cell: (info) => <Money value={info.getValue<string>()} /> },
     // La fecha de ENTRADA de la mercancía, no la de digitación: puede ser
@@ -383,6 +491,68 @@ function EntriesTab() {
 
   return (
     <div className="flex flex-col gap-4">
+      <SearchInput value={q} onChange={setQ} placeholder="Buscar por número de ingreso o factura del proveedor…" />
+
+      {/* "¿Qué compras tengo por pagar?" no tenía respuesta en la app aunque
+          el dato estuviera en cada fila: había que abrir los ingresos uno por
+          uno. Va primero porque es la pregunta que se hace todos los días. */}
+      <div className="flex flex-wrap items-center gap-2">
+        {PAYMENT_STATUS_TABS.map((tab) => (
+          <button
+            key={tab.value}
+            type="button"
+            onClick={() => setPaymentStatus(tab.value)}
+            className={cn(
+              'rounded-pill px-3 py-1.5 text-sm font-medium transition-colors',
+              paymentStatus === tab.value ? 'bg-primary text-primary-foreground' : 'bg-background text-muted-foreground hover:bg-accent',
+            )}
+          >
+            {tab.label}
+          </button>
+        ))}
+      </div>
+
+      <div className="flex flex-wrap items-center gap-2">
+        <FilterSelect
+          value={originType}
+          onChange={setOriginType}
+          options={SELECTABLE_ENTRY_ORIGINS.map((value) => ({ value, label: entryOriginLabel(value) }))}
+          placeholder="Todo origen"
+        />
+        <FilterSelect
+          value={supplierId}
+          onChange={setSupplierId}
+          options={(suppliers ?? []).filter((sp) => sp.active).map((sp) => ({ value: sp.id, label: sp.name }))}
+          placeholder="Todo proveedor"
+          disabled={!suppliers}
+        />
+        {hasFilters && (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => {
+              setPaymentStatus('')
+              setSupplierId('')
+              setOriginType('')
+              setQ('')
+            }}
+          >
+            Limpiar filtros
+          </Button>
+        )}
+      </div>
+
+      {/* El total por pagar es la razón por la que alguien abre este filtro:
+          no le sirve la lista, le sirve el número. */}
+      {paymentStatus === 'pending' && entries.length > 0 && (
+        <div className="flex items-center justify-between rounded-card border border-warning/40 bg-warning-soft px-3 py-2 text-sm">
+          <span className="text-warning">
+            {entries.length} compra(s) por pagar{hasNextPage ? ' (o más)' : ''}
+          </span>
+          <Money value={sumMoney(...entries.map((e) => e.total_cost))} className="font-medium text-foreground" />
+        </div>
+      )}
+
       <DataTable
         columns={columns}
         data={entries}
@@ -391,7 +561,8 @@ function EntriesTab() {
         isError={isError}
         error={error}
         onRetry={() => refetch()}
-        emptyTitle="Aún no tienes ingresos registrados"
+        emptyTitle={hasFilters ? 'Ningún ingreso coincide' : 'Aún no tienes ingresos registrados'}
+        emptyDescription={hasFilters ? 'Prueba con otros filtros.' : undefined}
         onRowClick={(row) => setViewingEntry(row)}
         hasNextPage={hasNextPage}
         isFetchingNextPage={isFetchingNextPage}
@@ -404,7 +575,8 @@ function EntriesTab() {
 }
 
 function ExitsTab() {
-  const { data, isPending, isError, error, refetch, hasNextPage, isFetchingNextPage, fetchNextPage } = useExitsList()
+  const [exitType, setExitType] = useState('')
+  const { data, isPending, isError, error, refetch, hasNextPage, isFetchingNextPage, fetchNextPage } = useExitsList({ exit_type: exitType })
   const [dialogOpen, setDialogOpen] = useState(false)
   const [dialogNonce, setDialogNonce] = useState(0)
 
@@ -412,14 +584,20 @@ function ExitsTab() {
 
   const columns: ColumnDef<Exit>[] = [
     { accessorKey: 'number', header: 'Número', cell: (info) => `#${info.getValue<number>()}` },
-    { accessorKey: 'exit_type', header: 'Tipo', cell: (info) => EXIT_TYPE_LABELS[info.getValue<string>()] ?? info.getValue<string>() },
+    { accessorKey: 'exit_type', header: 'Tipo', cell: (info) => exitTypeLabel(info.getValue<string>()) },
     { accessorKey: 'reason', header: 'Motivo' },
     { accessorKey: 'created_at', header: 'Fecha', cell: (info) => formatDateTime(info.getValue<string>()) },
   ]
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex justify-end">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <FilterSelect
+          value={exitType}
+          onChange={setExitType}
+          options={SELECTABLE_EXIT_TYPES.map((value) => ({ value, label: exitTypeLabel(value) }))}
+          placeholder="Todo tipo"
+        />
         <Can permission="inventory.exit">
           <Button
             className="rounded-pill"

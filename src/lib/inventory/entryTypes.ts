@@ -39,6 +39,20 @@ export const ENTRY_ORIGIN_HINTS: Record<SelectableEntryOrigin, string> = {
   other: 'Cualquier otro origen. Explica en las notas de dónde salió — si no, dentro de un mes nadie va a saberlo.',
 }
 
+/**
+ * Etiqueta con respaldo seguro: un valor no mapeado se muestra tal cual en
+ * vez de romper o quedar vacío — mismo criterio que `conceptLabel` y
+ * `paymentMethodLabel`. Un enum nuevo del backend aparece en crudo hasta que
+ * se agregue acá, que es feo pero legible; `undefined` no sería ninguna cosa.
+ */
+export function entryOriginLabel(origin: string): string {
+  return ENTRY_ORIGIN_LABELS[origin] ?? origin
+}
+
+export function exitTypeLabel(exitType: string): string {
+  return EXIT_TYPE_LABELS[exitType] ?? exitType
+}
+
 /** Solo la compra mueve plata; el resto de orígenes no tocan la caja. */
 export function entryOriginTouchesCash(origin: string): boolean {
   return origin === 'purchase'

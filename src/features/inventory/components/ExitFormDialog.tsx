@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { toast } from 'sonner'
 import { Trash2 } from 'lucide-react'
 import { AppDialog } from '@/components/shared/AppDialog'
-import { EXIT_TYPE_LABELS, SELECTABLE_EXIT_TYPES } from '@/lib/inventory/entryTypes'
+import { exitTypeLabel, SELECTABLE_EXIT_TYPES } from '@/lib/inventory/entryTypes'
 import { ItemPicker } from '@/components/shared/ItemPicker'
 import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
@@ -14,7 +14,10 @@ const inputClass = 'mt-1 w-full rounded-input border border-border bg-background
 
 /** Egreso de artículos (CLAUDE.md paso 7) — sin `Idempotency-Key`, sin caja: no es dinero, es una salida de inventario (ajuste, daño, devolución, uso interno). */
 export function ExitFormDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (open: boolean) => void }) {
-  const [exitType, setExitType] = useState<'adjustment' | 'damage' | 'supplier_return' | 'internal_use'>('adjustment')
+  // Tipado desde la lista compartida y no a mano: escrito a mano se quedó sin
+  // `loss` cuando 00033 lo agregó, y el selector lo habría ofrecido mientras
+  // TypeScript lo rechazaba al elegirlo.
+  const [exitType, setExitType] = useState<(typeof SELECTABLE_EXIT_TYPES)[number]>('adjustment')
   const [reason, setReason] = useState('')
   const [lines, setLines] = useState<{ item: Item; quantity: number }[]>([])
   const [formError, setFormError] = useState<string | null>(null)
@@ -61,7 +64,7 @@ export function ExitFormDialog({ open, onOpenChange }: { open: boolean; onOpenCh
       open={open}
       onOpenChange={onOpenChange}
       title="Nuevo egreso"
-      description="Saca artículos disponibles del inventario — ajuste, daño, devolución o uso interno."
+      description="Saca artículos disponibles del inventario — ajuste, daño, pérdida, devolución o uso interno."
       size="lg"
       footer={
         <Button form="exit-form" type="submit" disabled={createExit.isPending} className="w-full rounded-pill">
@@ -79,7 +82,7 @@ export function ExitFormDialog({ open, onOpenChange }: { open: boolean; onOpenCh
             <SelectContent>
               {SELECTABLE_EXIT_TYPES.map((value) => (
                 <SelectItem key={value} value={value}>
-                  {EXIT_TYPE_LABELS[value]}
+                  {exitTypeLabel(value)}
                 </SelectItem>
               ))}
             </SelectContent>

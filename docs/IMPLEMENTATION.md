@@ -2,6 +2,64 @@
 
 > Registro vivo de qué existe en el código, cómo está armado y por qué se tomó cada decisión — para que cualquiera (humano o Claude Code) pueda retomar el proyecto sin releer todo el historial de commits. Se actualiza en cada paso del "Orden de implementación" de `CLAUDE.md`. No repite lo que ya está en `ARCHITECTURE.md`/`DESIGN_SYSTEM.md` (el qué-debería-ser); esto es el qué-hay-hoy y las decisiones concretas tomadas al construirlo.
 
+## Tanda C de los diez frentes: la compra deja de nacer incompleta (21/08/2026)
+
+Sin migraciones. Es la tanda que más se siente a diario.
+
+### 0. Un bug que la Tanda B había dejado sembrado
+
+Al publicar, el código se arma con la letra del proveedor (o `R` si es remate). Un ingreso **sin proveedor** no tenía ninguna de las dos: lanzaba `400` y la mercancía quedaba atrapada en borrador **para siempre**.
+
+Con los tipos de 00033 eso pasó de rareza a callejón sin salida: `initial_stock` se creó justamente para cargar lo que la compraventa ya tiene en la vitrina, y **no servía para ponerlo en la vitrina**. Lo encontró una sonda escrita a propósito antes de empezar la tanda, no un usuario.
+
+Ahora cae en **`P` de "propio"**, con la misma lógica que la `R`: la letra dice de dónde salió la pieza. Si el proveedor se conoce, su letra sigue mandando — `P` es respaldo, no reemplazo, y hay un test para cada caso.
+
+### 1. Precio y fotos en el ingreso, y publicación automática
+
+`EntryLineIn` gana `sale_price` (y ya tenía `photos`). Con precio y al menos una foto, **el lote se publica en el acto**: emite código y queda `available`.
+
+Antes toda compra nacía en borrador sin importar qué tan completa viniera, y había que volver artículo por artículo desde otra pantalla. El borrador dejaba de significar *"le falta algo"* y pasaba a ser el estado normal — con el efecto perverso de que un artículo **realmente** incompleto se volvía invisible: no está en la vitrina y nadie se entera hasta que alguien lo busca para vender.
+
+El precio puede venir en la línea **o ya estar en el producto**: reponer algo que ya se vendía no obliga a redigitarlo, y así se evita que alguien escriba otro y deje dos lotes del mismo producto a precios distintos en la misma vitrina.
+
+**El estado se dice antes de guardar, no después.** Cada línea muestra si va a quedar lista o en borrador y qué le falta; el pie del formulario resume `N listos · M en borrador`; y el toast final reporta lo que **realmente** pasó, leyendo el `status` que devolvió el backend en vez de afirmar "N artículos en borrador" como hacía antes (que además ya era mentira).
+
+### 2. El carrito de compra
+
+Comprar varios artículos **siempre se pudo** — el backend recibe una lista desde el día uno. El problema era la forma: cada línea era un bloque enorme y el buscador de "¿ya lo compraste?" vivía **dentro de cada línea**, así que reponer diez productos conocidos obligaba a crear diez bloques y buscar diez veces.
+
+Ahora hay **un** buscador arriba que agrega líneas ya llenas, las líneas resueltas se colapsan a una fila compacta (con subtotal y estado) y se expanden al tocarlas. Diez artículos caben en pantalla y la compra se puede revisar de un vistazo antes de confirmar.
+
+**Busca productos, no lotes**, y el cambio no es cosmético: el producto trae el precio de venta, que es lo que permite que la línea entre completa. Un lote trae además su costo puntual —información de *esa* compra— y sugerirlo invitaba a repetir un costo de hace seis meses. El costo se escribe siempre, porque siempre cambia. Sigue creando una línea nueva y **nunca sumando cantidad** a un lote existente: el costeo es por identificación específica y fusionar dos compras obligaría a promediar.
+
+### 3. Filtros
+
+**Backend:** `/entries` gana `supplier_id`, `origin_type`, `payment_status`, `from_date`, `to_date` y `q` (número o factura); `/products` gana categorías, `supplier_id`, `in_stock` y `active`; `/exits` gana `exit_type` y fechas.
+
+`payment_status=pending` es el que más falta hacía: **"¿qué compras tengo por pagar?"** no tenía respuesta en la app aunque el dato estuviera en cada fila desde 00020 y hasta con índice parcial. Solo cuenta compras — los demás orígenes no entregan plata, así que "sin pagar" no significa nada en ellos e inflaría la deuda con proveedores.
+
+Dos detalles de SQL que valen la pena: el filtro de proveedor en `/products` va como `EXISTS` y no como `JOIN`, porque un join multiplicaría filas antes del `group by` y falsearía los agregados de lotes; y `in_stock` va en `HAVING`, porque "tengo algo para vender" es propiedad de la suma de los lotes, no de una fila.
+
+**Front:** la pestaña Ingresos abre con las píldoras Todos / Por pagar / Pagados, y con "Por pagar" activo muestra el **total adeudado** — quien abre ese filtro no quiere la lista, quiere el número. Productos gana categorías, proveedor y "Solo con stock". Egresos gana el tipo.
+
+Las etiquetas de tipos ganaron `entryOriginLabel`/`exitTypeLabel` con respaldo seguro, en vez de indexar el `Record` directo: con `noUncheckedIndexedAccess` eso devuelve `string | undefined`, y el fallback evita que un enum nuevo del backend se vea vacío. De paso apareció que `ExitFormDialog` tenía su unión de tipos escrita **a mano** y se había quedado sin `loss`: el selector lo ofrecía y TypeScript lo rechazaba al elegirlo. Ahora se tipa desde la lista compartida.
+
+### Verificación
+
+```
+pytest -q            # 252/252 (243 previos + 9 nuevos)
+ruff check . && mypy app
+npm run typecheck && npm run lint && npm run test && npm run build   # 111/111
+```
+
+### Lo que queda
+
+**Estado de los filtros en la URL** (search params del router) — que sobrevivan a un F5 y se puedan pasar por link. Es polish y quedó fuera a favor de exponer los filtros que responden preguntas reales.
+
+**Precio sugerido al rematar:** el remate ya hereda las fotos (Tanda A) y conoce el costo, así que podría sugerir precio y publicar solo, igual que una compra. No se hizo para no tocar el flujo de remate sin un contrato real de por medio.
+
+---
+
 ## Tanda B de los diez frentes: consignar, histórico de caja y tipos de ingreso (21/08/2026)
 
 Tres migraciones (`00031`–`00033`), todas **aditivas**, aplicadas a la dev remota antes del deploy. Análisis completo en `docs/propuesta-diez-frentes.html`.

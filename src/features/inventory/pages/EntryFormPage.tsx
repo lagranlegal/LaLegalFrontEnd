@@ -4,14 +4,14 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { Controller, useFieldArray, useForm, useWatch } from 'react-hook-form'
 import { z } from 'zod'
 import { toast } from 'sonner'
-import { Plus, Trash2 } from 'lucide-react'
+import { ChevronRight, ImageIcon, Plus, Trash2 } from 'lucide-react'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { AppDialog } from '@/components/shared/AppDialog'
 import { MoneyInput } from '@/components/shared/MoneyInput'
 import { DatePicker } from '@/components/shared/DatePicker'
 import { SearchInput } from '@/components/shared/SearchInput'
-import { StatusBadge } from '@/components/shared/StatusBadge'
-import { useItemsForRestock, type Item } from '@/lib/inventory/items'
+import { useProductSearch, type Product } from '@/lib/inventory/productSearch'
+import { PhotoUploader } from '@/components/shared/PhotoUploader'
 import { Money } from '@/components/shared/Money'
 import { CashSessionRequiredDialog } from '@/components/shared/CashSessionRequiredDialog'
 import { Button } from '@/components/ui/button'
@@ -25,7 +25,7 @@ import { AccountPicker } from '@/components/shared/AccountPicker'
 import { PAYMENT_METHOD_LABELS } from '@/lib/paymentMethods'
 import { applyServerErrors } from '@/lib/forms/applyServerErrors'
 import { useCreateEntry } from '@/features/inventory/api'
-import { ENTRY_ORIGIN_LABELS, ENTRY_ORIGIN_HINTS, SELECTABLE_ENTRY_ORIGINS, entryOriginTouchesCash } from '@/lib/inventory/entryTypes'
+import { entryOriginLabel, ENTRY_ORIGIN_HINTS, SELECTABLE_ENTRY_ORIGINS, entryOriginTouchesCash } from '@/lib/inventory/entryTypes'
 
 
 const entryLineSchema = z.object({
@@ -36,6 +36,10 @@ const entryLineSchema = z.object({
   description: z.string().optional(),
   unit_cost: z.string().refine((v) => Number(v) > 0, 'El costo debe ser mayor a cero'),
   quantity: z.number().int().min(1),
+  // Opcionales: sin ellos el lote entra en borrador, que sigue siendo válido.
+  // Con los dos, el backend lo publica solo y queda listo para vender.
+  sale_price: z.string().optional(),
+  photos: z.array(z.string()).optional(),
 })
 
 const entrySchema = z
@@ -80,68 +84,173 @@ const inputClass =
   'mt-1 w-full rounded-input border border-border bg-background px-3 py-2 text-sm text-foreground outline-none focus:border-primary disabled:bg-muted disabled:text-muted-foreground'
 
 function emptyLine(): EntryFormValues['lines'][number] {
-  return { name: '', cat1_id: '', cat2_id: '', cat3_id: '', description: '', unit_cost: '0.00', quantity: 1 }
+  return { name: '', cat1_id: '', cat2_id: '', cat3_id: '', description: '', unit_cost: '0.00', quantity: 1, sale_price: '', photos: [] }
+}
+
+/** ¿Esta línea nace vendible o queda en borrador? Espeja la regla del backend. */
+function lineIsReady(line: EntryFormValues['lines'][number] | undefined): boolean {
+  return !!line && Number(line.sale_price || 0) > 0 && (line.photos?.length ?? 0) > 0
 }
 
 /**
- * Copia los datos de un artículo ya comprado antes, para no retipear al
- * reponer stock.
+ * Buscador que ARMA la compra: se busca un producto y entra como línea nueva,
+ * ya con nombre, categorías y precio.
  *
- * IMPORTANTE — POR QUÉ COPIA Y NO SUMA CANTIDAD: el pedido original fue
- * "si tengo un artículo que existe y es del mismo proveedor debería dejar
- * seleccionármelo". Lo intuitivo sería sumarle cantidad al artículo existente,
- * pero eso rompería el costeo: el sistema usa IDENTIFICACIÓN ESPECÍFICA
- * (CONTEXTO.md §3, estándar joyero/NIIF) — cada pieza o lote conserva su
- * costo real de compra y NUNCA se promedia. Fusionar dos compras a costos
- * distintos obligaría a promediar, lo que falsearía la utilidad bruta de cada
- * venta y el costo de ventas del período.
+ * Reemplaza al `RestockPicker` que vivía DENTRO de cada línea. Comprar varios
+ * artículos siempre se pudo —el backend recibe una lista— pero reponer diez
+ * productos conocidos obligaba a crear diez bloques y buscar diez veces, una
+ * por bloque. Un solo buscador arriba convierte eso en diez clics.
  *
- * Además, cada artículo publicado tiene un código único e inmutable: dos lotes
- * comprados en fechas distintas no pueden compartir uno.
+ * BUSCA PRODUCTOS, NO LOTES, y el cambio no es cosmético: el producto trae el
+ * precio de venta, que es lo que permite que la línea entre completa. Un lote
+ * trae además su costo puntual — información de ESA compra, no del producto —
+ * y sugerirlo invitaba a repetir un costo de hace seis meses. El costo se
+ * escribe siempre, porque siempre cambia.
  *
- * Así que se crea un artículo NUEVO con su propio costo y su propio código, y
- * lo único que se reutiliza es lo que sí es idéntico: nombre, categoría y
- * descripción. Eso resuelve el problema real (no retipear) sin romper la
- * contabilidad.
+ * POR QUÉ AGREGA UNA LÍNEA Y NO SUMA CANTIDAD a un lote existente: el sistema
+ * costea por IDENTIFICACIÓN ESPECÍFICA (CONTEXTO.md §3, estándar joyero/NIIF).
+ * Cada lote conserva su costo real y NUNCA se promedia; fusionar dos compras a
+ * costos distintos obligaría a promediar y falsearía la utilidad de cada venta.
  */
-function RestockPicker({ supplierId, onPick }: { supplierId?: string; onPick: (item: Item) => void }) {
+function ProductSearchAdd({
+  supplierId,
+  onPickProduct,
+  onCreateNew,
+}: {
+  supplierId?: string
+  onPickProduct: (product: Product) => void
+  onCreateNew: () => void
+}) {
   const [q, setQ] = useState('')
-  const { data, isFetching } = useItemsForRestock(q, supplierId)
+  const { data, isFetching } = useProductSearch(q, { supplierId })
 
   return (
-    <div className="relative mb-3">
-      <SearchInput value={q} onChange={setQ} placeholder="¿Ya lo compraste antes? Búscalo para copiar sus datos…" />
-      {q.trim() && (
-        <div className="absolute z-10 mt-1 w-full overflow-hidden rounded-input border border-border bg-card shadow-card">
-          {isFetching && <p className="px-3 py-2 text-sm text-muted-foreground">Buscando…</p>}
-          {!isFetching && data?.length === 0 && (
-            <p className="px-3 py-2 text-sm text-muted-foreground">
-              Sin coincidencias{supplierId ? ' con este proveedor' : ''}. Llena los datos abajo.
-            </p>
-          )}
-          {!isFetching &&
-            data?.map((item) => (
-              <button
-                key={item.id}
-                type="button"
-                className="flex w-full items-center justify-between gap-3 px-3 py-2 text-left text-sm hover:bg-accent"
-                onClick={() => {
-                  onPick(item)
-                  setQ('')
-                }}
-              >
-                <span className="min-w-0">
-                  <span className="block truncate font-medium text-foreground">{item.name}</span>
-                  <span className="block text-xs text-muted-foreground">
-                    {item.code ? `${item.code} · ` : ''}último costo <Money value={item.cost} />
+    <div className="flex flex-col gap-2">
+      <div className="relative">
+        <SearchInput value={q} onChange={setQ} placeholder="Busca un producto que ya vendes para agregarlo…" />
+        {q.trim() && (
+          <div className="absolute z-10 mt-1 w-full overflow-hidden rounded-input border border-border bg-card shadow-card">
+            {isFetching && <p className="px-3 py-2 text-sm text-muted-foreground">Buscando…</p>}
+            {!isFetching && data?.length === 0 && (
+              <p className="px-3 py-2 text-sm text-muted-foreground">
+                Sin coincidencias{supplierId ? ' con este proveedor' : ''}. Usa “Artículo nuevo”.
+              </p>
+            )}
+            {!isFetching &&
+              data?.map((product) => (
+                <button
+                  key={product.id}
+                  type="button"
+                  className="flex w-full items-center justify-between gap-3 px-3 py-2 text-left text-sm hover:bg-accent"
+                  onClick={() => {
+                    onPickProduct(product)
+                    setQ('')
+                  }}
+                >
+                  <span className="min-w-0">
+                    <span className="block truncate font-medium text-foreground">{product.name}</span>
+                    <span className="block text-xs text-muted-foreground">
+                      {product.code ? `${product.code} · ` : ''}
+                      {product.sale_price ? (
+                        <>
+                          precio <Money value={product.sale_price} />
+                        </>
+                      ) : (
+                        'sin precio todavía'
+                      )}
+                    </span>
                   </span>
-                </span>
-                <StatusBadge status={item.status} />
-              </button>
-            ))}
-        </div>
+                  <span className="shrink-0 text-xs text-muted-foreground">{product.available_quantity} disp.</span>
+                </button>
+              ))}
+          </div>
+        )}
+      </div>
+      <Button type="button" variant="outline" size="sm" className="self-start" onClick={onCreateNew}>
+        <Plus className="size-4" /> Artículo nuevo
+      </Button>
+    </div>
+  )
+}
+
+/**
+ * Una línea ya resuelta, colapsada a una fila. Con todos los bloques abiertos
+ * a la vez, una compra de diez artículos era una pantalla interminable y no se
+ * podía revisar de un vistazo antes de confirmar.
+ *
+ * Muestra si la línea nace vendible o en borrador: es la consecuencia real de
+ * lo que se acaba de escribir, y verla ANTES de guardar es lo que evita
+ * descubrir después que media compra quedó invisible en borradores.
+ */
+function LineRow({
+  line,
+  index,
+  onExpand,
+  onRemove,
+}: {
+  line: EntryFormValues['lines'][number] | undefined
+  index: number
+  onExpand: () => void
+  onRemove?: () => void
+}) {
+  const lista = lineIsReady(line)
+  const subtotal = multiplyMoney(line?.unit_cost || '0.00', line?.quantity || 0)
+
+  return (
+    <div className="flex items-center gap-2 rounded-input border border-border bg-background px-3 py-2">
+      <button type="button" onClick={onExpand} className="flex min-w-0 flex-1 items-center gap-3 text-left">
+        <ChevronRight className="size-4 shrink-0 text-muted-foreground" aria-hidden />
+        <span className="min-w-0 flex-1">
+          <span className="block truncate text-sm font-medium text-foreground">{line?.name || `Artículo ${index + 1}`}</span>
+          <span className="flex flex-wrap items-center gap-x-2 text-xs text-muted-foreground">
+            <span>
+              {line?.quantity ?? 1} × <Money value={line?.unit_cost || '0.00'} />
+            </span>
+            {(line?.photos?.length ?? 0) > 0 && (
+              <span className="inline-flex items-center gap-0.5">
+                <ImageIcon className="size-3" aria-hidden /> {line?.photos?.length}
+              </span>
+            )}
+            <span className={lista ? 'text-success' : 'text-warning'}>{lista ? 'listo para vender' : 'quedará en borrador'}</span>
+          </span>
+        </span>
+        <Money value={subtotal} className="shrink-0 text-sm font-medium text-foreground" />
+      </button>
+      {onRemove && (
+        <Button type="button" variant="ghost" size="icon-sm" aria-label="Quitar artículo" onClick={onRemove}>
+          <Trash2 className="size-4 text-danger" />
+        </Button>
       )}
     </div>
+  )
+}
+
+/**
+ * Dice, mientras se escribe, si el artículo va a quedar publicado o en
+ * borrador — y qué le falta para lo primero.
+ *
+ * Existe porque el borrador es un estado silencioso: un artículo sin publicar
+ * no está en la vitrina y nadie se entera hasta que alguien lo busca para
+ * vender. Decirlo en el momento de la compra convierte un descubrimiento
+ * tardío en una decisión consciente.
+ */
+function LineReadiness({ line }: { line: EntryFormValues['lines'][number] | undefined }) {
+  if (lineIsReady(line)) {
+    return (
+      <p className="text-xs text-success">
+        Queda <strong>listo para vender</strong> apenas se registre el ingreso: se le asigna el código y entra a la vitrina.
+      </p>
+    )
+  }
+  const falta = [
+    Number(line?.sale_price || 0) > 0 ? null : 'el precio de venta',
+    (line?.photos?.length ?? 0) > 0 ? null : 'al menos una foto',
+  ].filter(Boolean)
+  return (
+    <p className="text-xs text-muted-foreground">
+      Sin {falta.join(' ni ')} queda en <strong className="text-warning">borrador</strong>: entra al inventario pero no se puede vender
+      hasta completarlo.
+    </p>
   )
 }
 
@@ -152,6 +261,10 @@ export function EntryFormPage() {
   const [formError, setFormError] = useState<string | null>(null)
   const [cashDialogOpen, setCashDialogOpen] = useState(false)
   const submittedRef = useRef(false)
+  // Qué línea está abierta. Las demás se colapsan a una fila compacta: con el
+  // bloque completo desplegado en todas, diez artículos eran una pantalla
+  // interminable y no se podía revisar la compra de un vistazo.
+  const [expanded, setExpanded] = useState<number | null>(0)
   const createEntry = useCreateEntry()
 
   const {
@@ -194,6 +307,7 @@ export function EntryFormPage() {
   })
 
   const totalCost = sumMoney(...lines.map((line) => multiplyMoney(line.unit_cost || '0.00', line.quantity || 0)))
+  const listasCount = lines.filter(lineIsReady).length
 
   async function onSubmit(values: EntryFormValues) {
     setFormError(null)
@@ -218,10 +332,21 @@ export function EntryFormPage() {
           description: line.description || null,
           unit_cost: line.unit_cost,
           quantity: line.quantity,
+          // Vacío = no se decidió todavía; el backend lo deja en borrador en
+          // vez de publicar con un precio inventado.
+          sale_price: Number(line.sale_price || 0) > 0 ? line.sale_price! : null,
+          photos: line.photos ?? [],
         })),
       })
       submittedRef.current = true
-      toast.success(`Ingreso #${entry.number} registrado — ${entry.items.length} artículo(s) en borrador`)
+      const publicados = entry.items.filter((item) => item.status === 'available').length
+      const borradores = entry.items.length - publicados
+      toast.success(`Ingreso #${entry.number} registrado`, {
+        description:
+          borradores === 0
+            ? `${publicados} artículo(s) listos para vender`
+            : `${publicados} listo(s) · ${borradores} en borrador, les falta precio o foto`,
+      })
       await navigate({ to: '/inventario' })
     } catch (error) {
       // Mismo manejo que la venta: una compra ahora exige caja abierta, así
@@ -258,7 +383,7 @@ export function EntryFormPage() {
                     <SelectContent>
                       {SELECTABLE_ENTRY_ORIGINS.map((value) => (
                         <SelectItem key={value} value={value}>
-                          {ENTRY_ORIGIN_LABELS[value]}
+                          {entryOriginLabel(value)}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -378,49 +503,85 @@ export function EntryFormPage() {
         </section>
 
         <section className="flex flex-col gap-4 rounded-card border border-border bg-card p-card shadow-card">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-wrap items-center justify-between gap-2">
             <h2 className="text-sm font-medium text-foreground">Artículos</h2>
-            <Button type="button" variant="outline" size="sm" onClick={() => append(emptyLine())}>
-              <Plus className="size-4" /> Agregar artículo
-            </Button>
+            <span className="text-xs text-muted-foreground">
+              {fields.length} {fields.length === 1 ? 'línea' : 'líneas'}
+            </span>
           </div>
+
+          {/* UN buscador arriba, no uno dentro de cada línea. Ese era el
+              problema real del punto 3: comprar varios artículos SIEMPRE se
+              pudo (el backend recibe una lista), pero reponer diez productos
+              conocidos obligaba a crear diez bloques enormes y buscar diez
+              veces dentro de cada uno. */}
+          <ProductSearchAdd
+            supplierId={watch('supplier_id')}
+            onPickProduct={(product) => {
+              append({
+                ...emptyLine(),
+                name: product.name,
+                description: product.description ?? '',
+                cat1_id: product.cat1_id,
+                cat2_id: product.cat2_id,
+                cat3_id: product.cat3_id,
+                // El precio ya está en el producto: no se vuelve a pedir. Si
+                // el usuario lo cambia acá, cambia para todos sus lotes.
+                sale_price: product.sale_price ?? '',
+              })
+              // El costo es lo único que SIEMPRE hay que revisar (cambia en
+              // cada compra), así que la línea nueva se abre en ese campo.
+              setExpanded(fields.length)
+            }}
+            onCreateNew={() => {
+              append(emptyLine())
+              setExpanded(fields.length)
+            }}
+          />
+
           {errors.lines?.message && <p className="text-sm text-danger">{errors.lines.message}</p>}
 
-          <div className="flex flex-col gap-4">
+          <div className="flex flex-col gap-2">
             {fields.map((field, index) => {
-              const cat1 = lines[index]?.cat1_id
-              const cat2 = lines[index]?.cat2_id
+              const linea = lines[index]
+              const cat1 = linea?.cat1_id
+              const cat2 = linea?.cat2_id
               const level1Options = (categories ?? []).filter((c) => c.level === 1 && c.active)
               const level2Options = (categories ?? []).filter((c) => c.level === 2 && c.active && c.parent_id === cat1)
               const level3Options = (categories ?? []).filter((c) => c.level === 3 && c.active && c.parent_id === cat2)
+              const conError = !!errors.lines?.[index]
+
+              // Colapsada: una fila compacta. Diez artículos caben en pantalla
+              // en vez de ocupar diez bloques de media pantalla cada uno.
+              if (expanded !== index && !conError) {
+                return (
+                  <LineRow
+                    key={field.id}
+                    line={linea}
+                    index={index}
+                    onExpand={() => setExpanded(index)}
+                    onRemove={fields.length > 1 ? () => remove(index) : undefined}
+                  />
+                )
+              }
 
               return (
-                <div key={field.id} className="flex flex-col gap-3 rounded-input border border-border p-3">
+                <div key={field.id} className="flex flex-col gap-3 rounded-input border border-primary/40 bg-background p-3">
                   <div className="flex items-center justify-between">
                     <span className="text-xs font-medium text-muted-foreground">Artículo {index + 1}</span>
-                    {fields.length > 1 && (
-                      <Button type="button" variant="ghost" size="icon-sm" aria-label="Quitar artículo" onClick={() => remove(index)}>
-                        <Trash2 className="size-4 text-danger" />
-                      </Button>
-                    )}
+                    <div className="flex items-center gap-1">
+                      {!conError && (
+                        <Button type="button" variant="ghost" size="sm" onClick={() => setExpanded(null)}>
+                          Listo
+                        </Button>
+                      )}
+                      {fields.length > 1 && (
+                        <Button type="button" variant="ghost" size="icon-sm" aria-label="Quitar artículo" onClick={() => remove(index)}>
+                          <Trash2 className="size-4 text-danger" />
+                        </Button>
+                      )}
+                    </div>
                   </div>
-                  {/* Reponer algo que ya se compró antes: copia los datos y
-                      evita retipear. NO suma cantidad al artículo existente —
-                      ver el comentario de RestockPicker. */}
-                  <RestockPicker
-                    supplierId={watch('supplier_id')}
-                    onPick={(item) => {
-                      setValue(`lines.${index}.name`, item.name)
-                      setValue(`lines.${index}.description`, item.description ?? '')
-                      setValue(`lines.${index}.cat1_id`, item.cat1_id)
-                      setValue(`lines.${index}.cat2_id`, item.cat2_id)
-                      setValue(`lines.${index}.cat3_id`, item.cat3_id)
-                      // El costo se sugiere como referencia, no se impone: el
-                      // del lote nuevo casi nunca es el mismo, y es el dato
-                      // que el usuario DEBE revisar.
-                      setValue(`lines.${index}.unit_cost`, item.cost)
-                    }}
-                  />
 
                   <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                     <div className="sm:col-span-2">
@@ -526,6 +687,47 @@ export function EntryFormPage() {
                       <input className={inputClass} {...register(`lines.${index}.description`)} />
                     </div>
                   </div>
+
+                  {/* PRECIO Y FOTOS ACÁ, no en otra pantalla después.
+                      Este es el momento en que la mercancía está en la mano de
+                      quien la registra: es cuando se sabe en cuánto se va a
+                      vender y cuando se le puede tomar la foto. Pedirlo
+                      después obligaba a volver artículo por artículo, y por eso
+                      TODA compra nacía incompleta. */}
+                  <div className="flex flex-col gap-3 rounded-input bg-muted/40 p-3">
+                    <p className="text-xs font-medium text-foreground">Para dejarlo listo para vender</p>
+                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                      <div>
+                        <label className="text-sm font-medium text-foreground">Precio de venta</label>
+                        <Controller
+                          control={control}
+                          name={`lines.${index}.sale_price`}
+                          render={({ field: priceField }) => (
+                            <MoneyInput className="mt-1" value={priceField.value || '0.00'} onChange={priceField.onChange} />
+                          )}
+                        />
+                        <p className="mt-1 text-xs text-muted-foreground">Aplica a todos los lotes de este producto.</p>
+                      </div>
+                      <div>
+                        <label className="text-sm font-medium text-foreground">Fotos</label>
+                        <div className="mt-1">
+                          <Controller
+                            control={control}
+                            name={`lines.${index}.photos`}
+                            render={({ field: photoField }) => (
+                              <PhotoUploader
+                                value={photoField.value ?? []}
+                                onChange={photoField.onChange}
+                                folder={`inventory/nuevo/${field.id}`}
+                                maxPhotos={3}
+                              />
+                            )}
+                          />
+                        </div>
+                      </div>
+                    </div>
+                    <LineReadiness line={linea} />
+                  </div>
                 </div>
               )
             })}
@@ -549,9 +751,29 @@ export function EntryFormPage() {
         {formError && <p className="rounded-input bg-danger-soft px-3 py-2 text-sm text-danger">{formError}</p>}
 
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <p className="text-sm text-muted-foreground">
-            Costo total estimado <Money value={totalCost} className="font-medium text-foreground" />
-          </p>
+          <div className="text-sm text-muted-foreground">
+            <p>
+              Costo total estimado <Money value={totalCost} className="font-medium text-foreground" />
+            </p>
+            {/* Lo que va a pasar, dicho ANTES de guardar. Un borrador es un
+                estado silencioso —no está en la vitrina y nadie se entera—,
+                así que el momento de enterarse es este y no cuando alguien lo
+                busque para vender. */}
+            <p className="mt-0.5 text-xs">
+              {listasCount === fields.length ? (
+                <span className="text-success">
+                  {fields.length === 1 ? 'El artículo queda listo para vender' : `Los ${fields.length} artículos quedan listos para vender`}
+                </span>
+              ) : (
+                <>
+                  {listasCount > 0 && <span className="text-success">{listasCount} listo(s) para vender</span>}
+                  {listasCount > 0 && ' · '}
+                  <span className="text-warning">{fields.length - listasCount} en borrador</span>
+                  <span className="text-muted-foreground"> (les falta precio o foto)</span>
+                </>
+              )}
+            </p>
+          </div>
           <Button type="submit" disabled={createEntry.isPending} className="w-full rounded-pill sm:w-auto">
             {createEntry.isPending ? 'Registrando…' : 'Registrar ingreso'}
           </Button>

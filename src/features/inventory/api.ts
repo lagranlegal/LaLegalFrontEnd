@@ -14,8 +14,29 @@ export type ItemPublishIn = components['schemas']['ItemPublishIn']
 
 // ---- Ingresos ----
 
-export function useEntriesList() {
-  return useCursorInfiniteQuery(['inventory', 'entries'] as const, (cursor) => unwrap(api.GET('/api/v1/inventory/entries', { params: { query: { cursor } } })))
+export interface EntryFilters {
+  supplier_id?: string
+  origin_type?: string
+  /** `pending` = compras por pagar. Es el filtro que más falta hacía. */
+  payment_status?: string
+  from_date?: string
+  to_date?: string
+  /** Número del ingreso o factura del proveedor. */
+  q?: string
+}
+
+export function useEntriesList(filters: EntryFilters = {}) {
+  const query = {
+    supplier_id: filters.supplier_id || undefined,
+    origin_type: filters.origin_type || undefined,
+    payment_status: filters.payment_status || undefined,
+    from_date: filters.from_date || undefined,
+    to_date: filters.to_date || undefined,
+    q: filters.q?.trim() || undefined,
+  }
+  return useCursorInfiniteQuery(['inventory', 'entries', query] as const, (cursor) =>
+    unwrap(api.GET('/api/v1/inventory/entries', { params: { query: { ...query, cursor } } })),
+  )
 }
 
 export function useEntry(entryId: string | undefined) {
@@ -48,8 +69,21 @@ export function useCreateEntry() {
 
 // ---- Egresos ----
 
-export function useExitsList() {
-  return useCursorInfiniteQuery(['inventory', 'exits'] as const, (cursor) => unwrap(api.GET('/api/v1/inventory/exits', { params: { query: { cursor } } })))
+export interface ExitFilters {
+  exit_type?: string
+  from_date?: string
+  to_date?: string
+}
+
+export function useExitsList(filters: ExitFilters = {}) {
+  const query = {
+    exit_type: filters.exit_type || undefined,
+    from_date: filters.from_date || undefined,
+    to_date: filters.to_date || undefined,
+  }
+  return useCursorInfiniteQuery(['inventory', 'exits', query] as const, (cursor) =>
+    unwrap(api.GET('/api/v1/inventory/exits', { params: { query: { ...query, cursor } } })),
+  )
 }
 
 export function useCreateExit() {
@@ -148,6 +182,12 @@ export type ProductUpdateIn = components['schemas']['ProductUpdateIn']
 export interface ProductFilters {
   q?: string
   include_unique?: boolean
+  cat1_id?: string
+  cat2_id?: string
+  cat3_id?: string
+  supplier_id?: string
+  /** Solo lo que tiene unidades disponibles — "¿qué puedo vender hoy?". */
+  in_stock?: boolean
 }
 
 /**
@@ -156,7 +196,15 @@ export interface ProductFilters {
  * antes obligaba a hacer una lista con una fila por compra.
  */
 export function useProductsList(filters: ProductFilters = {}) {
-  const query = { q: filters.q?.trim() || undefined, include_unique: filters.include_unique || undefined }
+  const query = {
+    q: filters.q?.trim() || undefined,
+    include_unique: filters.include_unique || undefined,
+    cat1_id: filters.cat1_id || undefined,
+    cat2_id: filters.cat2_id || undefined,
+    cat3_id: filters.cat3_id || undefined,
+    supplier_id: filters.supplier_id || undefined,
+    in_stock: filters.in_stock || undefined,
+  }
   return useCursorInfiniteQuery(['inventory', 'products', query] as const, (cursor) =>
     unwrap(api.GET('/api/v1/inventory/products', { params: { query: { ...query, cursor } } })),
   )

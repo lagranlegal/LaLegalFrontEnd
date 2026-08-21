@@ -847,7 +847,14 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** List Entries */
+        /**
+         * List Entries
+         * @description `payment_status=pending` responde "¿qué compras tengo por pagar?".
+         *
+         *     El dato estaba en cada fila desde 00020 —y hasta con índice parcial— pero
+         *     ninguna consulta lo ofrecía, así que la pregunta no tenía respuesta en la
+         *     app aunque la respuesta estuviera guardada.
+         */
         get: operations["list_entries_api_v1_inventory_entries_get"];
         put?: never;
         /** Create Entry */
@@ -2060,6 +2067,8 @@ export interface components {
             quantity: number;
             /** Photos */
             photos?: string[];
+            /** Sale Price */
+            sale_price?: number | string | null;
         };
         /** EntryOut */
         EntryOut: {
@@ -5113,6 +5122,17 @@ export interface operations {
             query?: {
                 cursor?: string | null;
                 limit?: number;
+                supplier_id?: string | null;
+                /** @description purchase | initial_stock | adjustment_in | other | auction */
+                origin_type?: string | null;
+                /** @description pending (compras por pagar) | paid */
+                payment_status?: string | null;
+                /** @description Sobre `entry_date`, inclusivo. */
+                from_date?: string | null;
+                /** @description Sobre `entry_date`, inclusivo. */
+                to_date?: string | null;
+                /** @description Número del ingreso o factura del proveedor. */
+                q?: string | null;
             };
             header?: never;
             path?: never;
@@ -5248,6 +5268,10 @@ export interface operations {
             query?: {
                 cursor?: string | null;
                 limit?: number;
+                /** @description adjustment | damage | loss | supplier_return | internal_use */
+                exit_type?: string | null;
+                from_date?: string | null;
+                to_date?: string | null;
             };
             header?: never;
             path?: never;
@@ -5459,6 +5483,14 @@ export interface operations {
                 q?: string | null;
                 /** @description Incluir piezas de remate, que son productos de un solo lote. */
                 include_unique?: boolean;
+                cat1_id?: string | null;
+                cat2_id?: string | null;
+                cat3_id?: string | null;
+                /** @description Productos con al menos un lote de ese proveedor. */
+                supplier_id?: string | null;
+                /** @description Solo lo que tiene unidades disponibles. */
+                in_stock?: boolean;
+                active?: boolean | null;
             };
             header?: never;
             path?: never;
