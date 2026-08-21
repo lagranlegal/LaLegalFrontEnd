@@ -6,6 +6,7 @@ import { PAYMENT_METHOD_LABELS, paymentMethodLabel } from '@/lib/paymentMethods'
 import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { AccountPicker } from '@/components/shared/AccountPicker'
+import { ENTRY_ORIGIN_LABELS } from '@/lib/inventory/entryTypes'
 import { CashSessionRequiredDialog } from '@/components/shared/CashSessionRequiredDialog'
 import { ApiError } from '@/lib/api/client'
 import { usePayEntry } from '@/features/inventory/api'
@@ -13,7 +14,6 @@ import { useState } from 'react'
 import { toast } from 'sonner'
 import type { Entry } from '@/features/inventory/api'
 
-const ORIGIN_TYPE_LABELS: Record<string, string> = { purchase: 'Compra', other: 'Otro' }
 
 /**
  * Salda una compra que quedó pendiente. El egreso cae en la sesión de caja de
@@ -91,7 +91,7 @@ export function EntryDetailDialog({ open, onOpenChange, entry }: { open: boolean
         <div className="grid grid-cols-2 gap-3 rounded-input bg-background p-3 text-sm sm:grid-cols-3">
           <div>
             <p className="text-xs text-muted-foreground">Origen</p>
-            <p className="font-medium text-foreground">{ORIGIN_TYPE_LABELS[entry.origin_type] ?? entry.origin_type}</p>
+            <p className="font-medium text-foreground">{ENTRY_ORIGIN_LABELS[entry.origin_type] ?? entry.origin_type}</p>
           </div>
           <div>
             <p className="text-xs text-muted-foreground">Factura</p>

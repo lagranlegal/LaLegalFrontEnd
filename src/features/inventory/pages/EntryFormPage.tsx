@@ -25,8 +25,8 @@ import { AccountPicker } from '@/components/shared/AccountPicker'
 import { PAYMENT_METHOD_LABELS } from '@/lib/paymentMethods'
 import { applyServerErrors } from '@/lib/forms/applyServerErrors'
 import { useCreateEntry } from '@/features/inventory/api'
+import { ENTRY_ORIGIN_LABELS, ENTRY_ORIGIN_HINTS, SELECTABLE_ENTRY_ORIGINS, entryOriginTouchesCash } from '@/lib/inventory/entryTypes'
 
-const ORIGIN_TYPE_LABELS: Record<'purchase' | 'other', string> = { purchase: 'Compra', other: 'Otro' }
 
 const entryLineSchema = z.object({
   name: z.string().min(1, 'El nombre es obligatorio'),
@@ -40,7 +40,7 @@ const entryLineSchema = z.object({
 
 const entrySchema = z
   .object({
-    origin_type: z.enum(['purchase', 'other']),
+    origin_type: z.enum(SELECTABLE_ENTRY_ORIGINS),
     supplier_id: z.string().optional(),
     supplier_invoice: z.string().optional(),
     // '' = pendiente de pago. No es lo mismo que "sin elegir": es una
@@ -65,6 +65,13 @@ const entrySchema = z
   .refine((data) => data.entry_date <= todayBogota(), {
     message: 'La mercancía no puede haber entrado en una fecha futura',
     path: ['entry_date'],
+  })
+  // "Otro" es un cajón de sastre, así que el backend le exige motivo (00033).
+  // Se valida acá también para señalar el campo en vez de mostrar un banner
+  // después del roundtrip — mismo criterio que el proveedor en las compras.
+  .refine((data) => data.origin_type !== 'other' || !!data.notes?.trim(), {
+    message: 'Explica de dónde salió esta mercancía',
+    path: ['notes'],
   })
 
 type EntryFormValues = z.infer<typeof entrySchema>
@@ -175,6 +182,10 @@ export function EntryFormPage() {
   // Compiler no puede memoizar (ya hay un warning por eso en este archivo).
   const paymentMethod = useWatch({ control, name: 'payment_method' })
   const isPurchase = originType === 'purchase'
+  // Solo la compra entrega plata. Los demás orígenes (inventario inicial,
+  // sobrante de conteo, otro) registran mercancía que ya está: no tocan la
+  // caja y por eso no muestran medio de pago ni cuenta.
+  const muevePlata = entryOriginTouchesCash(originType)
 
   const blocker = useBlocker({
     shouldBlockFn: () => isDirty && !submittedRef.current,
@@ -245,19 +256,20 @@ export function EntryFormPage() {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      {Object.entries(ORIGIN_TYPE_LABELS).map(([value, label]) => (
+                      {SELECTABLE_ENTRY_ORIGINS.map((value) => (
                         <SelectItem key={value} value={value}>
-                          {label}
+                          {ENTRY_ORIGIN_LABELS[value]}
                         </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
                 )}
               />
+              <p className="mt-1 text-xs text-muted-foreground">{ENTRY_ORIGIN_HINTS[originType]}</p>
             </div>
             <div>
               <label htmlFor="supplier_id" className="text-sm font-medium text-foreground">
-                Proveedor (opcional)
+                Proveedor {isPurchase ? '' : '(opcional)'}
               </label>
               <Controller
                 control={control}
@@ -307,7 +319,7 @@ export function EntryFormPage() {
             {/* El medio de pago es OPCIONAL: vacío = pendiente de pago. Ese es
                 el camino para cargar facturas de días anteriores o de noche
                 con la caja cerrada, sin inventarle un movimiento a la caja. */}
-            {isPurchase && (
+            {muevePlata && (
               <div className="sm:col-span-2">
                 <label htmlFor="payment_method" className="text-sm font-medium text-foreground">
                   Pago
@@ -342,7 +354,7 @@ export function EntryFormPage() {
             )}
             {/* Solo si se paga ahora: una compra "por pagar" todavía no mueve
                 plata, así que no hay cuenta de la cual salga. */}
-            {isPurchase && paymentMethod && (
+            {muevePlata && paymentMethod && (
               <div className="sm:col-span-2">
                 <label htmlFor="entry-account" className="text-sm font-medium text-foreground">
                   ¿De dónde sale?
@@ -522,9 +534,16 @@ export function EntryFormPage() {
 
         <section className="rounded-card border border-border bg-card p-card shadow-card">
           <label htmlFor="notes" className="text-sm font-medium text-foreground">
-            Notas (opcional)
+            Notas {originType === 'other' ? '' : '(opcional)'}
           </label>
-          <textarea id="notes" rows={2} className={inputClass} {...register('notes')} />
+          <textarea
+            id="notes"
+            rows={2}
+            className={inputClass}
+            placeholder={originType === 'other' ? '¿De dónde salió esta mercancía?' : undefined}
+            {...register('notes')}
+          />
+          {errors.notes && <p className="mt-1 text-sm text-danger">{errors.notes.message}</p>}
         </section>
 
         {formError && <p className="rounded-input bg-danger-soft px-3 py-2 text-sm text-danger">{formError}</p>}

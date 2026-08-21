@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Landmark, Pencil, Plus, Wallet } from 'lucide-react'
+import { ArrowLeftRight, Landmark, Pencil, Plus, Wallet } from 'lucide-react'
 import { Can } from '@/components/shared/Can'
 import { EmptyState } from '@/components/shared/EmptyState'
 import { Money } from '@/components/shared/Money'
@@ -11,6 +11,7 @@ import { ACCOUNT_TYPE_HINTS, ACCOUNT_TYPE_LABELS } from '@/lib/accounts/types'
 import { sumMoney } from '@/lib/money'
 import { AccountFormDialog } from '@/features/accounts/components/AccountFormDialog'
 import { SettleAccountDialog } from '@/features/accounts/components/SettleAccountDialog'
+import { TransferDialog } from '@/features/accounts/components/TransferDialog'
 import { isPermissionError } from '@/lib/api/isPermissionError'
 import { useAccounts, type Account, type AccountType } from '@/features/accounts/api'
 
@@ -74,6 +75,8 @@ export function AccountsPage() {
   const [formOpen, setFormOpen] = useState(false)
   const [editing, setEditing] = useState<Account | undefined>(undefined)
   const [settling, setSettling] = useState<Account | null>(null)
+  const [transferOpen, setTransferOpen] = useState(false)
+  const [transferNonce, setTransferNonce] = useState(0)
 
   const openNew = () => {
     setEditing(undefined)
@@ -90,12 +93,28 @@ export function AccountsPage() {
         title="Cuentas"
         description="Dónde está la plata: el cajón, los bancos y lo que te deben."
         actions={
-          <Can permission="accounts.manage">
-            <Button onClick={openNew}>
-              <Plus className="size-4" />
-              Nueva cuenta
-            </Button>
-          </Can>
+          <div className="flex flex-wrap gap-2">
+            {/* Trasladar va primero porque es la operación DIARIA — consignar
+                el efectivo del día. Crear una cuenta se hace una vez. */}
+            <Can permission="accounts.transfer">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setTransferNonce((n) => n + 1)
+                  setTransferOpen(true)
+                }}
+              >
+                <ArrowLeftRight className="size-4" />
+                Trasladar
+              </Button>
+            </Can>
+            <Can permission="accounts.manage">
+              <Button onClick={openNew}>
+                <Plus className="size-4" />
+                Nueva cuenta
+              </Button>
+            </Can>
+          </div>
         }
       />
 
@@ -194,6 +213,9 @@ export function AccountsPage() {
           onOpenChange={(open) => !open && setSettling(null)}
           account={settling}
         />
+      )}
+      {transferOpen && (
+        <TransferDialog key={`transfer-${transferNonce}`} open onOpenChange={setTransferOpen} />
       )}
     </div>
   )

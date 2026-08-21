@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query'
 import { api, unwrap } from '@/lib/api/client'
 import { fetchAllPages } from '@/lib/api/pagination'
 import { fetchAllClosingsInRange } from '@/lib/cashbox/closings'
+import { usePermission } from '@/lib/permissions/usePermission'
 import type { DateRangeValue } from '@/components/shared/DateRangePicker'
 import { daysBetweenDateOnly } from '@/features/reports/aggregate'
 import type { SessionReport, Expense } from '@/features/cashbox/api'
@@ -28,9 +29,16 @@ export interface RawSession {
  */
 export function useRawSessions(range: DateRangeValue | null) {
   const withinCap = !!range && daysBetweenDateOnly(range.from, range.to) <= MAX_RANGE_DAYS
+  // Desde 00031 las DOS llamadas de acá (`/reports/closings` y el reporte de
+  // cada sesión pasada) exigen `cashbox.view_history`. Se comprueba antes de
+  // disparar: sin esto, un rol con `reports.view` pero sin histórico haría
+  // una ráfaga de 403 en cada carga de /reportes por algo que ya sabemos
+  // mirando sus permisos. La UI oculta, el backend protege — pero no hay
+  // razón para tocar la puerta sabiendo que está cerrada.
+  const canViewHistory = usePermission('cashbox.view_history')
   return useQuery<RawSession[]>({
     queryKey: ['reports', 'raw-sessions', range] as const,
-    enabled: withinCap,
+    enabled: withinCap && canViewHistory,
     queryFn: async () => {
       const closings = await fetchAllClosingsInRange(range!)
       return Promise.all(

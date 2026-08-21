@@ -69,3 +69,47 @@ describe('aggregateFinancialSummary con movimientos sin medio de pago', () => {
     expect(byMethod['cash']).toBe('20000.00')
   })
 })
+
+describe('traslados entre cuentas en el resumen financiero', () => {
+  it('consignar el efectivo no inventa ingresos, gastos ni flujo', () => {
+    // El caso real: se vendieron 100.000 en efectivo y al final del día se
+    // consignaron 80.000 en el banco. Lo que el negocio ganó sigue siendo
+    // 100.000 — la consignación no es un gasto ni mueve plata hacia afuera.
+    //
+    // Registrar el traslado como gasto (que era la única salida antes de
+    // 00032) habría reportado 80.000 de gasto que nunca existieron, y sumarlo
+    // al flujo habría inflado entradas y salidas por el mismo monto.
+    const summary = aggregateFinancialSummary([
+      {
+        sessionDate: '2026-08-21',
+        report: report([
+          { module: 'store', direction: 'in', concept: 'sale', payment_method: 'cash', total: '100000.00' },
+          { module: 'general', direction: 'out', concept: 'transfer_out', payment_method: 'cash', total: '80000.00' },
+          { module: 'general', direction: 'in', concept: 'transfer_in', payment_method: 'transfer', total: '80000.00' },
+        ] as SessionReport['lines']),
+      },
+    ])
+
+    expect(summary.ingresosOperativos).toBe('100000.00')
+    expect(summary.gastosOperativos).toBe('0.00')
+    // El flujo cuenta la venta y nada más: el traslado no entró ni salió del
+    // negocio, cambió de bolsillo.
+    expect(summary.flujoEntradas).toBe('100000.00')
+    expect(summary.flujoSalidas).toBe('0.00')
+  })
+
+  it('el traslado sigue visible en el desglose por concepto', () => {
+    // Excluirlo de los totales no es esconderlo: el acta del cierre tiene que
+    // mostrar que esa plata salió del cajón, o el arqueo no se explica.
+    const summary = aggregateFinancialSummary([
+      {
+        sessionDate: '2026-08-21',
+        report: report([
+          { module: 'general', direction: 'out', concept: 'transfer_out', payment_method: 'cash', total: '80000.00' },
+        ] as SessionReport['lines']),
+      },
+    ])
+
+    expect(summary.totalsByConcept.some((row) => row.concept === 'transfer_out' && row.total === '80000.00')).toBe(true)
+  })
+})

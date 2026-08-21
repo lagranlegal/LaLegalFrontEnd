@@ -7,6 +7,9 @@ import { EmptyState } from '@/components/shared/EmptyState'
 import { Money } from '@/components/shared/Money'
 import { PhotoThumbnail } from '@/components/shared/PhotoThumbnail'
 import { Can } from '@/components/shared/Can'
+import { usePermission } from '@/lib/permissions/usePermission'
+import { useAccounts } from '@/lib/accounts/list'
+import { TransferDialog } from '@/features/accounts/components/TransferDialog'
 import { DateRangePicker, type DateRangeValue } from '@/components/shared/DateRangePicker'
 import { confirm } from '@/components/shared/confirmStore'
 import { Button } from '@/components/ui/button'
@@ -19,7 +22,7 @@ import {
   useCashboxCurrent,
   useExpenseCategories,
   useExpensesList,
-  useTodayClosing,
+  useTodaySession,
   useReopenSession,
   type Expense,
 } from '@/features/cashbox/api'
@@ -33,8 +36,14 @@ function expenseCategoryName(categories: { id: string; name: string }[] | undefi
 }
 
 export function CashboxPage() {
+  // 00031: ver el turno de HOY y ver el histórico de cierres son permisos
+  // distintos. Un cajero opera y cierra su día sin poder revisar los cierres
+  // de días anteriores ni los descuadres de turnos ajenos.
+  const canViewHistory = usePermission('cashbox.view_history')
   const { data: session, isPending: sessionPending } = useCashboxCurrent()
-  const { data: todayClosing } = useTodayClosing()
+  const { data: accounts } = useAccounts()
+  const cashAccount = accounts?.find((a) => a.type === 'cash' && a.is_default) ?? accounts?.find((a) => a.type === 'cash')
+  const { data: todaySession } = useTodaySession()
   const { data: expenseCategories } = useExpenseCategories()
   const reopenSession = useReopenSession()
 
@@ -43,6 +52,8 @@ export function CashboxPage() {
   const [expenseDialogNonce, setExpenseDialogNonce] = useState(0)
   const [closeDialogOpen, setCloseDialogOpen] = useState(false)
   const [closeDialogNonce, setCloseDialogNonce] = useState(0)
+  const [transferOpen, setTransferOpen] = useState(false)
+  const [transferNonce, setTransferNonce] = useState(0)
   const [actaClosing, setActaClosing] = useState<ClosingHistory | null>(null)
   const [range, setRange] = useState<DateRangeValue | null>(null)
 
@@ -58,13 +69,15 @@ export function CashboxPage() {
     hasNextPage: closingsHasNext,
     isFetchingNextPage: closingsFetchingNext,
     fetchNextPage: fetchNextClosings,
-  } = useClosingsHistory(range)
+  } = useClosingsHistory(range, { enabled: canViewHistory })
   const closings = closingsData?.pages.flatMap((page) => page.items) ?? []
 
-  const canReopenToday = !!todayClosing
+  // Solo si la de HOY ya está cerrada: reabrir una que sigue abierta no
+  // tiene sentido, y antes esto se deducía de que existiera un cierre.
+  const canReopenToday = todaySession?.status === 'closed'
 
   async function handleReopen() {
-    if (!todayClosing) return
+    if (!todaySession) return
     const result = await confirm({
       title: 'Reabrir caja',
       description: 'Vuelve a dejar la caja de hoy en estado abierto — úsalo solo para corregir un cierre por error.',
@@ -75,7 +88,7 @@ export function CashboxPage() {
     })
     if (!result.confirmed || !result.reason) return
     try {
-      await reopenSession.mutateAsync({ sessionId: todayClosing.session_id, reason: result.reason })
+      await reopenSession.mutateAsync({ sessionId: todaySession.id, reason: result.reason })
       toast.success('Caja reabierta')
     } catch {
       toast.error('No se pudo reabrir la caja. Intenta de nuevo.')
@@ -139,6 +152,21 @@ export function CashboxPage() {
                     + Nuevo gasto
                   </Button>
                 </Can>
+                {/* Consignar vive acá y no solo en Cuentas porque este es el
+                    momento en que se hace: con la caja abierta, antes de
+                    cerrar. Después del cierre ya no se puede — una sesión
+                    cerrada es inmutable. */}
+                <Can permission="accounts.transfer">
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      setTransferNonce((n) => n + 1)
+                      setTransferOpen(true)
+                    }}
+                  >
+                    Consignar efectivo
+                  </Button>
+                </Can>
                 <Can permission="cashbox.open_close">
                   <Button
                     className="rounded-pill"
@@ -195,6 +223,7 @@ export function CashboxPage() {
           </div>
         )}
 
+        {canViewHistory && (
         <div>
           <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
             <h2 className="text-sm font-medium text-foreground">Histórico de cierres</h2>
@@ -214,12 +243,23 @@ export function CashboxPage() {
             onLoadMore={() => fetchNextClosings()}
           />
         </div>
+        )}
       </div>
 
       <OpenSessionDialog open={openSessionDialogOpen} onOpenChange={setOpenSessionDialogOpen} />
       <ExpenseFormDialog key={`expense-${expenseDialogNonce}`} open={expenseDialogOpen} onOpenChange={setExpenseDialogOpen} />
       {session && <CloseSessionDialog key={`close-${closeDialogNonce}`} open={closeDialogOpen} onOpenChange={setCloseDialogOpen} session={session} />}
       {actaClosing && <ClosingActDialog open={!!actaClosing} onOpenChange={(open) => !open && setActaClosing(null)} closing={actaClosing} />}
+      {transferOpen && (
+        <TransferDialog
+          key={`transfer-${transferNonce}`}
+          open
+          onOpenChange={setTransferOpen}
+          // Entrando desde Caja el origen es siempre el cajón: es "consignar",
+          // no "trasladar" en abstracto.
+          defaultFromAccountId={cashAccount?.id}
+        />
+      )}
     </>
   )
 }

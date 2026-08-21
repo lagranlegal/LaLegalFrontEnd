@@ -61,21 +61,37 @@ export function useOpenSession() {
 }
 
 /**
- * ¿La sesión de HOY ya se cerró? — para ofrecer "Reabrir" (ciclo diario
- * único, docs/ARCHITECTURE.md §6). **No usa `GET /cashbox/sessions?limit=1`
- * a propósito:** ese endpoint pagina en orden ASCENDENTE (el más viejo
- * primero, confirmado contra dev — típico de paginación por cursor estable),
- * así que `limit=1` da la sesión más VIEJA, no la más reciente — hallazgo
- * real de esta prueba. `GET /reports/closings` sí acepta `from_date`/
- * `to_date`, así que filtrar por HOY exactamente resuelve lo mismo sin
- * asumir ningún orden.
+ * La sesión de HOY, abierta o ya cerrada — para ofrecer "Reabrir" (ciclo
+ * diario único, docs/ARCHITECTURE.md §6).
+ *
+ * **Historia de dos rodeos, por si alguien piensa en volver atrás:**
+ *
+ * 1. No usaba `GET /cashbox/sessions?limit=1` porque ese endpoint pagina en
+ *    orden ASCENDENTE (confirmado contra dev — típico de cursor estable),
+ *    así que `limit=1` daba la sesión más VIEJA, no la más reciente.
+ * 2. Pasó entonces por `GET /reports/closings` filtrando por hoy, que
+ *    funcionaba pero preguntaba por el histórico para saber algo del día.
+ *    Con `cashbox.view_history` (00031) ese rodeo se volvió un problema de
+ *    permisos: un cajero habría necesitado ver los cierres de TODO el
+ *    negocio solo para saber si ya había cerrado su propio turno.
+ *
+ * Ahora hay un endpoint honesto (`GET /cashbox/sessions/today`) bajo
+ * `cashbox.view`. Un 404 es el estado normal "todavía no se abrió caja hoy",
+ * igual que en `cashboxCurrentQueryOptions`, y por eso se normaliza a `null`
+ * en vez de tratarse como falla.
  */
-export function useTodayClosing() {
+export function useTodaySession() {
   const today = todayBogota()
   return useQuery({
-    queryKey: ['cashbox', 'today-closing', today] as const,
-    queryFn: () => unwrap(api.GET('/api/v1/reports/closings', { params: { query: { from_date: today, to_date: today, limit: 1 } } })),
-    select: (page) => page.items[0] ?? null,
+    queryKey: ['cashbox', 'today-session', today] as const,
+    queryFn: async () => {
+      try {
+        return await unwrap(api.GET('/api/v1/cashbox/sessions/today'))
+      } catch (error) {
+        if (error instanceof ApiError && error.status === 404) return null
+        throw error
+      }
+    },
   })
 }
 
@@ -93,7 +109,7 @@ function invalidateAfterSessionChange(queryClient: ReturnType<typeof useQueryCli
   // directo (ver comentario en useCloseSession). Invalidar ese key acá
   // dispararía un refetch de fondo que puede pisar el valor correcto con
   // uno desactualizado (ver hallazgo abajo).
-  queryClient.invalidateQueries({ queryKey: ['cashbox', 'today-closing'] })
+  queryClient.invalidateQueries({ queryKey: ['cashbox', 'today-session'] })
   queryClient.invalidateQueries({ queryKey: ['cashbox', 'expenses'] })
   queryClient.invalidateQueries({ queryKey: ['cashbox', 'session'] })
   queryClient.invalidateQueries({ queryKey: ['dashboard'] })

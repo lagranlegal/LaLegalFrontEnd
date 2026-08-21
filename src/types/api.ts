@@ -301,6 +301,39 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/accounts/transfers": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Transfers */
+        get: operations["list_transfers_api_v1_accounts_transfers_get"];
+        put?: never;
+        /**
+         * Create Transfer
+         * @description Mueve plata entre dos cuentas propias — típicamente consignar en el
+         *     banco el efectivo del día.
+         *
+         *     **No es ingreso ni egreso**: es la misma plata en otro bolsillo, así que
+         *     no toca el estado de resultados. Genera dos movimientos
+         *     (`transfer_out` / `transfer_in`) que los reportes excluyen del cálculo de
+         *     ingresos y gastos.
+         *
+         *     Si el origen es la cuenta de efectivo **exige caja abierta** y baja el
+         *     efectivo esperado del cierre — que es lo correcto: se consignó, ya no está
+         *     en el cajón. Por eso el traslado va **antes** de cerrar: una sesión
+         *     cerrada es inmutable y meterle un movimiento invalidaría un acta ya
+         *     cuadrada.
+         */
+        post: operations["create_transfer_api_v1_accounts_transfers_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/accounts": {
         parameters: {
             query?: never;
@@ -648,6 +681,31 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/cashbox/sessions/today": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Today Session
+         * @description La sesión de HOY, abierta o ya cerrada (404 si no se ha abierto).
+         *
+         *     Responde "¿qué pasó con la caja hoy?" con `cashbox.view`. Antes el front
+         *     lo deducía de `GET /reports/closings`, que desde 00031 exige permiso de
+         *     histórico — un cajero habría necesitado ver los cierres de todo el negocio
+         *     para saber si ya había cerrado su propio turno.
+         */
+        get: operations["get_today_session_api_v1_cashbox_sessions_today_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/cashbox/sessions": {
         parameters: {
             query?: never;
@@ -655,7 +713,12 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** List Sessions */
+        /**
+         * List Sessions
+         * @description Histórico de turnos. La sesión en curso sale por `/sessions/current`,
+         *     que solo pide `cashbox.view`: un cajero puede operar su día sin poder
+         *     revisar los cierres de días anteriores.
+         */
         get: operations["list_sessions_api_v1_cashbox_sessions_get"];
         put?: never;
         post?: never;
@@ -672,7 +735,11 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Get Session */
+        /**
+         * Get Session
+         * @description La de hoy con `cashbox.view`; la de un turno anterior exige además
+         *     `cashbox.view_history` (00031).
+         */
         get: operations["get_session_api_v1_cashbox_sessions__session_id__get"];
         put?: never;
         post?: never;
@@ -689,7 +756,11 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Get Session Report */
+        /**
+         * Get Session Report
+         * @description El acta del turno de hoy con `cashbox.view` —hace falta para cerrarlo—;
+         *     la de cualquier otro exige además `cashbox.view_history`.
+         */
         get: operations["get_session_report_api_v1_cashbox_sessions__session_id__report_get"];
         put?: never;
         post?: never;
@@ -1060,7 +1131,15 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** List Closings */
+        /**
+         * List Closings
+         * @description Exige `reports.view` **y** `cashbox.view_history` (00031).
+         *
+         *     Es el mismo dato que `GET /cashbox/sessions`, expuesto desde el módulo de
+         *     reportes. Si se le quita el histórico al cajero por un lado y se le deja
+         *     esta puerta abierta por el otro, el permiso no restringe nada — sería un
+         *     control que se rodea escribiendo otra URL.
+         */
         get: operations["list_closings_api_v1_reports_closings_get"];
         put?: never;
         post?: never;
@@ -1803,6 +1882,13 @@ export interface components {
             /** Next Cursor */
             next_cursor?: string | null;
         };
+        /** CursorPage[TransferOut] */
+        CursorPage_TransferOut_: {
+            /** Items */
+            items: components["schemas"]["TransferOut"][];
+            /** Next Cursor */
+            next_cursor?: string | null;
+        };
         /** CursorPage[UserOut] */
         CursorPage_UserOut_: {
             /** Items */
@@ -1928,7 +2014,7 @@ export interface components {
              * Origin Type
              * @enum {string}
              */
-            origin_type: "purchase" | "other";
+            origin_type: "purchase" | "initial_stock" | "adjustment_in" | "other";
             /** Supplier Id */
             supplier_id?: string | null;
             /** Supplier Invoice */
@@ -2029,7 +2115,7 @@ export interface components {
              * Exit Type
              * @enum {string}
              */
-            exit_type: "adjustment" | "damage" | "supplier_return" | "internal_use";
+            exit_type: "adjustment" | "damage" | "supplier_return" | "internal_use" | "loss";
             /** Reason */
             reason: string;
             /** Lines */
@@ -2978,6 +3064,77 @@ export interface components {
             /** Active */
             active?: boolean | null;
         };
+        /**
+         * TransferIn
+         * @description Traslado entre dos cuentas propias — típicamente consignar el efectivo
+         *     del día en el banco.
+         *
+         *     No es ingreso ni egreso: es la misma plata en otro bolsillo. No hay
+         *     comisión ni monto "recibido" distinto del enviado, y ahí está la
+         *     diferencia con una liquidación: en una liquidación llega MENOS porque el
+         *     convenio cobra; en un traslado llega exactamente lo que salió, porque
+         *     ambas cuentas son de la empresa.
+         */
+        TransferIn: {
+            /**
+             * From Account Id
+             * Format: uuid
+             */
+            from_account_id: string;
+            /**
+             * To Account Id
+             * Format: uuid
+             */
+            to_account_id: string;
+            /** Amount */
+            amount: number | string;
+            /** Transfer Date */
+            transfer_date?: string | null;
+            /** Notes */
+            notes?: string | null;
+        };
+        /** TransferOut */
+        TransferOut: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Number */
+            number: number;
+            /**
+             * From Account Id
+             * Format: uuid
+             */
+            from_account_id: string;
+            /** From Account Name */
+            from_account_name: string;
+            /**
+             * To Account Id
+             * Format: uuid
+             */
+            to_account_id: string;
+            /** To Account Name */
+            to_account_name: string;
+            /** Amount */
+            amount: string;
+            /**
+             * Transfer Date
+             * Format: date
+             */
+            transfer_date: string;
+            /** Notes */
+            notes: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** From Balance */
+            from_balance: string;
+            /** To Balance */
+            to_balance: string;
+        };
         /** UpdateUserRoleIn */
         UpdateUserRoleIn: {
             /**
@@ -3630,6 +3787,73 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["MeOut"];
+                };
+            };
+        };
+    };
+    list_transfers_api_v1_accounts_transfers_get: {
+        parameters: {
+            query?: {
+                cursor?: string | null;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CursorPage_TransferOut_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_transfer_api_v1_accounts_transfers_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TransferIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TransferOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
@@ -4562,6 +4786,26 @@ export interface operations {
         };
     };
     get_current_session_api_v1_cashbox_sessions_current_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionOut"];
+                };
+            };
+        };
+    };
+    get_today_session_api_v1_cashbox_sessions_today_get: {
         parameters: {
             query?: never;
             header?: never;

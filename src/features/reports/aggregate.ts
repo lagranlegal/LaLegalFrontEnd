@@ -34,6 +34,28 @@ export const INTER_ACCOUNT = 'inter_account'
 const REVENUE_CONCEPTS = new Set(['interest_payment', 'sale'])
 const EXPENSE_CONCEPTS = new Set(['expense'])
 
+/**
+ * Traslados entre cuentas propias (00032): consignar el efectivo del día.
+ *
+ * Se EXCLUYEN de todo agregado financiero, y hay dos niveles de exclusión que
+ * conviene no confundir:
+ *
+ *  · De ingresos y gastos operativos ya quedaban fuera solos, porque
+ *    `REVENUE_CONCEPTS`/`EXPENSE_CONCEPTS` son listas de permitidos. Bien.
+ *  · Del FLUJO (`flujoEntradas`/`flujoSalidas`) hay que sacarlos a mano, y es
+ *    el motivo de esta constante. Un traslado genera un `out` y un `in` por el
+ *    mismo monto, así que consignar un millón inflaría los dos lados en un
+ *    millón sin que haya entrado ni salido un peso del negocio. Es la misma
+ *    eliminación que hace cualquier estado de flujo de efectivo con los
+ *    movimientos entre cuentas propias: la plata no se movió, cambió de
+ *    bolsillo.
+ *
+ * OJO — esto NO afecta el arqueo. El efectivo esperado del cierre lo calcula
+ * el backend por tipo de cuenta y ahí el traslado SÍ cuenta, que es lo
+ * correcto: si consignaste, esos billetes ya no están en el cajón.
+ */
+const TRANSFER_CONCEPTS = new Set(['transfer_in', 'transfer_out'])
+
 export interface FinancialSummary {
   sessionCount: number
   /** Ingreso operativo real: intereses cobrados + ventas. NO incluye capital recuperado. */
@@ -114,8 +136,14 @@ export function aggregateFinancialSummary(sessions: { sessionDate: string; repor
     const isRevenue = line.direction === 'in' && REVENUE_CONCEPTS.has(line.concept)
     const isExpense = line.direction === 'out' && EXPENSE_CONCEPTS.has(line.concept)
 
-    if (line.direction === 'in') flujoEntradas = sumMoney(flujoEntradas, line.total)
-    else flujoSalidas = sumMoney(flujoSalidas, line.total)
+    // Un traslado no es flujo: es la misma plata en otro bolsillo, y sumarlo
+    // inflaría entradas y salidas por el mismo monto sin que el negocio
+    // hubiera recibido ni pagado nada.
+    const isTransfer = TRANSFER_CONCEPTS.has(line.concept)
+    if (!isTransfer) {
+      if (line.direction === 'in') flujoEntradas = sumMoney(flujoEntradas, line.total)
+      else flujoSalidas = sumMoney(flujoSalidas, line.total)
+    }
 
     if (isRevenue) {
       day.ingresos = sumMoney(day.ingresos, line.total)

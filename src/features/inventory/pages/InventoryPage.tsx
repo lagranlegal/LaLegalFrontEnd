@@ -15,6 +15,7 @@ import { cn } from '@/lib/utils'
 import { formatDate, formatDateTime } from '@/lib/dates'
 import { useCategories, type Category } from '@/lib/catalogs/categories'
 import { useSuppliers } from '@/lib/catalogs/suppliers'
+import { ENTRY_ORIGIN_LABELS, EXIT_TYPE_LABELS } from '@/lib/inventory/entryTypes'
 import { useEntriesList, useExitsList, useItemsList, useProductsList, type Entry, type Exit, type Product } from '@/features/inventory/api'
 import type { Item } from '@/lib/inventory/items'
 import { ItemEditDialog } from '@/features/inventory/components/ItemEditDialog'
@@ -32,13 +33,6 @@ const ITEM_STATUS_TABS = [
   { value: 'sold', label: 'Vendido' },
   { value: 'written_off', label: 'Dado de baja' },
 ]
-
-const EXIT_TYPE_LABELS: Record<string, string> = {
-  adjustment: 'Ajuste de inventario',
-  damage: 'Daño',
-  supplier_return: 'Devolución a proveedor',
-  internal_use: 'Uso interno',
-}
 
 /** De dónde salió el artículo. Espeja el enum `item_origin` del backend. */
 const ORIGIN_OPTIONS = [
@@ -366,7 +360,7 @@ function EntriesTab() {
 
   const columns: ColumnDef<Entry>[] = [
     { accessorKey: 'number', header: 'Número', cell: (info) => `#${info.getValue<number>()}` },
-    { accessorKey: 'origin_type', header: 'Origen', cell: (info) => (info.getValue<string>() === 'purchase' ? 'Compra' : 'Otro') },
+    { accessorKey: 'origin_type', header: 'Origen', cell: (info) => ENTRY_ORIGIN_LABELS[info.getValue<string>()] ?? info.getValue<string>() },
     { accessorKey: 'items', header: 'Artículos', cell: (info) => info.row.original.items.length },
     { accessorKey: 'total_cost', header: 'Costo total', cell: (info) => <Money value={info.getValue<string>()} /> },
     // La fecha de ENTRADA de la mercancía, no la de digitación: puede ser

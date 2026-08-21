@@ -20,6 +20,14 @@ export const CONCEPT_LABELS: Record<string, string> = {
   sale: 'Venta',
   purchase: 'Compra a proveedor',
   opening_balance: 'Saldo inicial',
+  // 00032. Se nombran desde el punto de vista del cajón, que es quien lee el
+  // acta: "consignado" dice qué pasó con esos billetes mucho mejor que
+  // "traslado saliente". Van etiquetados aparte de los gastos a propósito —
+  // consignar no es gastar, y el acta es justo donde esa confusión costaría
+  // caro (ver aggregate.ts, TRANSFER_CONCEPTS).
+  transfer_out: 'Consignado / trasladado',
+  transfer_in: 'Recibido de otra cuenta',
+  adjustment: 'Ajuste',
 }
 
 export function conceptLabel(concept: string): string {

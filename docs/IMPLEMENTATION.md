@@ -2,6 +2,66 @@
 
 > Registro vivo de qué existe en el código, cómo está armado y por qué se tomó cada decisión — para que cualquiera (humano o Claude Code) pueda retomar el proyecto sin releer todo el historial de commits. Se actualiza en cada paso del "Orden de implementación" de `CLAUDE.md`. No repite lo que ya está en `ARCHITECTURE.md`/`DESIGN_SYSTEM.md` (el qué-debería-ser); esto es el qué-hay-hoy y las decisiones concretas tomadas al construirlo.
 
+## Tanda B de los diez frentes: consignar, histórico de caja y tipos de ingreso (21/08/2026)
+
+Tres migraciones (`00031`–`00033`), todas **aditivas**, aplicadas a la dev remota antes del deploy. Análisis completo en `docs/propuesta-diez-frentes.html`.
+
+### 1. Consignar el efectivo — la operación que no existía
+
+Al final del día se saca la plata del cajón y se lleva al banco. **Eso no se podía registrar.** El módulo de cuentas sabía *liquidar* un convenio pero no mover plata entre dos cuentas propias, así que quedaban dos salidas y las dos estaban mal: registrarlo como **gasto** (falsea la utilidad por casi toda la caja del día — el mismo error que el proyecto ya pagó con el capital de los contratos) o **no registrarlo** (el banco queda mintiendo y el esperado del día siguiente queda inflado, así que el arqueo descuadra sin culpa del cajero).
+
+**Un traslado no es ingreso ni egreso: es la misma plata en otro bolsillo.**
+
+- Tabla `account_transfer` como **documento**, no solo dos movimientos sueltos. CLAUDE.md regla 4: los movimientos de caja salen de documentos. El documento guarda fecha, motivo, autor y clave de idempotencia; sin él, un traslado sería el único movimiento de dinero del sistema sin nada que lo respalde. Inmutable, como el resto del libro.
+- Conceptos **propios** `transfer_in`/`transfer_out`, **no `adjustment`**. Un ajuste significa "el sistema no cuadra con la realidad"; un traslado sí cuadra. Y los conceptos propios permiten excluirlos de los reportes sin ambigüedad.
+- Si toca efectivo **exige caja abierta** y baja el esperado del cierre — que es el punto entero: se consignó, ya no está en el cajón. Va **antes** de cerrar; una sesión cerrada es inmutable y el diálogo lo dice explícitamente cuando aparece `CASH_SESSION_NOT_OPEN`.
+- Permiso propio `accounts.transfer` (especial: mueve plata), excluido de Moderador por el mismo criterio que ya excluía `accounts.settle`.
+- Botón en **dos** lugares: Cuentas (con el origen libre) y Caja (con el cajón preseleccionado). El segundo importa más — es donde el cajero está cuando consigna.
+
+**Lo que casi se escapa:** `aggregateFinancialSummary` calcula `flujoEntradas`/`flujoSalidas` sumando *todos* los movimientos. Un traslado genera un `out` y un `in` por el mismo monto, así que consignar un millón habría inflado ambos lados en un millón sin que entrara ni saliera un peso del negocio. Se agregó `TRANSFER_CONCEPTS` para excluirlos del flujo — la misma eliminación que hace cualquier estado de flujo de efectivo con movimientos entre cuentas propias. De ingresos y gastos ya quedaban fuera solos, porque `REVENUE_CONCEPTS`/`EXPENSE_CONCEPTS` son listas de *permitidos* y no de excluidos; ese diseño previo salvó el caso.
+
+Siguen visibles en el desglose del acta, con etiquetas propias ("Consignado / trasladado"): excluirlos de los totales no es esconderlos, y sin esa línea el arqueo del día no se explicaría.
+
+### 2. Histórico de caja con permiso propio
+
+`cashbox.view` abría todo: la sesión de hoy y el listado completo de cierres. Ahora el listado exige `cashbox.view_history`, y el detalle/reporte de **una** sesión lo exige solo si no es la de hoy (`assert_can_read_session`, con `has_permission` dentro del service).
+
+**El corte es la fecha, no el estado.** Una sesión de hoy ya cerrada sigue siendo el turno de quien la cerró y necesita poder imprimir su acta; una abierta que quedó de ayer sigue siendo la sesión en curso.
+
+**La puerta de atrás que había que cerrar:** `GET /reports/closings` expone el mismo dato desde otro módulo y solo pedía `reports.view`. Si se le quita el histórico al cajero por un lado y se le deja esa URL por el otro, el permiso es teatro. Ahora exige los dos.
+
+**Y lo que eso destapó:** el front deducía *"¿ya cerré hoy?"* de `/reports/closings` — un rodeo que ya arrastraba un hallazgo previo (el listado de sesiones pagina ascendente, así que `limit=1` daba la más **vieja**). Con el permiso nuevo, un cajero habría necesitado ver los cierres de todo el negocio para saber si cerró su propio turno: el permiso le habría **roto la pantalla** en vez de acotarla. Se agregó `GET /cashbox/sessions/today` —la sesión de hoy, abierta o cerrada— bajo `cashbox.view`, y el rodeo desapareció.
+
+En el front, `useRawSessions` y `useClosingsHistory` comprueban el permiso antes de disparar: sin eso, un rol sin histórico haría una ráfaga de 403 en cada carga de `/reportes` por algo que ya sabemos mirando sus permisos. Y `/reportes` muestra un mensaje que **nombra el permiso que falta**, en vez de un skeleton eterno o un "no se pudo cargar" que manda a buscar una falla inexistente.
+
+### 3. Tipos de ingreso de mercancía
+
+"Otro" era un cajón de sastre y hacía imposible responder de dónde salió el inventario. Se agregaron:
+
+- **`initial_stock` — la urgente.** Cuando la compraventa arranque con el sistema ya tiene mercancía en la vitrina. Hoy solo podía cargarla como "otro" (que no dice nada) o como una **compra falsa**, que además le sacaría de la caja una plata que nunca salió. No toca caja y queda marcada para que no contamine el costo de mercancía comprada del período.
+- **`adjustment_in`.** Existía el egreso por ajuste, así que el inventario físico solo podía **bajar**. Si al contar sobraba una pieza, no había cómo registrarla y el sistema quedaba mintiendo a sabiendas.
+- **`loss`** (egreso). Un daño es mercancía que existe y ya no sirve; una pérdida es mercancía que no está. Contablemente no son lo mismo.
+
+`other` se conserva pero **exige motivo** (backend y form): un cajón de sastre que obliga a explicarse al menos deja rastro.
+
+Las etiquetas de tipos estaban duplicadas en **cuatro** pantallas — el camino exacto por el que un tipo nuevo aparece bien nombrado en una y como `initial_stock` en crudo en las otras tres. Se centralizaron en `lib/inventory/entryTypes.ts`, con la frase que explica cuándo usar cada uno (la duda real del usuario, no la definición).
+
+### Verificación
+
+```
+pytest -q            # 243/243 (235 previos + 8 nuevos)
+ruff check . && mypy app
+npm run typecheck && npm run lint && npm run test   # 106/106
+```
+
+Migraciones aplicadas a la Supabase dev remota vía `psql` (no `db push`: el CLI de la máquina está autenticado con otra cuenta) y registradas en `supabase_migrations.schema_migrations` con la convención del proyecto. Backend desplegado en Fly antes de regenerar los tipos del front.
+
+### Lo que queda de la Tanda B
+
+El flujo de **"cerrar y consignar"** en un solo paso (dejar base fija en el cajón, consignar el resto) quedó fuera: hoy son dos acciones seguidas y el diálogo avisa del orden. Vale la pena hacerlo cuando haya un cierre real de por medio para probarlo.
+
+---
+
 ## Tanda A de los diez frentes: tres bugs de dinero y de inventario (21/08/2026)
 
 Primera tanda de la revisión de diez puntos (`docs/propuesta-diez-frentes.html`, que tiene el análisis completo y el orden propuesto). Son los arreglos **sin migraciones**: se despliegan solos.

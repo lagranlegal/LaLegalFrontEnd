@@ -2,18 +2,13 @@ import { useState } from 'react'
 import { toast } from 'sonner'
 import { Trash2 } from 'lucide-react'
 import { AppDialog } from '@/components/shared/AppDialog'
+import { EXIT_TYPE_LABELS, SELECTABLE_EXIT_TYPES } from '@/lib/inventory/entryTypes'
 import { ItemPicker } from '@/components/shared/ItemPicker'
 import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { useCreateExit } from '@/features/inventory/api'
 import type { Item } from '@/lib/inventory/items'
 
-const EXIT_TYPE_LABELS: Record<'adjustment' | 'damage' | 'supplier_return' | 'internal_use', string> = {
-  adjustment: 'Ajuste de inventario',
-  damage: 'Daño',
-  supplier_return: 'Devolución a proveedor',
-  internal_use: 'Uso interno',
-}
 
 const inputClass = 'mt-1 w-full rounded-input border border-border bg-background px-3 py-2 text-sm text-foreground outline-none focus:border-primary'
 
@@ -82,9 +77,9 @@ export function ExitFormDialog({ open, onOpenChange }: { open: boolean; onOpenCh
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              {Object.entries(EXIT_TYPE_LABELS).map(([value, label]) => (
+              {SELECTABLE_EXIT_TYPES.map((value) => (
                 <SelectItem key={value} value={value}>
-                  {label}
+                  {EXIT_TYPE_LABELS[value]}
                 </SelectItem>
               ))}
             </SelectContent>

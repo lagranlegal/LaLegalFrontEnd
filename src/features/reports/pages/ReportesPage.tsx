@@ -13,6 +13,7 @@ import { PAYMENT_METHOD_LABELS } from '@/lib/paymentMethods'
 import { todayBogota } from '@/lib/dates'
 import { cn } from '@/lib/utils'
 import { useCategories } from '@/lib/catalogs/categories'
+import { usePermission } from '@/lib/permissions/usePermission'
 import { useExpenseCategories } from '@/features/cashbox/api'
 import { useRawSessions, useCarteraActual, useExpensesByCategory, useAllTimeItemSales, useProfitSummary, usePawnPerformance, MAX_RANGE_DAYS } from '@/features/reports/api'
 import { aggregateFinancialSummary, aggregateExpensesByCategory, computeDelta, daysBetweenDateOnly, previousRangeFor } from '@/features/reports/aggregate'
@@ -204,6 +205,9 @@ export function ReportesPage() {
   const rangeTooWide = !!range && rangeDays > MAX_RANGE_DAYS
   const previousRange = range && !rangeTooWide ? previousRangeFor(range) : null
 
+  // 00031: el resumen financiero del período se arma con los cierres de caja,
+  // que ahora son histórico y llevan su propio permiso.
+  const canViewHistory = usePermission('cashbox.view_history')
   const { data: sessions, isPending, isError, refetch } = useRawSessions(range)
   const { data: previousSessions } = useRawSessions(previousRange)
   const { data: cartera } = useCarteraActual()
@@ -280,6 +284,17 @@ export function ReportesPage() {
           <EmptyState
             title={`Elige un rango de ${MAX_RANGE_DAYS} días o menos`}
             description="Este reporte suma cada sesión de caja del rango una por una — rangos más largos necesitan un endpoint de agregación en el backend (docs/PENDIENTES_BACKEND_INFRA.md, punto 13)."
+          />
+        </div>
+      ) : !canViewHistory ? (
+        // El resumen financiero se arma sumando cada cierre de caja del
+        // rango, así que sin permiso de histórico no hay con qué armarlo.
+        // Decirlo así evita el peor mensaje posible: un skeleton eterno o un
+        // "no se pudo cargar" que manda a buscar una falla que no existe.
+        <div className="rounded-card border border-border bg-card shadow-card">
+          <EmptyState
+            title="Necesitas permiso de histórico de caja"
+            description="Este reporte se arma con los cierres de caja del período. Pídele a un administrador el permiso “Ver el histórico de cierres de caja”."
           />
         </div>
       ) : isPending ? (
