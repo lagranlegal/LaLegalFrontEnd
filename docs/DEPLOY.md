@@ -105,6 +105,8 @@ Tiene que coincidir **exactamente** con `FRONTEND_URL` del backend (`fly secrets
 
 El servicio de correo **incluido** de Supabase está pensado para pruebas y limita los envíos a unos pocos por hora. Al pasarse devuelve `429` y el backend responde `INVITE_RATE_LIMITED` (429) con "espera unos minutos e invita de nuevo" — no es una falla, hay que esperar.
 
+Mientras tanto hay una salida que no depende del correo: **"Generar enlace"** en el diálogo de invitar usuario (`send_email: false`) devuelve el mismo enlace sin enviar nada y sin consumir cuota. El admin lo entrega por WhatsApp o en persona — en una compraventa el empleado nuevo suele estar ahí mismo.
+
 **Antes de tener usuarios reales hay que configurar un SMTP propio** (Resend, SendGrid, Amazon SES…) en Authentication → Emails → SMTP Settings. Sin eso, una compraventa que dé de alta a cinco empleados en la misma tarde se queda a mitad de camino, y los correos del servicio compartido tienen mucha más probabilidad de caer en spam.
 
 ### Cuidado: hay dos cuentas de Supabase en juego

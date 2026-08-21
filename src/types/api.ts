@@ -2169,6 +2169,43 @@ export interface components {
              * Format: uuid
              */
             role_id: string;
+            /**
+             * Send Email
+             * @default true
+             */
+            send_email: boolean;
+        };
+        /**
+         * InvitedUserOut
+         * @description `UserOut` + el enlace, presente solo cuando se pidió sin correo.
+         *
+         *     Es una credencial de un solo uso: quien la tenga se convierte en ese
+         *     usuario. Solo la recibe quien ya tiene `identity.manage_users`.
+         */
+        InvitedUserOut: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Full Name */
+            full_name: string;
+            /** Email */
+            email: string;
+            /**
+             * Role Id
+             * Format: uuid
+             */
+            role_id: string;
+            /** Status */
+            status: string;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Invite Link */
+            invite_link?: string | null;
         };
         /** ItemOut */
         ItemOut: {
@@ -3291,7 +3328,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["UserOut"];
+                    "application/json": components["schemas"]["InvitedUserOut"];
                 };
             };
             /** @description Validation Error */

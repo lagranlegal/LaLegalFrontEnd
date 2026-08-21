@@ -2,6 +2,42 @@
 
 > Registro vivo de qué existe en el código, cómo está armado y por qué se tomó cada decisión — para que cualquiera (humano o Claude Code) pueda retomar el proyecto sin releer todo el historial de commits. Se actualiza en cada paso del "Orden de implementación" de `CLAUDE.md`. No repite lo que ya está en `ARCHITECTURE.md`/`DESIGN_SYSTEM.md` (el qué-debería-ser); esto es el qué-hay-hoy y las decisiones concretas tomadas al construirlo.
 
+## Invitar por enlace, sin depender del correo (21/08/2026)
+
+El servicio de correo incluido de Supabase limita los envíos a unos pocos por hora, y probando el flujo de invitación se agotó la cuota: `429`. Sin dominio propio no hay SMTP externo que montar todavía (el remitente de prueba de Resend solo entrega a la dirección del dueño de la cuenta), así que hacía falta una salida.
+
+### La observación que lo resolvió
+
+**El correo nunca fue lo esencial: lo esencial es el enlace.** Supabase tiene `POST /auth/v1/admin/generate_link`, que devuelve exactamente el mismo enlace que iría en el correo, sin enviar nada — y por lo tanto sin tocar la cuota.
+
+Y para una compraventa resulta ser *mejor* que el correo, no un parche: el empleado nuevo casi siempre está parado al lado del administrador. Copiar un enlace y mandarlo por WhatsApp es más directo que esperar un correo que además puede caer en spam.
+
+### Cómo quedó
+
+`POST /identity/invitations` acepta `send_email` (default `true`). Es un parámetro del mismo endpoint y no otro endpoint, porque **el usuario se crea igual en los dos casos** — lo único que cambia es quién entrega el enlace.
+
+En el diálogo hay dos botones, y el segundo no está escondido detrás de un menú: **"Enviar por correo"** y **"Generar enlace"**.
+
+### Detalles que importan
+
+- **Con enlace, el diálogo NO se cierra solo.** El enlace existe únicamente en esa respuesta: no se puede volver a pedir. Cerrar dejaría al admin con un usuario creado y sin forma de que entre. La advertencia lo dice explícitamente ("guárdalo antes de cerrar").
+- **El enlace es una credencial**, no una URL cualquiera: quien lo tenga se convierte en ese usuario. Por eso solo lo recibe quien ya tiene `identity.manage_users`, no se escribe en ningún log, y **no se devuelve cuando el correo sí salió** — si ya viajó por correo, no hay razón para que ande además en una respuesta HTTP.
+- **El `audit_log` registra cómo se entregó** (`delivery: "email" | "link"`). Un enlace copiado a mano no deja rastro en ningún servidor de correo, así que la auditoría es el único lugar donde consta que esa invitación existió y quién la hizo.
+
+### Un detalle de los tests
+
+Los mocks de `invite_user` en tres archivos de test replican la firma real, así que cambiarla los rompió a todos de inmediato. Es la señal correcta: si hubieran aceptado `**kwargs`, el cambio habría pasado silencioso y los tests seguirían verificando la firma vieja.
+
+### Verificación
+
+```
+pytest -q            # 230/230 (dos tests nuevos: con enlace y sin enlace)
+ruff + mypy          # limpios
+npm run typecheck    # limpio, tras regenerar tipos
+npm run test         # 104/104
+npm run build        # sin errores
+```
+
 ## El invitado entraba sin contraseña (21/08/2026)
 
 Encontrado probando el flujo de invitación de punta a punta: el usuario acepta, **queda dentro de la app sin que nadie le pida una contraseña**, y al cerrar sesión no puede volver a entrar nunca.
