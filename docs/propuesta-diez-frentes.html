@@ -721,11 +721,25 @@
   <div class="opt b">
     <div class="opt-head">
       <p class="opt-title">Tanda C · Flujos</p>
-      <span class="chip mid">Front pesado</span>
+      <span class="chip small">Hecha · 21/08/2026</span>
     </div>
     <p>
-      El rediseño completo del ingreso: precio y fotos en la compra, publicación automática (7) ·
-      el carrito de compra multi-artículo (3) · filtros completos con estado en la URL (1).
+      Precio y fotos en la compra, con <strong>publicación automática</strong> (7) · el carrito
+      multi-artículo (3) · los filtros que faltaban en Productos, Ingresos y Egresos (1).
+    </p>
+    <p>
+      <strong>252 tests backend</strong> (nueve nuevos) y 111 front.
+    </p>
+    <p>
+      Una sonda escrita antes de empezar destapó que la Tanda B había dejado un callejón sin
+      salida: al publicar, el código se arma con la letra del proveedor, y un ingreso sin
+      proveedor lanzaba <code>400</code>. O sea que <strong>el inventario inicial no se podía
+      publicar</strong> — el tipo creado para cargar la vitrina no servía para llenarla. Ahora
+      cae en <code>P</code> de “propio”.
+    </p>
+    <p>
+      Quedó fuera el estado de los filtros en la URL: es polish, y se prefirió exponer los
+      filtros que responden preguntas reales.
     </p>
   </div>
 
