@@ -4,6 +4,8 @@ import { AppDialog } from '@/components/shared/AppDialog'
 import { MoneyInput } from '@/components/shared/MoneyInput'
 import { Money } from '@/components/shared/Money'
 import { Button } from '@/components/ui/button'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { SELECTABLE_UNITS, unitAbbr, unitLabel, type ProductUnit } from '@/lib/inventory/units'
 import { ApiError } from '@/lib/api/client'
 import { useUpdateProduct, type Product } from '@/features/inventory/api'
 
@@ -26,8 +28,16 @@ export function ProductPriceDialog({
   product: Product
 }) {
   const [price, setPrice] = useState(product.sale_price ?? '0.00')
+  const [unit, setUnit] = useState<ProductUnit>((product.unit as ProductUnit) ?? 'unit')
   const [error, setError] = useState<string | null>(null)
   const updateProduct = useUpdateProduct()
+
+  // La unidad solo se puede cambiar mientras el producto NO tenga lotes: doce
+  // unidades no son doce gramos, y cambiarla con stock registrado
+  // reinterpretaría lo que ya existe. El backend lo rechaza con 409; acá se
+  // muestra deshabilitada y explicada, para no ofrecer algo que va a fallar.
+  const puedeCambiarUnidad = product.lot_count === 0
+  const unidadCambio = unit !== product.unit
 
   const nuevo = Number(price)
   const costoAlto = Number(product.max_cost ?? 0)
@@ -40,8 +50,15 @@ export function ProductPriceDialog({
   async function handleSave() {
     setError(null)
     try {
-      await updateProduct.mutateAsync({ productId: product.id, body: { sale_price: price } })
-      toast.success(`Precio actualizado en ${product.lot_count} ${product.lot_count === 1 ? 'lote' : 'lotes'}`)
+      await updateProduct.mutateAsync({
+        productId: product.id,
+        body: { sale_price: price, ...(unidadCambio ? { unit } : {}) },
+      })
+      toast.success(
+        unidadCambio
+          ? 'Producto actualizado'
+          : `Precio actualizado en ${product.lot_count} ${product.lot_count === 1 ? 'lote' : 'lotes'}`,
+      )
       onOpenChange(false)
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'No se pudo actualizar el precio. Intenta de nuevo.')
@@ -52,7 +69,7 @@ export function ProductPriceDialog({
     <AppDialog
       open={open}
       onOpenChange={onOpenChange}
-      title="Cambiar precio"
+      title="Editar producto"
       description={product.name}
       size="sm"
       footer={
@@ -84,6 +101,29 @@ export function ProductPriceDialog({
               {alerta && ' — el costo subió y el precio se quedó corto.'}
             </p>
           )}
+        </div>
+
+        <div>
+          <label htmlFor="product-unit" className="text-sm font-medium text-foreground">
+            Unidad de medida
+          </label>
+          <Select value={unit} onValueChange={(v) => setUnit(v as ProductUnit)} disabled={!puedeCambiarUnidad}>
+            <SelectTrigger id="product-unit" className="mt-1 w-full">
+              <SelectValue>{unitLabel(unit)}</SelectValue>
+            </SelectTrigger>
+            <SelectContent>
+              {SELECTABLE_UNITS.map((u) => (
+                <SelectItem key={u} value={u}>
+                  {unitLabel(u)} ({unitAbbr(u)})
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <p className="mt-1 text-xs text-muted-foreground">
+            {puedeCambiarUnidad
+              ? 'Todavía se puede cambiar porque este producto no tiene lotes. Después de la primera compra queda fija.'
+              : 'No se puede cambiar: ya tiene lotes registrados, y cambiarla reinterpretaría el stock y las ventas ya hechas. Si está mal, crea un producto nuevo con la unidad correcta.'}
+          </p>
         </div>
 
         <p className="rounded-input bg-muted/40 px-3 py-2 text-xs text-muted-foreground">

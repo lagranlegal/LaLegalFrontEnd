@@ -41,6 +41,10 @@ const entryLineSchema = z.object({
   // escribir ("12," es NaN). Se valida como cadena y se manda tal cual.
   quantity: z.string().refine((v) => Number(v) > 0, 'La cantidad debe ser mayor a cero'),
   unit: z.enum(['unit', 'gram', 'kilogram', 'meter', 'liter']),
+  // `true` cuando la línea salió del buscador de productos, o sea que el
+  // producto YA EXISTE. Su unidad manda y el backend ignora la que mandemos,
+  // así que el selector no puede fingir que se puede elegir.
+  from_existing_product: z.boolean().optional(),
   // Opcionales: sin ellos el lote entra en borrador, que sigue siendo válido.
   // Con los dos, el backend lo publica solo y queda listo para vender.
   sale_price: z.string().optional(),
@@ -89,7 +93,7 @@ const inputClass =
   'mt-1 w-full rounded-input border border-border bg-background px-3 py-2 text-sm text-foreground outline-none focus:border-primary disabled:bg-muted disabled:text-muted-foreground'
 
 function emptyLine(): EntryFormValues['lines'][number] {
-  return { name: '', cat1_id: '', cat2_id: '', cat3_id: '', description: '', unit_cost: '0.00', quantity: '1', unit: 'unit', sale_price: '', photos: [] }
+  return { name: '', cat1_id: '', cat2_id: '', cat3_id: '', description: '', unit_cost: '0.00', quantity: '1', unit: 'unit', from_existing_product: false, sale_price: '', photos: [] }
 }
 
 /**
@@ -347,6 +351,8 @@ export function EntryFormPage() {
           description: line.description || null,
           unit_cost: line.unit_cost,
           quantity: line.quantity,
+          // Solo se usa si la línea CREA el producto; si ya existe, el
+          // backend conserva la suya y esto se ignora.
           unit: line.unit,
           // Vacío = no se decidió todavía; el backend lo deja en borrador en
           // vez de publicar con un precio inventado.
@@ -560,6 +566,7 @@ export function EntryFormPage() {
                 cat2_id: product.cat2_id,
                 cat3_id: product.cat3_id,
                 unit: (product.unit as EntryFormValues['lines'][number]['unit']) ?? 'unit',
+                from_existing_product: true,
                 // El precio ya está en el producto: no se vuelve a pedir. Si
                 // el usuario lo cambia acá, cambia para todos sus lotes.
                 sale_price: product.sale_price ?? '',
@@ -717,34 +724,46 @@ export function EntryFormPage() {
                       <label className="text-sm font-medium text-foreground">Cantidad</label>
                       <div className="mt-1 flex gap-2">
                         <input inputMode="decimal" className={`${inputClass} mt-0 flex-1`} {...register(`lines.${index}.quantity`)} />
-                        {/* La unidad solo se elige al CREAR el producto: si ya
-                            existe, el backend conserva la suya — cambiarla
-                            reinterpretaría su stock anterior. */}
-                        <Controller
-                          control={control}
-                          name={`lines.${index}.unit`}
-                          render={({ field: unitField }) => (
-                            <Select value={unitField.value} onValueChange={unitField.onChange}>
-                              <SelectTrigger className="w-32">
-                                <SelectValue>{unitLabel(unitField.value)}</SelectValue>
-                              </SelectTrigger>
-                              <SelectContent>
-                                {SELECTABLE_UNITS.map((u) => (
-                                  <SelectItem key={u} value={u}>
-                                    {unitLabel(u)} ({unitAbbr(u)})
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                          )}
-                        />
+                        {/* Si el producto YA EXISTE, su unidad manda y el
+                            backend ignora la que mandemos — así que acá se
+                            muestra como dato, no como opción. Un selector
+                            cuyo valor se descarta en silencio es justo el bug
+                            que costó media sesión con el precio de venta. */}
+                        {linea?.from_existing_product ? (
+                          <div className="flex w-32 items-center justify-center rounded-input border border-border bg-muted px-3 text-sm text-muted-foreground">
+                            {unitLabel(linea.unit)} ({unitAbbr(linea.unit)})
+                          </div>
+                        ) : (
+                          <Controller
+                            control={control}
+                            name={`lines.${index}.unit`}
+                            render={({ field: unitField }) => (
+                              <Select value={unitField.value} onValueChange={unitField.onChange}>
+                                <SelectTrigger className="w-32">
+                                  <SelectValue>{unitLabel(unitField.value)}</SelectValue>
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {SELECTABLE_UNITS.map((u) => (
+                                    <SelectItem key={u} value={u}>
+                                      {unitLabel(u)} ({unitAbbr(u)})
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            )}
+                          />
+                        )}
                       </div>
                       {errors.lines?.[index]?.quantity && (
                         <p className="mt-1 text-sm text-danger">{errors.lines[index]?.quantity?.message}</p>
                       )}
-                      {!allowsFractions(linea?.unit ?? 'unit') && (
-                        <p className="mt-1 text-xs text-muted-foreground">Se cuenta de a una: no admite decimales.</p>
-                      )}
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        {linea?.from_existing_product
+                          ? `Se mide en ${unitLabel(linea.unit).toLowerCase()} porque así se creó el producto. Para cambiarlo, edítalo en la pestaña Productos.`
+                          : !allowsFractions(linea?.unit ?? 'unit')
+                            ? 'Se cuenta de a una: no admite decimales. Si vendes esto por peso o medida, elige la unidad correcta ahora — después, con lotes registrados, ya no se puede cambiar.'
+                            : 'Admite decimales. La unidad queda fija en el producto: con lotes registrados ya no se puede cambiar.'}
+                      </p>
                     </div>
                     <div className="sm:col-span-2">
                       <label className="text-sm font-medium text-foreground">Descripción (opcional)</label>
