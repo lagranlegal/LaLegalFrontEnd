@@ -2,6 +2,73 @@
 
 > Registro vivo de qué existe en el código, cómo está armado y por qué se tomó cada decisión — para que cualquiera (humano o Claude Code) pueda retomar el proyecto sin releer todo el historial de commits. Se actualiza en cada paso del "Orden de implementación" de `CLAUDE.md`. No repite lo que ya está en `ARCHITECTURE.md`/`DESIGN_SYSTEM.md` (el qué-debería-ser); esto es el qué-hay-hoy y las decisiones concretas tomadas al construirlo.
 
+## Transformación de inventario: fundir, despiezar, armar (22/08/2026)
+
+`00037`. La operación que cierra el hilo que empezó con *"¿cómo paso un rematado a material?"*.
+
+### Una función, no cuatro
+
+Se pidió para fundir prendas rematadas y quedarse con el oro, pero **se generalizó a propósito** — corrección de Mateo: *"es una app para empresas de compraventas, cada una lo va a manejar distinto, la idea es generalizar"*.
+
+| Uso | Entra | Sale |
+|---|---|---|
+| Fundir | 3 prendas rematadas | Oro 18k por gramos |
+| Despiezar | Un celular dañado | Pantalla, batería, carcasa |
+| Armar | Consola + 2 controles | "Kit gamer" |
+| Reparar | Prenda + material | Prenda reparada |
+
+Y **lo que pase después con lo que sale no es asunto de esta operación**: es inventario común y corriente — se vende al mostrador, se le vende a un mayorista, o se vuelve a transformar. Ese fue el hallazgo que simplificó todo: los tres escenarios que parecían caminos distintos eran el mismo hecho seguido de cosas que el sistema ya sabía hacer.
+
+### El principio: el costo viaja
+
+Lo que costó lo que entra es lo que cuesta lo que sale, más lo que cueste el proceso. **El costo de las salidas no se digita en ninguna parte.**
+
+Sin esto, fundir tres cadenas de 575.000 obligaba a darlas de baja como pérdida (castiga 575.000 contra resultados, como si se hubieran evaporado) y meter el oro como sobrante de conteo (inventa 575.000 de la nada). Dos errores que se compensan en el saldo y **destrozan el estado de resultados**: aparece una pérdida enorme y después un regalo del mismo tamaño.
+
+**La merma se absorbe sola.** Entran 34 g de prendas y salen 31,2 de oro: los 2,8 g son soldadura, impurezas, pérdida del proceso. No se registran como nada — el mismo costo se reparte entre menos gramos y el costo unitario sube. Es exactamente la verdad:
+
+```
+575.000 (prendas) + 25.000 (fundidor) = 600.000  ÷  31,2 g  =  19.230,77 /g
+```
+
+Y **ese número es el punto de toda la función**: contra el precio del oro del día dice si fundir convenía.
+
+**Lo que cobra el fundidor se capitaliza.** El movimiento de caja va con concepto `purchase`, no `expense`: como gasto aparecería en el estado de resultados del mes, y no lo es — es parte de producir el activo, igual que el flete de una compra.
+
+Con **varias salidas**, el costo se reparte proporcional al valor estimado de cada una, reusando `split_cost_by_appraisal` — el mismo mecanismo con que el remate reparte el saldo del contrato entre las prendas. En partes iguales, una carcasa "costaría" lo mismo que una pantalla.
+
+### Cómo está implementado
+
+**Reusa los caminos que ya existen** en vez de inventar uno paralelo: un `inventory_exit` con `exit_type='transformation'` por lo consumido, un `inventory_entry` con `origin_type='transformation'` por lo producido, y el documento que los vincula. Así el stock se mueve con las mismas validaciones de siempre y **la trazabilidad sobrevive**: contrato → remate → artículo → transformación → lote de oro.
+
+El documento es **inmutable**: de una barra de oro no salen las tres cadenas otra vez. Permiso propio `inventory.transform` (especial), otorgado a quien ya podía hacer egresos.
+
+### Una regla que corrigió un test
+
+Había puesto que solo se transforma lo `available`. Pero un **borrador** también se funde — y de hecho es el caso más probable: una prenda que nunca se publicó porque ya se sabía que iba al crisol. Lo que no se transforma es lo vendido o dado de baja, porque su stock ya no existe.
+
+Eso se reflejó en la UI: `ItemPicker` ganó `scope="transformable"`, porque con el picker normal esas piezas eran invisibles justo para la operación que más las necesita.
+
+### La pantalla existe para una sola pregunta
+
+**¿En cuánto queda cada unidad de lo que sale?** Registrar la operación es lo fácil; saber si convenía es lo que la hace útil. Por eso el costo unitario resultante está **en cada salida** y se recalcula en vivo mientras se escribe, no como resumen decorativo al pie.
+
+El reparto se recalcula en el front para poder mostrarlo; el número que queda registrado es siempre el del backend.
+
+Como es irreversible, la confirmación lleva **los números** —cuántos artículos, cuánto costo viaja— en vez de un "¿estás seguro?" genérico que nadie lee.
+
+### Verificación
+
+```
+pytest -q            # 275/275 (272 previos + 3 nuevos)
+ruff check . && mypy app
+npm run typecheck && npm run lint && npm run test && npm run build   # 121/121
+```
+
+Despliegue verificado con `vercel ls la-legal-front-end` — no asumido.
+
+---
+
 ## Unidad de medida y cantidad decimal (22/08/2026)
 
 `00036`. Quita un límite que afectaba a **todos** los tenants, no solo al caso del oro.
