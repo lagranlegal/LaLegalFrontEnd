@@ -260,8 +260,14 @@ function LineReadiness({ line }: { line: EntryFormValues['lines'][number] | unde
 
 export function EntryFormPage() {
   const navigate = useNavigate()
-  const { data: categories } = useCategories()
-  const { data: suppliers } = useSuppliers()
+  // `isPending` de los DOS catálogos: sin esto la pantalla se pintaba
+  // completa y "lista" mientras las categorías y los proveedores seguían
+  // viajando, así que los desplegables salían vacíos y parecía que la app
+  // estuviera rota. Con el backend arrancando en frío eso son varios
+  // segundos — reportado probando.
+  const { data: categories, isPending: categoriesPending } = useCategories()
+  const { data: suppliers, isPending: suppliersPending } = useSuppliers()
+  const catalogsPending = categoriesPending || suppliersPending
   const [formError, setFormError] = useState<string | null>(null)
   const [cashDialogOpen, setCashDialogOpen] = useState(false)
   const submittedRef = useRef(false)
@@ -364,9 +370,27 @@ export function EntryFormPage() {
     }
   }
 
+  if (catalogsPending) {
+    return (
+      <div className="flex flex-col gap-6">
+        <PageHeader title="Nuevo ingreso" description="Registra la mercancía que entra al inventario." />
+        <div className="flex flex-col gap-6" aria-busy="true" aria-label="Cargando el formulario…">
+          {/* Con la forma de las tres secciones reales (origen, artículos,
+              notas) para que no salte el layout al aterrizar. */}
+          <div className="h-44 animate-pulse rounded-card border border-border bg-muted/30" />
+          <div className="h-64 animate-pulse rounded-card border border-border bg-muted/30" />
+          <div className="h-20 animate-pulse rounded-card border border-border bg-muted/30" />
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="flex flex-col gap-6">
-      <PageHeader title="Nuevo ingreso" description="Registra prendas o artículos comprados — quedan en borrador hasta publicarlos." />
+      <PageHeader
+        title="Nuevo ingreso"
+        description="Registra la mercancía que entra al inventario. Con precio queda lista para vender; sin precio, en borrador."
+      />
 
       <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-6" noValidate>
         <section className="flex flex-col gap-4 rounded-card border border-border bg-card p-card shadow-card">

@@ -8,6 +8,7 @@ import { cn } from '@/lib/utils'
 import { formatDate } from '@/lib/dates'
 import { useProductLots, useProductPurchases, type Product } from '@/features/inventory/api'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { TableSkeleton } from '@/components/shared/TableSkeleton'
 import { useSuppliers } from '@/lib/catalogs/suppliers'
 
 function SupplierName({ supplierId }: { supplierId: string | null }) {
@@ -30,7 +31,7 @@ function SupplierName({ supplierId }: { supplierId: string | null }) {
 function PurchaseList({ productId }: { productId: string }) {
   const { data: purchases, isPending, isError } = useProductPurchases(productId)
 
-  if (isPending) return <div className="mx-3 h-16 animate-pulse rounded-input bg-muted/40" />
+  if (isPending) return <TableSkeleton rows={2} columns={6} />
   if (isError) return <p className="px-3 py-2 text-sm text-danger">No se pudo cargar el historial de compras.</p>
   if (!purchases || purchases.length === 0) {
     return <p className="px-3 py-2 text-sm text-muted-foreground">Sin compras registradas para este producto.</p>
@@ -97,7 +98,7 @@ function PurchaseList({ productId }: { productId: string }) {
 function LotList({ productId }: { productId: string }) {
   const { data: lots, isPending, isError } = useProductLots(productId)
 
-  if (isPending) return <div className="h-16 animate-pulse rounded-input bg-muted/40" />
+  if (isPending) return <TableSkeleton rows={2} columns={6} />
   if (isError) return <p className="px-3 py-2 text-sm text-danger">No se pudieron cargar los lotes.</p>
 
   return (
