@@ -1,4 +1,4 @@
-import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api, unwrap } from '@/lib/api/client'
 import { useMoneyMutation } from '@/lib/api/useMoneyMutation'
 import { useCursorInfiniteQuery } from '@/lib/api/pagination'
@@ -85,4 +85,27 @@ export function useTransfersList() {
   return useCursorInfiniteQuery(['accounts', 'transfers'] as const, (cursor) =>
     unwrap(api.GET('/api/v1/accounts/transfers', { params: { query: { cursor } } })),
   )
+}
+
+export type AccountStatement = components['schemas']['AccountStatementOut']
+
+/**
+ * Extracto de una cuenta: movimientos con saldo corriente, para conciliar
+ * contra el extracto real del banco.
+ *
+ * En cuentas de efectivo viene sin saldos (`has_running_balance: false`) y no
+ * es una carencia: la base del cajón se redeclara en cada apertura, así que un
+ * acumulado histórico no significa nada. Ahí la verificación es el arqueo.
+ */
+export function useAccountStatement(accountId: string | undefined, range: { from: string; to: string } | null) {
+  return useQuery({
+    queryKey: ['accounts', accountId, 'statement', range?.from, range?.to] as const,
+    queryFn: () =>
+      unwrap(
+        api.GET('/api/v1/accounts/{account_id}/statement', {
+          params: { path: { account_id: accountId! }, query: { from_date: range!.from, to_date: range!.to } },
+        }),
+      ),
+    enabled: !!accountId && !!range,
+  })
 }

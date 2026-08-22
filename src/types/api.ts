@@ -429,6 +429,39 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/accounts/{account_id}/statement": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Statement
+         * @description Extracto de la cuenta: movimientos con **saldo corriente**, para
+         *     conciliar contra el extracto real del banco.
+         *
+         *     Completa lo que 00024 dejó escrito y a medias — *"solo las cuentas `cash`
+         *     entran al arqueo; el resto lleva saldo corriente y se concilia aparte"*.
+         *     El saldo ya se mostraba, pero no CÓMO se llegó a él, y sin eso no hay
+         *     forma de encontrar una diferencia contra el banco.
+         *
+         *     En cuentas de **efectivo** `has_running_balance` viene en `false` y los
+         *     saldos en `null`. No es una carencia: la base del cajón se redeclara en
+         *     cada apertura y no es un movimiento, así que acumular el histórico daría
+         *     un número sin significado. El efectivo se verifica **contando**, en el
+         *     arqueo. Sus movimientos sí se devuelven — sirven para ver qué pasó por el
+         *     cajón.
+         */
+        get: operations["get_statement_api_v1_accounts__account_id__statement_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/company/settings": {
         parameters: {
             query?: never;
@@ -1563,6 +1596,54 @@ export interface components {
              * Format: date-time
              */
             created_at: string;
+        };
+        /**
+         * AccountStatementOut
+         * @description Extracto de una cuenta: los movimientos con saldo corriente, para
+         *     conciliar contra el extracto real del banco.
+         *
+         *     Es la mitad que faltaba de una idea que el proyecto ya tenía escrita desde
+         *     00024: *"solo las cuentas `cash` entran al arqueo — el resto lleva saldo
+         *     corriente y se concilia aparte"*. El saldo estaba; el "aparte" no se había
+         *     construido, así que la pantalla de Cuentas decía CUÁNTO tienes en el banco
+         *     pero no CÓMO llegaste ahí — y sin eso no se puede cuadrar: si el banco
+         *     dice 4.200.000 y el sistema 4.350.000, no hay dónde buscar la diferencia.
+         */
+        AccountStatementOut: {
+            /**
+             * Account Id
+             * Format: uuid
+             */
+            account_id: string;
+            /** Name */
+            name: string;
+            /**
+             * Type
+             * @enum {string}
+             */
+            type: "cash" | "bank" | "settlement";
+            /**
+             * From Date
+             * Format: date
+             */
+            from_date: string;
+            /**
+             * To Date
+             * Format: date
+             */
+            to_date: string;
+            /** Opening Balance */
+            opening_balance: string | null;
+            /** Total In */
+            total_in: string;
+            /** Total Out */
+            total_out: string;
+            /** Closing Balance */
+            closing_balance: string | null;
+            /** Has Running Balance */
+            has_running_balance: boolean;
+            /** Lines */
+            lines: components["schemas"]["StatementLineOut"][];
         };
         /**
          * AccountUpdateIn
@@ -3492,6 +3573,37 @@ export interface components {
             /** Days In Stock */
             days_in_stock: number;
         };
+        /** StatementLineOut */
+        StatementLineOut: {
+            /**
+             * Movement Id
+             * Format: uuid
+             */
+            movement_id: string;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Module */
+            module: string;
+            /** Concept */
+            concept: string;
+            /** Direction */
+            direction: string;
+            /** Amount */
+            amount: string;
+            /** Payment Method */
+            payment_method: string | null;
+            /** Notes */
+            notes: string | null;
+            /** Reference Type */
+            reference_type: string | null;
+            /** Reference Id */
+            reference_id: string | null;
+            /** Running Balance */
+            running_balance: string | null;
+        };
         /** SubscriptionEventOut */
         SubscriptionEventOut: {
             /**
@@ -4743,6 +4855,42 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["SettlementOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_statement_api_v1_accounts__account_id__statement_get: {
+        parameters: {
+            query: {
+                /** @description Inclusivo, en la zona horaria de la empresa. */
+                from_date: string;
+                /** @description Inclusivo, en la zona horaria de la empresa. */
+                to_date: string;
+            };
+            header?: never;
+            path: {
+                account_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AccountStatementOut"];
                 };
             };
             /** @description Validation Error */

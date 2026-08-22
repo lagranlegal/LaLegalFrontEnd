@@ -12,6 +12,7 @@ import { sumMoney } from '@/lib/money'
 import { AccountFormDialog } from '@/features/accounts/components/AccountFormDialog'
 import { SettleAccountDialog } from '@/features/accounts/components/SettleAccountDialog'
 import { TransferDialog } from '@/features/accounts/components/TransferDialog'
+import { AccountStatementDialog } from '@/features/accounts/components/AccountStatementDialog'
 import { isPermissionError } from '@/lib/api/isPermissionError'
 import { useAccounts, type Account, type AccountType } from '@/features/accounts/api'
 
@@ -21,10 +22,12 @@ function AccountCard({
   account,
   onEdit,
   onSettle,
+  onStatement,
 }: {
   account: Account
   onEdit: () => void
   onSettle: () => void
+  onStatement: () => void
 }) {
   return (
     <li className="flex items-center justify-between gap-4 rounded-card border border-border bg-card p-card shadow-card">
@@ -43,6 +46,11 @@ function AccountCard({
 
       <div className="flex shrink-0 items-center gap-3">
         <Money value={account.balance} className="text-base font-semibold text-foreground" />
+        {/* Ver el extracto solo necesita `accounts.view` — es leer, no mover
+            plata. Quien puede ver el saldo puede ver de dónde salió. */}
+        <Button size="sm" variant="ghost" onClick={onStatement}>
+          Extracto
+        </Button>
         <Can permission="accounts.settle">
           {account.type === 'settlement' && (
             <Button size="sm" variant="outline" onClick={onSettle}>
@@ -75,6 +83,7 @@ export function AccountsPage() {
   const [formOpen, setFormOpen] = useState(false)
   const [editing, setEditing] = useState<Account | undefined>(undefined)
   const [settling, setSettling] = useState<Account | null>(null)
+  const [statementFor, setStatementFor] = useState<Account | null>(null)
   const [transferOpen, setTransferOpen] = useState(false)
   const [transferNonce, setTransferNonce] = useState(0)
 
@@ -192,6 +201,7 @@ export function AccountsPage() {
                       account={account}
                       onEdit={() => openEdit(account)}
                       onSettle={() => setSettling(account)}
+                      onStatement={() => setStatementFor(account)}
                     />
                   ))}
                 </ul>
@@ -216,6 +226,14 @@ export function AccountsPage() {
       )}
       {transferOpen && (
         <TransferDialog key={`transfer-${transferNonce}`} open onOpenChange={setTransferOpen} />
+      )}
+      {statementFor && (
+        <AccountStatementDialog
+          key={statementFor.id}
+          open
+          onOpenChange={(open) => !open && setStatementFor(null)}
+          account={statementFor}
+        />
       )}
     </div>
   )
