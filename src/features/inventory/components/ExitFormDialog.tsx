@@ -3,6 +3,7 @@ import { toast } from 'sonner'
 import { Trash2 } from 'lucide-react'
 import { AppDialog } from '@/components/shared/AppDialog'
 import { exitTypeLabel, SELECTABLE_EXIT_TYPES } from '@/lib/inventory/entryTypes'
+import { allowsFractions, unitAbbr, unitLabel } from '@/lib/inventory/units'
 import { ItemPicker } from '@/components/shared/ItemPicker'
 import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
@@ -28,7 +29,16 @@ export function ExitFormDialog({ open, onOpenChange }: { open: boolean; onOpenCh
   }
 
   function updateQuantity(itemId: string, quantity: number) {
-    setLines((prev) => prev.map((l) => (l.item.id === itemId ? { ...l, quantity: Math.max(1, quantity) } : l)))
+    // Mínimo positivo, no 1: un lote medido en gramos se puede dar de baja
+    // en 0,5 g. Forzar 1 impediría registrar una merma real.
+    setLines((prev) =>
+      prev.map((l) => {
+        if (l.item.id !== itemId) return l
+        if (!Number.isFinite(quantity)) return l
+        const minimo = allowsFractions(l.item.unit) ? 0.001 : 1
+        return { ...l, quantity: Math.max(minimo, Math.min(quantity, Number(l.item.quantity))) }
+      }),
+    )
   }
 
   function removeLine(itemId: string) {
@@ -50,7 +60,7 @@ export function ExitFormDialog({ open, onOpenChange }: { open: boolean; onOpenCh
       await createExit.mutateAsync({
         exit_type: exitType,
         reason: reason.trim(),
-        lines: lines.map((l) => ({ item_id: l.item.id, quantity: l.quantity })),
+        lines: lines.map((l) => ({ item_id: l.item.id, quantity: String(l.quantity) })),
       })
       toast.success('Egreso registrado')
       onOpenChange(false)
@@ -111,13 +121,13 @@ export function ExitFormDialog({ open, onOpenChange }: { open: boolean; onOpenCh
                 </div>
                 <div className="flex items-center gap-2">
                   <input
-                    type="number"
-                    min={1}
-                    max={item.quantity}
+                    inputMode="decimal"
+                    aria-label={`Cantidad en ${unitLabel(item.unit)}`}
                     value={quantity}
                     onChange={(e) => updateQuantity(item.id, Number(e.target.value))}
-                    className="w-16 rounded-input border border-border bg-background px-2 py-1 text-center text-sm"
+                    className="w-20 rounded-input border border-border bg-background px-2 py-1 text-center text-sm tnum"
                   />
+                  <span className="text-xs text-muted-foreground">{unitAbbr(item.unit)}</span>
                   <Button type="button" variant="ghost" size="icon-sm" aria-label="Quitar" onClick={() => removeLine(item.id)}>
                     <Trash2 className="size-4 text-danger" />
                   </Button>

@@ -10,6 +10,7 @@ import { formatDateTime } from '@/lib/dates'
 import { PAYMENT_METHOD_LABELS } from '@/lib/paymentMethods'
 import { useCustomer } from '@/lib/customers/search'
 import { useItem } from '@/lib/inventory/items'
+import { formatQuantity } from '@/lib/inventory/units'
 import { useVoidSale, type Sale } from '@/lib/sales/void'
 import type { components } from '@/types/api'
 
@@ -22,7 +23,7 @@ function SaleLineRow({ line, forPrint = false }: { line: SaleLine; forPrint?: bo
       <td className={forPrint ? 'py-1.5' : 'px-3 py-2 text-foreground'}>
         {item?.name ?? '…'} {item?.code && <span className={forPrint ? 'text-xs' : 'font-mono text-xs text-muted-foreground'}>{item.code}</span>}
       </td>
-      <td className={forPrint ? 'py-1.5 text-right' : 'px-3 py-2 text-right text-foreground'}>{line.quantity}</td>
+      <td className={forPrint ? 'py-1.5 text-right' : 'px-3 py-2 text-right text-foreground'}>{formatQuantity(line.quantity, item?.unit)}</td>
       <td className={forPrint ? 'py-1.5 text-right' : 'px-3 py-2 text-right'}>
         <Money value={line.unit_price} />
       </td>

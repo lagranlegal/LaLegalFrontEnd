@@ -2247,7 +2247,13 @@ export interface components {
              * Quantity
              * @default 1
              */
-            quantity: number;
+            quantity: number | string;
+            /**
+             * Unit
+             * @default unit
+             * @enum {string}
+             */
+            unit: "unit" | "gram" | "kilogram" | "meter" | "liter";
             /** Photos */
             photos?: string[];
             /** Sale Price */
@@ -2321,7 +2327,7 @@ export interface components {
              */
             item_id: string;
             /** Quantity */
-            quantity: number;
+            quantity: number | string;
         };
         /** ExitOut */
         ExitOut: {
@@ -2569,7 +2575,11 @@ export interface components {
             /** Sale Price */
             sale_price: string | null;
             /** Quantity */
-            quantity: number;
+            quantity: string;
+            /** Unit */
+            unit: string;
+            /** Unit Abbr */
+            unit_abbr: string;
             /** Status */
             status: string;
             /** Photos */
@@ -2916,7 +2926,11 @@ export interface components {
             /** Lot Count */
             lot_count: number;
             /** Available Quantity */
-            available_quantity: number;
+            available_quantity: string;
+            /** Unit */
+            unit: string;
+            /** Unit Abbr */
+            unit_abbr: string;
             /** Min Cost */
             min_cost: string | null;
             /** Max Cost */
@@ -2956,7 +2970,7 @@ export interface components {
             /** Supplier Name */
             supplier_name: string | null;
             /** Quantity */
-            quantity: number;
+            quantity: string;
             /** Unit Cost */
             unit_cost: string;
             /** Total Cost */
@@ -2982,6 +2996,8 @@ export interface components {
             active?: boolean | null;
             /** Photos */
             photos?: string[] | null;
+            /** Unit */
+            unit?: ("unit" | "gram" | "kilogram" | "meter" | "liter") | null;
         };
         /**
          * ProfitSummaryOut
@@ -3105,7 +3121,7 @@ export interface components {
              */
             item_id: string;
             /** Quantity */
-            quantity: number;
+            quantity: number | string;
             /** Unit Price */
             unit_price: number | string;
         };
@@ -3122,7 +3138,7 @@ export interface components {
              */
             item_id: string;
             /** Quantity */
-            quantity: number;
+            quantity: string;
             /** Unit Price */
             unit_price: string;
             /** Unit Cost */

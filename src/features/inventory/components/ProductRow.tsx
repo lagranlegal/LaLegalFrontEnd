@@ -8,6 +8,7 @@ import { cn } from '@/lib/utils'
 import { formatDate } from '@/lib/dates'
 import { useProductLots, useProductPurchases, type Product } from '@/features/inventory/api'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { formatQuantity } from '@/lib/inventory/units'
 import { TableSkeleton } from '@/components/shared/TableSkeleton'
 import { useSuppliers } from '@/lib/catalogs/suppliers'
 
@@ -69,7 +70,7 @@ function PurchaseList({ productId }: { productId: string }) {
                 <td className="px-3 py-1.5 text-foreground">
                   {compra.supplier_name ?? <span className="text-muted-foreground">Sin proveedor</span>}
                 </td>
-                <td className="tnum px-3 py-1.5 text-right">{compra.quantity}</td>
+                <td className="tnum px-3 py-1.5 text-right">{formatQuantity(compra.quantity)}</td>
                 <td className="px-3 py-1.5 text-right">
                   <Money value={compra.unit_cost} className={cn(esMenor && 'font-medium text-success', esMayor && 'font-medium text-warning')} />
                   {esMenor && <span className="ml-1 text-xs text-success">más barato</span>}
@@ -126,7 +127,7 @@ function LotList({ productId }: { productId: string }) {
               <td className="px-3 py-1.5 text-right">
                 <Money value={lot.cost} />
               </td>
-              <td className="tnum px-3 py-1.5 text-right">{lot.quantity}</td>
+              <td className="tnum px-3 py-1.5 text-right">{formatQuantity(lot.quantity, lot.unit)}</td>
               <td className="px-3 py-1.5 text-muted-foreground">{formatDate(lot.entry_date)}</td>
               <td className="px-3 py-1.5">
                 <StatusBadge status={lot.status} />
@@ -177,7 +178,10 @@ export function ProductRow({ product, onEditPrice }: { product: Product; onEditP
             <span className="block truncate font-medium text-foreground">{product.name}</span>
             <span className="block text-xs text-muted-foreground">
               {product.code && <span className="font-mono">{product.code} · </span>}
-              {product.available_quantity} {product.available_quantity === 1 ? 'unidad' : 'unidades'}
+              {/* La unidad la manda el backend: decir "3 unidades" de algo que
+                  se mide en gramos sería mentir, y el plural tampoco aplica
+                  igual ("1 g" no es "1 gramo" en la etiqueta). */}
+              {formatQuantity(product.available_quantity, product.unit)}
               {varios && ` · ${product.lot_count} lotes`}
               {' · costo '}
               {rangoCostos}

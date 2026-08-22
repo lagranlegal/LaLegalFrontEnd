@@ -14,6 +14,7 @@ import { useUpdateItem, usePublishItem } from '@/features/inventory/api'
 import { useContract } from '@/lib/contracts/reference'
 import { useCategories } from '@/lib/catalogs/categories'
 import { useSuppliers } from '@/lib/catalogs/suppliers'
+import { formatQuantity } from '@/lib/inventory/units'
 import type { Item } from '@/lib/inventory/items'
 
 /** Contrato del que salió una pieza de remate — trazabilidad hacia atrás. */
@@ -229,7 +230,7 @@ export function ItemEditDialog({ open, onOpenChange, item }: { open: boolean; on
           </div>
           <div>
             <p className="text-xs text-muted-foreground">Cantidad</p>
-            <p className="tnum text-foreground">{item.quantity}</p>
+            <p className="tnum text-foreground">{formatQuantity(item.quantity, item.unit)}</p>
           </div>
         </div>
 

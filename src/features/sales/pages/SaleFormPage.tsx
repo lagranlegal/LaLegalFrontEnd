@@ -16,6 +16,7 @@ import { multiplyMoney, subtractMoney, sumMoney } from '@/lib/money'
 import { AccountPicker } from '@/components/shared/AccountPicker'
 import { PAYMENT_METHOD_LABELS } from '@/lib/paymentMethods'
 import { useCreateSale } from '@/features/sales/api'
+import { allowsFractions, unitAbbr, unitLabel } from '@/lib/inventory/units'
 import type { Item } from '@/lib/inventory/items'
 import type { Customer } from '@/lib/customers/search'
 
@@ -43,14 +44,30 @@ export function SaleFormPage() {
     setCart((prev) => {
       const existing = prev.find((line) => line.item.id === item.id)
       if (existing) {
-        return prev.map((line) => (line.item.id === item.id ? { ...line, quantity: Math.min(line.quantity + 1, item.quantity) } : line))
+        return prev.map((line) =>
+          line.item.id === item.id ? { ...line, quantity: Math.min(line.quantity + 1, Number(item.quantity)) } : line,
+        )
       }
       return [...prev, { item, quantity: 1 }]
     })
   }
 
+  /**
+   * Se acota al stock disponible y a un mínimo positivo. El mínimo NO es 1:
+   * desde 00036 un producto medido en gramos puede venderse en 0,5 — poner
+   * el piso en 1 impediría vender medio gramo de oro, que es justo el caso
+   * que la unidad de medida vino a habilitar.
+   */
   function updateQuantity(itemId: string, quantity: number) {
-    setCart((prev) => prev.map((line) => (line.item.id === itemId ? { ...line, quantity: Math.max(1, Math.min(quantity, line.item.quantity)) } : line)))
+    setCart((prev) =>
+      prev.map((line) => {
+        if (line.item.id !== itemId) return line
+        const disponible = Number(line.item.quantity)
+        const minimo = allowsFractions(line.item.unit) ? 0.001 : 1
+        if (!Number.isFinite(quantity)) return line
+        return { ...line, quantity: Math.max(minimo, Math.min(quantity, disponible)) }
+      }),
+    )
   }
 
   function removeLine(itemId: string) {
@@ -77,7 +94,7 @@ export function SaleFormPage() {
         customer_id: customer?.id ?? null,
         payment_method: paymentMethod,
         account_id: accountId,
-        lines: cart.map((line) => ({ item_id: line.item.id, quantity: line.quantity, unit_price: line.item.sale_price ?? '0.00' })),
+        lines: cart.map((line) => ({ item_id: line.item.id, quantity: String(line.quantity), unit_price: line.item.sale_price ?? '0.00' })),
         discount_amount: hasDiscount ? discountAmount : null,
         discount_reason: hasDiscount ? discountReason : null,
       })
@@ -116,15 +133,40 @@ export function SaleFormPage() {
                       </p>
                     </div>
                     <div className="flex items-center gap-3">
-                      <div className="flex items-center gap-1 rounded-input border border-border">
-                        <Button type="button" variant="ghost" size="icon-sm" aria-label="Restar" onClick={() => updateQuantity(item.id, quantity - 1)}>
-                          <Minus className="size-3.5" />
-                        </Button>
-                        <span className="w-6 text-center text-sm tnum">{quantity}</span>
-                        <Button type="button" variant="ghost" size="icon-sm" aria-label="Sumar" onClick={() => updateQuantity(item.id, quantity + 1)} disabled={quantity >= item.quantity}>
-                          <Plus className="size-3.5" />
-                        </Button>
-                      </div>
+                      {/* Contar y PESAR son gestos distintos. Los botones +/-
+                          son correctos para cadenas y anillos; para gramos o
+                          metros lo natural es escribir la cantidad, y sumar de
+                          a 1 g sería absurdo. Por eso la interacción la decide
+                          la unidad del producto. */}
+                      {allowsFractions(item.unit) ? (
+                        <div className="flex items-center gap-1">
+                          <input
+                            inputMode="decimal"
+                            aria-label={`Cantidad en ${unitLabel(item.unit)}`}
+                            className="w-20 rounded-input border border-border bg-background px-2 py-1 text-right text-sm tnum outline-none focus:border-primary"
+                            defaultValue={quantity}
+                            onChange={(e) => updateQuantity(item.id, Number(e.target.value))}
+                          />
+                          <span className="text-xs text-muted-foreground">{unitAbbr(item.unit)}</span>
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-1 rounded-input border border-border">
+                          <Button type="button" variant="ghost" size="icon-sm" aria-label="Restar" onClick={() => updateQuantity(item.id, quantity - 1)}>
+                            <Minus className="size-3.5" />
+                          </Button>
+                          <span className="w-6 text-center text-sm tnum">{quantity}</span>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon-sm"
+                            aria-label="Sumar"
+                            onClick={() => updateQuantity(item.id, quantity + 1)}
+                            disabled={quantity >= Number(item.quantity)}
+                          >
+                            <Plus className="size-3.5" />
+                          </Button>
+                        </div>
+                      )}
                       <Money value={multiplyMoney(item.sale_price ?? '0.00', quantity)} className="w-24 text-right font-medium" />
                       <Button type="button" variant="ghost" size="icon-sm" aria-label="Quitar" onClick={() => removeLine(item.id)}>
                         <Trash2 className="size-4 text-danger" />

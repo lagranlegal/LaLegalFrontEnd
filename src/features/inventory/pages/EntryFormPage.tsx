@@ -11,6 +11,7 @@ import { MoneyInput } from '@/components/shared/MoneyInput'
 import { DatePicker } from '@/components/shared/DatePicker'
 import { SearchInput } from '@/components/shared/SearchInput'
 import { useProductSearch, type Product } from '@/lib/inventory/productSearch'
+import { SELECTABLE_UNITS, allowsFractions, formatQuantity, unitAbbr, unitLabel } from '@/lib/inventory/units'
 import { PhotoUploader } from '@/components/shared/PhotoUploader'
 import { Money } from '@/components/shared/Money'
 import { CashSessionRequiredDialog } from '@/components/shared/CashSessionRequiredDialog'
@@ -35,7 +36,11 @@ const entryLineSchema = z.object({
   cat3_id: z.string().min(1, 'Selecciona la categoría final'),
   description: z.string().optional(),
   unit_cost: z.string().refine((v) => Number(v) > 0, 'El costo debe ser mayor a cero'),
-  quantity: z.number().int().min(1),
+  // Texto y no número: desde 00036 la cantidad puede tener decimales (12,5 g)
+  // y un `<input type=number>` con `valueAsNumber` pierde el valor a medio
+  // escribir ("12," es NaN). Se valida como cadena y se manda tal cual.
+  quantity: z.string().refine((v) => Number(v) > 0, 'La cantidad debe ser mayor a cero'),
+  unit: z.enum(['unit', 'gram', 'kilogram', 'meter', 'liter']),
   // Opcionales: sin ellos el lote entra en borrador, que sigue siendo válido.
   // Con los dos, el backend lo publica solo y queda listo para vender.
   sale_price: z.string().optional(),
@@ -84,7 +89,7 @@ const inputClass =
   'mt-1 w-full rounded-input border border-border bg-background px-3 py-2 text-sm text-foreground outline-none focus:border-primary disabled:bg-muted disabled:text-muted-foreground'
 
 function emptyLine(): EntryFormValues['lines'][number] {
-  return { name: '', cat1_id: '', cat2_id: '', cat3_id: '', description: '', unit_cost: '0.00', quantity: 1, sale_price: '', photos: [] }
+  return { name: '', cat1_id: '', cat2_id: '', cat3_id: '', description: '', unit_cost: '0.00', quantity: '1', unit: 'unit', sale_price: '', photos: [] }
 }
 
 /**
@@ -202,7 +207,7 @@ function LineRow({
   onRemove?: () => void
 }) {
   const lista = lineIsReady(line)
-  const subtotal = multiplyMoney(line?.unit_cost || '0.00', line?.quantity || 0)
+  const subtotal = multiplyMoney(line?.unit_cost || '0.00', Number(line?.quantity || 0))
 
   return (
     <div className="flex items-center gap-2 rounded-input border border-border bg-background px-3 py-2">
@@ -212,7 +217,7 @@ function LineRow({
           <span className="block truncate text-sm font-medium text-foreground">{line?.name || `Artículo ${index + 1}`}</span>
           <span className="flex flex-wrap items-center gap-x-2 text-xs text-muted-foreground">
             <span>
-              {line?.quantity ?? 1} × <Money value={line?.unit_cost || '0.00'} />
+              {formatQuantity(line?.quantity ?? '1', line?.unit)} × <Money value={line?.unit_cost || '0.00'} />
             </span>
             {(line?.photos?.length ?? 0) > 0 && (
               <span className="inline-flex items-center gap-0.5">
@@ -316,7 +321,7 @@ export function EntryFormPage() {
     withResolver: true,
   })
 
-  const totalCost = sumMoney(...lines.map((line) => multiplyMoney(line.unit_cost || '0.00', line.quantity || 0)))
+  const totalCost = sumMoney(...lines.map((line) => multiplyMoney(line.unit_cost || '0.00', Number(line.quantity || 0))))
   const listasCount = lines.filter(lineIsReady).length
 
   async function onSubmit(values: EntryFormValues) {
@@ -342,6 +347,7 @@ export function EntryFormPage() {
           description: line.description || null,
           unit_cost: line.unit_cost,
           quantity: line.quantity,
+          unit: line.unit,
           // Vacío = no se decidió todavía; el backend lo deja en borrador en
           // vez de publicar con un precio inventado.
           sale_price: Number(line.sale_price || 0) > 0 ? line.sale_price! : null,
@@ -553,6 +559,7 @@ export function EntryFormPage() {
                 cat1_id: product.cat1_id,
                 cat2_id: product.cat2_id,
                 cat3_id: product.cat3_id,
+                unit: (product.unit as EntryFormValues['lines'][number]['unit']) ?? 'unit',
                 // El precio ya está en el producto: no se vuelve a pedir. Si
                 // el usuario lo cambia acá, cambia para todos sus lotes.
                 sale_price: product.sale_price ?? '',
@@ -708,7 +715,36 @@ export function EntryFormPage() {
                     </div>
                     <div>
                       <label className="text-sm font-medium text-foreground">Cantidad</label>
-                      <input type="number" min={1} className={inputClass} {...register(`lines.${index}.quantity`, { valueAsNumber: true })} />
+                      <div className="mt-1 flex gap-2">
+                        <input inputMode="decimal" className={`${inputClass} mt-0 flex-1`} {...register(`lines.${index}.quantity`)} />
+                        {/* La unidad solo se elige al CREAR el producto: si ya
+                            existe, el backend conserva la suya — cambiarla
+                            reinterpretaría su stock anterior. */}
+                        <Controller
+                          control={control}
+                          name={`lines.${index}.unit`}
+                          render={({ field: unitField }) => (
+                            <Select value={unitField.value} onValueChange={unitField.onChange}>
+                              <SelectTrigger className="w-32">
+                                <SelectValue>{unitLabel(unitField.value)}</SelectValue>
+                              </SelectTrigger>
+                              <SelectContent>
+                                {SELECTABLE_UNITS.map((u) => (
+                                  <SelectItem key={u} value={u}>
+                                    {unitLabel(u)} ({unitAbbr(u)})
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          )}
+                        />
+                      </div>
+                      {errors.lines?.[index]?.quantity && (
+                        <p className="mt-1 text-sm text-danger">{errors.lines[index]?.quantity?.message}</p>
+                      )}
+                      {!allowsFractions(linea?.unit ?? 'unit') && (
+                        <p className="mt-1 text-xs text-muted-foreground">Se cuenta de a una: no admite decimales.</p>
+                      )}
                     </div>
                     <div className="sm:col-span-2">
                       <label className="text-sm font-medium text-foreground">Descripción (opcional)</label>

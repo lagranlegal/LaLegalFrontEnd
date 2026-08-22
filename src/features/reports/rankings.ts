@@ -41,7 +41,7 @@ export function aggregateItemRanking(sales: Sale[], items: Item[], categories: C
     if (sale.status === 'voided') continue
     for (const line of sale.lines) {
       const existing = itemTotals.get(line.item_id) ?? { quantity: 0, revenue: '0.00' }
-      itemTotals.set(line.item_id, { quantity: existing.quantity + line.quantity, revenue: sumMoney(existing.revenue, line.subtotal) })
+      itemTotals.set(line.item_id, { quantity: existing.quantity + Number(line.quantity), revenue: sumMoney(existing.revenue, line.subtotal) })
     }
   }
 
