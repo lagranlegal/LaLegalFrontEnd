@@ -136,11 +136,31 @@ export function aggregateFinancialSummary(sessions: { sessionDate: string; repor
     const isRevenue = line.direction === 'in' && REVENUE_CONCEPTS.has(line.concept)
     const isExpense = line.direction === 'out' && EXPENSE_CONCEPTS.has(line.concept)
 
-    // Un traslado no es flujo: es la misma plata en otro bolsillo, y sumarlo
-    // inflaría entradas y salidas por el mismo monto sin que el negocio
-    // hubiera recibido ni pagado nada.
+    // QUÉ CUENTA COMO FLUJO. Dos exclusiones, por razones distintas:
+    //
+    // 1. Un TRASLADO es la misma plata en otro bolsillo: sumarlo inflaría
+    //    entradas y salidas por el mismo monto sin que el negocio hubiera
+    //    recibido ni pagado nada.
+    //
+    // 2. Una cuenta POR COBRAR no tiene plata. La migración 00024 lo dice
+    //    literal: "settlement — el dinero NO está: alguien te lo debe". Una
+    //    venta con Sistecrédito se registraba como entrada de flujo aunque no
+    //    hubiera entrado un peso, y al liquidarla se contaba OTRA VEZ al
+    //    llegar al banco — el mismo millón, dos veces. Y la salida de la
+    //    cuenta por cobrar inflaba las salidas sin que saliera nada de
+    //    ningún lado.
+    //
+    //    Se filtra por TIPO DE CUENTA y no por concepto porque el tipo es lo
+    //    que de verdad determina si hay plata ahí — y así funciona igual para
+    //    los movimientos históricos, que quedaron con `concept='adjustment'`
+    //    antes de 00038.
+    //
+    // El resultado es el correcto y se acomoda solo: la venta a crédito no es
+    // flujo, la liquidación que entra al banco SÍ lo es (ahí la plata llega
+    // de verdad), y la que sale de la cuenta por cobrar no.
     const isTransfer = TRANSFER_CONCEPTS.has(line.concept)
-    if (!isTransfer) {
+    const isReceivable = line.account_type === 'settlement'
+    if (!isTransfer && !isReceivable) {
       if (line.direction === 'in') flujoEntradas = sumMoney(flujoEntradas, line.total)
       else flujoSalidas = sumMoney(flujoSalidas, line.total)
     }

@@ -113,3 +113,68 @@ describe('traslados entre cuentas en el resumen financiero', () => {
     expect(summary.totalsByConcept.some((row) => row.concept === 'transfer_out' && row.total === '80000.00')).toBe(true)
   })
 })
+
+describe('cuentas por cobrar en el flujo de caja', () => {
+  it('una venta con Sistecrédito NO es flujo: esa plata no ha llegado', () => {
+    // Encontrado auditando la matriz completa de conceptos contra cómo los
+    // trata cada reporte — algo que ningún test miraba, porque cada test cubre
+    // un camino solo. Con datos reales del dev: 1.000.000 en ventas contra una
+    // cuenta `settlement` se estaba contando como plata que se movió.
+    //
+    // La migración 00024 lo dice literal: "settlement — el dinero NO está:
+    // alguien te lo debe".
+    const summary = aggregateFinancialSummary([
+      {
+        sessionDate: '2026-08-22',
+        report: report([
+          { module: 'store', direction: 'in', concept: 'sale', payment_method: 'cash', account_type: 'cash', total: '450000.00' },
+          { module: 'store', direction: 'in', concept: 'sale', payment_method: 'other', account_type: 'settlement', total: '1000000.00' },
+        ] as SessionReport['lines']),
+      },
+    ])
+
+    // Las DOS son ingreso operativo: la venta ocurrió y el ingreso se reconoce
+    // al vender, no al cobrar.
+    expect(summary.ingresosOperativos).toBe('1450000.00')
+    // Pero solo entró plata por una.
+    expect(summary.flujoEntradas).toBe('450000.00')
+  })
+
+  it('liquidar cuenta el ingreso al banco, no la salida de la cuenta por cobrar', () => {
+    // Al liquidar, la plata llega DE VERDAD al banco: eso sí es flujo. Lo que
+    // sale de la cuenta por cobrar no es una salida — es la deuda que se
+    // extingue, y contarla inflaba `flujoSalidas` sin que saliera un peso.
+    const summary = aggregateFinancialSummary([
+      {
+        sessionDate: '2026-08-22',
+        report: report([
+          { module: 'store', direction: 'out', concept: 'settlement_out', payment_method: 'other', account_type: 'settlement', total: '1000000.00' },
+          { module: 'store', direction: 'in', concept: 'settlement_in', payment_method: 'transfer', account_type: 'bank', total: '940000.00' },
+        ] as SessionReport['lines']),
+      },
+    ])
+
+    expect(summary.flujoEntradas).toBe('940000.00')
+    expect(summary.flujoSalidas).toBe('0.00')
+    // La comisión de 60.000 no aparece como gasto: no es plata que salió, es
+    // plata que nunca llegó — ya está implícita en que entró menos.
+    expect(summary.gastosOperativos).toBe('0.00')
+  })
+
+  it('funciona igual con los movimientos históricos, que quedaron como `adjustment`', () => {
+    // `cash_movement` es inmutable a propósito, así que las liquidaciones
+    // anteriores a 00038 conservan `concept='adjustment'`. Por eso la
+    // exclusión se hace por TIPO DE CUENTA y no por concepto: si dependiera
+    // del concepto, el arreglo solo valdría para lo nuevo.
+    const summary = aggregateFinancialSummary([
+      {
+        sessionDate: '2026-08-01',
+        report: report([
+          { module: 'store', direction: 'out', concept: 'adjustment', payment_method: 'other', account_type: 'settlement', total: '500000.00' },
+        ] as SessionReport['lines']),
+      },
+    ])
+
+    expect(summary.flujoSalidas).toBe('0.00')
+  })
+})

@@ -28,6 +28,10 @@ export const CONCEPT_LABELS: Record<string, string> = {
   transfer_out: 'Consignado / trasladado',
   transfer_in: 'Recibido de otra cuenta',
   adjustment: 'Ajuste',
+  // 00038. Antes las liquidaciones salían como "Ajuste" en el acta, que a
+  // quien firma el arqueo no le dice nada.
+  settlement_out: 'Liquidado del convenio',
+  settlement_in: 'Recibido del convenio',
 }
 
 export function conceptLabel(concept: string): string {
