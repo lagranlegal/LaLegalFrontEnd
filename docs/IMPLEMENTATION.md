@@ -2,6 +2,62 @@
 
 > Registro vivo de qué existe en el código, cómo está armado y por qué se tomó cada decisión — para que cualquiera (humano o Claude Code) pueda retomar el proyecto sin releer todo el historial de commits. Se actualiza en cada paso del "Orden de implementación" de `CLAUDE.md`. No repite lo que ya está en `ARCHITECTURE.md`/`DESIGN_SYSTEM.md` (el qué-debería-ser); esto es el qué-hay-hoy y las decisiones concretas tomadas al construirlo.
 
+## Estado de resultados — y el KPI que mentía (22/08/2026)
+
+Sin migración.
+
+### El bug
+
+`/reportes` mostraba un KPI llamado **"Utilidad operativa"** que calculaba `ingresosOperativos − gastosOperativos` y **nunca restaba el costo de ventas**. Una cadena vendida en 500.000 que costó 300.000 contaba como **500.000 de utilidad**.
+
+Y en la **misma pantalla** convivía con la tarjeta "Utilidad bruta de tienda", que sí lo restaba. Dos cifras contradiciéndose — y la que estaba más arriba era la que mentía.
+
+Salió al explicar qué era el "estado de resultados unificado" que quedaba pendiente. No era una función faltante: era un número equivocado que alguien podía usar para decidir.
+
+### El endpoint
+
+`GET /reports/income-statement?from_date&to_date` da el resultado en orden:
+
+```
+  Ingresos          ventas netas + intereses cobrados
+− Costo de ventas   costo congelado de lo vendido (solo tienda)
+= Utilidad bruta
+− Gastos            gastos operativos del período
+= Utilidad
+```
+
+**No reimplementa ninguna regla:** reusa `profit_summary` (tienda) y `pawn_performance` (empeño), que ya definen cada número una sola vez con sus salvedades documentadas. Acá solo se suman y se ordenan.
+
+**Sale de los DOCUMENTOS**, no de los movimientos de caja, por dos razones que importan las dos:
+
+- El desglose de caja solo cubre sesiones **cerradas**: faltaría lo de hoy.
+- Una venta con Sistecrédito **es ingreso** aunque no haya entrado plata — el ingreso se reconoce al vender, no al cobrar. Armado desde caja, ese ingreso aparecería tarde o no aparecería.
+
+**Los movimientos de capital van aparte del resultado**, no dentro: prestar no es gasto, cobrar no es ganancia, y comprar inventario es convertir efectivo en activo — se vuelve gasto cuando se **vende**, momento en que ya está contado en el costo de ventas. Son los tres principios que este proyecto ya pagó caro. Se devuelven igual, para que nadie los busque en otra pantalla y concluya que faltan.
+
+### En pantalla: el orden es el contenido
+
+La tarjeta va en **cascada** y no como fila de KPIs sueltos. Cada línea se explica por la anterior, y **ver la resta** es lo que evita confundir ingreso con ganancia — un KPI aislado que diga "utilidad" es exactamente lo que estaba mal.
+
+Los subtotales van **donde corresponden** (ingresos totales tras las dos fuentes, utilidad bruta justo después del costo de ventas), no todos al final: ver que la utilidad bruta sale de restar el costo es media explicación.
+
+Al pie, lo que **no** es resultado, dicho explícitamente. Sin esa nota, alguien que compró mucho este mes buscaría esas compras en los gastos y concluiría que el reporte está roto.
+
+### Se borró el campo, no solo su uso
+
+`utilidadOperativa` se eliminó de `aggregateFinancialSummary`. Dejarlo sin usar era una trampa para el próximo que lo encontrara y pensara que era la utilidad. En su lugar quedó un comentario explicando por qué ese módulo **no** calcula la utilidad: agrega movimientos de caja para gráficas y desgloses, y una utilidad sin costo de ventas es una mentira.
+
+### Verificación
+
+```
+pytest -q            # 277/277 (275 previos + 2 nuevos)
+npm run typecheck && npm run lint && npm run test && npm run build   # 124/124
+```
+
+Los dos tests nuevos fijan lo que importa: que el costo de ventas se reste, y que capital y compras queden **fuera** del resultado.
+
+---
+
 ## Transformación de inventario: fundir, despiezar, armar (22/08/2026)
 
 `00037`. La operación que cierra el hilo que empezó con *"¿cómo paso un rematado a material?"*.
