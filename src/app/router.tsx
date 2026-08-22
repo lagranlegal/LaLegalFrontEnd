@@ -259,10 +259,39 @@ const cashboxRoute = createRoute({
   },
 })
 
+/**
+ * Los filtros de inventario viven en la URL, no en estado de React.
+ *
+ * Antes se perdían con un F5 y no se podían compartir: "mirá las compras por
+ * pagar de este proveedor" era un link imposible de mandar. En la dirección,
+ * además, el botón «atrás» del navegador vuelve al filtro anterior en vez de
+ * salirse de la pantalla — que es lo que uno espera después de encadenar
+ * tres filtros.
+ *
+ * Todo opcional y sin valores por defecto: una URL sin parámetros es la
+ * pantalla limpia, y así el link más corto sigue funcionando.
+ */
+const inventorySearchSchema = z.object({
+  tab: z.enum(['products', 'items', 'entries', 'exits']).optional(),
+  q: z.string().optional(),
+  status: z.string().optional(),
+  cat1: z.string().optional(),
+  cat2: z.string().optional(),
+  cat3: z.string().optional(),
+  supplier: z.string().optional(),
+  origin: z.string().optional(),
+  stock: z.boolean().optional(),
+  payment: z.string().optional(),
+  exitType: z.string().optional(),
+})
+
+export type InventorySearch = z.infer<typeof inventorySearchSchema>
+
 const inventoryRoute = createRoute({
   getParentRoute: () => appLayoutRoute,
   path: '/inventario',
   component: InventoryPage,
+  validateSearch: inventorySearchSchema,
   beforeLoad: ({ context }) => {
     const me = context.queryClient.getQueryData(meQueryOptions().queryKey)
     if (me && !me.permissions.includes('inventory.view')) {

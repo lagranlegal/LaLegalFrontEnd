@@ -26,6 +26,7 @@ import { ProductPriceDialog } from '@/features/inventory/components/ProductPrice
 import { EmptyState } from '@/components/shared/EmptyState'
 import { isPermissionError } from '@/lib/api/isPermissionError'
 import { ExitFormDialog } from '@/features/inventory/components/ExitFormDialog'
+import { useInventorySearch } from '@/features/inventory/useInventorySearch'
 
 const ITEM_STATUS_TABS = [
   { value: '', label: 'Todos' },
@@ -136,12 +137,23 @@ function CategorySelect({
  * "¿dónde está esta pieza?".
  */
 function ProductsTab() {
-  const [q, setQ] = useState('')
-  const [cat1Id, setCat1Id] = useState('')
-  const [cat2Id, setCat2Id] = useState('')
-  const [cat3Id, setCat3Id] = useState('')
-  const [supplierId, setSupplierId] = useState('')
-  const [inStock, setInStock] = useState(false)
+  // Los filtros viven en la URL: sobreviven al F5 y el link se puede
+  // compartir. Ver `useInventorySearch`.
+  const { search, setSearch } = useInventorySearch()
+  const q = search.q ?? ''
+  const cat1Id = search.cat1 ?? ''
+  const cat2Id = search.cat2 ?? ''
+  const cat3Id = search.cat3 ?? ''
+  const supplierId = search.supplier ?? ''
+  const inStock = search.stock ?? false
+  const setQ = (v: string) => setSearch({ q: v })
+  // Cambiar un nivel limpia los de abajo: una subcategoría de otra rama no
+  // filtra nada y dejaría la pantalla vacía sin explicación.
+  const setCat1Id = (v: string) => setSearch({ cat1: v, cat2: '', cat3: '' })
+  const setCat2Id = (v: string) => setSearch({ cat2: v, cat3: '' })
+  const setCat3Id = (v: string) => setSearch({ cat3: v })
+  const setSupplierId = (v: string) => setSearch({ supplier: v })
+  const setInStock = (v: boolean) => setSearch({ stock: v })
   const { data: categories } = useCategories()
   const { data: suppliers } = useSuppliers()
   const { data, isPending, isFetching, isError, error, refetch, hasNextPage, isFetchingNextPage, fetchNextPage } = useProductsList({
@@ -201,19 +213,12 @@ function ProductsTab() {
           placeholder="Todo proveedor"
           disabled={!suppliers}
         />
-        <FilterToggle active={inStock} onToggle={() => setInStock((v) => !v)} label="Solo con stock" />
+        <FilterToggle active={inStock} onToggle={() => setInStock(!inStock)} label="Solo con stock" />
         {hasFilters && (
           <Button
             variant="ghost"
             size="sm"
-            onClick={() => {
-              setQ('')
-              setCat1Id('')
-              setCat2Id('')
-              setCat3Id('')
-              setSupplierId('')
-              setInStock(false)
-            }}
+            onClick={() => setSearch({ q: '', cat1: '', cat2: '', cat3: '', supplier: '', stock: false })}
           >
             Limpiar filtros
           </Button>
@@ -288,17 +293,24 @@ function ProductsTab() {
 }
 
 function ItemsTab() {
-  const [status, setStatus] = useState('')
-  const [q, setQ] = useState('')
-  const [cat1Id, setCat1Id] = useState('')
-  const [cat2Id, setCat2Id] = useState('')
-  const [cat3Id, setCat3Id] = useState('')
+  const { search, setSearch } = useInventorySearch()
+  const status = search.status ?? ''
+  const q = search.q ?? ''
+  const cat1Id = search.cat1 ?? ''
+  const cat2Id = search.cat2 ?? ''
+  const cat3Id = search.cat3 ?? ''
+  const setStatus = (v: string) => setSearch({ status: v })
+  const setQ = (v: string) => setSearch({ q: v })
+  const setCat1Id = (v: string) => setSearch({ cat1: v, cat2: '', cat3: '' })
+  const setCat2Id = (v: string) => setSearch({ cat2: v, cat3: '' })
+  const setCat3Id = (v: string) => setSearch({ cat3: v })
   // Proveedor y origen YA existían como filtros del backend (`supplier_id`,
   // `origin` en `GET /inventory/items`) y ninguna pantalla los ofrecía.
   // Exponerlos no costó backend: responden "¿qué le compré a este proveedor?"
   // y "¿qué de esto salió de un remate?", que eran preguntas sin respuesta.
-  const [supplierId, setSupplierId] = useState('')
-  const [origin, setOrigin] = useState('')
+  const supplierId = search.supplier ?? ''
+  const origin = search.origin ?? ''
+  const setSupplierId = (v: string) => setSearch({ supplier: v })
   const { data: categories } = useCategories()
   const { data: suppliers } = useSuppliers()
   const { data, isPending, isFetching, isError, error, refetch, hasNextPage, isFetchingNextPage, fetchNextPage } = useItemsList({
@@ -322,13 +334,7 @@ function ItemsTab() {
   const hasFilters = !!(q || status || cat1Id || supplierId || origin)
 
   function clearFilters() {
-    setQ('')
-    setStatus('')
-    setCat1Id('')
-    setCat2Id('')
-    setCat3Id('')
-    setSupplierId('')
-    setOrigin('')
+    setSearch({ q: '', status: '', cat1: '', cat2: '', cat3: '', supplier: '', origin: '' })
   }
 
   const items = data?.pages.flatMap((page) => page.items) ?? []
@@ -394,10 +400,7 @@ function ItemsTab() {
             ofrecer una combinación que nunca devuelve nada. */}
         <FilterSelect
           value={origin}
-          onChange={(v) => {
-            setOrigin(v)
-            if (v === 'auction') setSupplierId('')
-          }}
+          onChange={(v) => setSearch({ origin: v, ...(v === 'auction' ? { supplier: '' } : {}) })}
           options={ORIGIN_OPTIONS}
           placeholder="Todo origen"
         />
@@ -450,10 +453,15 @@ const PAYMENT_STATUS_TABS = [
 ]
 
 function EntriesTab() {
-  const [paymentStatus, setPaymentStatus] = useState('')
-  const [supplierId, setSupplierId] = useState('')
-  const [originType, setOriginType] = useState('')
-  const [q, setQ] = useState('')
+  const { search, setSearch } = useInventorySearch()
+  const paymentStatus = search.payment ?? ''
+  const supplierId = search.supplier ?? ''
+  const originType = search.origin ?? ''
+  const q = search.q ?? ''
+  const setPaymentStatus = (v: string) => setSearch({ payment: v })
+  const setSupplierId = (v: string) => setSearch({ supplier: v })
+  const setOriginType = (v: string) => setSearch({ origin: v })
+  const setQ = (v: string) => setSearch({ q: v })
   const { data: suppliers } = useSuppliers()
   const { data, isPending, isError, error, refetch, hasNextPage, isFetchingNextPage, fetchNextPage } = useEntriesList({
     payment_status: paymentStatus,
@@ -530,12 +538,7 @@ function EntriesTab() {
           <Button
             variant="ghost"
             size="sm"
-            onClick={() => {
-              setPaymentStatus('')
-              setSupplierId('')
-              setOriginType('')
-              setQ('')
-            }}
+            onClick={() => setSearch({ payment: '', supplier: '', origin: '', q: '' })}
           >
             Limpiar filtros
           </Button>
@@ -575,7 +578,9 @@ function EntriesTab() {
 }
 
 function ExitsTab() {
-  const [exitType, setExitType] = useState('')
+  const { search, setSearch } = useInventorySearch()
+  const exitType = search.exitType ?? ''
+  const setExitType = (v: string) => setSearch({ exitType: v })
   const { data, isPending, isError, error, refetch, hasNextPage, isFetchingNextPage, fetchNextPage } = useExitsList({ exit_type: exitType })
   const [dialogOpen, setDialogOpen] = useState(false)
   const [dialogNonce, setDialogNonce] = useState(0)
@@ -632,6 +637,7 @@ function ExitsTab() {
 
 export function InventoryPage() {
   const navigate = useNavigate()
+  const { search, setSearch } = useInventorySearch()
 
   return (
     <div className="flex flex-col gap-6">
@@ -656,7 +662,30 @@ export function InventoryPage() {
         }
       />
 
-      <Tabs defaultValue="products">
+      {/* La pestaña activa va en la URL junto con los filtros: un link a
+          "compras por pagar" tiene que ABRIR en Ingresos, no en Productos y
+          con el filtro puesto en una pestaña que no se ve.
+          Al cambiar de pestaña se limpian los filtros: los de Lotes no
+          significan lo mismo en Egresos, y arrastrarlos daría una lista vacía
+          sin explicación. */}
+      <Tabs
+        value={search.tab ?? 'products'}
+        onValueChange={(tab) =>
+          setSearch({
+            tab: tab as NonNullable<typeof search.tab>,
+            q: '',
+            status: '',
+            cat1: '',
+            cat2: '',
+            cat3: '',
+            supplier: '',
+            origin: '',
+            stock: false,
+            payment: '',
+            exitType: '',
+          })
+        }
+      >
         <TabsList>
           <TabsTrigger value="products">Productos</TabsTrigger>
           <TabsTrigger value="items">Lotes</TabsTrigger>
