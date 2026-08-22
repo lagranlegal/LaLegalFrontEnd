@@ -6,6 +6,7 @@ import { PAYMENT_METHOD_LABELS, paymentMethodLabel } from '@/lib/paymentMethods'
 import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { AccountPicker } from '@/components/shared/AccountPicker'
+import { Can } from '@/components/shared/Can'
 import { entryOriginLabel } from '@/lib/inventory/entryTypes'
 import { CashSessionRequiredDialog } from '@/components/shared/CashSessionRequiredDialog'
 import { ApiError } from '@/lib/api/client'
@@ -71,9 +72,17 @@ function PayPendingPurchase({ entry }: { entry: Entry }) {
           <label className="text-xs text-muted-foreground">¿De dónde sale?</label>
           <AccountPicker paymentMethod={method} direction="out" value={accountId} onChange={setAccountId} />
         </div>
-        <Button type="button" className="rounded-pill" disabled={payEntry.isPending} onClick={handlePay}>
-          {payEntry.isPending ? 'Registrando…' : 'Registrar pago'}
-        </Button>
+        {/* Pagarle a un proveedor mueve plata, no inventario: desde 00035
+            lleva su propio permiso. Quien registra mercancía ya no decide
+            cuánto sale de la caja. */}
+        <Can
+          permission="inventory.pay_purchase"
+          fallback={<p className="text-xs text-muted-foreground">No tienes permiso para pagar compras.</p>}
+        >
+          <Button type="button" className="rounded-pill" disabled={payEntry.isPending} onClick={handlePay}>
+            {payEntry.isPending ? 'Registrando…' : 'Registrar pago'}
+          </Button>
+        </Can>
       </div>
       {error && <p className="text-sm text-danger">{error}</p>}
       <CashSessionRequiredDialog open={cashDialogOpen} onOpenChange={setCashDialogOpen} />

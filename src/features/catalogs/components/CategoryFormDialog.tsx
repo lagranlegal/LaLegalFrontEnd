@@ -11,6 +11,9 @@ import type { Category } from '@/features/catalogs/tree'
 
 const APPLIES_TO_LABELS: Record<string, string> = { pawn: 'Empeño', store: 'Tienda', both: 'Ambos' }
 
+import { resolveInheritedParams } from '@/features/catalogs/inheritance'
+import { useCategories } from '@/lib/catalogs/categories'
+
 const categorySchema = z.object({
   name: z.string().min(1, 'El nombre es obligatorio'),
   code_letter: z
@@ -53,6 +56,7 @@ export function CategoryFormDialog({
   category?: Category
 }) {
   const mode = category ? 'edit' : 'create'
+  const { data: allCategories } = useCategories()
   const [formError, setFormError] = useState<string | null>(null)
   const createCategory = useCreateCategory()
   const updateCategory = useUpdateCategory()
@@ -61,6 +65,7 @@ export function CategoryFormDialog({
     handleSubmit,
     control,
     setError,
+    watch,
     formState: { errors },
   } = useForm<CategoryFormValues>({
     resolver: zodResolver(categorySchema),
@@ -76,6 +81,17 @@ export function CategoryFormDialog({
         }
       : { name: '', code_letter: '', applies_to: 'both', default_term_months: '', arrears_window_months: '', max_ltv_pct: '', active: true },
   })
+
+  // Al editar, la herencia se mide desde el PADRE de esta categoría — no
+  // desde ella misma, o se heredaría a sí misma y el placeholder repetiría
+  // el valor ya escrito.
+  const heredado = resolveInheritedParams(allCategories ?? [], category ? (category.parent_id ?? undefined) : parentId)
+  const hayHerencia = heredado.default_term_months != null || heredado.arrears_window_months != null || heredado.max_ltv_pct != null
+  // Falta de verdad solo si NADIE en la rama lo define y esta categoría
+  // tampoco lo está definiendo ahora mismo.
+  const faltaEnLaRama =
+    (heredado.default_term_months == null && !watch('default_term_months')) ||
+    (heredado.arrears_window_months == null && !watch('arrears_window_months'))
 
   async function onSubmit(values: CategoryFormValues) {
     setFormError(null)
@@ -161,22 +177,59 @@ export function CategoryFormDialog({
             <label htmlFor="cat-term" className="text-sm font-medium text-foreground">
               Plazo (meses)
             </label>
-            <input id="cat-term" inputMode="numeric" className={inputClass} {...register('default_term_months')} />
+            {/* El placeholder muestra lo HEREDADO: dejar el campo vacío ya no
+                es un hueco sin explicación, es "usa el del padre". */}
+            <input
+              id="cat-term"
+              inputMode="numeric"
+              className={inputClass}
+              placeholder={heredado.default_term_months != null ? `${heredado.default_term_months} (heredado)` : undefined}
+              {...register('default_term_months')}
+            />
           </div>
           <div>
             <label htmlFor="cat-arrears" className="text-sm font-medium text-foreground">
               Ventana de mora (meses)
             </label>
-            <input id="cat-arrears" inputMode="numeric" className={inputClass} {...register('arrears_window_months')} />
+            <input
+              id="cat-arrears"
+              inputMode="numeric"
+              className={inputClass}
+              placeholder={heredado.arrears_window_months != null ? `${heredado.arrears_window_months} (heredado)` : undefined}
+              {...register('arrears_window_months')}
+            />
           </div>
           <div>
             <label htmlFor="cat-ltv" className="text-sm font-medium text-foreground">
               LTV máximo (%)
             </label>
-            <input id="cat-ltv" inputMode="decimal" className={inputClass} {...register('max_ltv_pct')} />
+            <input
+              id="cat-ltv"
+              inputMode="decimal"
+              className={inputClass}
+              placeholder={heredado.max_ltv_pct != null ? `${heredado.max_ltv_pct} (heredado)` : undefined}
+              {...register('max_ltv_pct')}
+            />
           </div>
         </div>
-        <p className="-mt-2 text-xs text-muted-foreground">Obligatorios para categorías nivel 3 (las que se usan al armar un contrato).</p>
+
+        {/* Tres mensajes distintos según lo que de verdad pasa, en vez del
+            "obligatorios para nivel 3" de antes — que era falso desde que los
+            parámetros se heredan, y encima no decía de dónde. */}
+        {faltaEnLaRama ? (
+          <p className="-mt-2 rounded-input bg-warning-soft px-3 py-2 text-xs text-warning">
+            Ni esta categoría ni sus categorías padre tienen plazo y ventana de mora. Sin eso no se podrá crear ningún contrato con
+            prendas de esta rama — configúralos acá o en una categoría superior.
+          </p>
+        ) : hayHerencia ? (
+          <p className="-mt-2 text-xs text-muted-foreground">
+            Déjalos vacíos para heredar de las categorías superiores. Lo que escribas acá manda solo para esta categoría y las suyas.
+          </p>
+        ) : (
+          <p className="-mt-2 text-xs text-muted-foreground">
+            Se heredan hacia abajo: lo que pongas acá lo usan todas las categorías que cuelguen de esta, salvo que definan lo suyo.
+          </p>
+        )}
 
         {mode === 'edit' && (
           <label className="flex items-center gap-2 text-sm text-foreground">

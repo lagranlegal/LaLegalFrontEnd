@@ -99,18 +99,39 @@ export function UserDetailDialog({ open, onOpenChange, user, isSelf }: { open: b
                 {updateUserRole.isPending ? 'Guardando…' : 'Guardar rol'}
               </Button>
             )}
-            <Button
-              variant="outline"
-              disabled={isPending}
-              onClick={handleToggleStatus}
-              className={user.status !== 'inactive' ? 'w-full rounded-pill border-danger text-danger hover:bg-danger-soft' : 'w-full rounded-pill'}
-            >
-              {isPending
-                ? 'Procesando…'
-                : user.status !== 'inactive'
-                  ? 'Desactivar usuario'
-                  : 'Reactivar usuario'}
-            </Button>
+            {/* NADIE SE DESACTIVA A SÍ MISMO.
+                Reportado probando: el único usuario de una empresa recién
+                creada —su administrador— veía el botón para desactivarse.
+                El backend lo rechaza (`LAST_ADMIN_SAFEGUARD`, así que no hay
+                riesgo de dejar la empresa sin acceso), pero ofrecer una
+                acción que siempre falla es peor que no ofrecerla: invita a
+                intentarla y enseña que los errores son normales.
+
+                Se oculta para uno mismo y no solo para "el último admin"
+                porque el front no sabe quién es admin —eso depende de qué
+                permisos tenga cada rol— pero sí sabe quién es uno. Y la
+                regla es más simple de entender: si alguien se va, lo
+                desactiva otro. */}
+            {isSelf ? (
+              <p className="w-full rounded-input bg-muted/50 px-3 py-2 text-center text-xs text-muted-foreground">
+                No puedes desactivar tu propia cuenta. Si te vas de la empresa, pídele a otro administrador que lo haga.
+              </p>
+            ) : (
+              <Button
+                variant="outline"
+                disabled={isPending}
+                onClick={handleToggleStatus}
+                className={
+                  user.status !== 'inactive' ? 'w-full rounded-pill border-danger text-danger hover:bg-danger-soft' : 'w-full rounded-pill'
+                }
+              >
+                {isPending
+                  ? 'Procesando…'
+                  : user.status !== 'inactive'
+                    ? 'Desactivar usuario'
+                    : 'Reactivar usuario'}
+              </Button>
+            )}
           </div>
         }
       >
