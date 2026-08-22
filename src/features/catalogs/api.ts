@@ -1,4 +1,4 @@
-import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api, unwrap } from '@/lib/api/client'
 import { useCursorInfiniteQuery } from '@/lib/api/pagination'
 import type { components } from '@/types/api'
@@ -53,4 +53,37 @@ export function useUpdateSupplier() {
       unwrap(api.PATCH('/api/v1/catalogs/suppliers/{supplier_id}', { params: { path: { supplier_id: supplierId } }, body })),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['catalogs', 'suppliers'] }),
   })
+}
+
+export type SupplierSummary = components['schemas']['SupplierSummaryOut']
+export type SupplierPurchase = components['schemas']['SupplierPurchaseOut']
+
+/**
+ * Ficha del proveedor: qué se le compró y cuánto se le debe.
+ *
+ * El CLIENTE tiene su ficha con historial cruzado desde el paso 4; el
+ * proveedor tenía un formulario de creación y nada más, así que "¿cuánto le
+ * he comprado?" no tenía respuesta aunque el dato estuviera completo en la
+ * base.
+ */
+export function useSupplierSummary(supplierId: string | undefined) {
+  return useQuery({
+    queryKey: ['catalogs', 'suppliers', supplierId, 'summary'] as const,
+    queryFn: () =>
+      unwrap(api.GET('/api/v1/catalogs/suppliers/{supplier_id}/summary', { params: { path: { supplier_id: supplierId! } } })),
+    enabled: !!supplierId,
+  })
+}
+
+export function useSupplierPurchases(supplierId: string | undefined) {
+  return useCursorInfiniteQuery(
+    ['catalogs', 'suppliers', supplierId, 'purchases'] as const,
+    (cursor) =>
+      unwrap(
+        api.GET('/api/v1/catalogs/suppliers/{supplier_id}/purchases', {
+          params: { path: { supplier_id: supplierId! }, query: { cursor } },
+        }),
+      ),
+    { enabled: !!supplierId },
+  )
 }

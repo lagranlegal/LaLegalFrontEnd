@@ -6,13 +6,88 @@ import { Button } from '@/components/ui/button'
 import { Can } from '@/components/shared/Can'
 import { cn } from '@/lib/utils'
 import { formatDate } from '@/lib/dates'
-import { useProductLots, type Product } from '@/features/inventory/api'
+import { useProductLots, useProductPurchases, type Product } from '@/features/inventory/api'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { useSuppliers } from '@/lib/catalogs/suppliers'
 
 function SupplierName({ supplierId }: { supplierId: string | null }) {
   const { data: suppliers } = useSuppliers()
   if (!supplierId) return <span className="text-muted-foreground">Remate</span>
   return <>{suppliers?.find((s) => s.id === supplierId)?.name ?? '—'}</>
+}
+
+/**
+ * Historial de compras del producto: cuándo, a quién y a cuánto.
+ *
+ * Responde las dos preguntas que la fila de arriba solo insinúa al mostrar el
+ * rango de costos entre lotes: **cómo se movió el costo** y **a quién conviene
+ * comprarle**. El dato estaba completo en la base y no había forma de abrirlo.
+ *
+ * Marca el costo más BARATO y el más CARO en vez de dejar la comparación al
+ * ojo: con seis compras a precios parecidos, la diferencia que importa es
+ * justamente la que no salta a la vista.
+ */
+function PurchaseList({ productId }: { productId: string }) {
+  const { data: purchases, isPending, isError } = useProductPurchases(productId)
+
+  if (isPending) return <div className="mx-3 h-16 animate-pulse rounded-input bg-muted/40" />
+  if (isError) return <p className="px-3 py-2 text-sm text-danger">No se pudo cargar el historial de compras.</p>
+  if (!purchases || purchases.length === 0) {
+    return <p className="px-3 py-2 text-sm text-muted-foreground">Sin compras registradas para este producto.</p>
+  }
+
+  const costos = purchases.map((c) => Number(c.unit_cost))
+  const menor = Math.min(...costos)
+  const mayor = Math.max(...costos)
+  // Con una sola compra no hay nada que comparar, y marcarla como "la más
+  // barata" sería ruido con aire de información.
+  const hayComparacion = purchases.length > 1 && menor !== mayor
+
+  return (
+    <div className="overflow-x-auto">
+      <table className="w-full text-sm">
+        <thead className="text-left text-xs text-muted-foreground">
+          <tr>
+            <th className="px-3 py-1.5 font-medium">Ingreso</th>
+            <th className="px-3 py-1.5 font-medium">Fecha</th>
+            <th className="px-3 py-1.5 font-medium">Proveedor</th>
+            <th className="px-3 py-1.5 text-right font-medium">Cant.</th>
+            <th className="px-3 py-1.5 text-right font-medium">Costo unitario</th>
+            <th className="px-3 py-1.5 font-medium">Pago</th>
+          </tr>
+        </thead>
+        <tbody>
+          {purchases.map((compra) => {
+            const costo = Number(compra.unit_cost)
+            const esMenor = hayComparacion && costo === menor
+            const esMayor = hayComparacion && costo === mayor
+            return (
+              <tr key={`${compra.entry_id}-${compra.lot_code ?? compra.entry_number}`} className="border-t border-border">
+                <td className="px-3 py-1.5 text-muted-foreground">#{compra.entry_number}</td>
+                <td className="px-3 py-1.5 text-muted-foreground">{formatDate(compra.entry_date)}</td>
+                <td className="px-3 py-1.5 text-foreground">
+                  {compra.supplier_name ?? <span className="text-muted-foreground">Sin proveedor</span>}
+                </td>
+                <td className="tnum px-3 py-1.5 text-right">{compra.quantity}</td>
+                <td className="px-3 py-1.5 text-right">
+                  <Money value={compra.unit_cost} className={cn(esMenor && 'font-medium text-success', esMayor && 'font-medium text-warning')} />
+                  {esMenor && <span className="ml-1 text-xs text-success">más barato</span>}
+                  {esMayor && <span className="ml-1 text-xs text-warning">más caro</span>}
+                </td>
+                <td className="px-3 py-1.5">
+                  {compra.paid_at ? (
+                    <span className="text-xs text-muted-foreground">Pagado</span>
+                  ) : (
+                    <span className="text-xs font-medium text-warning">Por pagar</span>
+                  )}
+                </td>
+              </tr>
+            )
+          })}
+        </tbody>
+      </table>
+    </div>
+  )
 }
 
 /**
@@ -124,7 +199,23 @@ export function ProductRow({ product, onEditPrice }: { product: Product; onEditP
 
       {open && (
         <div className={cn('border-t border-border bg-background/50 py-1')}>
-          <LotList productId={product.id} />
+          {/* Dos preguntas distintas sobre el mismo producto: "¿qué tengo?"
+              (lotes, con su costo y estado) y "¿cómo lo he comprado?"
+              (historial, para comparar proveedores y ver cómo se movió el
+              costo). El rango min/max de la fila de arriba insinúa la
+              segunda; esta pestaña es donde se abre. */}
+          <Tabs defaultValue="lotes">
+            <TabsList className="mx-3 mt-1">
+              <TabsTrigger value="lotes">Lotes</TabsTrigger>
+              <TabsTrigger value="compras">Compras</TabsTrigger>
+            </TabsList>
+            <TabsContent value="lotes">
+              <LotList productId={product.id} />
+            </TabsContent>
+            <TabsContent value="compras">
+              <PurchaseList productId={product.id} />
+            </TabsContent>
+          </Tabs>
         </div>
       )}
     </div>

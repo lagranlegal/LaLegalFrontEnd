@@ -2,6 +2,80 @@
 
 > Registro vivo de qué existe en el código, cómo está armado y por qué se tomó cada decisión — para que cualquiera (humano o Claude Code) pueda retomar el proyecto sin releer todo el historial de commits. Se actualiza en cada paso del "Orden de implementación" de `CLAUDE.md`. No repite lo que ya está en `ARCHITECTURE.md`/`DESIGN_SYSTEM.md` (el qué-debería-ser); esto es el qué-hay-hoy y las decisiones concretas tomadas al construirlo.
 
+## Tanda D de los diez frentes: los reportes que pediría un contador (22/08/2026)
+
+Sin migraciones. Cierra las cuatro tandas de `docs/propuesta-diez-frentes.html`.
+
+### 0. Otro bug que apareció construyendo
+
+El reporte de mercancía sin rotación salía **vacío** con datos que debían aparecer. La causa: `00020` agregó `entry_date` al **ingreso** y nunca lo propagó al **lote**, que se quedaba con el `current_date` por defecto de `00006`.
+
+O sea que una compra cargada con fecha de la semana pasada guardaba esa fecha en el ingreso y **"hoy" en cada uno de sus lotes**. La ficha del lote mostraba una fecha de entrada falsa, y cualquier medida de antigüedad de inventario contaba desde el día de la digitación en vez del día en que la mercancía llegó. Ya estaba mal desde `00020`; el reporte nuevo solo lo hizo visible.
+
+Es el segundo bug que destapa escribir el reporte antes de confiar en el dato — el primero fue el inventario inicial que no se podía publicar (Tanda C).
+
+### 1. Cuentas por pagar
+
+`GET /reports/payables`, agrupado por proveedor y con antigüedad 0-30 / 31-60 / +60. El dato vivía en cada compra desde `00020` (`paid_at`) y **ninguna pantalla lo sumaba**: había que abrir los ingresos uno por uno para saber cuánto se debe.
+
+Tres decisiones que valen la pena:
+
+- **La antigüedad se mide desde `entry_date`**, no desde `created_at`. Es la fecha desde la que el proveedor cuenta el plazo — cargar hoy una factura de hace dos meses no la vuelve reciente.
+- **Solo cuenta compras.** Los demás orígenes no le entregan plata a nadie, así que "sin pagar" no significa nada en ellos e inflaría la deuda.
+- **El proveedor va por `LEFT JOIN`**: `supplier_id` es opcional en el esquema, y una deuda sin proveedor asignado tiene que seguir apareciendo. Esconderla sería el peor resultado posible en un reporte de deudas.
+
+El test verifica algo que suena obvio y no lo es: **los tres tramos suman exactamente el total**. Un peso que no cae en ningún tramo es un peso que el reporte esconde.
+
+### 2. Valorización del inventario
+
+`GET /reports/inventory-valuation`. Al **costo**, que es lo correcto contablemente y lo que sale de la identificación específica. Solo cuenta `available`: un borrador no se puede vender —ni siquiera tiene precio— e incluirlo inflaría el activo con mercancía que todavía no lo es.
+
+`retail_value` se expone aparte y **etiquetado como referencia**. Contar la utilidad antes de venderla es el error clásico, y poner esa cifra primero invitaría a cometerlo. La utilidad potencial puede salir **negativa** y se deja así: significa que hay mercancía por debajo del costo, y eso vale más verlo que taparlo con un `max(0)`.
+
+### 3. Mercancía sin rotación
+
+`GET /reports/stale-inventory`. Se mide sobre el lote **más antiguo todavía disponible**: si algo entró hace un año y se repuso ayer, lo congelado es la pieza vieja, y usar la fecha del lote nuevo la escondería justo cuando más importa verla.
+
+El umbral es ajustable (60/90/180/365) porque "mucho tiempo" depende del negocio: una cadena de oro que lleva seis meses es normal, un celular que lleva tres es un problema. Fijarlo en el código habría hecho el reporte inútil para media vitrina.
+
+### 4. La ficha del proveedor
+
+`/proveedores/$supplierId`, espejo de la del cliente. El cliente tenía su ficha con historial cruzado desde el paso 4; el proveedor tenía un formulario de creación y nada más.
+
+El KPI que manda es **lo pendiente**: es la única cifra sobre la que hay algo que hacer hoy. El total comprado es contexto — dice qué tan importante es este proveedor, no qué hacer con él.
+
+La lista de proveedores ahora abre la **ficha** al hacer clic, no el formulario. Lo que uno quiere al tocar un proveedor casi siempre es "¿qué le compré y cuánto le debo?", no cambiarle el teléfono; editar quedó a un clic desde la ficha, igual que en clientes.
+
+### 5. Compras por producto
+
+`GET /inventory/products/{id}/purchases`, como pestaña junto a "Lotes". Responde **"¿cómo se movió el costo?"** y **"¿a quién le compro más barato?"**. La fila del producto ya insinuaba esto mostrando el rango `min_cost`/`max_cost`, pero no dejaba abrirlo: se veía que el costo se movió y no por qué ni con quién.
+
+Marca el costo más barato y el más caro en vez de dejar la comparación al ojo — con seis compras a precios parecidos, la diferencia que importa es justamente la que no salta a la vista. Con una sola compra no marca nada: sería ruido con aire de información.
+
+### Dónde quedó todo esto
+
+`/reportes` pasó a tener **dos pestañas**, y no es cosmético: son dos preguntas con forma distinta. **"Período"** resume un rango y por eso lleva selector de fechas. **"Contabilidad"** es una foto de hoy — cuánto debo, cuánto tengo en mercancía, qué no rota — y esas no tienen versión "en marzo": o se debe hoy, o no se debe. Meterlas bajo el mismo selector habría prometido un filtro que no significa nada.
+
+`KpiCard` ganó `hint`, una línea de contexto bajo la cifra para cuando el número solo se entiende con su denominador ("3 compras sin pagar"). Excluyente con `delta`: ocupan la misma línea y competir ahí sería ruido.
+
+### Verificación
+
+```
+pytest -q            # 258/258 (252 previos + 6 nuevos)
+ruff check . && mypy app
+npm run typecheck && npm run lint && npm run test && npm run build   # 111/111
+```
+
+### Lo que queda de los diez puntos
+
+- **Estado de resultados unificado** (ingresos − costo de ventas − gastos, con los dos módulos): hoy la utilidad de tienda y el rendimiento del empeño viven separados, correctamente, porque se miden distinto. Falta la vista de arriba.
+- **Kardex por producto**: la línea de tiempo unificada de entradas, salidas, ventas y ajustes con saldo corriente. Los datos están en tres tablas; falta unirlos.
+- **Extracto por cuenta**: movimientos de una cuenta con saldo corriente, para conciliar contra el banco.
+- **Devolución de cliente** como tipo de ingreso (§10 de la propuesta) — es un tema de negocio, no solo un enum.
+- **Estado de los filtros en la URL** (viene de la Tanda C).
+
+---
+
 ## Tanda C de los diez frentes: la compra deja de nacer incompleta (21/08/2026)
 
 Sin migraciones. Es la tanda que más se siente a diario.

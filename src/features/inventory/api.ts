@@ -232,3 +232,22 @@ export function useUpdateProduct() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['inventory'] }),
   })
 }
+
+export type ProductPurchase = components['schemas']['ProductPurchaseOut']
+
+/**
+ * Historial de compras de un producto: cuándo, a quién y a cuánto.
+ *
+ * Responde "¿cómo se movió el costo?" y "¿a quién conviene comprarle?". La
+ * lista de productos ya insinuaba esto mostrando el rango de costos entre
+ * lotes (`min_cost`/`max_cost`), pero no dejaba abrirlo: se veía que el costo
+ * se movió y no por qué ni con quién.
+ */
+export function useProductPurchases(productId: string | undefined) {
+  return useQuery({
+    queryKey: ['inventory', 'products', productId, 'purchases'] as const,
+    queryFn: () =>
+      unwrap(api.GET('/api/v1/inventory/products/{product_id}/purchases', { params: { path: { product_id: productId! } } })),
+    enabled: !!productId,
+  })
+}

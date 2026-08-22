@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useNavigate } from '@tanstack/react-router'
 import type { ColumnDef } from '@tanstack/react-table'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { DataTable } from '@/components/shared/DataTable'
@@ -78,6 +79,7 @@ function CategoriesTab() {
 }
 
 function SuppliersTab() {
+  const navigate = useNavigate()
   const { data, isPending, isError, refetch, hasNextPage, isFetchingNextPage, fetchNextPage } = useSuppliersList()
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editingSupplier, setEditingSupplier] = useState<Supplier | undefined>(undefined)
@@ -111,11 +113,11 @@ function SuppliersTab() {
         onRetry={() => refetch()}
         emptyTitle="Aún no tienes proveedores"
         emptyDescription="Crea el primero para registrar ingresos de mercancía comprada."
-        onRowClick={(row) => {
-          setEditingSupplier(row)
-          setDialogNonce((n) => n + 1)
-          setDialogOpen(true)
-        }}
+        // A la FICHA, no al formulario — misma convención que la lista de
+        // clientes. Lo que uno quiere al tocar un proveedor casi siempre es
+        // "¿qué le compré y cuánto le debo?", no cambiarle el teléfono; y
+        // editar sigue a un clic de distancia desde la ficha.
+        onRowClick={(row) => navigate({ to: '/proveedores/$supplierId', params: { supplierId: row.id } })}
         hasNextPage={hasNextPage}
         isFetchingNextPage={isFetchingNextPage}
         onLoadMore={() => fetchNextPage()}

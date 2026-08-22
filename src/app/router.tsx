@@ -18,6 +18,7 @@ import { DashboardPage } from '@/features/dashboard/pages/DashboardPage'
 import { CustomersPage } from '@/features/customers/pages/CustomersPage'
 import { CustomerDetailPage } from '@/features/customers/pages/CustomerDetailPage'
 import { CatalogsPage } from '@/features/catalogs/pages/CatalogsPage'
+import { SupplierDetailPage } from '@/features/catalogs/pages/SupplierDetailPage'
 import { ContractsListPage } from '@/features/contracts/pages/ContractsListPage'
 import { ContractFormPage } from '@/features/contracts/pages/ContractFormPage'
 import { ContractImportPage } from '@/features/contracts/pages/ContractImportPage'
@@ -163,6 +164,21 @@ const catalogsRoute = createRoute({
   getParentRoute: () => appLayoutRoute,
   path: '/catalogos',
   component: CatalogsPage,
+  beforeLoad: ({ context }) => {
+    const me = context.queryClient.getQueryData(meQueryOptions().queryKey)
+    if (me && !me.permissions.includes('catalogs.view')) {
+      throw redirect({ to: '/' })
+    }
+  },
+})
+
+// Ficha del proveedor — espejo de `/clientes/$customerId`. Sus números salen
+// de las compras, así que además de `catalogs.view` necesita poder leer el
+// inventario: sin `inventory.view` la ficha cargaría a medias.
+const supplierDetailRoute = createRoute({
+  getParentRoute: () => appLayoutRoute,
+  path: '/proveedores/$supplierId',
+  component: SupplierDetailPage,
   beforeLoad: ({ context }) => {
     const me = context.queryClient.getQueryData(meQueryOptions().queryKey)
     if (me && !me.permissions.includes('catalogs.view')) {
@@ -405,6 +421,7 @@ const routeTree = rootRoute.addChildren([
     customersRoute,
     customerDetailRoute,
     catalogsRoute,
+    supplierDetailRoute,
     contractsRoute,
     contractNewRoute,
     contractImportRoute,

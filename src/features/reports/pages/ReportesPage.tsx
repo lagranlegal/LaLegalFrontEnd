@@ -14,6 +14,8 @@ import { todayBogota } from '@/lib/dates'
 import { cn } from '@/lib/utils'
 import { useCategories } from '@/lib/catalogs/categories'
 import { usePermission } from '@/lib/permissions/usePermission'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { ContablesSection } from '@/features/reports/components/ContablesSection'
 import { useExpenseCategories } from '@/features/cashbox/api'
 import { useRawSessions, useCarteraActual, useExpensesByCategory, useAllTimeItemSales, useProfitSummary, usePawnPerformance, MAX_RANGE_DAYS } from '@/features/reports/api'
 import { aggregateFinancialSummary, aggregateExpensesByCategory, computeDelta, daysBetweenDateOnly, previousRangeFor } from '@/features/reports/aggregate'
@@ -257,7 +259,24 @@ export function ReportesPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <PageHeader title="Reportes" description="Información financiera del período — intereses, capital, ventas y gastos." actions={<DateRangePicker value={range} onChange={setRange} />} />
+      <PageHeader title="Reportes" description="Cómo va el negocio: resultados del período y estado contable de hoy." />
+
+      {/* Dos pestañas porque son dos preguntas con forma distinta.
+          "Período" resume un RANGO y por eso lleva selector de fechas.
+          "Contabilidad" es una FOTO DE HOY: cuánto debo, cuánto tengo en
+          mercancía, qué no rota. Esas no tienen versión "en marzo" —o se
+          debe hoy o no se debe— así que meterlas bajo el mismo selector de
+          fechas habría prometido un filtro que no significa nada. */}
+      <Tabs defaultValue="periodo">
+        <TabsList>
+          <TabsTrigger value="periodo">Período</TabsTrigger>
+          <TabsTrigger value="contabilidad">Contabilidad</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="periodo" className="flex flex-col gap-6">
+          <div className="flex justify-end">
+            <DateRangePicker value={range} onChange={setRange} />
+          </div>
 
       <div className="flex flex-wrap gap-2">
         {MODULE_TABS.map((tab) => (
@@ -450,6 +469,12 @@ export function ReportesPage() {
           </CardShell>
         </div>
       </div>
+        </TabsContent>
+
+        <TabsContent value="contabilidad">
+          <ContablesSection />
+        </TabsContent>
+      </Tabs>
     </div>
   )
 }

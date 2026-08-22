@@ -525,6 +525,51 @@ export interface paths {
         patch: operations["update_supplier_api_v1_catalogs_suppliers__supplier_id__patch"];
         trace?: never;
     };
+    "/api/v1/catalogs/suppliers/{supplier_id}/summary": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Supplier Summary
+         * @description Ficha del proveedor: cuánto se le ha comprado, cuánto se le debe, desde
+         *     cuándo y cuántos productos distintos.
+         *
+         *     El CLIENTE tiene su ficha con historial cruzado desde el paso 4; el
+         *     proveedor tenía solo un formulario de creación, así que "¿cuánto le he
+         *     comprado?" no tenía respuesta aunque el dato estuviera completo.
+         */
+        get: operations["get_supplier_summary_api_v1_catalogs_suppliers__supplier_id__summary_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/catalogs/suppliers/{supplier_id}/purchases": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Supplier Purchases
+         * @description Historial de compras a este proveedor.
+         */
+        get: operations["list_supplier_purchases_api_v1_catalogs_suppliers__supplier_id__purchases_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/contracts/ready-for-auction": {
         parameters: {
             query?: never;
@@ -1045,6 +1090,30 @@ export interface paths {
         patch: operations["update_product_api_v1_inventory_products__product_id__patch"];
         trace?: never;
     };
+    "/api/v1/inventory/products/{product_id}/purchases": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Product Purchases
+         * @description Historial de compras de este producto: cuándo, a quién y a cuánto.
+         *
+         *     Responde "¿cómo se movió el costo?" y "¿a quién conviene comprarle?". La
+         *     lista de productos ya insinuaba esto con el RANGO de costos entre lotes,
+         *     pero no dejaba abrirlo: se veía que el costo se movió y no por qué.
+         */
+        get: operations["list_product_purchases_api_v1_inventory_products__product_id__purchases_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/sales": {
         parameters: {
             query?: never;
@@ -1204,6 +1273,83 @@ export interface paths {
          *     rendimiento.
          */
         get: operations["get_pawn_performance_api_v1_reports_pawn_performance_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/reports/payables": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Payables
+         * @description Cuentas por pagar a proveedores, con antigüedad (0-30 / 31-60 / +60).
+         *
+         *     Responde "¿cuánto debo, a quién, y desde hace cuánto?". Cada compra ya
+         *     sabía si estaba pagada desde 00020, pero ninguna pantalla lo sumaba: el
+         *     dato estaba guardado y la pregunta no tenía respuesta.
+         *
+         *     La antigüedad se mide desde `entry_date` (cuándo entró la mercancía), que
+         *     es la fecha desde la que el proveedor cuenta el plazo — cargar hoy una
+         *     factura de hace dos meses no la vuelve reciente.
+         */
+        get: operations["get_payables_api_v1_reports_payables_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/reports/inventory-valuation": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Inventory Valuation
+         * @description "¿Cuánta plata tengo en mercancía?" — el activo más grande del negocio.
+         *
+         *     Valorado **al costo**, que es lo correcto contablemente y lo que sale de la
+         *     identificación específica. `retail_value` se expone aparte como referencia
+         *     (qué se cobraría si se vendiera todo hoy) y NO es el valor del inventario:
+         *     contar la utilidad antes de venderla es el error clásico.
+         */
+        get: operations["get_inventory_valuation_api_v1_reports_inventory_valuation_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/reports/stale-inventory": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Stale Inventory
+         * @description Mercancía disponible sin rotación — plata congelada en la vitrina.
+         *
+         *     Se mide sobre el lote disponible más ANTIGUO de cada producto: si algo
+         *     entró hace un año y se repuso ayer, lo congelado es la pieza vieja, y usar
+         *     la fecha nueva la escondería justo cuando más importa verla.
+         */
+        get: operations["get_stale_inventory_api_v1_reports_stale_inventory_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1889,6 +2035,13 @@ export interface components {
             /** Next Cursor */
             next_cursor?: string | null;
         };
+        /** CursorPage[SupplierPurchaseOut] */
+        CursorPage_SupplierPurchaseOut_: {
+            /** Items */
+            items: components["schemas"]["SupplierPurchaseOut"][];
+            /** Next Cursor */
+            next_cursor?: string | null;
+        };
         /** CursorPage[TransferOut] */
         CursorPage_TransferOut_: {
             /** Items */
@@ -2250,6 +2403,51 @@ export interface components {
             /** Draft Count */
             draft_count: number;
         };
+        /** InventoryValuationCategoryOut */
+        InventoryValuationCategoryOut: {
+            /** Cat1 Id */
+            cat1_id: string | null;
+            /** Cat1 Name */
+            cat1_name: string;
+            /** Units */
+            units: number;
+            /** Cost Value */
+            cost_value: string;
+            /** Retail Value */
+            retail_value: string;
+        };
+        /**
+         * InventoryValuationOut
+         * @description "¿Cuánta plata tengo en mercancía?" — el activo más grande del negocio.
+         *
+         *     Se valora AL COSTO, que es lo correcto contablemente y lo que sale de la
+         *     identificación específica: cada lote con su costo real, nunca promediado.
+         *
+         *     `retail_value` va aparte y es lo que se cobraría si se vendiera todo hoy.
+         *     NO es el valor del inventario — contar la utilidad antes de venderla es el
+         *     error clásico. Se expone porque responde otra pregunta legítima (cuánto hay
+         *     en la vitrina a precio de venta) y porque la diferencia entre ambos es la
+         *     utilidad que todavía no se ha realizado.
+         */
+        InventoryValuationOut: {
+            /**
+             * As Of
+             * Format: date
+             */
+            as_of: string;
+            /** Units */
+            units: number;
+            /** Lot Count */
+            lot_count: number;
+            /** Cost Value */
+            cost_value: string;
+            /** Retail Value */
+            retail_value: string;
+            /** Potential Profit */
+            potential_profit: string;
+            /** By Category */
+            by_category: components["schemas"]["InventoryValuationCategoryOut"][];
+        };
         /** InviteUserIn */
         InviteUserIn: {
             /**
@@ -2500,6 +2698,33 @@ export interface components {
             /** Yield On Current Portfolio Pct */
             yield_on_current_portfolio_pct: string | null;
         };
+        /**
+         * PayablesOut
+         * @description Cuentas por pagar: "¿cuánto debo, a quién, y desde hace cuánto?".
+         *
+         *     Es el primer reporte que pediría un contador y no existía, aunque cada
+         *     compra ya sabía si estaba pagada: el dato estaba guardado y ninguna
+         *     pantalla lo sumaba.
+         */
+        PayablesOut: {
+            /**
+             * As Of
+             * Format: date
+             */
+            as_of: string;
+            /** Total */
+            total: string;
+            /** Entry Count */
+            entry_count: number;
+            /** Days 0 30 */
+            days_0_30: string;
+            /** Days 31 60 */
+            days_31_60: string;
+            /** Days Over 60 */
+            days_over_60: string;
+            /** By Supplier */
+            by_supplier: components["schemas"]["SupplierPayableOut"][];
+        };
         /** PaymentCreateIn */
         PaymentCreateIn: {
             /** Account Id */
@@ -2671,6 +2896,43 @@ export interface components {
              * Format: date-time
              */
             created_at: string;
+        };
+        /**
+         * ProductPurchaseOut
+         * @description Una compra de ESTE producto: cuándo, a quién y a cuánto.
+         *
+         *     Responde las dos preguntas que la lista de productos solo insinúa al
+         *     mostrar el rango de costos entre lotes: **cómo se movió el costo** y **a
+         *     quién conviene comprarle**. El dato estaba completo en la base y no había
+         *     forma de abrirlo.
+         */
+        ProductPurchaseOut: {
+            /**
+             * Entry Id
+             * Format: uuid
+             */
+            entry_id: string;
+            /** Entry Number */
+            entry_number: number;
+            /**
+             * Entry Date
+             * Format: date
+             */
+            entry_date: string;
+            /** Supplier Id */
+            supplier_id: string | null;
+            /** Supplier Name */
+            supplier_name: string | null;
+            /** Quantity */
+            quantity: number;
+            /** Unit Cost */
+            unit_cost: string;
+            /** Total Cost */
+            total_cost: string;
+            /** Lot Code */
+            lot_code: string | null;
+            /** Paid At */
+            paid_at: string | null;
         };
         /**
          * ProductUpdateIn
@@ -2970,6 +3232,44 @@ export interface components {
             /** New Pending Balance */
             new_pending_balance: string;
         };
+        /**
+         * StaleInventoryOut
+         * @description Mercancía disponible que lleva mucho sin moverse — plata congelada en la
+         *     vitrina, y la base de cualquier decisión de descuento o remate.
+         */
+        StaleInventoryOut: {
+            /**
+             * As Of
+             * Format: date
+             */
+            as_of: string;
+            /** Threshold Days */
+            threshold_days: number;
+            /** Product Count */
+            product_count: number;
+            /** Total Cost Value */
+            total_cost_value: string;
+            /** Items */
+            items: components["schemas"]["StaleItemOut"][];
+        };
+        /** StaleItemOut */
+        StaleItemOut: {
+            /**
+             * Product Id
+             * Format: uuid
+             */
+            product_id: string;
+            /** Product Code */
+            product_code: string | null;
+            /** Product Name */
+            product_name: string;
+            /** Units */
+            units: number;
+            /** Cost Value */
+            cost_value: string;
+            /** Days In Stock */
+            days_in_stock: number;
+        };
         /** SubscriptionEventOut */
         SubscriptionEventOut: {
             /**
@@ -3051,6 +3351,92 @@ export interface components {
             notes: string | null;
             /** Active */
             active: boolean;
+        };
+        /**
+         * SupplierPayableOut
+         * @description Lo que se le debe a UN proveedor, con antigüedad.
+         *
+         *     La antigüedad se mide desde `entry_date` (cuándo ENTRÓ la mercancía), no
+         *     desde cuándo se digitó: es la fecha que le importa al proveedor y la que
+         *     determina si una deuda está vencida.
+         */
+        SupplierPayableOut: {
+            /** Supplier Id */
+            supplier_id: string | null;
+            /** Supplier Name */
+            supplier_name: string;
+            /** Entry Count */
+            entry_count: number;
+            /** Total */
+            total: string;
+            /** Days 0 30 */
+            days_0_30: string;
+            /** Days 31 60 */
+            days_31_60: string;
+            /** Days Over 60 */
+            days_over_60: string;
+            /** Oldest Entry Date */
+            oldest_entry_date: string | null;
+        };
+        /**
+         * SupplierPurchaseOut
+         * @description Una compra a este proveedor, en su ficha.
+         */
+        SupplierPurchaseOut: {
+            /**
+             * Entry Id
+             * Format: uuid
+             */
+            entry_id: string;
+            /** Number */
+            number: number;
+            /**
+             * Entry Date
+             * Format: date
+             */
+            entry_date: string;
+            /** Supplier Invoice */
+            supplier_invoice: string | null;
+            /** Total Cost */
+            total_cost: string;
+            /** Item Count */
+            item_count: number;
+            /** Paid At */
+            paid_at: string | null;
+        };
+        /**
+         * SupplierSummaryOut
+         * @description Ficha del proveedor: qué le he comprado y cuánto le debo.
+         *
+         *     El CLIENTE ya tenía su ficha con historial cruzado desde el paso 4; el
+         *     proveedor tenía un formulario de creación y nada más. Sin esto no había
+         *     forma de responder "¿cuánto le he comprado?" ni "¿le debo algo?" aunque el
+         *     dato estuviera completo en la base.
+         */
+        SupplierSummaryOut: {
+            /**
+             * Supplier Id
+             * Format: uuid
+             */
+            supplier_id: string;
+            /** Name */
+            name: string;
+            /** Code Letter */
+            code_letter: string;
+            /** Purchase Count */
+            purchase_count: number;
+            /** Total Purchased */
+            total_purchased: string;
+            /** Pending Count */
+            pending_count: number;
+            /** Pending Total */
+            pending_total: string;
+            /** First Purchase Date */
+            first_purchase_date: string | null;
+            /** Last Purchase Date */
+            last_purchase_date: string | null;
+            /** Product Count */
+            product_count: number;
         };
         /** SupplierUpdateIn */
         SupplierUpdateIn: {
@@ -4439,6 +4825,71 @@ export interface operations {
             };
         };
     };
+    get_supplier_summary_api_v1_catalogs_suppliers__supplier_id__summary_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                supplier_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SupplierSummaryOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_supplier_purchases_api_v1_catalogs_suppliers__supplier_id__purchases_get: {
+        parameters: {
+            query?: {
+                cursor?: string | null;
+                limit?: number;
+            };
+            header?: never;
+            path: {
+                supplier_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CursorPage_SupplierPurchaseOut_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     list_ready_for_auction_api_v1_contracts_ready_for_auction_get: {
         parameters: {
             query?: never;
@@ -5584,6 +6035,37 @@ export interface operations {
             };
         };
     };
+    list_product_purchases_api_v1_inventory_products__product_id__purchases_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                product_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProductPurchaseOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     list_sales_api_v1_sales_get: {
         parameters: {
             query?: {
@@ -5864,6 +6346,78 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PawnPerformanceOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_payables_api_v1_reports_payables_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PayablesOut"];
+                };
+            };
+        };
+    };
+    get_inventory_valuation_api_v1_reports_inventory_valuation_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InventoryValuationOut"];
+                };
+            };
+        };
+    };
+    get_stale_inventory_api_v1_reports_stale_inventory_get: {
+        parameters: {
+            query?: {
+                threshold_days?: number;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StaleInventoryOut"];
                 };
             };
             /** @description Validation Error */

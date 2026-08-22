@@ -20,7 +20,22 @@ export interface KpiDelta {
  * tiles en desktop, grid 2 columnas en mobile. `delta` opcional (Reportes,
  * comparación vs período anterior) agrega una segunda línea pequeña.
  */
-export function KpiCard({ label, value, tone = 'default', delta }: { label: string; value: ReactNode; tone?: keyof typeof TONE_CLASSES; delta?: KpiDelta }) {
+export function KpiCard({
+  label,
+  value,
+  tone = 'default',
+  delta,
+  hint,
+}: {
+  label: string
+  value: ReactNode
+  tone?: keyof typeof TONE_CLASSES
+  delta?: KpiDelta
+  /** Contexto bajo la cifra, para cuando el número solo se entiende con su
+   *  denominador ("3 compras sin pagar", "desde marzo"). Excluyente con
+   *  `delta`: los dos ocupan la misma línea y competir ahí sería ruido. */
+  hint?: ReactNode
+}) {
   return (
     <div className="flex flex-col gap-1 lg:px-4 lg:first:pl-0 lg:last:pr-0">
       <span className="text-xs text-muted-foreground">{label}</span>
@@ -30,6 +45,7 @@ export function KpiCard({ label, value, tone = 'default', delta }: { label: stri
           {delta.pct === null ? '— vs período anterior' : `${delta.pct >= 0 ? '▲' : '▼'} ${Math.abs(Math.round(delta.pct))}% vs período anterior`}
         </span>
       )}
+      {!delta && hint && <span className="text-xs text-muted-foreground">{hint}</span>}
     </div>
   )
 }

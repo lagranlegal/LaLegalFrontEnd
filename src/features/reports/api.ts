@@ -157,3 +157,35 @@ export function usePawnPerformance(range: { from: string; to: string } | null) {
     enabled: !!range,
   })
 }
+
+export type Payables = components['schemas']['PayablesOut']
+export type InventoryValuation = components['schemas']['InventoryValuationOut']
+export type StaleInventory = components['schemas']['StaleInventoryOut']
+
+/**
+ * Cuentas por pagar con antigüedad. No lleva rango de fechas a propósito: una
+ * deuda se debe HOY o no se debe — preguntar "¿cuánto debía en marzo?" es otra
+ * pregunta, y el esquema no guarda el histórico para responderla bien.
+ */
+export function usePayables() {
+  return useQuery({
+    queryKey: ['reports', 'payables'] as const,
+    queryFn: () => unwrap(api.GET('/api/v1/reports/payables')),
+  })
+}
+
+/** Valor del inventario disponible, al costo. Tampoco lleva rango: es una foto de hoy. */
+export function useInventoryValuation() {
+  return useQuery({
+    queryKey: ['reports', 'inventory-valuation'] as const,
+    queryFn: () => unwrap(api.GET('/api/v1/reports/inventory-valuation')),
+  })
+}
+
+export function useStaleInventory(thresholdDays: number) {
+  return useQuery({
+    queryKey: ['reports', 'stale-inventory', thresholdDays] as const,
+    queryFn: () =>
+      unwrap(api.GET('/api/v1/reports/stale-inventory', { params: { query: { threshold_days: thresholdDays, limit: 20 } } })),
+  })
+}
