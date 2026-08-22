@@ -2,6 +2,57 @@
 
 > Registro vivo de qué existe en el código, cómo está armado y por qué se tomó cada decisión — para que cualquiera (humano o Claude Code) pueda retomar el proyecto sin releer todo el historial de commits. Se actualiza en cada paso del "Orden de implementación" de `CLAUDE.md`. No repite lo que ya está en `ARCHITECTURE.md`/`DESIGN_SYSTEM.md` (el qué-debería-ser); esto es el qué-hay-hoy y las decisiones concretas tomadas al construirlo.
 
+## El camino de alta de empresa, cerrado (22/08/2026)
+
+Dos bugs y una función nueva, todos alrededor del primer contacto que tiene un cliente con el producto.
+
+### 1. El bug que se escondió detrás de su propio arreglo
+
+Reportado con el detalle que lo destrabó: *"la invitación funciona cuando un admin invita a alguien; el caso que te expongo es creando una empresa"*. Los dos caminos llaman a la **misma función**; lo único que cambia es `send_email`. Ahí estaba la trampa:
+
+- `/admin/generate_link` **sí** lee `redirect_to` del body — por eso "Generar enlace" siempre funcionó y el bug parecía resuelto.
+- `/invite` lo lee **solo del query string**. En el body lo ignora, en silencio, y manda al invitado al **Site URL** del proyecto, que es la raíz de la app: entra directo, con sesión, sin que nadie le pida contraseña. Y como queda sin contraseña, **tampoco puede volver a entrar después**.
+
+Crear una empresa siempre manda correo, así que ese camino estaba **roto al 100%** mientras el otro se veía perfecto — por eso el síntoma parecía configuración de Supabase y no código. Confirmado contra el cliente oficial (`@supabase/auth-js`, `lib/fetch.js`): pone `redirect_to` en el query para **ambos** endpoints.
+
+**Por qué no lo vieron los tests:** `tests/unit/test_auth_admin.py` se escribió justo para el bug anterior de esta misma línea (*"falta `redirect_to`"*), pero su cliente falso **no capturaba `params`** — ni siquiera aceptaba el argumento. Mirar solo el body era mirar donde el dato no estaba.
+
+> **Efecto secundario a tener en cuenta:** los admins que ya entraron por ese camino **quedaron sin contraseña**. Funcionan mientras la sesión viva; al cerrarla no pueden volver. Se rescatan con el enlace de recuperación de abajo.
+
+### 2. Enlace de recuperación, sin correo
+
+Invitar ya no dependía del correo (`send_email=false` devuelve el enlace y no consume cuota). **Recuperar la contraseña sí**, y ahí no había alternativa: con el SMTP incluido de Supabase —unos pocos envíos por hora— un olvido dejaba a esa persona afuera y **nadie** podía ayudarla.
+
+`POST /identity/users/{id}/recovery-link` usa el mismo mecanismo (`generate_link`, `type=recovery`). El admin lo pasa por WhatsApp, igual que la invitación — que para una compraventa suele ser mejor que el correo porque la persona está ahí mismo.
+
+Es una **credencial de un solo uso**: quien la tenga puede cambiar esa contraseña y entrar como esa persona. Exige `identity.manage_users`, se audita quién lo generó y para quién, y **el enlace no se escribe en el `audit_log`** — que es consultable con `audit.view`. Un usuario inactivo no puede recibirlo: sería deshacer la desactivación por la puerta de atrás.
+
+### 3. Test de la cadena completa
+
+Existe por lo que costó encontrar el bug 1: cada pieza estaba probada por separado y **nada probaba la cadena**, que es justamente el camino que recorre todo cliente nuevo.
+
+Cubre lo que sí es nuestro: empresa creada con sus roles semilla → admin en `invited` con rol Admin → su **primer request lo activa** (`invited → active`) → tiene todos los permisos → y desde ahí ya puede operar: invitar por enlace y rescatar por enlace. Lo de Supabase Auth (correo, token, contraseña) no se puede probar acá; la transición de estado y los permisos sí.
+
+### Y una corrección al propio ESTADO.md
+
+Decía que el dominio propio desbloqueaba tres cosas. **Dos son falsas**, y mandaba a resolver el problema equivocado:
+
+- **El candado de Vercel** se apaga con un interruptor del proyecto (*Settings → Deployment Protection*). Un dominio propio **no** lo apaga: un proyecto protegido protege también su dominio.
+- **El ambiente de producción** funciona sobre `.fly.dev` y la URL de producción de Vercel. El dominio solo cambia cómo se ve la dirección.
+- **El correo** sí lo necesita para Resend — pero con invitar y recuperar por enlace, un piloto ya no depende de él.
+
+Lo que el dominio sí resuelve, y nada más: la cara del producto.
+
+### Verificación
+
+```
+pytest -q            # 266/266 (265 previos + 1 de cadena completa)
+ruff check . && mypy app
+npm run typecheck && npm run lint && npm run test && npm run build   # 115/115
+```
+
+---
+
 ## Herencia de categorías, permiso de pago y dos bugs de UI (22/08/2026)
 
 Correcciones que salieron de revisar el modelo con Mateo. Una migración (`00035`).
