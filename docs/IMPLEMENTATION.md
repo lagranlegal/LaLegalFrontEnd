@@ -2,6 +2,60 @@
 
 > Registro vivo de qué existe en el código, cómo está armado y por qué se tomó cada decisión — para que cualquiera (humano o Claude Code) pueda retomar el proyecto sin releer todo el historial de commits. Se actualiza en cada paso del "Orden de implementación" de `CLAUDE.md`. No repite lo que ya está en `ARCHITECTURE.md`/`DESIGN_SYSTEM.md` (el qué-debería-ser); esto es el qué-hay-hoy y las decisiones concretas tomadas al construirlo.
 
+## Herencia de categorías, permiso de pago y dos bugs de UI (22/08/2026)
+
+Correcciones que salieron de revisar el modelo con Mateo. Una migración (`00035`).
+
+### 1. Los parámetros de categoría no se heredaban — y eso rompía contratos
+
+*"Si para crear un producto debo tener exactamente la última dependencia, ¿para qué necesito poner plazo, ventana y LTV en cada nivel?"*. Tenía razón: el contrato leía esos tres valores **solo de la categoría de nivel 3**, así que los mismos campos en los niveles 1 y 2 eran configuración muerta — el formulario los pedía y nada los leía.
+
+Y había un efecto peor que el desperdicio: si a **una sola hoja** se le olvidaba el plazo, crear un contrato con esa prenda fallaba con *"la categoría no tiene plazo configurado"*. Con treinta hojas, era cuestión de tiempo.
+
+`catalogs.resolve_category_params` sube por `parent_id` hasta el ancestro más cercano que defina **cada campo por separado**: una hoja puede heredar el plazo de su padre y el LTV de su abuelo. Con eso, *"toda la joyería en oro va a 4 meses"* se configura una vez arriba — que es lo que hace que tener un árbol de tres niveles valga la pena — y esa clase de falla desaparece.
+
+**No hizo falta migración:** los campos ya existían en los tres niveles, solo que nadie leía los de arriba. Los contratos vivos no se ven afectados: el contrato congela estos valores en su snapshot al nacer.
+
+En el front, `resolveInheritedParams` espeja la consulta y el formulario **muestra** lo heredado en el placeholder. El texto de ayuda cambia según lo que de verdad pasa —hay herencia disponible, esta categoría define para las de abajo, o nadie en la rama tiene plazo (en rojo, porque ahí ningún contrato va a poder crearse)—. El texto viejo decía *"obligatorios para categorías nivel 3"*, que dejó de ser cierto y encima nunca dijo de dónde salían.
+
+### 2. `00035` — pagarle a un proveedor no es administrar inventario
+
+`POST /entries/{id}/pay` exigía `inventory.create`, o sea que **quien maneja la bodega podía sacar plata de la caja** para pagarle al proveedor.
+
+Son dos hechos contables distintos y separados en el tiempo, y el sistema ya los distingue por dentro (`entry_date` vs `paid_at`): la mercancía **entra** y cambia el inventario; la factura **se paga** y cambia el efectivo y la deuda, sin mover el inventario.
+
+Mismo criterio que separó `accounts.settle` (00029) y `accounts.transfer` (00032): una acción que mueve plata lleva su propio permiso, aunque viva en la pantalla de otro módulo. Se otorga a todos los roles que hoy tienen `inventory.create` — nadie pierde lo que tenía.
+
+### 3. Nadie se desactiva a sí mismo
+
+Reportado probando: el único usuario de una empresa recién creada —su administrador— **veía el botón para desactivarse**.
+
+El backend lo rechaza (`LAST_ADMIN_SAFEGUARD`), así que nunca hubo riesgo de dejar una empresa sin acceso. Pero ofrecer una acción que siempre falla invita a intentarla y enseña que los errores son normales.
+
+Se oculta **para uno mismo** y no solo para "el último admin": el front no sabe quién es admin —depende de qué permisos tenga cada rol— pero sí sabe quién es uno. Y la regla es más simple de explicar: si alguien se va, lo desactiva otro.
+
+### 4. Estados de carga que faltaban
+
+El panel del producto mostraba una barra gris de una línea, que no se lee como "cargando" sino como "no hay nada". Se agregó `TableSkeleton`, con la misma forma que la tabla que va a llegar y arranques escalonados — todas las barras pulsando a la vez laten como un bloque y se leen como un error de render.
+
+El formulario de ingreso era peor: se pintaba completo y "listo" mientras las categorías y los proveedores seguían viajando, así que los desplegables salían vacíos sin ninguna señal.
+
+### Lo que quedó pendiente y por qué
+
+**El flujo de invitación** (*"el admin entra sin configurar contraseña"*): el código está bien en las dos puntas — el backend manda `redirect_to={FRONTEND_URL}/auth/callback`, `FRONTEND_URL` está configurado en Fly, la ruta del callback no tiene guard y la pantalla pide contraseña. Si el invitado entra directo, es porque Supabase **descartó el redirect** y cayó en el Site URL, que es la raíz de la app. Eso pasa cuando la URL no está en la lista de *Redirect URLs* permitidas (Supabase la ignora **en silencio**, ver `DEPLOY.md`). No se pudo verificar la config viva del proyecto desde acá; el diagnóstico de 30 segundos es usar **"Generar enlace"** al invitar y mirar si la URL trae `redirect_to=…%2Fauth%2Fcallback`.
+
+**Unidad de medida y cantidad decimal**, y **transformación de inventario** (fundir, despiezar, armar): decididos en diseño, no construidos. `quantity` es `int` en las cuatro tablas, así que hoy ninguna compraventa puede vender por peso o medida. Ver la conversación del 22/08 — el resumen es que la transformación es una sola operación genérica (entran N artículos, salen M, **el costo viaja**) y que lo que pase después con lo que sale es inventario común.
+
+### Verificación
+
+```
+pytest -q            # 262/262 (260 previos + 2 nuevos)
+ruff check . && mypy app
+npm run typecheck && npm run lint && npm run test && npm run build   # 115/115
+```
+
+---
+
 ## Por qué la foto era obligatoria — y por qué dejó de serlo (22/08/2026)
 
 Pregunta de Mateo: *"en el momento de crear un artículo, ¿por qué la foto es obligatoria para publicarlo?"*. **No había razón técnica.**
