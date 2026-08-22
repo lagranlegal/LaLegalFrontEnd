@@ -2,6 +2,63 @@
 
 > Registro vivo de qué existe en el código, cómo está armado y por qué se tomó cada decisión — para que cualquiera (humano o Claude Code) pueda retomar el proyecto sin releer todo el historial de commits. Se actualiza en cada paso del "Orden de implementación" de `CLAUDE.md`. No repite lo que ya está en `ARCHITECTURE.md`/`DESIGN_SYSTEM.md` (el qué-debería-ser); esto es el qué-hay-hoy y las decisiones concretas tomadas al construirlo.
 
+## Unidad de medida y cantidad decimal (22/08/2026)
+
+`00036`. Quita un límite que afectaba a **todos** los tenants, no solo al caso del oro.
+
+### El límite
+
+`quantity` era `int` en las **cuatro** tablas del flujo de mercancía (`inventory_item`, `inventory_entry_line`, `inventory_exit_line`, `sale_line`), así que 12,5 g no se podía ni representar. Salió diseñando la fundición, pero **no es una función de oro**: ninguna compraventa podía vender nada por peso ni por medida — oro por gramo, cable por metro, lo que fuera.
+
+Curiosamente el lado de **empeño ya lo hacía bien** desde `00005`: `contract_item.weight_grams` es `numeric(10,2)`. Era el inventario el que se había quedado corto.
+
+### Las dos piezas
+
+- **`product.unit`** — enum (`unit`, `gram`, `kilogram`, `meter`, `liter`), no texto libre. Con texto libre terminan conviviendo "gr", "grs", "gramo" y "gramos" en la misma base y no hay forma de sumar ni de mostrar nada consistente. El backend expone también `unit_abbr` para que front, comprobantes y reportes digan todos lo mismo.
+- **`quantity` → `numeric(14,3)`**. Al miligramo, y en la misma familia que el dinero para no meter floats en ningún lado.
+
+### Tres reglas que esto habilita
+
+**Un producto medido en `unit` rechaza fracciones.** Media cadena no existe: ahí una cantidad fraccionaria es un error de digitación —una coma donde iba un punto— y registrarlo deja stock imposible que nadie nota hasta que el conteo físico no cuadre. En una **venta** cuesta más caro todavía: descuenta stock imposible y cobra un total que no corresponde a nada.
+
+**Reponer conserva la unidad del producto existente.** Si una compra nueva pudiera imponer la suya, bastaría dejar el selector en su valor por defecto para reinterpretar en silencio el stock anterior.
+
+**La unidad no se cambia con lotes registrados.** Doce unidades no son doce gramos: cambiarla reinterpretaría stock, ventas y valorización sin que nada lo advierta. Mismo criterio que impide cambiar el **tipo** de una cuenta (`00024`) — un dato que da sentido a los hechos ya guardados no se toca después.
+
+### El dinero
+
+`subtotal` pasa ahora por `quantize`. Con cantidad decimal el producto puede arrastrar milésimas, y el redondeo a dos decimales tiene que ocurrir **antes** de sumar: si no, el total del recibo no cuadra con la suma de sus líneas.
+
+### Un bug que destapó la migración
+
+`AppError` llevaba un `Decimal` crudo en `details` al no haber stock para un egreso. Con `quantity` entero nunca se notó; al volverse `Decimal`, ese `400` reventaba al serializar y salía como **500 sin mensaje**.
+
+### En la UI: contar y pesar son gestos distintos
+
+Es la decisión de diseño que manda. En el carrito, un producto contable conserva los botones **+/−** —correcto para cadenas y anillos—; uno medido en gramos o metros muestra un **campo donde se escribe** la cantidad, porque sumar de a 1 g sería absurdo. La interacción la decide la unidad, no una preferencia.
+
+El mínimo del carrito ya **no es 1**: en un producto fraccionable, forzar 1 impediría vender medio gramo de oro. Mismo arreglo en los egresos, donde además bloqueaba registrar una merma real.
+
+La cantidad se captura como **texto**, no con `<input type=number>`: con `valueAsNumber`, "12," a medio escribir es `NaN` y el campo se vacía solo.
+
+`formatQuantity` recorta los ceros de relleno de `numeric(14,3)` — el backend devuelve "2.000" para dos cadenas, y mostrarlo tal cual se lee como **dos mil**.
+
+Se actualizaron todos los lugares que muestran cantidades, incluido el **recibo de venta**: un "12,5" sin unidad en el papel que se lleva el cliente no dice nada.
+
+### Verificación
+
+```
+pytest -q            # 272/272 (266 previos + 6 nuevos)
+ruff check . && mypy app
+npm run typecheck && npm run lint && npm run test && npm run build   # 121/121
+```
+
+### Lo que esto desbloquea
+
+La **transformación de inventario** (fundir, despiezar, armar) ya no tiene impedimento de modelo: entran N artículos, salen M, y el costo viaja. Sigue siendo lo próximo.
+
+---
+
 ## El camino de alta de empresa, cerrado (22/08/2026)
 
 Dos bugs y una función nueva, todos alrededor del primer contacto que tiene un cliente con el producto.
