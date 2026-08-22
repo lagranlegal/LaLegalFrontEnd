@@ -743,23 +743,45 @@
     </p>
   </div>
 
-  <div class="opt a">
+  <div class="opt b">
     <div class="opt-head">
       <p class="opt-title">Tanda D · Información</p>
-      <span class="chip neutral">Incremental</span>
+      <span class="chip small">Hecha · 22/08/2026</span>
     </div>
     <p>
-      Ficha de proveedor e historial por producto (2) · cuentas por pagar, valorización, kardex y
-      el resto de reportes (11). Cada uno entrega valor solo, así que puede irse soltando de a poco.
+      Ficha de proveedor e historial de compras por producto (2) · cuentas por pagar con
+      antigüedad, valorización del inventario y mercancía sin rotación (11).
+    </p>
+    <p>
+      <strong>258 tests backend</strong> (seis nuevos) y 111 front.
+    </p>
+    <p>
+      Otra vez el reporte destapó un bug del dato: el de mercancía sin rotación salía
+      <strong>vacío</strong> porque <code>00020</code> agregó <code>entry_date</code> al ingreso y
+      nunca lo propagó al lote. Una compra cargada con fecha de la semana pasada decía
+      “entró hoy” en cada uno de sus lotes — la ficha mostraba una fecha falsa y cualquier
+      medida de antigüedad contaba desde la digitación.
+    </p>
+    <p>
+      Siguen abiertos, y cada uno entrega valor solo: estado de resultados unificado, kardex por
+      producto, extracto por cuenta y la devolución de cliente como tipo de ingreso.
     </p>
   </div>
 
   <div class="callout good">
-    <span class="tag">Si hubiera que elegir una sola cosa</span>
-    <p class="big">Copiar las fotos del contrato al rematar, y arreglar el precio que se pierde.</p>
+    <span class="tag">Cerrado</span>
+    <p class="big">Las cuatro tandas están hechas y desplegadas en dev.</p>
     <p>
-      Son las dos correcciones más pequeñas de toda la lista y juntas eliminan la mayor parte de la
-      fricción del punto 7, que es el que más duele todos los días.
+      Tres migraciones nuevas (<code>00031</code>–<code>00033</code>), <strong>258 tests backend</strong>
+      y 111 front, todo en verde. Y cuatro bugs que no estaban en este análisis y aparecieron
+      construyendo: el precio que se descartaba en silencio, las fotos del remate que se rehacían,
+      el inventario inicial que no se podía publicar, y la fecha de entrada que el lote nunca
+      heredaba de su ingreso.
+    </p>
+    <p>
+      Lo que sigue abierto —estado de resultados unificado, kardex, extracto por cuenta,
+      devolución de cliente— está listado en el bloque de la Tanda D de
+      <code>docs/IMPLEMENTATION.md</code>.
     </p>
   </div>
 
