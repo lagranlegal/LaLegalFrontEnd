@@ -2891,6 +2891,8 @@ export interface components {
             min_cost: string | null;
             /** Max Cost */
             max_cost: string | null;
+            /** Photos */
+            photos: string[];
             /**
              * Created At
              * Format: date-time
@@ -2948,6 +2950,8 @@ export interface components {
             sale_price?: number | string | null;
             /** Active */
             active?: boolean | null;
+            /** Photos */
+            photos?: string[] | null;
         };
         /**
          * ProfitSummaryOut

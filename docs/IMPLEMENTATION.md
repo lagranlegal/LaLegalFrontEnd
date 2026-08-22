@@ -2,6 +2,56 @@
 
 > Registro vivo de qué existe en el código, cómo está armado y por qué se tomó cada decisión — para que cualquiera (humano o Claude Code) pueda retomar el proyecto sin releer todo el historial de commits. Se actualiza en cada paso del "Orden de implementación" de `CLAUDE.md`. No repite lo que ya está en `ARCHITECTURE.md`/`DESIGN_SYSTEM.md` (el qué-debería-ser); esto es el qué-hay-hoy y las decisiones concretas tomadas al construirlo.
 
+## Por qué la foto era obligatoria — y por qué dejó de serlo (22/08/2026)
+
+Pregunta de Mateo: *"en el momento de crear un artículo, ¿por qué la foto es obligatoria para publicarlo?"*. **No había razón técnica.**
+
+### De dónde venía
+
+Del spec original — `CLAUDE.md`, sección *Remate asistido*: *"publish valida precio/fotos"*. Y ahí está la clave: **la frase estaba escrita pensando en el remate**, donde la exigencia sí tiene una razón fuerte:
+
+- Un artículo rematado viene de una prenda que un cliente dejó en garantía. La foto es **evidencia de qué pieza era** — importa si el cliente aparece después reclamando.
+- En joyería cada pieza es única: el cliente no compra "una cadena", compra *esa* cadena.
+
+Pero la regla se implementó para **todo** artículo. Para mercancía fungible —cincuenta fundas de celular iguales, compradas por docenas— era fricción sin beneficio: obligaba a fotografiar en cada reposición algo que ya estaba fotografiado.
+
+### La raíz era estructural
+
+`00022` subió el nombre, la categoría, la descripción y el precio del lote al **producto**, y dejó las fotos abajo. Para una pieza única eso es correcto —cada pieza es distinta y merece su foto—. Para mercancía repetida está en el lugar equivocado.
+
+O sea que "la foto es obligatoria" y "hay que re-fotografiar en cada compra" eran **el mismo problema visto desde dos lados**.
+
+### Qué se hizo (`00034`)
+
+- **`product.photos`**: cómo se ve el producto. Se toma una vez y todos sus lotes la heredan. Backfill desde el lote **más antiguo** de cada producto — el que se fotografió al darlo de alta, o sea la foto "de catálogo"; un lote posterior suele documentar algo puntual de esa compra, que es justo lo que no debe subir.
+- **`inventory_item.photos` se conserva** como override del lote, para lo que sí es propio de una compra: una tara, el estado de una pieza. Se conserva en vez de contraerse porque **las piezas de remate ya tienen sus fotos ahí y son evidencia legal** — moverlas y borrar la columna sería jugar con lo único de este módulo que puede terminar en una discusión con un cliente.
+- **`ItemOut.photos` son las efectivas**: las del lote si tiene, si no las del producto.
+- **Publicar exige foto solo si `product.is_unique`** — que es exactamente el caso del remate.
+- **Las fotos que se suben en una compra van al producto**, no al lote.
+- **El remate escribe las fotos de la prenda en el producto** (1:1 con la pieza, porque siempre crea un producto único), así que sigue naciendo fotografiado y publicable sin subir nada.
+
+### El efecto en el flujo de ingreso
+
+La publicación automática ya no depende de la foto: **basta el precio**. Con eso el borrador pasa a significar una sola cosa —*no se sabe en cuánto se vende*— y eso sí tiene que bloquear: publicar con un precio inventado sería peor que esperar.
+
+`LineReadiness` y el resumen del pie se simplificaron en consecuencia: ya no hay dos cosas que puedan faltar, hay una.
+
+### Limitación conocida
+
+`item.photos` son las efectivas y el diálogo del lote no puede distinguir las propias de las heredadas, porque la API expone solo el resultado. Si alguien agrega una foto propia a un lote que estaba heredando, se guardan también las heredadas y ese lote deja de seguir al producto. Es un caso de borde aceptable —el override existe justo para eso— y si llega a molestar, la solución es exponer `own_photos` aparte en `ItemOut`. Queda anotado en el propio componente.
+
+### Verificación
+
+```
+pytest -q            # 260/260 (258 previos + 2 nuevos)
+ruff check . && mypy app
+npm run typecheck && npm run lint && npm run test && npm run build   # 111/111
+```
+
+Tres tests se actualizaron porque fijaban la regla vieja — incluido `test_publish_requires_photo`, que ahora es `test_publish_does_not_require_a_photo_for_regular_merchandise`. El caso del remate quedó cubierto aparte en `test_auction_unique_piece_still_requires_a_photo`.
+
+---
+
 ## Tanda D de los diez frentes: los reportes que pediría un contador (22/08/2026)
 
 Sin migraciones. Cierra las cuatro tandas de `docs/propuesta-diez-frentes.html`.

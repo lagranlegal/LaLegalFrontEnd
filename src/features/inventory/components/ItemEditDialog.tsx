@@ -88,6 +88,14 @@ function LotMarginInfo({ cost, salePrice }: { cost: string; salePrice: string | 
  *
  * El precio sigue apareciendo al publicar porque publicar el primer lote es
  * justamente el momento en que se le fija precio al producto.
+ *
+ * LIMITACIÓN CONOCIDA (00034): `item.photos` son las EFECTIVAS —las del lote
+ * si tiene, si no las heredadas del producto—, y el diálogo no puede
+ * distinguir unas de otras porque la API expone solo el resultado. Si alguien
+ * agrega una foto propia a un lote que estaba heredando, se guardan también
+ * las heredadas y ese lote deja de seguir al producto. Es un caso de borde
+ * aceptable hoy (el override es justo para eso), pero si molesta, la solución
+ * es exponer `own_photos` aparte en `ItemOut`.
  */
 export function ItemEditDialog({ open, onOpenChange, item }: { open: boolean; onOpenChange: (open: boolean) => void; item: Item }) {
   const [photos, setPhotos] = useState<string[]>(item.photos)
@@ -103,7 +111,11 @@ export function ItemEditDialog({ open, onOpenChange, item }: { open: boolean; on
   // publicar ahora guarda las fotos por dentro, así que subir una foto ya
   // habilita el botón. Antes exigía además `!hasUnsavedPhotos`, lo que obligaba
   // a guardar primero y publicar después — dos actos para una sola intención.
-  const canPublish = item.status === 'draft' && photos.length > 0 && Number(salePrice) > 0
+  // La foto ya no bloquea (00034): solo es obligatoria en piezas únicas, y
+  // esas son las de remate. Para el resto basta el precio — las fotos vienen
+  // heredadas del producto, así que `photos` casi siempre ya trae algo.
+  const esPiezaUnica = item.origin === 'auction'
+  const canPublish = item.status === 'draft' && Number(salePrice) > 0 && (!esPiezaUnica || photos.length > 0)
   const busy = updateItem.isPending || publishItem.isPending
 
   /**
@@ -238,7 +250,11 @@ export function ItemEditDialog({ open, onOpenChange, item }: { open: boolean; on
               <div className="mt-1">
                 <PhotoUploader value={photos} onChange={setPhotos} folder={`inventory/${item.id}`} disabled={busy} />
               </div>
-              {photos.length === 0 && <p className="mt-1 text-xs text-muted-foreground">Se necesita al menos una foto para publicar.</p>}
+              <p className="mt-1 text-xs text-muted-foreground">
+                {esPiezaUnica
+                  ? 'Una pieza de remate necesita al menos una foto: es la evidencia de qué prenda era.'
+                  : 'Opcional. Las fotos generales del producto se editan desde la pestaña Productos; acá solo se agregan las de ESTE lote (una tara, el estado de la pieza).'}
+              </p>
             </div>
           </>
         )}

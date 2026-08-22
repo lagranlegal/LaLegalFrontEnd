@@ -87,9 +87,17 @@ function emptyLine(): EntryFormValues['lines'][number] {
   return { name: '', cat1_id: '', cat2_id: '', cat3_id: '', description: '', unit_cost: '0.00', quantity: 1, sale_price: '', photos: [] }
 }
 
-/** ¿Esta línea nace vendible o queda en borrador? Espeja la regla del backend. */
+/**
+ * ¿Esta línea nace vendible o queda en borrador? Espeja la regla del backend.
+ *
+ * Solo el PRECIO decide. La foto dejó de ser obligatoria (00034): lo es
+ * únicamente en piezas únicas, y un ingreso nunca crea productos únicos —eso
+ * solo lo hace el remate—. Así el borrador significa exactamente una cosa: no
+ * se sabe en cuánto se vende. Y eso sí tiene que bloquear, porque publicar con
+ * un precio inventado sería peor que esperar.
+ */
 function lineIsReady(line: EntryFormValues['lines'][number] | undefined): boolean {
-  return !!line && Number(line.sale_price || 0) > 0 && (line.photos?.length ?? 0) > 0
+  return !!line && Number(line.sale_price || 0) > 0
 }
 
 /**
@@ -242,14 +250,10 @@ function LineReadiness({ line }: { line: EntryFormValues['lines'][number] | unde
       </p>
     )
   }
-  const falta = [
-    Number(line?.sale_price || 0) > 0 ? null : 'el precio de venta',
-    (line?.photos?.length ?? 0) > 0 ? null : 'al menos una foto',
-  ].filter(Boolean)
   return (
     <p className="text-xs text-muted-foreground">
-      Sin {falta.join(' ni ')} queda en <strong className="text-warning">borrador</strong>: entra al inventario pero no se puede vender
-      hasta completarlo.
+      Sin precio de venta queda en <strong className="text-warning">borrador</strong>: entra al inventario pero no se puede vender hasta
+      que se le ponga precio.
     </p>
   )
 }
@@ -709,7 +713,9 @@ export function EntryFormPage() {
                         <p className="mt-1 text-xs text-muted-foreground">Aplica a todos los lotes de este producto.</p>
                       </div>
                       <div>
-                        <label className="text-sm font-medium text-foreground">Fotos</label>
+                        <label className="text-sm font-medium text-foreground">
+                          Fotos <span className="text-muted-foreground">(opcional)</span>
+                        </label>
                         <div className="mt-1">
                           <Controller
                             control={control}
@@ -726,6 +732,10 @@ export function EntryFormPage() {
                         </div>
                       </div>
                     </div>
+                    <p className="text-xs text-muted-foreground">
+                      Las fotos son del <strong className="text-foreground">producto</strong>: se toman una vez y las heredan todos sus
+                      lotes, así que reponer no obliga a volver a fotografiar.
+                    </p>
                     <LineReadiness line={linea} />
                   </div>
                 </div>
