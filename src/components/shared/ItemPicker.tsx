@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { SearchInput } from '@/components/shared/SearchInput'
 import { Money } from '@/components/shared/Money'
-import { useAvailableItemsSearch, type Item } from '@/lib/inventory/items'
+import { useTransformableItemsSearch, useAvailableItemsSearch, type Item } from '@/lib/inventory/items'
 
 /**
  * Buscar-y-agregar artículo disponible — usado por egresos (inventory) y el
@@ -11,9 +11,27 @@ import { useAvailableItemsSearch, type Item } from '@/lib/inventory/items'
  * buscador se limpia solo — es un patrón "agregar de a uno", no "elegir
  * uno y quedarse con ese valor".
  */
-export function ItemPicker({ onSelect, placeholder = 'Buscar artículo por código o nombre…' }: { onSelect: (item: Item) => void; placeholder?: string }) {
+export function ItemPicker({
+  onSelect,
+  placeholder = 'Buscar artículo por código o nombre…',
+  scope = 'available',
+}: {
+  onSelect: (item: Item) => void
+  placeholder?: string
+  /**
+   * `available` — lo vendible, para el carrito y los egresos.
+   * `transformable` — incluye BORRADORES, porque fundir una prenda que nunca
+   * se publicó es el caso más común: no se le puso precio justo porque ya se
+   * sabía que iba al crisol.
+   */
+  scope?: 'available' | 'transformable'
+}) {
   const [q, setQ] = useState('')
-  const { data, isFetching } = useAvailableItemsSearch(q)
+  // Los dos hooks se llaman siempre (regla de hooks); el que no aplica queda
+  // deshabilitado por término vacío y no dispara ninguna request.
+  const disponibles = useAvailableItemsSearch(scope === 'available' ? q : '')
+  const transformables = useTransformableItemsSearch(scope === 'transformable' ? q : '')
+  const { data, isFetching } = scope === 'transformable' ? transformables : disponibles
 
   return (
     <div className="relative">

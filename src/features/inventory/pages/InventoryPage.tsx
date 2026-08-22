@@ -639,11 +639,20 @@ export function InventoryPage() {
         title="Inventario"
         description="Artículos, ingresos y egresos."
         actions={
-          <Can permission="inventory.create">
-            <Button className="rounded-pill" onClick={() => navigate({ to: '/inventario/ingresos/nuevo' })}>
-              + Nuevo ingreso
-            </Button>
-          </Can>
+          <div className="flex flex-wrap gap-2">
+            {/* Transformar va como acción secundaria: es menos frecuente que
+                comprar, y destruye inventario. */}
+            <Can permission="inventory.transform">
+              <Button variant="outline" className="rounded-pill" onClick={() => navigate({ to: '/inventario/transformaciones/nueva' })}>
+                Transformar
+              </Button>
+            </Can>
+            <Can permission="inventory.create">
+              <Button className="rounded-pill" onClick={() => navigate({ to: '/inventario/ingresos/nuevo' })}>
+                + Nuevo ingreso
+              </Button>
+            </Can>
+          </div>
         }
       />
 

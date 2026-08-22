@@ -251,3 +251,23 @@ export function useProductPurchases(productId: string | undefined) {
     enabled: !!productId,
   })
 }
+
+export type Transformation = components['schemas']['TransformationOut']
+export type TransformationCreateIn = components['schemas']['TransformationCreateIn']
+
+/**
+ * Fundir, despiezar o armar: entran N artículos, salen M y el costo viaja.
+ *
+ * Va por `useMoneyMutation` aunque no siempre mueva plata: mueve INVENTARIO de
+ * forma irreversible, que para el negocio es igual de serio. Un reintento de
+ * red que duplicara una fundición destruiría el doble de mercancía.
+ *
+ * Invalida `cashbox` porque el costo del proceso —si lo hubo— sale de la caja.
+ */
+export function useCreateTransformation() {
+  return useMoneyMutation<Transformation, TransformationCreateIn>({
+    mutationFn: (body, idempotencyKey) =>
+      unwrap(api.POST('/api/v1/inventory/transformations', { body, headers: { 'Idempotency-Key': idempotencyKey } })),
+    invalidateKeys: [['inventory'], ['dashboard'], ['cashbox']],
+  })
+}

@@ -1144,6 +1144,62 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/inventory/transformations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Create Transformation
+         * @description Fundir, despiezar o armar: entran N artículos, salen M y **el costo viaja**.
+         *
+         *     Una sola operación para lo que en la práctica son varios usos —fundir
+         *     prendas rematadas en oro, despiezar un equipo dañado, armar un combo— y
+         *     lo que pase DESPUÉS con lo que sale es inventario común y corriente.
+         *
+         *     **El costo no se digita.** Lo que costó lo que entra es lo que cuesta lo
+         *     que sale, más `extra_cost` (lo que cobró el fundidor o el técnico, que se
+         *     **capitaliza**: es parte de producir el activo, no un gasto del mes).
+         *
+         *     **La merma se absorbe sola:** si entran 34 g de prendas y salen 31,2 g de
+         *     oro, el mismo costo se reparte entre menos gramos y el costo unitario
+         *     sube. Ese número es el que dice si la operación convenía.
+         *
+         *     Genera un egreso (`transformation`) por lo consumido y un ingreso
+         *     (`transformation`) por lo producido, vinculados por el documento — así el
+         *     stock se mueve por los caminos de siempre y la trazabilidad sobrevive:
+         *     contrato → remate → artículo → transformación → lote nuevo.
+         *
+         *     Es **irreversible**: de una barra de oro no salen las tres cadenas otra vez.
+         */
+        post: operations["create_transformation_api_v1_inventory_transformations_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/inventory/transformations/{transformation_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Transformation */
+        get: operations["get_transformation_api_v1_inventory_transformations__transformation_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/sales": {
         parameters: {
             query?: never;
@@ -3597,6 +3653,120 @@ export interface components {
             from_balance: string;
             /** To Balance */
             to_balance: string;
+        };
+        /**
+         * TransformationCreateIn
+         * @description Fundir, despiezar o armar: entran N artículos y salen M.
+         *
+         *     El costo de lo que sale es el de lo que entró más `extra_cost`. No se
+         *     digita en ninguna parte, y ese es el punto: el costo VIAJA.
+         */
+        TransformationCreateIn: {
+            /** Inputs */
+            inputs: components["schemas"]["TransformationInputLineIn"][];
+            /** Outputs */
+            outputs: components["schemas"]["TransformationOutputLineIn"][];
+            /**
+             * Extra Cost
+             * @default 0
+             */
+            extra_cost: number | string;
+            /** Payment Method */
+            payment_method?: ("cash" | "transfer" | "other") | null;
+            /** Account Id */
+            account_id?: string | null;
+            /** Transform Date */
+            transform_date?: string | null;
+            /** Reason */
+            reason: string;
+            /** Notes */
+            notes?: string | null;
+        };
+        /**
+         * TransformationInputLineIn
+         * @description Un artículo que se CONSUME. Deja de existir como tal.
+         */
+        TransformationInputLineIn: {
+            /**
+             * Item Id
+             * Format: uuid
+             */
+            item_id: string;
+            /** Quantity */
+            quantity: number | string;
+        };
+        /** TransformationOut */
+        TransformationOut: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Number */
+            number: number;
+            /**
+             * Transform Date
+             * Format: date
+             */
+            transform_date: string;
+            /** Extra Cost */
+            extra_cost: string;
+            /** Notes */
+            notes: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Total Cost */
+            total_cost: string;
+            /** Consumed */
+            consumed: components["schemas"]["ItemOut"][];
+            /** Produced */
+            produced: components["schemas"]["ItemOut"][];
+        };
+        /**
+         * TransformationOutputLineIn
+         * @description Un artículo que se PRODUCE.
+         *
+         *     Es una línea de ingreso sin costo: el costo no se digita, se hereda de lo
+         *     consumido. Digitarlo sería justamente el error que esta operación viene a
+         *     evitar — inventar costo o perderlo por el camino.
+         */
+        TransformationOutputLineIn: {
+            /** Name */
+            name: string;
+            /**
+             * Cat1 Id
+             * Format: uuid
+             */
+            cat1_id: string;
+            /**
+             * Cat2 Id
+             * Format: uuid
+             */
+            cat2_id: string;
+            /**
+             * Cat3 Id
+             * Format: uuid
+             */
+            cat3_id: string;
+            /** Description */
+            description?: string | null;
+            /** Quantity */
+            quantity: number | string;
+            /**
+             * Unit
+             * @default unit
+             * @enum {string}
+             */
+            unit: "unit" | "gram" | "kilogram" | "meter" | "liter";
+            /** Photos */
+            photos?: string[];
+            /** Sale Price */
+            sale_price?: number | string | null;
+            /** Estimated Value */
+            estimated_value?: number | string | null;
         };
         /** UpdateUserRoleIn */
         UpdateUserRoleIn: {
@@ -6152,6 +6322,72 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ProductPurchaseOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_transformation_api_v1_inventory_transformations_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TransformationCreateIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TransformationOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_transformation_api_v1_inventory_transformations__transformation_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                transformation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TransformationOut"];
                 };
             };
             /** @description Validation Error */

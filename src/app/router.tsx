@@ -26,6 +26,7 @@ import { ContractDetailPage } from '@/features/contracts/pages/ContractDetailPag
 import { CashboxPage } from '@/features/cashbox/pages/CashboxPage'
 import { InventoryPage } from '@/features/inventory/pages/InventoryPage'
 import { EntryFormPage } from '@/features/inventory/pages/EntryFormPage'
+import { TransformationFormPage } from '@/features/inventory/pages/TransformationFormPage'
 import { SalesListPage } from '@/features/sales/pages/SalesListPage'
 import { SaleFormPage } from '@/features/sales/pages/SaleFormPage'
 import { IdentityPage } from '@/features/identity/pages/IdentityPage'
@@ -282,6 +283,20 @@ const entryNewRoute = createRoute({
   },
 })
 
+// Transformar DESTRUYE inventario de forma irreversible, así que la ruta va
+// tras su propio permiso — no basta con poder crear ingresos.
+const transformationNewRoute = createRoute({
+  getParentRoute: () => appLayoutRoute,
+  path: '/inventario/transformaciones/nueva',
+  component: TransformationFormPage,
+  beforeLoad: ({ context }) => {
+    const me = context.queryClient.getQueryData(meQueryOptions().queryKey)
+    if (me && !me.permissions.includes('inventory.transform')) {
+      throw redirect({ to: '/' })
+    }
+  },
+})
+
 const salesRoute = createRoute({
   getParentRoute: () => appLayoutRoute,
   path: '/ventas',
@@ -429,6 +444,7 @@ const routeTree = rootRoute.addChildren([
     cashboxRoute,
     inventoryRoute,
     entryNewRoute,
+    transformationNewRoute,
     salesRoute,
     saleNewRoute,
     identityRoute,

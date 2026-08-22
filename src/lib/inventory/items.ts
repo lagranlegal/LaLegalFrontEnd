@@ -66,3 +66,26 @@ export function useItemsForRestock(q: string, supplierId?: string) {
     select: (page) => page.items,
   })
 }
+
+/**
+ * Artículos que se pueden TRANSFORMAR: disponibles **y borradores**.
+ *
+ * El borrador es de hecho el caso más probable al fundir — una prenda que
+ * nunca se publicó porque ya se sabía que iba al crisol. `ItemPicker` normal
+ * solo ofrece disponibles, así que con él esas piezas eran invisibles justo
+ * para la operación que más las necesita.
+ *
+ * Filtra en el cliente porque `?status=` acepta un solo valor y acá hacen
+ * falta dos; se pide un poco más de la cuenta para que el filtro no deje la
+ * lista corta. Lo vendido y lo dado de baja quedan afuera: su stock ya no
+ * existe y el backend los rechaza.
+ */
+export function useTransformableItemsSearch(q: string) {
+  const query = q.trim()
+  return useQuery({
+    queryKey: ['inventory', 'items', 'transformable-search', query] as const,
+    queryFn: () => unwrap(api.GET('/api/v1/inventory/items', { params: { query: { q: query, limit: 20 } } })),
+    enabled: query.length > 0,
+    select: (page) => page.items.filter((item) => item.status === 'available' || item.status === 'draft').slice(0, 8),
+  })
+}
