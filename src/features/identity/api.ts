@@ -117,3 +117,23 @@ export function usePermissionsCatalog() {
     queryFn: () => unwrap(api.GET('/api/v1/identity/permissions')),
   })
 }
+
+export type RecoveryLink = components['schemas']['RecoveryLinkOut']
+
+/**
+ * Enlace para que alguien vuelva a poner su contraseña, SIN mandar correo.
+ *
+ * Es el equivalente del "Generar enlace" de la invitación, para el otro caso:
+ * a un empleado se le olvidó la contraseña. Antes eso solo se resolvía por
+ * correo, y con el SMTP incluido de Supabase —limitado a unos pocos envíos
+ * por hora— un olvido podía dejar a esa persona afuera sin que nadie pudiera
+ * ayudarla.
+ *
+ * NO invalida queries: no cambia nada del usuario, solo emite una credencial.
+ */
+export function useRecoveryLink() {
+  return useMutation({
+    mutationFn: (userId: string) =>
+      unwrap(api.POST('/api/v1/identity/users/{user_id}/recovery-link', { params: { path: { user_id: userId } } })),
+  })
+}

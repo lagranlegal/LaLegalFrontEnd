@@ -284,6 +284,36 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/identity/users/{user_id}/recovery-link": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Generate Recovery Link
+         * @description Enlace para que un usuario vuelva a poner su contraseña, SIN mandar correo.
+         *
+         *     Es el equivalente del "Generar enlace" de la invitación, para el otro caso:
+         *     a alguien se le olvidó la contraseña. Antes eso solo se resolvía por correo,
+         *     y con el SMTP incluido de Supabase —limitado a unos pocos envíos por hora—
+         *     un olvido podía dejar a esa persona afuera sin que nadie pudiera ayudarla.
+         *
+         *     **Es una credencial de un solo uso**: quien la tenga puede cambiar esa
+         *     contraseña y entrar como esa persona. Por eso exige `identity.manage_users`,
+         *     queda auditado quién lo generó y para quién, y el enlace no se escribe en
+         *     ningún log.
+         */
+        post: operations["generate_recovery_link_api_v1_identity_users__user_id__recovery_link_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/me": {
         parameters: {
             query?: never;
@@ -2989,6 +3019,24 @@ export interface components {
             /** Margin Pct */
             margin_pct: string | null;
         };
+        /**
+         * RecoveryLinkOut
+         * @description Enlace de recuperación de contraseña, para entregar a mano.
+         *
+         *     Misma naturaleza que `invite_link`: es una credencial de un solo uso —
+         *     quien la tenga puede cambiar esa contraseña y entrar como esa persona.
+         */
+        RecoveryLinkOut: {
+            /**
+             * User Id
+             * Format: uuid
+             */
+            user_id: string;
+            /** Email */
+            email: string;
+            /** Recovery Link */
+            recovery_link: string;
+        };
         /** RoleCreateIn */
         RoleCreateIn: {
             /** Name */
@@ -4166,6 +4214,37 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PermissionOut"][];
+                };
+            };
+        };
+    };
+    generate_recovery_link_api_v1_identity_users__user_id__recovery_link_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                user_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RecoveryLinkOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };

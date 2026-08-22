@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { Check, Copy, Link2 } from 'lucide-react'
 import { AppDialog } from '@/components/shared/AppDialog'
 import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
@@ -6,7 +7,7 @@ import { UserStatusBadge } from '@/features/identity/components/UserStatusBadge'
 import { confirm } from '@/components/shared/confirmStore'
 import { ApiError } from '@/lib/api/client'
 import { formatDateTime } from '@/lib/dates'
-import { useDeactivateUser, useReactivateUser, useRoles, useUpdateUserRole, type User } from '@/features/identity/api'
+import { useDeactivateUser, useReactivateUser, useRecoveryLink, useRoles, useUpdateUserRole, type User } from '@/features/identity/api'
 
 /**
  * Modal explicativo de `LAST_ADMIN_SAFEGUARD` (CLAUDE.md regla 9): a
@@ -38,6 +39,26 @@ export function UserDetailDialog({ open, onOpenChange, user, isSelf }: { open: b
   const reactivateUser = useReactivateUser()
   const [roleId, setRoleId] = useState(user.role_id)
   const [error, setError] = useState<string | null>(null)
+  const [enlace, setEnlace] = useState<string | null>(null)
+  const [copiado, setCopiado] = useState(false)
+  const recoveryLink = useRecoveryLink()
+
+  async function handleRecoveryLink() {
+    setError(null)
+    try {
+      const resultado = await recoveryLink.mutateAsync(user.id)
+      setEnlace(resultado.recovery_link)
+      setCopiado(false)
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'No se pudo generar el enlace.')
+    }
+  }
+
+  async function copiarEnlace() {
+    if (!enlace) return
+    await navigator.clipboard.writeText(enlace)
+    setCopiado(true)
+  }
   const [safeguardMessage, setSafeguardMessage] = useState<string | null>(null)
 
   const roleChanged = roleId !== user.role_id
@@ -112,6 +133,22 @@ export function UserDetailDialog({ open, onOpenChange, user, isSelf }: { open: b
                 permisos tenga cada rol— pero sí sabe quién es uno. Y la
                 regla es más simple de entender: si alguien se va, lo
                 desactiva otro. */}
+            {/* Rescatar a quien olvidó su contraseña, SIN correo. Antes esto
+                solo se resolvía con "¿Olvidaste tu contraseña?", que manda un
+                correo — y con el SMTP incluido de Supabase, limitado a unos
+                pocos por hora, un olvido podía dejar a esa persona afuera sin
+                que nadie pudiera ayudarla. */}
+            {user.status !== 'inactive' && (
+              <Button
+                variant="outline"
+                disabled={isPending || recoveryLink.isPending}
+                onClick={handleRecoveryLink}
+                className="w-full rounded-pill"
+              >
+                <Link2 className="size-4" />
+                {recoveryLink.isPending ? 'Generando…' : 'Generar enlace de recuperación'}
+              </Button>
+            )}
             {isSelf ? (
               <p className="w-full rounded-input bg-muted/50 px-3 py-2 text-center text-xs text-muted-foreground">
                 No puedes desactivar tu propia cuenta. Si te vas de la empresa, pídele a otro administrador que lo haga.
@@ -136,6 +173,26 @@ export function UserDetailDialog({ open, onOpenChange, user, isSelf }: { open: b
         }
       >
         <div className="flex flex-col gap-4">
+          {enlace && (
+            <div className="flex flex-col gap-2 rounded-input border border-primary/40 bg-primary/5 p-3">
+              <p className="text-sm font-medium text-foreground">Enlace de recuperación</p>
+              <p className="rounded-input border border-border bg-background px-3 py-2 font-mono text-xs break-all text-foreground">
+                {enlace}
+              </p>
+              <Button type="button" variant="outline" size="sm" onClick={copiarEnlace} className="rounded-pill">
+                {copiado ? <Check className="size-4" /> : <Copy className="size-4" />}
+                {copiado ? 'Copiado' : 'Copiar enlace'}
+              </Button>
+              {/* Advertencia y no letra chica: el enlace ES la credencial —
+                  quien lo tenga puede cambiar esa contraseña y entrar como esa
+                  persona. Mismo texto que la invitación, por la misma razón. */}
+              <p className="text-xs text-muted-foreground">
+                Sirve una sola vez y caduca. Quien lo tenga puede entrar como esta persona, así que envíalo por un medio privado — y
+                guárdalo antes de cerrar: no se puede volver a mostrar.
+              </p>
+            </div>
+          )}
+
           <div className="flex items-center justify-between text-sm">
             <span className="text-muted-foreground">Estado</span>
             <div className="flex items-center gap-2">
