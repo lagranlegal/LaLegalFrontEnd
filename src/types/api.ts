@@ -1444,6 +1444,44 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/reports/income-statement": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Income Statement
+         * @description Estado de resultados: **ingresos − costo de ventas − gastos = utilidad**.
+         *
+         *     Es la vista de arriba que faltaba: `/profit` cubre la tienda y
+         *     `/pawn-performance` el empeño —bien separados, porque se miden distinto—
+         *     pero nadie los sumaba en un solo resultado.
+         *
+         *     Y corrige un número equivocado: la "utilidad operativa" que mostraba
+         *     `/reportes` era `ingresos − gastos` y **nunca restaba el costo de ventas**,
+         *     así que sobreestimaba la ganancia por todo lo que costó la mercancía.
+         *
+         *     Sale de los DOCUMENTOS y no de los movimientos de caja: el desglose de
+         *     caja solo cubre sesiones cerradas (faltaría lo de hoy), y una venta con
+         *     Sistecrédito es ingreso aunque todavía no haya entrado la plata — el
+         *     ingreso se reconoce al vender, no al cobrar.
+         *
+         *     Los movimientos de CAPITAL (préstamos, abonos) y la compra de inventario
+         *     se devuelven aparte, fuera del resultado: prestar no es gasto y cobrar no
+         *     es ganancia; comprar mercancía es convertir efectivo en activo, y se
+         *     vuelve gasto cuando se vende.
+         */
+        get: operations["get_income_statement_api_v1_reports_income_statement_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/health": {
         parameters: {
             query?: never;
@@ -2485,6 +2523,66 @@ export interface components {
         HTTPValidationError: {
             /** Detail */
             detail?: components["schemas"]["ValidationError"][];
+        };
+        /**
+         * IncomeStatementOut
+         * @description Estado de resultados del período: **¿cuánto ganó el negocio?**
+         *
+         *     Es la vista de arriba que faltaba. `/profit` cubre la tienda y
+         *     `/pawn-performance` el empeño —correctamente separados, porque se miden
+         *     distinto— pero nadie los sumaba en un solo resultado.
+         *
+         *     Y arregla un número que estaba MAL: la "utilidad operativa" de `/reportes`
+         *     calculaba `ingresos − gastos` y **nunca restaba el costo de ventas**, así
+         *     que una cadena vendida en 500.000 que costó 300.000 contaba como 500.000
+         *     de utilidad. Para una tienda eso sobreestima la ganancia por todo el costo
+         *     de la mercancía.
+         *
+         *     Sale de los DOCUMENTOS (`sale`, `contract_payment`, `expense`) y no de los
+         *     movimientos de caja. Dos razones, y las dos importan:
+         *
+         *       · El desglose de caja solo cubre sesiones CERRADAS: lo de hoy faltaría.
+         *       · Una venta con Sistecrédito ES ingreso aunque no haya entrado plata —
+         *         el ingreso se reconoce al vender, no al cobrar. Armado desde caja, ese
+         *         ingreso aparecería tarde o no aparecería.
+         */
+        IncomeStatementOut: {
+            /**
+             * From Date
+             * Format: date
+             */
+            from_date: string;
+            /**
+             * To Date
+             * Format: date
+             */
+            to_date: string;
+            /** Sales Revenue */
+            sales_revenue: string;
+            /** Interest Revenue */
+            interest_revenue: string;
+            /** Total Revenue */
+            total_revenue: string;
+            /** Cost Of Goods Sold */
+            cost_of_goods_sold: string;
+            /** Gross Profit */
+            gross_profit: string;
+            /** Operating Expenses */
+            operating_expenses: string;
+            /** Expense Count */
+            expense_count: number;
+            /** Operating Profit */
+            operating_profit: string;
+            /** Margin Pct */
+            margin_pct: string | null;
+            /** Interest Discounts */
+            interest_discounts: string;
+            /** Capital Disbursed */
+            capital_disbursed: string;
+            /** Capital Recovered */
+            capital_recovered: string;
+            /** Inventory Purchased */
+            inventory_purchased: string;
         };
         /** InventoryKpisOut */
         InventoryKpisOut: {
@@ -6753,6 +6851,40 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["StaleInventoryOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_income_statement_api_v1_reports_income_statement_get: {
+        parameters: {
+            query: {
+                /** @description Inclusivo, en la zona horaria de la empresa. */
+                from_date: string;
+                /** @description Inclusivo, en la zona horaria de la empresa. */
+                to_date: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IncomeStatementOut"];
                 };
             };
             /** @description Validation Error */

@@ -17,7 +17,7 @@ import { usePermission } from '@/lib/permissions/usePermission'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { ContablesSection } from '@/features/reports/components/ContablesSection'
 import { useExpenseCategories } from '@/features/cashbox/api'
-import { useRawSessions, useCarteraActual, useExpensesByCategory, useAllTimeItemSales, useProfitSummary, usePawnPerformance, MAX_RANGE_DAYS } from '@/features/reports/api'
+import { useIncomeStatement, useRawSessions, useCarteraActual, useExpensesByCategory, useAllTimeItemSales, useProfitSummary, usePawnPerformance, MAX_RANGE_DAYS } from '@/features/reports/api'
 import { aggregateFinancialSummary, aggregateExpensesByCategory, computeDelta, daysBetweenDateOnly, previousRangeFor } from '@/features/reports/aggregate'
 import { aggregateItemRanking } from '@/features/reports/rankings'
 import { ModuleSplitBar } from '@/features/reports/components/ModuleSplitBar'
@@ -200,6 +200,106 @@ function RankingList({ rows, unit }: { rows: { key: string; label: string; quant
   )
 }
 
+/**
+ * El estado de resultados del período — la respuesta a "¿cuánto ganó el
+ * negocio?".
+ *
+ * Va en cascada y no como fila de KPIs sueltos porque el ORDEN es el
+ * contenido: cada línea se explica por la anterior, y ver la resta es lo que
+ * evita confundir ingreso con ganancia. Un KPI aislado que dijera "utilidad"
+ * es justamente lo que estaba mal antes.
+ *
+ * No responde al filtro de módulo: un estado de resultados es del negocio
+ * entero. Empeño y tienda por separado ya están en las tarjetas de abajo.
+ */
+function IncomeStatementCard({ range }: { range: DateRangeValue | null }) {
+  const { data, isPending, isError } = useIncomeStatement(range)
+
+  if (isPending) return <div className="h-56 animate-pulse rounded-card border border-border bg-muted/30" />
+  if (isError || !data) return null
+
+  const perdida = Number(data.operating_profit) < 0
+  const filas: { label: string; value: string; tone?: 'out'; sub?: boolean; hint?: string }[] = [
+    { label: 'Ventas', value: data.sales_revenue },
+    { label: 'Intereses cobrados', value: data.interest_revenue },
+    { label: 'Costo de la mercancía vendida', value: data.cost_of_goods_sold, tone: 'out', hint: 'Lo que costó lo que se vendió — solo tienda' },
+    { label: 'Gastos operativos', value: data.operating_expenses, tone: 'out', hint: `${data.expense_count} gasto(s)` },
+  ]
+
+  return (
+    <div className="rounded-card border border-border bg-card p-card shadow-card">
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-x-4 gap-y-1">
+        <h2 className="text-sm font-medium text-foreground">Estado de resultados</h2>
+        <span className="text-xs text-muted-foreground">Del negocio completo — empeño y tienda juntos</span>
+      </div>
+
+      <div className="flex flex-col gap-1 text-sm">
+        {filas.map((fila, i) => (
+          <div key={fila.label}>
+            <div className="flex items-center justify-between gap-3 py-1">
+              <span className="text-muted-foreground">
+                {fila.tone === 'out' && <span className="mr-1">−</span>}
+                {fila.label}
+                {fila.hint && <span className="ml-2 text-xs text-muted-foreground/70">{fila.hint}</span>}
+              </span>
+              <Money value={fila.value} tone={fila.tone} className="tnum" />
+            </div>
+            {/* Los subtotales van DONDE corresponden, no al final: ver que la
+                utilidad bruta sale de restar el costo es media explicación. */}
+            {i === 1 && (
+              <div className="flex items-center justify-between gap-3 border-t border-border py-1.5">
+                <span className="font-medium text-foreground">Ingresos totales</span>
+                <Money value={data.total_revenue} className="tnum font-medium text-foreground" />
+              </div>
+            )}
+            {i === 2 && (
+              <div className="flex items-center justify-between gap-3 border-t border-border py-1.5">
+                <span className="font-medium text-foreground">Utilidad bruta</span>
+                <Money value={data.gross_profit} className="tnum font-medium text-foreground" />
+              </div>
+            )}
+          </div>
+        ))}
+
+        <div className="mt-1 flex items-center justify-between gap-3 border-t-2 border-foreground/80 pt-2">
+          <span className="font-semibold text-foreground">Utilidad</span>
+          <div className="flex items-center gap-3">
+            {data.margin_pct !== null && (
+              <span className={cn('text-xs font-medium', perdida ? 'text-danger' : 'text-success')}>{Number(data.margin_pct)}% de margen</span>
+            )}
+            <Money value={data.operating_profit} className={cn('tnum text-lg font-semibold', perdida ? 'text-danger' : 'text-success')} />
+          </div>
+        </div>
+      </div>
+
+      {/* Lo que NO es resultado, dicho explícitamente. Sin esta nota, alguien
+          que compró mucho este mes buscaría esas compras en los gastos y
+          concluiría que el reporte está mal. */}
+      <p className="mt-3 border-t border-border pt-2 text-xs text-muted-foreground">
+        Fuera del resultado, porque no son ingreso ni gasto:{' '}
+        <strong className="text-foreground">
+          <Money value={data.inventory_purchased} />
+        </strong>{' '}
+        en mercancía comprada (se vuelve costo al venderse),{' '}
+        <strong className="text-foreground">
+          <Money value={data.capital_disbursed} />
+        </strong>{' '}
+        prestado y{' '}
+        <strong className="text-foreground">
+          <Money value={data.capital_recovered} />
+        </strong>{' '}
+        recuperado.
+        {Number(data.interest_discounts) > 0 && (
+          <>
+            {' '}
+            Se otorgaron <Money value={data.interest_discounts} /> en descuentos de interés.
+          </>
+        )}
+      </p>
+    </div>
+  )
+}
+
 export function ReportesPage() {
   const [range, setRange] = useState<DateRangeValue | null>(defaultRange())
   const [moduleFilter, setModuleFilter] = useState<ModuleFilter>('all')
@@ -344,15 +444,18 @@ export function ReportesPage() {
               tone="danger"
               delta={delta(summary.gastosOperativos, previousSummary?.gastosOperativos, 'down')}
             />
-            <KpiCard
-              label="Utilidad operativa"
-              value={<Money value={summary.utilidadOperativa} />}
-              tone={Number(summary.utilidadOperativa) < 0 ? 'danger' : 'success'}
-              delta={delta(summary.utilidadOperativa, previousSummary?.utilidadOperativa, 'up')}
-            />
+            {/* La utilidad ya NO se calcula acá. El KPI que vivía en este
+                lugar hacía `ingresos − gastos` y nunca restaba el costo de
+                ventas, así que una cadena vendida en 500.000 que costó
+                300.000 contaba como 500.000 de utilidad — y convivía en esta
+                misma pantalla con "Utilidad bruta de tienda", que sí lo
+                restaba. Dos cifras contradiciéndose.
+                Ahora sale del backend, en su propia tarjeta abajo. */}
             <KpiCard label="Intereses cobrados" value={<Money value={summary.intereses} />} delta={delta(summary.intereses, previousSummary?.intereses, 'up')} />
             <KpiCard label="Ventas" value={<Money value={summary.ventas} />} tone="brand" delta={delta(summary.ventas, previousSummary?.ventas, 'up')} />
           </KpiRow>
+
+          <IncomeStatementCard range={range} />
 
           {showCapitalTienda && <ProfitCard range={range} />}
           {showCapitalEmpeño && <PawnCard range={range} />}

@@ -1,4 +1,4 @@
-import { subtractMoney, sumMoney } from '@/lib/money'
+import { sumMoney } from '@/lib/money'
 import type { SessionReport, Expense, ExpenseCategory } from '@/features/cashbox/api'
 
 type BreakdownLine = SessionReport['lines'][number]
@@ -31,6 +31,17 @@ export interface DayTotal {
 /** Movimiento sin medio de pago: plata que solo cambió de cuenta. */
 export const INTER_ACCOUNT = 'inter_account'
 
+// AQUÍ NO SE CALCULA LA UTILIDAD, a propósito. Hubo un campo
+// `utilidadOperativa` que hacía `ingresosOperativos − gastosOperativos` y
+// NUNCA restaba el costo de ventas: una cadena vendida en 500.000 que costó
+// 300.000 contaba como 500.000 de utilidad. Peor, convivía en la misma
+// pantalla con "Utilidad bruta de tienda", que sí lo restaba.
+//
+// La utilidad vive ahora en `GET /reports/income-statement`, que sale de los
+// DOCUMENTOS: incluye lo de hoy (el desglose de caja solo cubre sesiones
+// cerradas) y cuenta bien las ventas a crédito, que son ingreso aunque la
+// plata no haya entrado. Este módulo agrega movimientos de caja para las
+// gráficas y los desgloses — no para responder "cuánto gané".
 const REVENUE_CONCEPTS = new Set(['interest_payment', 'sale'])
 const EXPENSE_CONCEPTS = new Set(['expense'])
 
@@ -62,8 +73,6 @@ export interface FinancialSummary {
   ingresosOperativos: string
   /** Gasto operativo real: `concept: 'expense'`. NO incluye capital desembolsado (préstamos). */
   gastosOperativos: string
-  /** `ingresosOperativos − gastosOperativos` — utilidad del período, no confundir con flujo de caja. */
-  utilidadOperativa: string
   /** Intereses cobrados (`concept: 'interest_payment'`, `direction: 'in'`) — subconjunto de ingresosOperativos. */
   intereses: string
   /** Ventas (`concept: 'sale'`, `direction: 'in'`) — subconjunto de ingresosOperativos. */
@@ -196,7 +205,6 @@ export function aggregateFinancialSummary(sessions: { sessionDate: string; repor
     sessionCount: sessions.length,
     ingresosOperativos,
     gastosOperativos,
-    utilidadOperativa: subtractMoney(ingresosOperativos, gastosOperativos),
     intereses,
     ventas,
     capitalAbonado,

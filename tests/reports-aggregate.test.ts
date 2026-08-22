@@ -24,7 +24,9 @@ describe('aggregateFinancialSummary', () => {
     // capital abonado (ingreso) ni el préstamo desembolsado (gasto).
     expect(summary.ingresosOperativos).toBe('17500.00')
     expect(summary.gastosOperativos).toBe('45000.00')
-    expect(summary.utilidadOperativa).toBe('-27500.00')
+    // La UTILIDAD no se calcula acá: este módulo agrega movimientos de caja,
+    // y una utilidad sin costo de ventas es una mentira. Vive en
+    // `GET /reports/income-statement`.
 
     // El movimiento de capital se reporta aparte, no afecta la utilidad.
     expect(summary.capitalAbonado).toBe('50000.00')
@@ -59,8 +61,8 @@ describe('aggregateFinancialSummary', () => {
     expect(summary.comprasInventario).toBe('2000000.00')
     // El gasto operativo es SOLO el gasto real, no la compra.
     expect(summary.gastosOperativos).toBe('50000.00')
-    // Y por lo tanto la utilidad es +250.000, no −1.750.000.
-    expect(summary.utilidadOperativa).toBe('250000.00')
+    // Lo importante es que la compra NO entra en los gastos: si entrara, un
+    // mes de mucha compra parecería un mes de pérdida.
     // El flujo de caja crudo sí la incluye — es el número que explica por qué
     // hay menos efectivo en el cajón.
     expect(summary.flujoSalidas).toBe('2050000.00')
@@ -149,7 +151,7 @@ describe('aggregateFinancialSummary', () => {
     const summary = aggregateFinancialSummary([])
     expect(summary.sessionCount).toBe(0)
     expect(summary.ingresosOperativos).toBe('0.00')
-    expect(summary.utilidadOperativa).toBe('0.00')
+    expect(summary.gastosOperativos).toBe('0.00')
     expect(summary.totalsByConcept).toEqual([])
     expect(summary.byDay).toEqual([])
   })

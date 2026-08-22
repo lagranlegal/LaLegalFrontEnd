@@ -189,3 +189,27 @@ export function useStaleInventory(thresholdDays: number) {
       unwrap(api.GET('/api/v1/reports/stale-inventory', { params: { query: { threshold_days: thresholdDays, limit: 20 } } })),
   })
 }
+
+export type IncomeStatement = components['schemas']['IncomeStatementOut']
+
+/**
+ * Estado de resultados del período: ingresos − costo de ventas − gastos.
+ *
+ * Reemplaza el KPI "Utilidad operativa" que se calculaba en el front sumando
+ * movimientos de caja y **nunca restaba el costo de ventas**. Sale de los
+ * documentos, así que además incluye lo de hoy (el desglose de caja solo
+ * cubre sesiones cerradas) y cuenta bien las ventas a crédito, que son
+ * ingreso aunque la plata no haya entrado.
+ */
+export function useIncomeStatement(range: { from: string; to: string } | null) {
+  return useQuery({
+    queryKey: ['reports', 'income-statement', range?.from, range?.to] as const,
+    queryFn: () =>
+      unwrap(
+        api.GET('/api/v1/reports/income-statement', {
+          params: { query: { from_date: range!.from, to_date: range!.to } },
+        }),
+      ),
+    enabled: !!range,
+  })
+}
