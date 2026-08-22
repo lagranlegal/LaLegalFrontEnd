@@ -2,6 +2,48 @@
 
 > Registro vivo de qué existe en el código, cómo está armado y por qué se tomó cada decisión — para que cualquiera (humano o Claude Code) pueda retomar el proyecto sin releer todo el historial de commits. Se actualiza en cada paso del "Orden de implementación" de `CLAUDE.md`. No repite lo que ya está en `ARCHITECTURE.md`/`DESIGN_SYSTEM.md` (el qué-debería-ser); esto es el qué-hay-hoy y las decisiones concretas tomadas al construirlo.
 
+## Extracto por cuenta y filtros en la URL (22/08/2026)
+
+Los dos pendientes chicos de los diez frentes. Sin migración.
+
+### Extracto por cuenta
+
+Completa una idea que el proyecto ya tenía **escrita desde `00024`** y nunca construyó: *"solo las cuentas `cash` entran al arqueo — el resto lleva saldo corriente y se concilia aparte"*. El saldo ya se mostraba; el **"aparte"** no existía, así que la pantalla de Cuentas decía **cuánto** hay en el banco pero no **cómo** se llegó ahí. Y sin eso, una diferencia contra el banco no tiene dónde buscarse: si el banco dice 4.200.000 y el sistema 4.350.000, no hay nada que recorrer.
+
+`GET /accounts/{id}/statement` devuelve saldo inicial, cada movimiento con su saldo corriente, y saldo final. **Del más viejo al más nuevo**: un extracto se lee hacia abajo acumulando, como el del banco.
+
+**En efectivo no hay saldo corriente, y no es una carencia.** La base del cajón se vuelve a declarar en cada apertura y **no es un movimiento**, así que acumular el histórico daría un número sin significado —y negativo, porque los préstamos desembolsados superan lo cobrado—. Devolver un número igual sería **peor** que no devolverlo: alguien lo conciliaría contra el cajón y nunca cuadraría.
+
+Así que `has_running_balance` viene en `false`, los saldos en `null`, y la UI **explica por qué** en vez de mostrar una columna vacía — la ausencia del saldo es una decisión, no un dato que falte. Los movimientos sí se listan: sirven para ver qué pasó por el cajón.
+
+Solo exige `accounts.view`: es leer, no mover plata.
+
+### Filtros en la URL
+
+Los filtros de inventario vivían en `useState`: se perdían con un F5 y no se podían compartir. *"Mirá las compras por pagar de este proveedor"* era un link imposible de mandar.
+
+Ahora viven en la dirección, y con ellos **la pestaña activa** — sin eso, un link a "compras por pagar" abriría en Productos con el filtro puesto en una pestaña que no se ve, que es peor que no compartirlo.
+
+Al cambiar de pestaña **se limpian**: los filtros de Lotes no significan lo mismo en Egresos, y arrastrarlos daría una lista vacía sin explicación.
+
+Dos detalles que se notan al usarlo:
+
+- **`replace: true`.** Escribir cada tecla del buscador como entrada nueva del historial dejaría el botón «atrás» inservible: habría que pulsarlo una vez por letra para salir de la pantalla.
+- **Los valores vacíos se borran**, no se guardan como `''`. Si no, la URL quedaría `?q=&status=&cat1=` al limpiar los filtros. `mergeSearch` se extrajo como función pura justamente para poder probar eso — es la única lógica del hook y equivocarse ahí se nota en **cada** URL de la app. Uno de sus tests fija que un `"0"` no se borre: filtrar con `!valor` es la trampa clásica.
+
+Los `useState` que quedan son de diálogos, y ahí se quedan: que un modal esté abierto no es un filtro compartible.
+
+### Verificación
+
+```
+pytest -q            # 280/280 (277 previos + 3 nuevos)
+npm run typecheck && npm run lint && npm run test && npm run build   # 129/129
+```
+
+Ambos despliegues verificados con `vercel ls` y contra el `/openapi.json`.
+
+---
+
 ## Estado de resultados — y el KPI que mentía (22/08/2026)
 
 Sin migración.
