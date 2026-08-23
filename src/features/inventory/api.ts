@@ -254,6 +254,37 @@ export function useProductPurchases(productId: string | undefined) {
 
 export type Transformation = components['schemas']['TransformationOut']
 export type TransformationCreateIn = components['schemas']['TransformationCreateIn']
+export type TransformationSummary = components['schemas']['TransformationSummaryOut']
+
+/**
+ * Historial de transformaciones — de la más reciente a la más vieja.
+ *
+ * Fundir es la única operación de la app donde desaparece mercancía
+ * identificada y aparece otra distinta. Una venta deja comprobante y un remate
+ * deja contrato; fundir no dejaba nada consultable, así que "¿de dónde salió
+ * este oro?" no tenía respuesta dentro de la aplicación aunque el dato
+ * estuviera completo en la base.
+ */
+export function useTransformationsList(filters: { from_date?: string; to_date?: string } = {}) {
+  const query = { from_date: filters.from_date || undefined, to_date: filters.to_date || undefined }
+  return useCursorInfiniteQuery(['inventory', 'transformations', query] as const, (cursor) =>
+    unwrap(api.GET('/api/v1/inventory/transformations', { params: { query: { ...query, cursor } } })),
+  )
+}
+
+/** Detalle: qué entró, qué salió y cómo se repartió el costo. */
+export function useTransformation(transformationId: string | undefined) {
+  return useQuery({
+    queryKey: ['inventory', 'transformations', 'detail', transformationId] as const,
+    queryFn: () =>
+      unwrap(
+        api.GET('/api/v1/inventory/transformations/{transformation_id}', {
+          params: { path: { transformation_id: transformationId! } },
+        }),
+      ),
+    enabled: !!transformationId,
+  })
+}
 
 /**
  * Fundir, despiezar o armar: entran N artículos, salen M y el costo viaja.

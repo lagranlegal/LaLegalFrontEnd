@@ -10,7 +10,8 @@ import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { subtractMoney } from '@/lib/money'
 import { formatDate } from '@/lib/dates'
-import { useUpdateItem, usePublishItem } from '@/features/inventory/api'
+import { useUpdateItem, usePublishItem, useTransformation } from '@/features/inventory/api'
+import { TransformationDetailDialog } from '@/features/inventory/components/TransformationDetailDialog'
 import { useContract } from '@/lib/contracts/reference'
 import { useCategories } from '@/lib/catalogs/categories'
 import { useSuppliers } from '@/lib/catalogs/suppliers'
@@ -36,9 +37,39 @@ function SupplierOriginInfo({ supplierId }: { supplierId: string }) {
   return <p className="text-xs text-muted-foreground">Comprado a {supplier?.name ?? '…'}</p>
 }
 
+/**
+ * Transformación de la que salió este lote — el puntero de vuelta que 00039
+ * agregó.
+ *
+ * Es la pregunta que la app no podía responder: parada en un lote de oro,
+ * "¿de dónde saliste?". El vínculo existía en los datos desde 00037, pero a
+ * cuatro saltos y sin ningún endpoint que los recorriera. Para una compraventa
+ * importa porque ese oro puede venir de la prenda de un cliente.
+ */
+function TransformationOriginInfo({ transformationId }: { transformationId: string }) {
+  const { data: transformacion } = useTransformation(transformationId)
+  const [abierto, setAbierto] = useState(false)
+  return (
+    <>
+      <p className="text-xs text-muted-foreground">
+        Producido en la{' '}
+        <button type="button" className="text-primary hover:underline" onClick={() => setAbierto(true)}>
+          transformación {transformacion ? `#${transformacion.number}` : '…'}
+        </button>
+      </p>
+      {abierto && (
+        <TransformationDetailDialog open onOpenChange={setAbierto} transformationId={transformationId} />
+      )}
+    </>
+  )
+}
+
 function ItemOriginInfo({ item }: { item: Item }) {
   if (item.origin === 'auction' && item.source_contract_id) return <AuctionOriginInfo contractId={item.source_contract_id} />
   if (item.origin === 'supplier' && item.supplier_id) return <SupplierOriginInfo supplierId={item.supplier_id} />
+  // Va después de las otras dos aunque los tres punteros sean excluyentes: el
+  // orden refleja cuál es más frecuente, no una precedencia.
+  if (item.source_transformation_id) return <TransformationOriginInfo transformationId={item.source_transformation_id} />
   return null
 }
 

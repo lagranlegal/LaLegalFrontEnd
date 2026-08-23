@@ -1184,7 +1184,29 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get?: never;
+        /**
+         * List Transformations
+         * @description Historial de transformaciones — de la más reciente a la más vieja.
+         *
+         *     Fundir es la única operación donde **desaparece mercancía identificada y
+         *     aparece otra distinta**. Una venta deja comprobante y un remate deja
+         *     contrato; hasta acá, fundir no dejaba nada que se pudiera consultar, así
+         *     que la pregunta *"¿de dónde salieron estos gramos de oro?"* no tenía
+         *     respuesta dentro de la aplicación.
+         *
+         *     Importa por tres razones que no son técnicas:
+         *
+         *     · **Legal** — ese oro puede venir de la prenda de un cliente. Ante un
+         *       reclamo, la cadena tiene que poder recorrerse hacia atrás.
+         *     · **Contable** — el costo de lo producido salió de repartir el de lo
+         *       consumido. Un costo sin forma de auditar su origen es un número sin
+         *       respaldo, y es el que determina la utilidad de la venta.
+         *     · **Operativa** — entraron 34 g de prendas y salieron 31,2 g de oro. Esa
+         *       merma es información, y sin historial se perdía.
+         *
+         *     Basta `inventory.view`: es leer, no transformar.
+         */
+        get: operations["list_transformations_api_v1_inventory_transformations_get"];
         put?: never;
         /**
          * Create Transformation
@@ -2254,6 +2276,13 @@ export interface components {
             /** Next Cursor */
             next_cursor?: string | null;
         };
+        /** CursorPage[TransformationSummaryOut] */
+        CursorPage_TransformationSummaryOut_: {
+            /** Items */
+            items: components["schemas"]["TransformationSummaryOut"][];
+            /** Next Cursor */
+            next_cursor?: string | null;
+        };
         /** CursorPage[UserOut] */
         CursorPage_UserOut_: {
             /** Items */
@@ -2805,6 +2834,8 @@ export interface components {
             supplier_id: string | null;
             /** Source Contract Id */
             source_contract_id: string | null;
+            /** Source Transformation Id */
+            source_transformation_id?: string | null;
             /** Cost */
             cost: string;
             /** Sale Price */
@@ -3977,6 +4008,56 @@ export interface components {
             sale_price?: number | string | null;
             /** Estimated Value */
             estimated_value?: number | string | null;
+        };
+        /**
+         * TransformationSummaryOut
+         * @description Una fila del historial de transformaciones.
+         *
+         *     Trae el resumen de las dos puntas —qué entró, qué salió— porque la
+         *     pregunta que se le hace a esta lista es "¿de dónde salió este oro?", y
+         *     obligar a abrir cada fila para responderla la volvería inútil.
+         *
+         *     No incluye `consumed`/`produced` completos a propósito: son dos consultas
+         *     por fila y en una lista de cincuenta transformaciones eso es un problema
+         *     de rendimiento sin nada a cambio. El detalle está en
+         *     `GET /inventory/transformations/{id}`.
+         */
+        TransformationSummaryOut: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Number */
+            number: number;
+            /**
+             * Transform Date
+             * Format: date
+             */
+            transform_date: string;
+            /** Reason */
+            reason: string;
+            /** Notes */
+            notes: string | null;
+            /** Extra Cost */
+            extra_cost: string;
+            /** Total Cost */
+            total_cost: string;
+            /** Input Count */
+            input_count: number;
+            /** Output Count */
+            output_count: number;
+            /** Input Names */
+            input_names: string | null;
+            /** Output Names */
+            output_names: string | null;
+            /** Created By Name */
+            created_by_name: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
         };
         /** UpdateUserRoleIn */
         UpdateUserRoleIn: {
@@ -6568,6 +6649,40 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ProductPurchaseOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_transformations_api_v1_inventory_transformations_get: {
+        parameters: {
+            query?: {
+                cursor?: string | null;
+                limit?: number;
+                from_date?: string | null;
+                to_date?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CursorPage_TransformationSummaryOut_"];
                 };
             };
             /** @description Validation Error */

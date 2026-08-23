@@ -41,6 +41,9 @@ type SetPasswordValues = z.infer<typeof setPasswordSchema>
 export function AuthCallbackPage() {
   const navigate = useNavigate()
   const [status, setStatus] = useState<'loading' | 'ready' | 'invalid'>('loading')
+  //: La contraseña ya quedó guardada y estamos esperando a que la app cargue.
+  //: Es una fase aparte de `setPassword.isPending` y dura MÁS que ella.
+  const [entrando, setEntrando] = useState(false)
   const setPassword = useSetPassword()
   const {
     register,
@@ -56,6 +59,13 @@ export function AuthCallbackPage() {
 
   async function onSubmit(values: SetPasswordValues) {
     await setPassword.mutateAsync(values.password)
+    // `setPassword.isPending` se apaga en cuanto Supabase responde, pero acá
+    // todavía falta lo más lento: `navigate` dispara el `beforeLoad` del
+    // layout de la app, que espera `GET /me`. Sin este estado propio el botón
+    // volvía a decir "Guardar contraseña" y la pantalla se quedaba quieta unos
+    // segundos antes de saltar al inicio — la interfaz afirmando que no estaba
+    // pasando nada justo cuando más estaba pasando.
+    setEntrando(true)
     await navigate({ to: '/' })
   }
 
@@ -113,9 +123,15 @@ export function AuthCallbackPage() {
 
         {setPassword.isError && <p className="rounded-input bg-danger-soft px-3 py-2 text-sm text-danger">No se pudo guardar la contraseña. Intenta de nuevo.</p>}
 
-        <Button type="submit" disabled={setPassword.isPending} className="mt-2 w-full rounded-pill">
-          {setPassword.isPending ? 'Guardando…' : 'Guardar contraseña'}
+        <Button type="submit" disabled={setPassword.isPending || entrando} className="mt-2 w-full rounded-pill">
+          {entrando ? 'Entrando…' : setPassword.isPending ? 'Guardando…' : 'Guardar contraseña'}
         </Button>
+
+        {entrando && (
+          <p className="text-center text-xs text-muted-foreground">
+            Tu contraseña quedó guardada. Preparando tu empresa…
+          </p>
+        )}
       </form>
     </div>
   )

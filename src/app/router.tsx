@@ -8,6 +8,7 @@ import { ApiError } from '@/lib/api/client'
 import { AuthLayout } from '@/app/layouts/AuthLayout'
 import { PlatformLayout } from '@/app/layouts/PlatformLayout'
 import { AppShell } from '@/components/shared/AppShell'
+import { RouteTransitionBar } from '@/components/shared/RouteTransitionBar'
 import { isSuperAdmin } from '@/lib/auth/platform'
 import { SubscriptionBlockedPage } from '@/app/pages/SubscriptionBlockedPage'
 import { NotFoundPage } from '@/app/pages/NotFoundPage'
@@ -41,7 +42,15 @@ interface RouterContext {
 }
 
 const rootRoute = createRootRouteWithContext<RouterContext>()({
-  component: () => <Outlet />,
+  // La barra va en la RAÍZ para que cubra toda navegación, incluidas las que
+  // salen de `/auth/*` hacia la app — que son justo las más largas, porque el
+  // `beforeLoad` del layout espera `GET /me` (ver RouteTransitionBar).
+  component: () => (
+    <>
+      <RouteTransitionBar />
+      <Outlet />
+    </>
+  ),
   notFoundComponent: NotFoundPage,
   // Red de seguridad para errores no manejados por una ruta específica —
   // ej. NetworkError si el backend no responde durante el bootstrap de /me.
@@ -272,7 +281,7 @@ const cashboxRoute = createRoute({
  * pantalla limpia, y así el link más corto sigue funcionando.
  */
 const inventorySearchSchema = z.object({
-  tab: z.enum(['products', 'items', 'entries', 'exits']).optional(),
+  tab: z.enum(['products', 'items', 'entries', 'exits', 'transformations']).optional(),
   q: z.string().optional(),
   status: z.string().optional(),
   cat1: z.string().optional(),

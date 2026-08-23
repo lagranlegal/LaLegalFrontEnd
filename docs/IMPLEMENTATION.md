@@ -2,6 +2,91 @@
 
 > Registro vivo de qué existe en el código, cómo está armado y por qué se tomó cada decisión — para que cualquiera (humano o Claude Code) pueda retomar el proyecto sin releer todo el historial de commits. Se actualiza en cada paso del "Orden de implementación" de `CLAUDE.md`. No repite lo que ya está en `ARCHITECTURE.md`/`DESIGN_SYSTEM.md` (el qué-debería-ser); esto es el qué-hay-hoy y las decisiones concretas tomadas al construirlo.
 
+## Trazabilidad de la transformación, y la navegación que no avisaba (22/08/2026)
+
+Migración `00039_item_source_transformation.sql` (aditiva, con backfill).
+
+### El hueco: el oro no sabía de dónde salió
+
+`00037` construyó la transformación y dejó escrito que con ella *"la trazabilidad de una pieza rematada sobrevive: contrato → remate → artículo → transformación → lote de oro"*. Cierto — pero **solo en esa dirección**. Parado en el lote de oro no había forma de volver: el camino era `item → línea de ingreso → ingreso → transformación`, cuatro saltos y **ningún endpoint que los recorriera**.
+
+Salió al explicarle a Mateo cómo funcionaban los códigos en una fundición. Es el segundo hueco que aparece **explicando** en vez de programando.
+
+Para una compraventa importa por tres razones que no son técnicas:
+
+- **Legal** — ese oro puede venir de la prenda de un cliente. Ante un reclamo, la cadena tiene que poder recorrerse hacia atrás desde lo que hay hoy en la vitrina.
+- **Contable** — el costo de lo producido salió de repartir el de lo consumido. Un costo sin forma de auditar su origen es un número sin respaldo, y es el que determina la utilidad de la venta.
+- **Operativa** — entraron 34 g de prendas y salieron 31,2 g de oro. Esa merma es información, y se perdía.
+
+### `source_transformation_id`: el tercer puntero de origen
+
+Junto a `supplier_id` y `source_contract_id`, y los tres **excluyentes**: dicen respectivamente que la mercancía se compró, se remató o se produjo acá. Ninguno de los tres = mercancía propia sin documento externo.
+
+El documento pasó a insertarse **antes** de los lotes que produce (la FK lo exige). Efecto lateral bienvenido: el choque de `Idempotency-Key` ahora revienta **antes** de tocar stock.
+
+### La letra `T`
+
+Hasta acá, todo lo que no era proveedor ni remate caía en la `P` de "propio". O sea que una etiqueta **no distinguía oro fundido de mercancía que ya estaba el día uno** — dos cosas con costo, origen y respaldo documental completamente distintos bajo la misma letra.
+
+Ahora: `R` remate · `P` propio · `T` transformado · o la letra del proveedor.
+
+**Los códigos ya emitidos no se recalculan.** Un lote publicado como `P` antes de hoy se queda `P`: el código es inmutable y la etiqueta impresa que está pegada a la bolsa no se puede cambiar desde una migración. Lo que sí gana es el puntero, así que la app muestra su origen aunque la letra no lo diga.
+
+### Letras reservadas — y una que ya estaba tomada
+
+`R`, `P` y `T` **no estaban reservadas**: nada impedía crear un proveedor "Rodríguez" con letra `R` cuyos artículos quedaran indistinguibles de los rematados. En dev ya había un proveedor con `P`.
+
+Se valida **solo al escribir**, no con un CHECK en la base: prohibirlas hacia atrás rompería el guardado de proveedores que ya las tienen, y sus códigos impresos son inmutables.
+
+La reserva es **solo de proveedores**. Las letras de categoría forman el *prefijo* (`JOC0001`) y la de origen el *sufijo* (`-01R`): no comparten posición, así que "Relojes" conserva su inicial natural.
+
+Dos cosas más en el camino:
+
+- **Normalización a mayúscula y solo A-Z.** El índice de unicidad distingue mayúsculas, así que un proveedor `r` y otro `R` convivían como dos distintos, generando códigos que solo se diferencian por algo invisible en una etiqueta impresa. Nada de `Ñ` ni dígitos: el código termina escrito a mano en un buscador.
+- **Un test flaky latente.** `test_list_suppliers` usaba `str(uuid4())[:1].upper()` como letra. La primera posición de un uuid es hexadecimal, así que **una de cada tres veces salía un dígito** — pasaba solo porque el único filtro era el largo.
+
+### Historial de transformaciones
+
+`GET /inventory/transformations` + pestaña en Inventario. **De la más reciente a la más vieja**, al revés que el resto de listados del módulo: acá lo último que se fundió es lo que se busca. El cursor sigue siendo el `id` y se traduce a su `number` en la misma consulta — `number` ordena cronológicamente, un `uuid4` no.
+
+Cada fila trae el resumen de las dos puntas (qué entró, qué salió) para no tener que abrir el detalle solo para entender de qué se trató. **No** trae los `ItemOut` completos: son dos consultas por fila y en cincuenta transformaciones eso es un problema de rendimiento sin nada a cambio.
+
+El detalle calcula la **merma**, pero solo cuando todo comparte una misma unidad: fundir gramos y sacar gramos es comparable; despiezar un celular (1 unidad) en tres piezas no lo es, y ahí *"salió más de lo que entró"* sería una lectura sin sentido.
+
+Y desde el lote se llega de vuelta: `ItemEditDialog` gana *"Producido en la transformación #12"*, junto a las que ya existían para remate y proveedor.
+
+Basta `inventory.view`: leer el historial no necesita `inventory.transform`.
+
+### El bug de navegación: la app decía que no pasaba nada
+
+Reportado como *"al crear la contraseña se queda cargando, luego deja de cargar permaneciendo en la misma pantalla y después de un rato lleva al inicio"*.
+
+No era de esa pantalla. **Era de toda la app.**
+
+`createRouter` no tenía `defaultPendingComponent`, y TanStack Router, mientras corre el `beforeLoad` de la ruta destino, **sigue mostrando la pantalla anterior**. El `beforeLoad` del layout espera dos cosas por red (`getSession()` y `GET /me`), así que cada navegación a una pantalla protegida tenía una ventana en la que la interfaz se veía **exactamente igual** que antes del clic.
+
+Los tres momentos que describió Mateo eran: la contraseña guardándose, la contraseña ya guardada con el router trabajando en silencio, y el `/me` respondiendo. El del medio no tenía ningún indicador.
+
+Dos arreglos:
+
+- **`RouteTransitionBar`** en la ruta raíz — barra fija arriba mientras `router.state.status === 'pending'`. Va ahí y no como `defaultPendingComponent` porque un pending component **reemplaza** el contenido: un salto de pestaña de medio segundo parpadearía a blanco. Superpuesta, lo anterior sigue visible, que es lo correcto cuando la espera es corta.
+- **`AuthCallbackPage`** gana un estado `entrando` propio. `setPassword.isPending` se apaga en cuanto Supabase responde, pero ahí todavía falta lo más lento — así que el botón volvía a decir "Guardar contraseña" mientras la pantalla se quedaba quieta. Ahora dice "Entrando…" y explica que la contraseña ya quedó guardada.
+
+### Lo que NO se hizo
+
+`P` sigue mezclando **inventario inicial** y **sobrante de conteo**. Son dos orígenes distintos bajo una letra, igual que antes lo eran tres. Se dejó así porque los dos son "mercancía propia sin documento externo" y la distinción no cambia ni el costeo ni la trazabilidad legal — a diferencia de la transformación, que sí tiene un documento detrás.
+
+### Verificación
+
+```
+pytest -q            # 284/284 (280 previos + 4 nuevos)
+npm run typecheck && npm run lint && npm run test && npm run build   # 129/129
+```
+
+Migración aplicada a local y a dev; backfill recuperó el lote de oro que ya existía de las pruebas.
+
+---
+
 ## Extracto por cuenta y filtros en la URL (22/08/2026)
 
 Los dos pendientes chicos de los diez frentes. Sin migración.

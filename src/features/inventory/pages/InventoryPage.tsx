@@ -26,6 +26,7 @@ import { ProductPriceDialog } from '@/features/inventory/components/ProductPrice
 import { EmptyState } from '@/components/shared/EmptyState'
 import { isPermissionError } from '@/lib/api/isPermissionError'
 import { ExitFormDialog } from '@/features/inventory/components/ExitFormDialog'
+import { TransformationsTab } from '@/features/inventory/components/TransformationsTab'
 import { useInventorySearch } from '@/features/inventory/useInventorySearch'
 
 const ITEM_STATUS_TABS = [
@@ -691,6 +692,7 @@ export function InventoryPage() {
           <TabsTrigger value="items">Lotes</TabsTrigger>
           <TabsTrigger value="entries">Ingresos</TabsTrigger>
           <TabsTrigger value="exits">Egresos</TabsTrigger>
+          <TabsTrigger value="transformations">Transformaciones</TabsTrigger>
         </TabsList>
         <TabsContent value="products">
           <ProductsTab />
@@ -703,6 +705,9 @@ export function InventoryPage() {
         </TabsContent>
         <TabsContent value="exits">
           <ExitsTab />
+        </TabsContent>
+        <TabsContent value="transformations">
+          <TransformationsTab />
         </TabsContent>
       </Tabs>
     </div>
