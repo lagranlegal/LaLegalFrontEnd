@@ -252,6 +252,30 @@ export function useProductPurchases(productId: string | undefined) {
   })
 }
 
+export type Kardex = components['schemas']['KardexOut']
+export type KardexLine = components['schemas']['KardexLineOut']
+
+/**
+ * Kardex: el libro auxiliar de inventario de un producto.
+ *
+ * Su historia completa en una sola línea de tiempo —cada ingreso, egreso,
+ * venta y anulación— con saldo de unidades y de costo corriendo. Los datos
+ * viven en tres tablas que solo se consultaban hacia adelante (dado un
+ * documento, qué artículos trajo); "¿qué pasó con este producto?" es la
+ * dirección contraria y no la respondía nadie.
+ *
+ * Sin fechas trae la historia entera, que es lo que se quiere por defecto: acá
+ * se busca de dónde salió el saldo, no conciliar un mes.
+ */
+export function useProductKardex(productId: string | undefined) {
+  return useQuery({
+    queryKey: ['inventory', 'products', productId, 'kardex'] as const,
+    queryFn: () =>
+      unwrap(api.GET('/api/v1/inventory/products/{product_id}/kardex', { params: { path: { product_id: productId! } } })),
+    enabled: !!productId,
+  })
+}
+
 export type Transformation = components['schemas']['TransformationOut']
 export type TransformationCreateIn = components['schemas']['TransformationCreateIn']
 export type TransformationSummary = components['schemas']['TransformationSummaryOut']

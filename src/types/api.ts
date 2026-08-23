@@ -1153,6 +1153,51 @@ export interface paths {
         patch: operations["update_product_api_v1_inventory_products__product_id__patch"];
         trace?: never;
     };
+    "/api/v1/inventory/products/{product_id}/kardex": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Product Kardex
+         * @description **Kardex**: el libro auxiliar de inventario de un producto — su historia
+         *     completa en una sola línea de tiempo, con saldo de unidades y de costo
+         *     corriendo.
+         *
+         *     El dato existía; la pregunta no. Los movimientos viven en **tres tablas de
+         *     líneas** (`inventory_entry_line`, `inventory_exit_line`, `sale_line`) que
+         *     se consultan **hacia adelante**: dado un ingreso, qué artículos trajo.
+         *     *"¿Qué pasó con este producto?"* es la dirección contraria, y no la
+         *     respondía nadie.
+         *
+         *     Reúne cuatro clases de movimiento, y **una de ellas no existe como fila**:
+         *     anular una venta repone el stock pero no escribe ninguna línea inversa
+         *     —solo cambia el estado de la venta—, así que se sintetiza. Sin eso el
+         *     kardex mostraría una salida que nunca vuelve y su saldo no cuadraría contra
+         *     el stock real.
+         *
+         *     **La valoración es POR LOTE, nunca promediada** (identificación específica,
+         *     NIIF). Dos lotes del mismo producto comprados a precios distintos salen
+         *     cada uno con el suyo — por eso `running_value` **no** se puede derivar de
+         *     `running_quantity`: es la suma de lo que costó lo que queda.
+         *
+         *     Sin `from_date` devuelve la historia entera. Es a propósito y es lo
+         *     contrario del extracto de una cuenta, que arranca en los últimos 30 días:
+         *     ahí se busca conciliar el mes, acá se busca de dónde salió el saldo. El
+         *     saldo se acumula **desde el primer movimiento**; lo anterior al rango se
+         *     comprime en `opening_quantity`/`opening_value`.
+         */
+        get: operations["get_product_kardex_api_v1_inventory_products__product_id__kardex_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/inventory/products/{product_id}/purchases": {
         parameters: {
             query?: never;
@@ -2884,6 +2929,107 @@ export interface components {
         ItemUpdateIn: {
             /** Photos */
             photos?: string[] | null;
+        };
+        /**
+         * KardexLineOut
+         * @description Un movimiento del producto, con el saldo DESPUÉS de él.
+         */
+        KardexLineOut: {
+            /**
+             * Date
+             * Format: date
+             */
+            date: string;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "entry" | "exit" | "sale" | "sale_void";
+            /** Kind Detail */
+            kind_detail: string;
+            /**
+             * Reference Id
+             * Format: uuid
+             */
+            reference_id: string;
+            /** Reference Number */
+            reference_number: number;
+            /** Detail */
+            detail: string | null;
+            /**
+             * Item Id
+             * Format: uuid
+             */
+            item_id: string;
+            /** Item Code */
+            item_code: string | null;
+            /** Lot Number */
+            lot_number: number | null;
+            /** Quantity In */
+            quantity_in: string;
+            /** Quantity Out */
+            quantity_out: string;
+            /** Unit Cost */
+            unit_cost: string;
+            /** Running Quantity */
+            running_quantity: string;
+            /** Running Value */
+            running_value: string;
+        };
+        /**
+         * KardexOut
+         * @description Kardex: el libro auxiliar de inventario de un producto.
+         *
+         *     La historia completa en una sola línea de tiempo — cada ingreso, egreso,
+         *     venta y anulación— con saldo de unidades y de costo corriendo.
+         *
+         *     Existía el dato y no la pregunta: los movimientos viven en TRES tablas de
+         *     líneas (`inventory_entry_line`, `inventory_exit_line`, `sale_line`) que se
+         *     consultan **hacia adelante** (dado un documento, qué artículos trajo).
+         *     "¿Qué pasó con este producto?" es la dirección contraria, y no la
+         *     respondía nadie.
+         *
+         *     LA VALORACIÓN ES POR LOTE. Cada movimiento se valora al costo del lote que
+         *     se movió, nunca a un promedio: identificación específica (NIIF). Dos lotes
+         *     del mismo producto comprados a precios distintos salen cada uno con el
+         *     suyo, y por eso `running_value` no se puede derivar de `running_quantity`.
+         */
+        KardexOut: {
+            /**
+             * Product Id
+             * Format: uuid
+             */
+            product_id: string;
+            /** Name */
+            name: string;
+            /** Unit */
+            unit: string;
+            /** Unit Abbr */
+            unit_abbr: string;
+            /**
+             * From Date
+             * Format: date
+             */
+            from_date: string;
+            /**
+             * To Date
+             * Format: date
+             */
+            to_date: string;
+            /** Opening Quantity */
+            opening_quantity: string;
+            /** Opening Value */
+            opening_value: string;
+            /** Total In */
+            total_in: string;
+            /** Total Out */
+            total_out: string;
+            /** Closing Quantity */
+            closing_quantity: string;
+            /** Closing Value */
+            closing_value: string;
+            /** Lines */
+            lines: components["schemas"]["KardexLineOut"][];
         };
         /** MeCompanyOut */
         MeCompanyOut: {
@@ -6618,6 +6764,42 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ProductOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_product_kardex_api_v1_inventory_products__product_id__kardex_get: {
+        parameters: {
+            query?: {
+                /** @description Inclusivo. Por defecto, desde el primer movimiento. */
+                from_date?: string | null;
+                /** @description Inclusivo. Por defecto, hoy. */
+                to_date?: string | null;
+            };
+            header?: never;
+            path: {
+                product_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["KardexOut"];
                 };
             };
             /** @description Validation Error */

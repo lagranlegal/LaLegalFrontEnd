@@ -2,6 +2,54 @@
 
 > Registro vivo de qué existe en el código, cómo está armado y por qué se tomó cada decisión — para que cualquiera (humano o Claude Code) pueda retomar el proyecto sin releer todo el historial de commits. Se actualiza en cada paso del "Orden de implementación" de `CLAUDE.md`. No repite lo que ya está en `ARCHITECTURE.md`/`DESIGN_SYSTEM.md` (el qué-debería-ser); esto es el qué-hay-hoy y las decisiones concretas tomadas al construirlo.
 
+## Kardex por producto (23/08/2026)
+
+Migración `00040_kardex_indexes.sql` (solo índices).
+
+### El dato existía; la pregunta no
+
+El movimiento de un producto vive en **tres tablas de líneas** —`inventory_entry_line`, `inventory_exit_line`, `sale_line`— y **nada las unía**. Las tres están indexadas por su documento porque siempre se consultaron **hacia adelante**: *dado un ingreso, qué artículos trajo*. La pregunta del kardex es la contraria —*dado un producto, qué documentos lo tocaron*— y no la respondía nadie.
+
+`GET /inventory/products/{id}/kardex` la responde: la historia completa en una línea de tiempo, con saldo de unidades y de costo corriendo.
+
+### El movimiento que no existe como fila
+
+**Anular una venta repone el stock pero no escribe nada.** `void_sale` cambia el `status` de la venta y le devuelve la cantidad al lote — no hay línea inversa en ninguna tabla. O sea que ese movimiento existe en el stock y en ningún registro.
+
+Hay que **sintetizarlo**. Sin eso el kardex mostraría una salida que nunca vuelve, y su saldo quedaría por debajo del real para siempre — que es exactamente la clase de error que hace que un libro auxiliar no sirva.
+
+La fecha sale de `updated_at`, porque no hay columna `voided_at`. Es confiable **acá y solo acá**: se verificó que `void_sale` es el único `UPDATE` sobre `sale` en todo el backend, y un trigger mueve `updated_at`. Queda anotado en el SQL: si algún día la venta se pudiera editar por otro camino, esa fecha deja de significar "cuándo se anuló".
+
+### La valoración es por lote, y por eso hay dos columnas de saldo
+
+Las unidades dicen **cuánto hay**; el costo dice **cuánto vale lo que hay**. La segunda **no se deriva de la primera**: cada lote conserva su costo real (identificación específica, NIIF), así que tres unidades pueden valer 360.000 o 300.000 según de qué lote salgan.
+
+El test lo fija con dos lotes del mismo producto a 100.000 y 160.000: al vender una del caro, el saldo baja a 360.000. Si se promediara diría 390.000.
+
+Por eso cada línea muestra **de qué lote** salió el movimiento — sin eso, dos salidas del mismo producto a costos distintos parecerían un error de cálculo.
+
+### Decisiones que se notan al usarlo
+
+- **Sin filtro de fechas trae la historia entera**, al revés que el extracto de una cuenta (que arranca en los últimos 30 días). No es inconsistencia: en un extracto se busca conciliar el mes; en un kardex se busca **de dónde salió el saldo**. Un kardex que arrancara en cero al cambiar el filtro no sería un kardex, sería una lista de movimientos.
+- **El saldo se acumula desde el primer movimiento.** Lo anterior al rango se comprime en `opening_quantity`/`opening_value`; por eso la consulta trae toda la historia hasta `to_date` y el corte lo hace el servicio.
+- **Botón "Kardex" en la fila del producto**, no una tercera pestaña dentro del desplegable. Mismo criterio que "Extracto" en Cuentas: los dos son el libro de un mismo objeto y los dos necesitan más ancho del que da una fila.
+- **Orden determinista con tres criterios** (`fecha`, `orden`, `item_id`). Todas las líneas de un ingreso comparten `created_at` —Postgres devuelve el instante de inicio de la transacción— así que sin el tercero el saldo corriente cambiaría entre consultas.
+
+### El índice que faltaba desde 00006
+
+`inventory_exit_line` no tenía **ningún** índice fuera de su clave primaria — ni siquiera por `exit_id`, que es como lo consulta el detalle de un egreso desde el día uno. Ingresos y ventas sí lo tenían. Pasó desapercibido porque los egresos son pocos.
+
+### Verificación
+
+```
+pytest -q            # 285/285 (284 previos + 1 nuevo)
+npm run typecheck && npm run lint && npm run test && npm run build   # 129/129
+```
+
+El test que justifica todo lo demás compara el saldo final del kardex contra la suma de los lotes — la otra forma, independiente, de responder cuánto hay.
+
+---
+
 ## Trazabilidad de la transformación, y la navegación que no avisaba (22/08/2026)
 
 Migración `00039_item_source_transformation.sql` (aditiva, con backfill).

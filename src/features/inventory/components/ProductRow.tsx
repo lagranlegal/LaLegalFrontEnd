@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { ChevronDown, ChevronRight } from 'lucide-react'
+import { KardexDialog } from '@/features/inventory/components/KardexDialog'
 import { Money } from '@/components/shared/Money'
 import { StatusBadge } from '@/components/shared/StatusBadge'
 import { Button } from '@/components/ui/button'
@@ -150,6 +151,7 @@ function LotList({ productId }: { productId: string }) {
  */
 export function ProductRow({ product, onEditPrice }: { product: Product; onEditPrice: (product: Product) => void }) {
   const [open, setOpen] = useState(false)
+  const [kardexOpen, setKardexOpen] = useState(false)
   const varios = product.lot_count > 1
   // Rango de costos, no promedio: promediar destruiría el costo real de cada
   // lote, que es lo que sostiene el cálculo de utilidad por venta.
@@ -194,6 +196,13 @@ export function ProductRow({ product, onEditPrice }: { product: Product; onEditP
             <span className="block text-xs text-muted-foreground">Precio</span>
             {product.sale_price ? <Money value={product.sale_price} className="font-medium text-foreground" /> : <span className="text-sm text-muted-foreground">Sin precio</span>}
           </span>
+          {/* Mismo lugar y mismo criterio que "Extracto" en Cuentas: los dos
+              son el libro de un mismo objeto —qué le pasó y cómo quedó su
+              saldo— y los dos necesitan más ancho del que da una fila. Basta
+              `inventory.view`: es leer. */}
+          <Button variant="ghost" size="sm" onClick={() => setKardexOpen(true)}>
+            Kardex
+          </Button>
           <Can permission="inventory.create">
             <Button variant="outline" size="sm" onClick={() => onEditPrice(product)}>
               Cambiar precio
@@ -222,6 +231,10 @@ export function ProductRow({ product, onEditPrice }: { product: Product; onEditP
             </TabsContent>
           </Tabs>
         </div>
+      )}
+
+      {kardexOpen && (
+        <KardexDialog open onOpenChange={setKardexOpen} productId={product.id} />
       )}
     </div>
   )
