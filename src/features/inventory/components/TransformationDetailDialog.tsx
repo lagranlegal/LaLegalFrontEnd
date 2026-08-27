@@ -1,5 +1,6 @@
 import { AppDialog } from '@/components/shared/AppDialog'
 import { Money } from '@/components/shared/Money'
+import { TableSkeleton } from '@/components/shared/TableSkeleton'
 import { Button } from '@/components/ui/button'
 import { formatDate } from '@/lib/dates'
 import { formatQuantity, unitAbbr } from '@/lib/inventory/units'
@@ -107,7 +108,13 @@ export function TransformationDetailDialog({
       size="lg"
     >
       <div className="flex flex-col gap-4">
-        {isPending && <div className="h-48 animate-pulse rounded-card bg-muted/40" />}
+        {isPending && (
+          <div className="flex flex-col gap-4">
+            <div className="h-16 animate-pulse rounded-card bg-border" />
+            <TableSkeleton rows={3} columns={4} />
+            <TableSkeleton rows={3} columns={4} />
+          </div>
+        )}
 
         {isError && (
           <div className="flex flex-col items-start gap-2">

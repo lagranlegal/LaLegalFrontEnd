@@ -137,7 +137,7 @@ export function AccountsPage() {
       {isPending && (
         <div className="flex flex-col gap-3">
           {[0, 1, 2].map((row) => (
-            <div key={row} className="h-20 animate-pulse rounded-card bg-muted" />
+            <div key={row} className="h-20 animate-pulse rounded-card bg-border" />
           ))}
         </div>
       )}

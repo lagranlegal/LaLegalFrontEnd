@@ -84,7 +84,7 @@ function CardShell({ title, subtitle, children }: { title: string; subtitle?: st
 function ProfitCard({ range }: { range: DateRangeValue | null }) {
   const { data: profit, isPending, isError } = useProfitSummary(range)
 
-  if (isPending) return <div className="h-28 animate-pulse rounded-card border border-border bg-muted/40" />
+  if (isPending) return <div className="h-28 animate-pulse rounded-card border border-border bg-border" />
   if (isError || !profit) return null
 
   const loss = Number(profit.gross_profit) < 0
@@ -138,7 +138,7 @@ function ProfitCard({ range }: { range: DateRangeValue | null }) {
 function PawnCard({ range }: { range: DateRangeValue | null }) {
   const { data: pawn, isPending, isError } = usePawnPerformance(range)
 
-  if (isPending) return <div className="h-28 animate-pulse rounded-card border border-border bg-muted/40" />
+  if (isPending) return <div className="h-28 animate-pulse rounded-card border border-border bg-border" />
   if (isError || !pawn) return null
 
   return (
@@ -215,7 +215,7 @@ function RankingList({ rows, unit }: { rows: { key: string; label: string; quant
 function IncomeStatementCard({ range }: { range: DateRangeValue | null }) {
   const { data, isPending, isError } = useIncomeStatement(range)
 
-  if (isPending) return <div className="h-56 animate-pulse rounded-card border border-border bg-muted/30" />
+  if (isPending) return <div className="h-56 animate-pulse rounded-card border border-border bg-border" />
   if (isError || !data) return null
 
   const perdida = Number(data.operating_profit) < 0

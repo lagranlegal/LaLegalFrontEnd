@@ -78,7 +78,7 @@ function SubscriptionHistory({ companyId }: { companyId: string }) {
   return (
     <div className="border-t border-border pt-4">
       <p className="text-sm font-medium text-foreground">Historial de la suscripción</p>
-      {isPending && <div className="mt-3 h-20 animate-pulse rounded-input bg-muted/40" />}
+      {isPending && <div className="mt-3 h-20 animate-pulse rounded-input bg-border" />}
       {isError && <p className="mt-2 text-sm text-danger">No se pudo cargar el historial.</p>}
       {!isPending && !isError && events.length === 0 && <p className="mt-2 text-sm text-muted-foreground">Sin movimientos registrados.</p>}
       {events.length > 0 && (

@@ -1,6 +1,7 @@
 import { AppDialog } from '@/components/shared/AppDialog'
 import { Money } from '@/components/shared/Money'
 import { EmptyState } from '@/components/shared/EmptyState'
+import { TableSkeleton } from '@/components/shared/TableSkeleton'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { formatDate } from '@/lib/dates'
@@ -73,7 +74,12 @@ export function KardexDialog({
       size="lg"
     >
       <div className="flex flex-col gap-4">
-        {isPending && <div className="h-56 animate-pulse rounded-card bg-muted/40" />}
+        {isPending && (
+          <div className="flex flex-col gap-4">
+            <div className="h-16 animate-pulse rounded-card bg-border" />
+            <TableSkeleton rows={5} columns={7} />
+          </div>
+        )}
 
         {isError && (
           <div className="flex flex-col items-start gap-2">

@@ -58,7 +58,7 @@ export function AccountStatementDialog({
           <DateRangePicker value={range} onChange={setRange} />
         </div>
 
-        {isPending && <div className="h-40 animate-pulse rounded-card bg-muted/40" />}
+        {isPending && <div className="h-40 animate-pulse rounded-card bg-border" />}
 
         {isError && (
           <div className="flex flex-col items-start gap-2">

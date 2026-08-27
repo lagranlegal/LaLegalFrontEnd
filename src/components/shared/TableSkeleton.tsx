@@ -12,7 +12,7 @@ export function TableSkeleton({ rows = 3, columns = 4 }: { rows?: number; column
     <div className="flex flex-col gap-2 px-3 py-2" aria-busy="true" aria-label="Cargando…">
       <div className="flex gap-3">
         {Array.from({ length: columns }).map((_, i) => (
-          <div key={i} className="h-3 flex-1 animate-pulse rounded bg-muted" />
+          <div key={i} className="h-3 flex-1 animate-pulse rounded bg-border" />
         ))}
       </div>
       {Array.from({ length: rows }).map((_, r) => (
@@ -20,7 +20,7 @@ export function TableSkeleton({ rows = 3, columns = 4 }: { rows?: number; column
           {Array.from({ length: columns }).map((_, c) => (
             <div
               key={c}
-              className="h-4 flex-1 animate-pulse rounded bg-muted/60"
+              className="h-4 flex-1 animate-pulse rounded bg-border"
               // Escalona el arranque: con todas las barras pulsando al mismo
               // tiempo el bloque late como una sola cosa y se lee como un
               // error de render. Desfasadas se leen como actividad.

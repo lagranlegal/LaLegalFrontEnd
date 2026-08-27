@@ -74,7 +74,7 @@ export function AccountPicker({
   }, [isPending, selected, fallback?.id, onChange])
 
   if (isPending) {
-    return <div className="mt-1 h-10 w-full animate-pulse rounded-input bg-muted" aria-hidden />
+    return <div className="mt-1 h-10 w-full animate-pulse rounded-input bg-border" aria-hidden />
   }
 
   // Sin `accounts.view` el selector desaparece y la operación sigue: el

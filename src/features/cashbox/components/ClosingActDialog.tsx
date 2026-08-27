@@ -22,11 +22,11 @@ import { SessionReportPanel } from '@/features/cashbox/components/SessionReportP
 function SessionReportSkeleton() {
   return (
     <div className="flex flex-col gap-3" aria-busy="true" aria-label="Cargando desglose del cierre">
-      <div className="h-10 animate-pulse rounded-input bg-muted/50" />
+      <div className="h-10 animate-pulse rounded-input bg-border" />
       <div className="overflow-hidden rounded-input border border-border">
-        <div className="h-9 animate-pulse bg-muted/50" />
+        <div className="h-9 animate-pulse bg-border" />
         {[0, 1, 2, 3].map((i) => (
-          <div key={i} className="h-9 animate-pulse border-t border-border bg-muted/30" />
+          <div key={i} className="h-9 animate-pulse border-t border-border bg-border" />
         ))}
       </div>
     </div>

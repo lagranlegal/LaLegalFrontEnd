@@ -148,7 +148,7 @@ export function SettingsPage() {
         <PageHeader title="Configuración" description="Datos de la empresa, marca y documentos impresos." />
         <div className="flex flex-col gap-4">
           {[0, 1, 2].map((i) => (
-            <div key={i} className="h-48 animate-pulse rounded-card border border-border bg-muted/40" />
+            <div key={i} className="h-48 animate-pulse rounded-card border border-border bg-border" />
           ))}
         </div>
       </div>

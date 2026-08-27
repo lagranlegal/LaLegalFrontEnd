@@ -389,9 +389,9 @@ export function EntryFormPage() {
         <div className="flex flex-col gap-6" aria-busy="true" aria-label="Cargando el formulario…">
           {/* Con la forma de las tres secciones reales (origen, artículos,
               notas) para que no salte el layout al aterrizar. */}
-          <div className="h-44 animate-pulse rounded-card border border-border bg-muted/30" />
-          <div className="h-64 animate-pulse rounded-card border border-border bg-muted/30" />
-          <div className="h-20 animate-pulse rounded-card border border-border bg-muted/30" />
+          <div className="h-44 animate-pulse rounded-card border border-border bg-border" />
+          <div className="h-64 animate-pulse rounded-card border border-border bg-border" />
+          <div className="h-20 animate-pulse rounded-card border border-border bg-border" />
         </div>
       </div>
     )

@@ -11,7 +11,7 @@ import { usePayables, useInventoryValuation, useStaleInventory } from '@/feature
 const STALE_THRESHOLDS = [60, 90, 180, 365]
 
 function SectionSkeleton() {
-  return <div className="h-32 animate-pulse rounded-card border border-border bg-muted/30" />
+  return <div className="h-32 animate-pulse rounded-card border border-border bg-border" />
 }
 
 /**
