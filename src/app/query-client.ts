@@ -19,6 +19,15 @@ export const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
       refetchOnWindowFocus: true, // app operativa multi-usuario (§3)
+      // Sin esto el default es 0: CUALQUIER dato se considera obsoleto de
+      // inmediato, así que `refetchOnWindowFocus` (arriba) reejecuta TODO lo
+      // montado en cada alt-tab — incluidos los N artículos de un comprobante
+      // abierto, aunque hayan pasado dos segundos desde que se cargó
+      // (docs/PENDIENTES_FRONTEND.md #11). 15s sigue siendo "casi al
+      // instante" para una app operativa — otro usuario cambiando algo hace
+      // efecto igual, solo no en el mismo segundo — y absorbe el caso real:
+      // revisar un mensaje y volver a la pestaña.
+      staleTime: 15_000,
       // ApiError es determinístico (401/403/409…) — reintentar no cambia el
       // resultado y multiplica llamadas innecesarias (cada intento ya pasa
       // una vez por el refresh-retry de 401 en lib/api/client.ts). Solo

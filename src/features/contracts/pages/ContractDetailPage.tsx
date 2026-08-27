@@ -15,7 +15,7 @@ import { formatDate, formatDateTime } from '@/lib/dates'
 import { PAYMENT_METHOD_LABELS } from '@/lib/paymentMethods'
 import { confirm } from '@/components/shared/confirmStore'
 import { useCategories } from '@/lib/catalogs/categories'
-import { useItem } from '@/lib/inventory/items'
+import { useItemsByIds, type Item } from '@/lib/inventory/items'
 import { usePaymentsList, useAuctionContract, type Payment } from '@/features/contracts/api'
 import { effectiveContractStatus, isReadyForAuction } from '@/features/contracts/contractStatus'
 import { useContract } from '@/lib/contracts/reference'
@@ -62,8 +62,7 @@ function categoryName(categories: { id: string; name: string }[] | undefined, ca
  * desde un diálogo abierto desde la lista, no una página) — el link lleva
  * a `/inventario` sin más, el código mostrado es lo que se busca ahí.
  */
-function AuctionedItemLink({ inventoryItemId }: { inventoryItemId: string }) {
-  const { data: inventoryItem } = useItem(inventoryItemId)
+function AuctionedItemLink({ inventoryItem }: { inventoryItem: Item | undefined }) {
   return (
     <Link to="/inventario" className="text-xs text-primary hover:underline">
       Convertido en {inventoryItem?.code ?? inventoryItem?.name ?? 'un artículo de inventario'}
@@ -80,6 +79,12 @@ export function ContractDetailPage() {
   const { data: contract, isPending, isError, refetch } = useContract(contractId)
   const { data: customer } = useCustomer(contract?.customer_id ?? '')
   const { data: categories } = useCategories()
+  // Un solo request para las prendas ya rematadas, en vez de uno por prenda
+  // (docs/PENDIENTES_FRONTEND.md #11). Antes de saber si `contract` cargó —
+  // los hooks no pueden ser condicionales — así que se arma con `?? []`.
+  const { data: auctionedItemsById } = useItemsByIds(
+    (contract?.items ?? []).map((item) => item.inventory_item_id),
+  )
   const { data: paymentsData, isPending: paymentsPending, isError: paymentsError, refetch: refetchPayments, hasNextPage, isFetchingNextPage, fetchNextPage } = usePaymentsList(contractId)
   const auctionContract = useAuctionContract()
   const [editDialogOpen, setEditDialogOpen] = useState(false)
@@ -226,7 +231,9 @@ export function ContractDetailPage() {
                     {item.weight_grams && ` · ${item.weight_grams} g`}
                     {item.serial_imei && ` · ${item.serial_imei}`}
                   </p>
-                  {item.inventory_item_id && <AuctionedItemLink inventoryItemId={item.inventory_item_id} />}
+                  {item.inventory_item_id && (
+                    <AuctionedItemLink inventoryItem={auctionedItemsById?.get(item.inventory_item_id)} />
+                  )}
                 </div>
               </div>
               <div className="flex items-center gap-3">

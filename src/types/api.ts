@@ -6758,6 +6758,8 @@ export interface operations {
                 supplier_id?: string | null;
                 /** @description supplier | auction | other */
                 origin?: string | null;
+                /** @description Artículos puntuales (repetible: ?ids=..&ids=..). Ignora cursor. */
+                ids?: string[] | null;
             };
             header?: never;
             path?: never;

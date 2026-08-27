@@ -27,6 +27,29 @@ export function useItem(itemId: string | undefined) {
   })
 }
 
+/**
+ * Varios artículos puntuales, en UNA sola request — para renderizar una
+ * lista de líneas (comprobante de venta, formulario de devolución, prendas
+ * rematadas de un contrato) que antes llamaba `useItem` por línea y disparaba
+ * un request en paralelo por cada artículo DISTINTO (docs/PENDIENTES_FRONTEND.md
+ * #11). Devuelve un `Map` para que el caller busque por id con `.get()` en
+ * vez de tener que filtrar un array en cada fila.
+ */
+export function useItemsByIds(itemIds: (string | null | undefined)[]) {
+  const ids = [...new Set(itemIds.filter((id): id is string => !!id))].sort()
+  return useQuery({
+    // Ordenados y deduplicados: el mismo conjunto de ids (aunque llegue en
+    // otro orden, ej. porque el comprobante y su versión de impresión
+    // recorren las líneas por separado) cae en la MISMA entrada de cache.
+    queryKey: ['inventory', 'items', 'by-ids', ids] as const,
+    queryFn: async () => {
+      const page = await unwrap(api.GET('/api/v1/inventory/items', { params: { query: { ids } } }))
+      return new Map(page.items.map((item) => [item.id, item]))
+    },
+    enabled: ids.length > 0,
+  })
+}
+
 export function useAvailableItemsSearch(q: string) {
   const query = q.trim()
   return useQuery({

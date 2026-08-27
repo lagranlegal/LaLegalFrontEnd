@@ -5,7 +5,7 @@ import { CustomerPicker } from '@/components/shared/CustomerPicker'
 import { CashSessionRequiredDialog } from '@/components/shared/CashSessionRequiredDialog'
 import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { useItem } from '@/lib/inventory/items'
+import { useItemsByIds, type Item } from '@/lib/inventory/items'
 import { formatQuantity } from '@/lib/inventory/units'
 import { ApiError } from '@/lib/api/client'
 import { useCreateReturn, useSaleReturns, RETURN_REASON_LABELS, RETURN_SETTLEMENT_LABELS } from '@/lib/sales/returns'
@@ -30,20 +30,19 @@ function alreadyReturned(returns: ReturnType<typeof useSaleReturns>['data'], sal
 
 function ReturnLineRow({
   saleLineId,
-  itemId,
+  item,
   totalQuantity,
   already,
   draft,
   onChange,
 }: {
   saleLineId: string
-  itemId: string
+  item: Item | undefined
   totalQuantity: number
   already: number
   draft: LineDraft
   onChange: (draft: LineDraft) => void
 }) {
-  const { data: item } = useItem(itemId)
   const available = totalQuantity - already
 
   if (available <= 0) return null
@@ -88,6 +87,9 @@ function ReturnLineRow({
 export function ReturnFormDialog({ open, onOpenChange, sale }: { open: boolean; onOpenChange: (open: boolean) => void; sale: Sale }) {
   const { data: returns } = useSaleReturns(sale.id)
   const createReturn = useCreateReturn(sale.id)
+  // Un solo request para todos los artículos de la venta, en vez de uno por
+  // línea (docs/PENDIENTES_FRONTEND.md #11).
+  const { data: itemsById } = useItemsByIds(sale.lines.map((line) => line.item_id))
 
   const [drafts, setDrafts] = useState<Record<string, LineDraft>>({})
   const [reason, setReason] = useState<'defect' | 'change_of_mind' | 'other'>('other')
@@ -149,7 +151,7 @@ export function ReturnFormDialog({ open, onOpenChange, sale }: { open: boolean; 
               <ReturnLineRow
                 key={line.id}
                 saleLineId={line.id}
-                itemId={line.item_id}
+                item={itemsById?.get(line.item_id)}
                 totalQuantity={Number(line.quantity)}
                 already={alreadyReturned(returns, line.id)}
                 draft={draftFor(line)}

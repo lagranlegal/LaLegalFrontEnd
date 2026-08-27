@@ -11,7 +11,7 @@ import { confirm } from '@/components/shared/confirmStore'
 import { formatDate, formatDateTime } from '@/lib/dates'
 import { PAYMENT_METHOD_LABELS } from '@/lib/paymentMethods'
 import { useCustomer } from '@/lib/customers/search'
-import { useItem } from '@/lib/inventory/items'
+import { useItemsByIds, type Item } from '@/lib/inventory/items'
 import { formatQuantity } from '@/lib/inventory/units'
 import { useVoidSale, type Sale } from '@/lib/sales/void'
 import { useSaleReturns, RETURN_REASON_LABELS, RETURN_SETTLEMENT_LABELS } from '@/lib/sales/returns'
@@ -19,8 +19,7 @@ import type { components } from '@/types/api'
 
 type SaleLine = components['schemas']['SaleLineOut']
 
-function SaleLineRow({ line, forPrint = false }: { line: SaleLine; forPrint?: boolean }) {
-  const { data: item } = useItem(line.item_id)
+function SaleLineRow({ line, item, forPrint = false }: { line: SaleLine; item: Item | undefined; forPrint?: boolean }) {
   return (
     <tr className={forPrint ? 'border-b border-black/10' : undefined}>
       <td className={forPrint ? 'py-1.5' : 'px-3 py-2 text-foreground'}>
@@ -48,6 +47,10 @@ function SaleLineRow({ line, forPrint = false }: { line: SaleLine; forPrint?: bo
 export function SaleReceiptDialog({ open, onOpenChange, sale }: { open: boolean; onOpenChange: (open: boolean) => void; sale: Sale }) {
   const { data: customer } = useCustomer(sale.customer_id ?? '')
   const { data: returns } = useSaleReturns(sale.id)
+  // Un solo request para TODOS los artículos de la venta, en vez de uno por
+  // línea (docs/PENDIENTES_FRONTEND.md #11) — una venta de 8 líneas pedía 8
+  // artículos en paralelo solo para mostrar el comprobante.
+  const { data: itemsById } = useItemsByIds(sale.lines.map((line) => line.item_id))
   const voidSale = useVoidSale()
   const [returnDialogOpen, setReturnDialogOpen] = useState(false)
   const isVoided = sale.status === 'voided'
@@ -121,7 +124,7 @@ export function SaleReceiptDialog({ open, onOpenChange, sale }: { open: boolean;
               </thead>
               <tbody className="divide-y divide-border">
                 {sale.lines.map((line) => (
-                  <SaleLineRow key={line.id} line={line} />
+                  <SaleLineRow key={line.id} line={line} item={itemsById?.get(line.item_id)} />
                 ))}
               </tbody>
             </table>
@@ -176,7 +179,7 @@ export function SaleReceiptDialog({ open, onOpenChange, sale }: { open: boolean;
           </thead>
           <tbody>
             {sale.lines.map((line) => (
-              <SaleLineRow key={line.id} line={line} forPrint />
+              <SaleLineRow key={line.id} line={line} item={itemsById?.get(line.item_id)} forPrint />
             ))}
           </tbody>
         </table>
