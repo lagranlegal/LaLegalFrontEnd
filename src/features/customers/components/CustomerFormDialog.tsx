@@ -110,9 +110,14 @@ export function CustomerFormDialog({ open, onOpenChange, customer }: { open: boo
       title={mode === 'create' ? 'Nuevo cliente' : 'Editar cliente'}
       size="lg"
       footer={
-        <Button form="customer-form" type="submit" disabled={isPending} className="w-full rounded-pill">
-          {isPending ? 'Guardando…' : mode === 'create' ? 'Crear cliente' : 'Guardar cambios'}
-        </Button>
+        <div className="flex w-full gap-2">
+          <Button type="button" variant="outline" className="flex-1 rounded-pill" onClick={() => onOpenChange(false)} disabled={isPending}>
+            Cancelar
+          </Button>
+          <Button form="customer-form" type="submit" disabled={isPending} className="flex-1 rounded-pill">
+            {isPending ? 'Guardando…' : mode === 'create' ? 'Crear cliente' : 'Guardar cambios'}
+          </Button>
+        </div>
       }
     >
       <form id="customer-form" onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-4" noValidate>

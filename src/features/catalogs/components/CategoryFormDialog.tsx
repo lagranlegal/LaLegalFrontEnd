@@ -125,9 +125,14 @@ export function CategoryFormDialog({
       onOpenChange={onOpenChange}
       title={mode === 'create' ? 'Nueva categoría' : 'Editar categoría'}
       footer={
-        <Button form="category-form" type="submit" disabled={isPending} className="w-full rounded-pill">
-          {isPending ? 'Guardando…' : mode === 'create' ? 'Crear categoría' : 'Guardar cambios'}
-        </Button>
+        <div className="flex w-full gap-2">
+          <Button type="button" variant="outline" className="flex-1 rounded-pill" onClick={() => onOpenChange(false)} disabled={isPending}>
+            Cancelar
+          </Button>
+          <Button form="category-form" type="submit" disabled={isPending} className="flex-1 rounded-pill">
+            {isPending ? 'Guardando…' : mode === 'create' ? 'Crear categoría' : 'Guardar cambios'}
+          </Button>
+        </div>
       }
     >
       <form id="category-form" onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-4" noValidate>

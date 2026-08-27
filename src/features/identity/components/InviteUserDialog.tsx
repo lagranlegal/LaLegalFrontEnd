@@ -105,6 +105,9 @@ export function InviteUserDialog({ open, onOpenChange }: { open: boolean; onOpen
               <Link2 className="size-4" />
               Generar enlace
             </Button>
+            <Button type="button" variant="ghost" className="w-full" onClick={() => onOpenChange(false)} disabled={inviteUser.isPending}>
+              Cancelar
+            </Button>
           </div>
         )
       }

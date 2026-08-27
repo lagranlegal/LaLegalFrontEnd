@@ -5,6 +5,7 @@ import { Controller, useForm, useWatch } from 'react-hook-form'
 import { z } from 'zod'
 import { toast } from 'sonner'
 import { PageHeader } from '@/components/shared/PageHeader'
+import { BackLink } from '@/components/shared/BackLink'
 import { AppDialog } from '@/components/shared/AppDialog'
 import { MoneyInput } from '@/components/shared/MoneyInput'
 import { Money } from '@/components/shared/Money'
@@ -121,6 +122,7 @@ export function ContractFormPage() {
 
   return (
     <div className="flex flex-col gap-6">
+      <BackLink to="/contratos" label="Contratos" />
       <PageHeader title="Nuevo contrato" description="Registra el préstamo y las prendas que quedan en garantía." />
 
       <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-6" noValidate>

@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { Link, useParams } from '@tanstack/react-router'
 import type { ColumnDef } from '@tanstack/react-table'
 import { toast } from 'sonner'
-import { ChevronLeft } from 'lucide-react'
+import { BackLink } from '@/components/shared/BackLink'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { StatusBadge } from '@/components/shared/StatusBadge'
 import { LegacyCodeBadge } from '@/components/shared/LegacyCodeBadge'
@@ -119,9 +119,7 @@ export function ContractDetailPage() {
   return (
     <>
     <div className="flex flex-col gap-6 print:hidden">
-      <Link to="/contratos" className="flex w-fit items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
-        <ChevronLeft className="size-4" /> Contratos
-      </Link>
+      <BackLink to="/contratos" label="Contratos" />
 
       <PageHeader
         title={`Contrato #${contract.number}`}

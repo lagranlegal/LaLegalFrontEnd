@@ -22,9 +22,14 @@ export function OpenSessionDialog({ open, onOpenChange }: { open: boolean; onOpe
       title="Abrir caja"
       description="Registra el efectivo con el que arranca el día."
       footer={
-        <Button form="open-session-form" type="submit" disabled={openSession.isPending} className="w-full rounded-pill">
-          {openSession.isPending ? 'Abriendo…' : 'Abrir caja'}
-        </Button>
+        <div className="flex w-full gap-2">
+          <Button type="button" variant="outline" className="flex-1 rounded-pill" onClick={() => onOpenChange(false)} disabled={openSession.isPending}>
+            Cancelar
+          </Button>
+          <Button form="open-session-form" type="submit" disabled={openSession.isPending} className="flex-1 rounded-pill">
+            {openSession.isPending ? 'Abriendo…' : 'Abrir caja'}
+          </Button>
+        </div>
       }
     >
       <form id="open-session-form" onSubmit={handleSubmit} className="flex flex-col gap-4">

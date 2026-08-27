@@ -1,8 +1,9 @@
 import { useState } from 'react'
-import { useNavigate, useParams } from '@tanstack/react-router'
+import { useParams } from '@tanstack/react-router'
 import type { ColumnDef } from '@tanstack/react-table'
-import { ChevronLeft, Pencil } from 'lucide-react'
+import { Pencil } from 'lucide-react'
 import { Can } from '@/components/shared/Can'
+import { BackLink } from '@/components/shared/BackLink'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { DataTable } from '@/components/shared/DataTable'
 import { KpiCard, KpiRow } from '@/components/shared/KpiCard'
@@ -48,7 +49,6 @@ const purchaseColumns: ColumnDef<SupplierPurchase>[] = [
  */
 export function SupplierDetailPage() {
   const { supplierId } = useParams({ from: '/app-layout/proveedores/$supplierId' })
-  const navigate = useNavigate()
   const [editOpen, setEditOpen] = useState(false)
   const { data: summary, isPending, isError, refetch } = useSupplierSummary(supplierId)
   // El formulario de edición necesita el proveedor COMPLETO (documento,
@@ -94,9 +94,7 @@ export function SupplierDetailPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <Button variant="ghost" size="sm" className="self-start" onClick={() => navigate({ to: '/catalogos' })}>
-        <ChevronLeft className="size-4" /> Catálogos
-      </Button>
+      <BackLink to="/catalogos" label="Catálogos" />
 
       <PageHeader
         title={summary.name}

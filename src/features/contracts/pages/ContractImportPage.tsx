@@ -5,6 +5,7 @@ import { Controller, useForm } from 'react-hook-form'
 import { z } from 'zod'
 import { toast } from 'sonner'
 import { PageHeader } from '@/components/shared/PageHeader'
+import { BackLink } from '@/components/shared/BackLink'
 import { AppDialog } from '@/components/shared/AppDialog'
 import { MoneyInput } from '@/components/shared/MoneyInput'
 import { DatePicker } from '@/components/shared/DatePicker'
@@ -145,6 +146,7 @@ export function ContractImportPage() {
 
   return (
     <div className="flex flex-col gap-6">
+      <BackLink to="/contratos" label="Contratos" />
       <PageHeader
         title="Registrar contrato existente"
         description="Migra un contrato de empeño del sistema anterior con su saldo real. No desembolsa dinero — ese préstamo ya se entregó afuera."

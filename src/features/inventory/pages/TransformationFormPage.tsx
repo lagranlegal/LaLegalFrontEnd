@@ -1,8 +1,10 @@
-import { useState } from 'react'
-import { useNavigate } from '@tanstack/react-router'
+import { useRef, useState } from 'react'
+import { useNavigate, useBlocker } from '@tanstack/react-router'
 import { toast } from 'sonner'
 import { ArrowDown, Plus, Trash2 } from 'lucide-react'
 import { PageHeader } from '@/components/shared/PageHeader'
+import { BackLink } from '@/components/shared/BackLink'
+import { AppDialog } from '@/components/shared/AppDialog'
 import { ItemPicker } from '@/components/shared/ItemPicker'
 import { MoneyInput } from '@/components/shared/MoneyInput'
 import { Money } from '@/components/shared/Money'
@@ -72,7 +74,7 @@ function nuevaSalida(): Salida {
  */
 export function TransformationFormPage() {
   const navigate = useNavigate()
-  const { data: categories } = useCategories()
+  const { data: categories, isPending: categoriesPending } = useCategories()
   const createTransformation = useCreateTransformation()
 
   const [entradas, setEntradas] = useState<Entrada[]>([])
@@ -83,6 +85,18 @@ export function TransformationFormPage() {
   const [reason, setReason] = useState('')
   const [formError, setFormError] = useState<string | null>(null)
   const [cashDialogOpen, setCashDialogOpen] = useState(false)
+  const submittedRef = useRef(false)
+
+  // Sin este resguardo, salir por el sidebar/atrás perdía la operación
+  // armada sin ningún aviso — a diferencia de contratos/ingreso, que sí lo
+  // tenían (docs/PENDIENTES_FRONTEND.md #10).
+  const blocker = useBlocker({
+    shouldBlockFn: () =>
+      (entradas.length > 0 || reason.trim().length > 0 || salidas.some((s) => s.name.trim().length > 0)) &&
+      !submittedRef.current,
+    enableBeforeUnload: true,
+    withResolver: true,
+  })
 
   const level1 = (categories ?? []).filter((c) => c.level === 1 && c.active)
 
@@ -149,6 +163,7 @@ export function TransformationFormPage() {
           estimated_value: Number(s.estimated_value) > 0 ? s.estimated_value : null,
         })),
       })
+      submittedRef.current = true
       toast.success(`Transformación #${creada.number} registrada`, {
         description: `${creada.consumed.length} artículo(s) consumidos · ${creada.produced.length} creado(s)`,
       })
@@ -164,6 +179,7 @@ export function TransformationFormPage() {
 
   return (
     <div className="flex flex-col gap-6">
+      <BackLink to="/inventario" label="Inventario" />
       <PageHeader
         title="Transformar inventario"
         description="Fundir, despiezar o armar. Lo que costó lo que entra es lo que cuesta lo que sale — el costo no se pierde ni se inventa."
@@ -328,9 +344,10 @@ export function TransformationFormPage() {
                   <Select
                     value={salida.cat1_id}
                     onValueChange={(v) => actualizarSalida(salida.key, { cat1_id: v, cat2_id: '', cat3_id: '' })}
+                    disabled={categoriesPending}
                   >
                     <SelectTrigger className="mt-1 w-full">
-                      <SelectValue placeholder="Selecciona…" />
+                      <SelectValue placeholder={categoriesPending ? 'Cargando…' : 'Selecciona…'} />
                     </SelectTrigger>
                     <SelectContent>
                       {level1.map((c) => (
@@ -482,6 +499,24 @@ export function TransformationFormPage() {
           {createTransformation.isPending ? 'Transformando…' : 'Transformar'}
         </Button>
       </div>
+
+      <AppDialog
+        open={blocker.status === 'blocked'}
+        onOpenChange={(open) => !open && blocker.reset?.()}
+        title="¿Descartar la transformación?"
+        description="Vas a perder los artículos y salidas que ya armaste."
+        size="sm"
+        footer={
+          <div className="flex w-full flex-col gap-2">
+            <Button className="w-full rounded-pill bg-danger hover:bg-danger/90" onClick={() => blocker.proceed?.()}>
+              Descartar cambios
+            </Button>
+            <Button variant="ghost" className="w-full" onClick={() => blocker.reset?.()}>
+              Seguir editando
+            </Button>
+          </div>
+        }
+      />
 
       <CashSessionRequiredDialog open={cashDialogOpen} onOpenChange={setCashDialogOpen} />
     </div>

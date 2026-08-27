@@ -1,7 +1,7 @@
 import { useState } from 'react'
-import { Link, useNavigate, useParams } from '@tanstack/react-router'
+import { useNavigate, useParams } from '@tanstack/react-router'
 import type { ColumnDef } from '@tanstack/react-table'
-import { ChevronLeft } from 'lucide-react'
+import { BackLink } from '@/components/shared/BackLink'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { StatusBadge } from '@/components/shared/StatusBadge'
 import { PhotoThumbnail } from '@/components/shared/PhotoThumbnail'
@@ -95,9 +95,7 @@ export function CustomerDetailPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <Link to="/clientes" className="flex w-fit items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
-        <ChevronLeft className="size-4" /> Clientes
-      </Link>
+      <BackLink to="/clientes" label="Clientes" />
 
       <PageHeader
         title={customer.full_name}

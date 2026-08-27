@@ -1,8 +1,10 @@
-import { useState } from 'react'
-import { useNavigate } from '@tanstack/react-router'
+import { useRef, useState } from 'react'
+import { useNavigate, useBlocker } from '@tanstack/react-router'
 import { toast } from 'sonner'
 import { Minus, Plus, Trash2 } from 'lucide-react'
 import { PageHeader } from '@/components/shared/PageHeader'
+import { BackLink } from '@/components/shared/BackLink'
+import { AppDialog } from '@/components/shared/AppDialog'
 import { ItemPicker } from '@/components/shared/ItemPicker'
 import { CustomerPicker } from '@/components/shared/CustomerPicker'
 import { Money } from '@/components/shared/Money'
@@ -43,6 +45,16 @@ export function SaleFormPage() {
   const [cashDialogOpen, setCashDialogOpen] = useState(false)
   const [creditNoteId, setCreditNoteId] = useState<string | null>(null)
   const [creditNoteAmount, setCreditNoteAmount] = useState('0.00')
+  const submittedRef = useRef(false)
+
+  // Perder un carrito armado sin aviso era el hueco más agudo de navegación
+  // de todo el front (docs/PENDIENTES_FRONTEND.md #10): a diferencia de los
+  // formularios de contratos/ingreso, esta pantalla no tenía NINGÚN resguardo.
+  const blocker = useBlocker({
+    shouldBlockFn: () => cart.length > 0 && !submittedRef.current,
+    enableBeforeUnload: true,
+    withResolver: true,
+  })
 
   const { data: creditNotesData } = useCustomerCreditNotes(customer?.id ?? '')
   const availableCreditNotes = (creditNotesData?.pages.flatMap((page) => page.items) ?? []).filter((note) => Number(note.balance) > 0)
@@ -115,6 +127,7 @@ export function SaleFormPage() {
         credit_note_id: hasCreditNote ? creditNoteId : null,
         credit_note_amount: hasCreditNote ? creditNoteAmount : null,
       })
+      submittedRef.current = true
       toast.success(`Venta #${sale.number} registrada`)
       await navigate({ to: '/ventas' })
     } catch (error) {
@@ -128,6 +141,7 @@ export function SaleFormPage() {
 
   return (
     <div className="flex flex-col gap-6">
+      <BackLink to="/ventas" label="Ventas" />
       <PageHeader title="Nueva venta" description="Busca el artículo por código o nombre y agrégalo al carrito." />
 
       <form onSubmit={handleSubmit} className="grid grid-cols-1 gap-6 lg:grid-cols-[2fr_1fr]" noValidate>
@@ -324,6 +338,24 @@ export function SaleFormPage() {
           </Button>
         </div>
       </form>
+
+      <AppDialog
+        open={blocker.status === 'blocked'}
+        onOpenChange={(open) => !open && blocker.reset?.()}
+        title="¿Descartar la venta?"
+        description="Vas a perder el carrito que ya armaste."
+        size="sm"
+        footer={
+          <div className="flex w-full flex-col gap-2">
+            <Button className="w-full rounded-pill bg-danger hover:bg-danger/90" onClick={() => blocker.proceed?.()}>
+              Descartar cambios
+            </Button>
+            <Button variant="ghost" className="w-full" onClick={() => blocker.reset?.()}>
+              Seguir editando
+            </Button>
+          </div>
+        }
+      />
 
       <CashSessionRequiredDialog open={cashDialogOpen} onOpenChange={setCashDialogOpen} />
     </div>

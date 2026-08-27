@@ -6,6 +6,7 @@ import { z } from 'zod'
 import { toast } from 'sonner'
 import { ChevronRight, ImageIcon, Plus, Trash2 } from 'lucide-react'
 import { PageHeader } from '@/components/shared/PageHeader'
+import { BackLink } from '@/components/shared/BackLink'
 import { AppDialog } from '@/components/shared/AppDialog'
 import { MoneyInput } from '@/components/shared/MoneyInput'
 import { DatePicker } from '@/components/shared/DatePicker'
@@ -385,6 +386,7 @@ export function EntryFormPage() {
   if (catalogsPending) {
     return (
       <div className="flex flex-col gap-6">
+        <BackLink to="/inventario" label="Inventario" />
         <PageHeader title="Nuevo ingreso" description="Registra la mercancía que entra al inventario." />
         <div className="flex flex-col gap-6" aria-busy="true" aria-label="Cargando el formulario…">
           {/* Con la forma de las tres secciones reales (origen, artículos,
@@ -399,6 +401,7 @@ export function EntryFormPage() {
 
   return (
     <div className="flex flex-col gap-6">
+      <BackLink to="/inventario" label="Inventario" />
       <PageHeader
         title="Nuevo ingreso"
         description="Registra la mercancía que entra al inventario. Con precio queda lista para vender; sin precio, en borrador."
