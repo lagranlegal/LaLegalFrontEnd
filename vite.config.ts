@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto'
 import { fileURLToPath } from 'node:url'
 import { defineConfig, type Plugin } from 'vitest/config'
 import { loadEnv } from 'vite'
@@ -20,6 +21,15 @@ import tailwindcss from '@tailwindcss/vite'
  * dependen del ambiente. Los dos CSP se aplican en conjunto —el navegador
  * exige cumplir ambos— por eso el de `vercel.json` NO declara `default-src`:
  * si lo hiciera, `connect-src` heredaría de él y bloquearía el backend.
+ *
+ * ÚNICO INLINE PERMITIDO: `index.html` tiene un `<script>` sin `src` (el
+ * anti-parpadeo de tema — aplica `data-theme` antes de que React monte, ver
+ * `src/app/store.ts`). `script-src 'self'` por sí solo lo bloquea (probado
+ * en vivo: el script nunca corría en producción, solo en `npm run dev`,
+ * donde este plugin ni se aplica). La solución NO es `'unsafe-inline'` —eso
+ * habilitaría cualquier script inyectado, no solo el nuestro— sino el hash
+ * SHA-256 exacto de su contenido: si el texto del script cambia, el hash
+ * cambia solo en el próximo build, nada que mantener a mano.
  */
 function cspPlugin(env: Record<string, string>): Plugin {
   return {
@@ -37,9 +47,18 @@ function cspPlugin(env: Record<string, string>): Plugin {
             'Configúralas en las variables de entorno del proyecto (ver docs/DEPLOY.md).',
         )
       }
+
+      // Matchea SOLO un <script> sin atributos (el inline a mano) — el que
+      // Vite inyecta para el entry siempre trae `type="module" src="..."`,
+      // así que nunca cae en este patrón.
+      const inlineScript = html.match(/<script>([\s\S]*?)<\/script>/)?.[1]
+      const scriptSrc = inlineScript
+        ? `'self' 'sha256-${createHash('sha256').update(inlineScript, 'utf8').digest('base64')}'`
+        : "'self'"
+
       const csp = [
         "default-src 'self'",
-        "script-src 'self'",
+        `script-src ${scriptSrc}`,
         // 'unsafe-inline' en estilos: Tailwind y Radix inyectan estilos en
         // línea (posicionamiento de popovers/diálogos). No aplica a scripts.
         "style-src 'self' 'unsafe-inline'",

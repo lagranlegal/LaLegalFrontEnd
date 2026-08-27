@@ -11,6 +11,15 @@
       después (parpadeo). Misma lógica que `src/app/store.ts::setTheme`,
       repetida a propósito: en este punto ningún módulo de la app cargó
       todavía.
+
+      Único inline permitido en toda la app: `vite.config.ts::cspPlugin`
+      calcula el hash SHA-256 exacto de ESTE bloque y lo agrega a
+      `script-src` en el build de producción (no `'unsafe-inline'` — eso
+      habilitaría cualquier script inyectado). Si el contenido de acá cambia,
+      el hash se recalcula solo en el próximo build; nada que mantener a
+      mano. Confirmado en vivo: sin este hash, la CSP de producción bloqueaba
+      el script (silencioso — no hay error de JS, solo un log de CSP en la
+      consola del navegador) y el tema no persistía entre recargas.
     -->
     <script>
       (function () {
