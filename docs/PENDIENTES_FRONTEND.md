@@ -1,6 +1,8 @@
 # Pendientes de frontend — auditoría de UX en vivo (27/08/2026)
 
-> Documento de traspaso, mismo criterio que `PENDIENTES_BACKEND_INFRA.md`: no es una queja, es la lista concreta de 11 puntos que Mateo reportó tras usar la app en vivo, cada uno con archivo/línea real y diagnóstico verificado — no suposiciones. Investigado con tres agentes de exploración en paralelo (loading/overflow, navegación, tema/export/rendimiento), sin tocar código; los dos de mayor apalancamiento ya se resolvieron el mismo día.
+> Documento de traspaso, mismo criterio que `PENDIENTES_BACKEND_INFRA.md`: no es una queja, es la lista concreta de 11 puntos que Mateo reportó tras usar la app en vivo, cada uno con archivo/línea real y diagnóstico verificado — no suposiciones. Investigado con tres agentes de exploración en paralelo (loading/overflow, navegación, tema/export/rendimiento), sin tocar código.
+>
+> **Resueltos el mismo día (7 de 11):** 1, 1b, 3, 4, 5, 6, 9, 10 — son 8 puntos en 7 números porque el 1 se dividió en dos hallazgos. Quedan abiertos: 2 (proveedor → detalle de compra), 7 (tema oscuro), 8 (exportar a Excel), 11 (rendimiento).
 
 ---
 
@@ -14,9 +16,9 @@ Archivos tocados: `TableSkeleton.tsx`, `AccountsPage.tsx`, `AccountStatementDial
 
 De paso, `TransformationDetailDialog` y `KardexDialog` pasaron del bloque plano de altura fija a `TableSkeleton` (con forma de tabla) — el contenido real de ambos es una tabla, y un bloque sin forma no comunica qué va a llegar.
 
-### 1b. Lo que queda abierto: el formulario de Transformación no tiene NINGÚN estado de carga
+### 1b. ✅ Resuelto (27/08/2026) — el formulario de Transformación no tenía NINGÚN estado de carga
 
-`TransformationFormPage.tsx` (`/inventario/transformaciones/nueva`) pide categorías con `useCategories()` pero nunca lee `isPending`/`isLoading` — no es un problema de color, es que el estado de carga **no existe**: los tres `Select` de categoría ("Categoría / Subcategoría / Categoría final") se renderizan de inmediato, con apariencia interactiva normal, pero vacíos por dentro hasta que la data llega. Viola CLAUDE.md regla 10 ("nada de pantallas en blanco") de la forma más literal: no hay ni skeleton ni spinner, simplemente no hay chequeo. **Sin construir todavía** — necesita agregar el condicional de loading, no solo cambiar un color.
+`TransformationFormPage.tsx` (`/inventario/transformaciones/nueva`) pedía categorías con `useCategories()` pero nunca leía `isPending`/`isLoading` — no era un problema de color, el estado de carga **no existía**: los tres `Select` de categoría se renderizaban de inmediato, con apariencia interactiva normal, pero vacíos por dentro hasta que la data llegaba. El primer `Select` ("Categoría") ahora se deshabilita con placeholder "Cargando…" mientras `categoriesPending` es verdadero — los otros dos ya dependían de éste (`disabled={!cat1_id}`), así que quedan cubiertos en cascada.
 
 ---
 
@@ -40,19 +42,19 @@ Candidatos que hoy podían desbordar: `CompanyDetailDialog` (historial de suscri
 
 ---
 
-## 9. Falta una forma consistente de "volver" al entrar a un módulo
+## 9. ✅ Resuelto (27/08/2026) — faltaba una forma consistente de "volver"
 
-**Abierto.** Solo 3 de 13 pantallas de detalle tienen link de volver (cliente, contrato, proveedor) — y ni siquiera consistente entre ellas (proveedor usa `Button+navigate`, las otras dos `Link`). Pero lo que probablemente motivó el reporte son los **5 formularios de creación de página completa**, donde el hueco es real: nuevo contrato, registrar contrato existente, nuevo ingreso de inventario, nueva transformación, nueva venta — ninguno tiene ni back-link ni botón visible para salir; solo el sidebar o "atrás" del navegador.
+Solo 3 de 13 pantallas de detalle tenían link de volver (cliente, contrato, proveedor), y ni siquiera consistente entre ellas (proveedor usaba `Button+navigate`, las otras dos `Link`). Los 5 formularios de creación de página completa (nuevo contrato, registrar contrato existente, nuevo ingreso, nueva transformación, nueva venta) no tenían ni back-link ni botón visible para salir.
 
-**Falta:** un prop reusable en `PageHeader` (o un `BackLink` compartido) y aplicarlo en esas 5 pantallas — de paso, unificar `SupplierDetailPage` a `<Link>` como las otras dos.
+**Fix:** `BackLink` nuevo en `components/shared/` — reemplaza las 3 implementaciones a mano y se agregó a los 5 formularios que no tenían nada.
 
 ---
 
-## 10. Falta un botón "Cancelar" en formularios de creación
+## 10. ✅ Resuelto (27/08/2026) — faltaba un botón "Cancelar"
 
-**Abierto, con el patrón bueno ya construido en un solo módulo.** `features/accounts/` (`AccountFormDialog`, `SettleAccountDialog`, `TransferDialog`) ya tiene exactamente lo que falta en el resto: un botón `variant="outline"` con texto "Cancelar" y `onClick={() => onOpenChange(false)}` junto al submit. Ningún otro diálogo de creación lo replicó (cliente, proveedor, categoría, gasto, abrir caja, invitar usuario, rol).
+El patrón bueno (`AccountFormDialog`/`SettleAccountDialog`/`TransferDialog`, `features/accounts/`) ya existía en un solo módulo. Se replicó en los siete diálogos de creación que no lo tenían: cliente, proveedor, categoría, gasto, abrir caja, invitar usuario, rol.
 
-**Prioridad más alta — sin ningún resguardo, ni siquiera indirecto:** `SaleFormPage` (el carrito de una venta se puede perder sin aviso) y `TransformationFormPage`. Los otros tres formularios de página completa (`ContractFormPage`, `ContractImportPage`, `EntryFormPage`) al menos tienen `useBlocker` con un diálogo de confirmación si el usuario intenta salir por otra vía — falta el botón visible, no el resguardo.
+**`SaleFormPage` y `TransformationFormPage`** (los dos sin ningún resguardo, ni siquiera indirecto) ganaron `useBlocker` + el mismo diálogo de confirmación "¿Descartar…?" que ya tenían `ContractFormPage`/`ContractImportPage`/`EntryFormPage` — como `BackLink` es una navegación normal, el blocker la intercepta igual que al sidebar o "atrás", así que no hizo falta un botón "Cancelar" aparte en esos 5: la salida ya pide confirmar si hay algo sin guardar.
 
 ---
 
