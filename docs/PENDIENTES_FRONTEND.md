@@ -84,7 +84,11 @@ El patrón bueno (`AccountFormDialog`/`SettleAccountDialog`/`TransferDialog`, `f
 
 **Cargada con `import()` dinámico**, no en el bundle principal: pesa 330KB sin comprimir (108KB gzip) y solo quien exporta lo descarga — el bundle principal (item #11.5, code-splitting por ruta, sigue sin tocarse) no creció ni un byte por esta feature.
 
-**Lo que falta:** el resto de listados ("y demás" — Contratos, Ventas, Reportes). Mismo patrón, se replica cuando haga falta: `fetchAllRows(filters)` + `exportRowsToExcel` ya son genéricos, lo único específico de cada pantalla es el `queryFn` y el mapeo de columnas. Ojo con el tope de `fetchAllPages` (`maxPages=50` × `limit≤200` = 10.000 filas, corta en silencio) si se aplica a un listado con más historial que inventario.
+**Contratos, agregado el mismo día.** Botón junto a las pestañas de estado en `ContractsListPage`: exporta la pestaña de estado ACTIVA completa (`fetchAllContracts(status)`), con Número, Código anterior, Cliente, Documento, Capital, Saldo, Tasa mensual, Inicio, Vencimiento y Estado (mismo texto que `StatusBadge`, vía `STATUS_LABELS` — ya exportado del componente, no se duplicó el mapa como sí hizo falta para Inventario). "Listos para remate" exporta la lista de `GET /contracts/ready-for-auction` tal cual (no es un `status` real, no pasa por `fetchAllContracts`). El buscador libre de arriba (parche client-side de 200) queda fuera del export a propósito — no es un filtro real del backend, exportarlo daría una falsa sensación de completitud.
+
+**Cliente resuelto a nombre sin `?ids=` en `GET /customers`** (ese filtro no existe todavía, a diferencia de `GET /inventory/items` y ahora `GET /contracts`): `fetchAllCustomers()` (`features/customers/api.ts`) trae TODOS los clientes en una sola tanda de requests — razonable para el tamaño de clientela de una compraventa, pero si la base de clientes crece mucho, un `?ids=` sería más preciso que el mismo movimiento que ya se hizo para artículos.
+
+**Lo que falta:** Ventas, Reportes. Mismo patrón, se replica cuando haga falta: `fetchAllRows(filters)` + `exportRowsToExcel` ya son genéricos, lo único específico de cada pantalla es el `queryFn` y el mapeo de columnas. Ojo con el tope de `fetchAllPages` (`maxPages=50` × `limit≤200` = 10.000 filas, corta en silencio) si se aplica a un listado con más historial que inventario/contratos.
 
 ---
 

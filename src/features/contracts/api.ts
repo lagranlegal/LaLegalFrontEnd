@@ -1,6 +1,6 @@
 import { queryOptions, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api, unwrap } from '@/lib/api/client'
-import { useCursorInfiniteQuery } from '@/lib/api/pagination'
+import { useCursorInfiniteQuery, fetchAllPages } from '@/lib/api/pagination'
 import { useMoneyMutation } from '@/lib/api/useMoneyMutation'
 import type { components } from '@/types/api'
 
@@ -26,6 +26,18 @@ export type PaymentCreateIn = components['schemas']['PaymentCreateIn']
 
 export function useContractsList(status: string) {
   return useCursorInfiniteQuery(['contracts', 'list', { status }] as const, (cursor) =>
+    unwrap(api.GET('/api/v1/contracts', { params: { query: { status: status || undefined, cursor } } })),
+  )
+}
+
+/**
+ * Trae TODOS los contratos que matchean el estado elegido — para exportar a
+ * Excel, no para una tabla con scroll infinito (eso es `useContractsList`).
+ * Mismo query que arma `useContractsList`, así el archivo exportado
+ * coincide con lo que la pestaña de estado está mostrando en pantalla.
+ */
+export function fetchAllContracts(status: string): Promise<Contract[]> {
+  return fetchAllPages<Contract>((cursor) =>
     unwrap(api.GET('/api/v1/contracts', { params: { query: { status: status || undefined, cursor } } })),
   )
 }
