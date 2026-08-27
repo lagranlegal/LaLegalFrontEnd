@@ -2,7 +2,7 @@
 
 > Documento de traspaso, mismo criterio que `PENDIENTES_BACKEND_INFRA.md`: no es una queja, es la lista concreta de 11 puntos que Mateo reportó tras usar la app en vivo, cada uno con archivo/línea real y diagnóstico verificado — no suposiciones. Investigado con tres agentes de exploración en paralelo (loading/overflow, navegación, tema/export/rendimiento), sin tocar código.
 >
-> **Resueltos el mismo día (7 de 11):** 1, 1b, 3, 4, 5, 6, 9, 10 — son 8 puntos en 7 números porque el 1 se dividió en dos hallazgos. Quedan abiertos: 2 (proveedor → detalle de compra), 7 (tema oscuro), 8 (exportar a Excel), 11 (rendimiento).
+> **Resueltos el mismo día (7 de 11):** 1, 1b, 3, 4, 5, 6, 9, 10 — son 8 puntos en 7 números porque el 1 se dividió en dos hallazgos. **11 (rendimiento) parcialmente resuelto** el mismo día en una segunda ronda — ver abajo. Quedan abiertos: 2 (proveedor → detalle de compra), 7 (tema oscuro), 8 (exportar a Excel).
 
 ---
 
@@ -76,12 +76,10 @@ El patrón bueno (`AccountFormDialog`/`SettleAccountDialog`/`TransferDialog`, `f
 
 ## 11. Velocidad de respuesta lenta
 
-**Abierto — 5 causas concretas, no una percepción vaga:**
+**5 causas concretas identificadas; 2 de las 5 ya resueltas el mismo día (27/08/2026, segunda ronda).**
 
-1. **Requests N+1 real, en 3 componentes distintos** (no solo el ya conocido): `SaleReceiptDialog` (`useItem` por línea de venta, **×2** porque también se monta la versión de impresión oculta), `ReturnFormDialog` (mismo patrón, por línea a devolver) y `ContractDetailPage` (`useItem` por cada prenda rematada del contrato). Una venta de 8 líneas dispara 16 requests solo para abrir el comprobante.
-2. **Listados completos traídos para filtrar en el cliente:** historial de contratos de un cliente (`limit=200`, porque `GET /contracts` no filtra por `customer_id` en el backend) y Reportes (`fetchAllPages` sobre ventas + artículos, hasta 5.000 de cada uno).
-3. **Cascada innecesaria:** `ContractDetailPage` pide el contrato y recién cuando ese responde pide el cliente (`enabled: !!contract?.customer_id`) — podrían pedirse en paralelo.
-4. **Sin `staleTime` global**, y `refetchOnWindowFocus: true` puesto a propósito ("app operativa multi-usuario") — combinado con el punto 1, volver a la pestaña del navegador con un comprobante abierto reejecuta todos esos requests de golpe.
-5. **Bundle de 1.7MB en un solo archivo**, cero code-splitting por ruta (`router.tsx` tiene 38 imports estáticos, ningún `.lazy.tsx`, sin `manualChunks` en `vite.config.ts`). Las 12 features completas se descargan de una sola vez en el primer load.
-
-**Recomendación de orden:** el punto 1 (N+1) es el más barato de arreglar y el que más se siente en las pantallas que más se usan (venta, devolución, contrato) — candidato a resolverse primero, posiblemente agregando un endpoint de "traer varios artículos por lista de ids" en el backend en vez de seguir pidiendo uno por uno.
+1. **✅ Resuelto — requests N+1**, en 3 componentes: `SaleReceiptDialog`, `ReturnFormDialog` (uno por línea de venta/devolución) y `ContractDetailPage` (uno por prenda rematada). Una venta de 8 líneas disparaba 8 requests en paralelo solo para abrir el comprobante. Backend: `GET /inventory/items?ids=` nuevo (aditivo, mismo endpoint/permiso/`ItemOut`, repetible — `?ids=a&ids=b`). Frontend: `useItemsByIds()` (`lib/inventory/items.ts`) reemplaza los `useItem` por línea con una sola consulta que devuelve un `Map`.
+2. **Abierto.** Listados completos traídos para filtrar en el cliente: historial de contratos de un cliente (`limit=200`, porque `GET /contracts` no filtra por `customer_id` en el backend) y Reportes (`fetchAllPages` sobre ventas + artículos, hasta 5.000 de cada uno).
+3. **Abierto, menor.** Cascada: `ContractDetailPage` pide el contrato y recién cuando ese responde pide el cliente (`enabled: !!contract?.customer_id`) — inherente a la forma del dato (no se puede saber el cliente sin conocer antes el contrato), así que no es tan barato de evitar como parece; impacto bajo (un salto adicional, no N).
+4. **✅ Resuelto — sin `staleTime` global.** `QueryClient` tenía el default de TanStack Query (`0`: todo obsoleto al instante), así que `refetchOnWindowFocus: true` (a propósito, "app operativa") reejecutaba TODO lo montado en cada alt-tab. Ahora `staleTime: 15_000` — sigue siendo "casi al instante" para una app operativa (ya se acepta hasta 60s de desfase en permisos vía `/me`), y absorbe el caso real: revisar un mensaje y volver a la pestaña.
+5. **Abierto — el más grande.** Bundle de 1.7MB en un solo archivo, cero code-splitting por ruta (`router.tsx` tiene 38 imports estáticos, ningún `.lazy.tsx`, sin `manualChunks` en `vite.config.ts`). Las 12 features completas se descargan de una sola vez en el primer load. Deliberadamente no se tocó hoy: requiere reestructurar cómo se definen las rutas (TanStack Router código-based, no file-based) y agregar `Suspense`/fallbacks consistentes con el patrón de `RouteTransitionBar` ya existente — el riesgo de reintroducir pantallas en blanco a medio terminar es real, mejor como su propia tanda de trabajo.
