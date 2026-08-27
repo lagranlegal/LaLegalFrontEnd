@@ -77,7 +77,7 @@ CSS variables consumidas por Tailwind (`@theme` en Tailwind v4). Las features us
 
 Utilidad `enter-up` (definida en `globals.css`): el contenido cargado sube unos píxeles mientras aparece, en vez de saltar. Se aplica **al contenedor, no a cada hijo** — animar veinte filas por separado convierte una lista en un espectáculo y retrasa la lectura.
 
-Dark mode: no es requisito, pero la estructura ya lo permite (`[data-theme=dark]` redefine las mismas variables). No invertir esfuerzo ahora; no romper el mecanismo tampoco (por eso: nunca hex sueltos). **Hoy el bloque `[data-theme='dark']` está vacío y no hay toggle** — verificarlo antes de "arreglar" cualquier cosa que solo se rompa en oscuro.
+Dark mode: **implementado (27/08/2026)**, Claro/Oscuro/Sistema con toggle en el topbar (`ThemeToggle`, `src/app/store.ts`). `[data-theme='dark']` en `tokens.css` redefine ~25 variables — cero componentes tocados, porque nunca hubo hex sueltos fuera de `tokens.css`. Al agregar un color nuevo a `tokens.css`, revisar si necesita también su valor en `[data-theme='dark']` — la regla "nunca hex sueltos" sigue siendo lo que hace esto sostenible.
 
 ### `prefers-reduced-motion`
 
