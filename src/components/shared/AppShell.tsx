@@ -25,6 +25,7 @@ import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { CashSessionBanner } from '@/components/shared/CashSessionBanner'
+import { ThemeToggle } from '@/components/shared/ThemeToggle'
 
 interface NavItem {
   label: string
@@ -193,6 +194,8 @@ export function AppShell() {
               global real necesita `?q=` en contratos e inventario, que el
               backend todavía no expone (docs/PENDIENTES_BACKEND_INFRA.md). */}
           <div className="flex-1" />
+
+          <ThemeToggle />
 
           <DropdownMenu>
             <DropdownMenuTrigger asChild>

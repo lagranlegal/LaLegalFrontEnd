@@ -2,7 +2,7 @@
 
 > Documento de traspaso, mismo criterio que `PENDIENTES_BACKEND_INFRA.md`: no es una queja, es la lista concreta de 11 puntos que Mateo reportó tras usar la app en vivo, cada uno con archivo/línea real y diagnóstico verificado — no suposiciones. Investigado con tres agentes de exploración en paralelo (loading/overflow, navegación, tema/export/rendimiento), sin tocar código.
 >
-> **Resueltos el mismo día (10 de 11):** 1, 1b, 2, 3, 4, 5, 6, 8, 9, 10 — son 10 puntos en 9 números porque el 1 se dividió en dos hallazgos. **11 (rendimiento) parcialmente resuelto** el mismo día en una segunda ronda, que de paso cerró también el hueco de `?customer_id=` en `GET /contracts` (`docs/PENDIENTES_BACKEND_INFRA.md` #2) — ver abajo. **8 (Excel) resuelto en parte:** Inventario sí, el resto de listados queda para cuando haga falta. Queda abierto: 7 (tema oscuro).
+> **Resueltos los 11 puntos** (27/08/2026, mismo día) — 1, 1b, 2, 3, 4, 5, 6, 7, 8, 9, 10 son 11 puntos en 10 números porque el 1 se dividió en dos hallazgos. **11 (rendimiento) parcialmente resuelto**, que de paso cerró también el hueco de `?customer_id=` en `GET /contracts` (`docs/PENDIENTES_BACKEND_INFRA.md` #2) — ver abajo. **8 (Excel) resuelto en parte:** Inventario sí, el resto de listados queda para cuando haga falta.
 
 ---
 
@@ -58,11 +58,19 @@ El patrón bueno (`AccountFormDialog`/`SettleAccountDialog`/`TransferDialog`, `f
 
 ---
 
-## 7. Tema oscuro/claro
+## 7. ✅ Resuelto (27/08/2026) — Tema oscuro/claro
 
-**Abierto — es una feature nueva, no un ajuste.** El terreno está preparado a propósito (`tokens.css:82-85`: bloque `[data-theme='dark'] {}` vacío, con el comentario "la estructura ya lo permite... no es requisito hoy"; Tailwind ya tiene el variant `dark:` cableado en `globals.css:8`; varios componentes shadcn ya traen clases `dark:*` de fábrica sin usar) pero no hay ni una sola variable redefinida, ni `ThemeProvider`, ni toggle, ni persistencia en `localStorage`. `docs/DESIGN_SYSTEM.md:80` ya lo advierte explícitamente.
+**Patrón estándar: Claro / Oscuro / Sistema, por dispositivo (no por cuenta).** Es lo que hacen Linear/GitHub/Notion/Vercel — una preferencia de PANTALLA, no un dato de negocio, así que vive en `localStorage` del navegador, no en el backend (tampoco existe `PATCH /me` todavía para guardar algo así por cuenta). Default: "Sistema" — respeta `prefers-color-scheme` del SO desde el primer arranque, sin que el usuario tenga que elegir nada.
 
-**Tamaño real:** ~20-25 de las 46 variables de `tokens.css` son candidatas de color a redefinir (la parte chica). Lo que falta de verdad es la infraestructura completa: el estado del tema, el toggle, la persistencia — cero de eso existe hoy. Positivo: no hay hex sueltos fuera de `tokens.css` en `features`/`components/shared` (la regla 4 de CLAUDE.md se cumple), así que activar un tema oscuro no se rompe por sorpresas fuera del sistema de diseño.
+**Sin parpadeo (FOUC):** `index.html` aplica el atributo `data-theme="dark"` al `<html>` con un script inline SINCRÓNICO, antes de que React monte y antes del primer pintado — la misma lógica se repite en `src/app/store.ts::applyThemeToDocument` para cuando el usuario cambia el tema o el SO cambia de preferencia con la app ya abierta (listener de `matchMedia`, solo activo mientras la preferencia sea "Sistema").
+
+**Piezas:**
+- `src/styles/tokens.css` — bloque `[data-theme='dark']` (antes vacío) con ~25 variables redefinidas: superficies invertidas (`--bg-surface` un punto más claro que `--bg-app`, patrón "superficie elevada"), pares soft+fuerte con roles invertidos (`--brand-50`/`--brand-700`, `--success`/`--success-soft`, etc.), `--platform` más oscura que `--bg-app` a propósito (sigue siendo "otro lugar" para el panel super-admin), sombras con más opacidad (una sombra oscura sobre fondo oscuro es invisible). Cero componentes tocados — todo lo que ya usaba `bg-background`/`text-muted-foreground`/`var(--chart-N)` se adaptó solo.
+- `src/app/store.ts` — `theme: 'light'|'dark'|'system'` en el store de Zustand ya existente (mismo criterio que `sidebarCollapsed`), `resolveTheme()` exportado para saber qué color se ve AHORA aunque la preferencia sea "Sistema".
+- `src/components/shared/ThemeToggle.tsx` — nuevo, en el topbar de `AppShell` junto al menú de usuario. Ícono del botón = color resuelto (sol/luna); el menú desplegable marca con un check la preferencia elegida (que puede ser "Sistema" aunque ahora se vea oscuro).
+- jsdom (tests) no implementa `matchMedia` — se agregó un guard defensivo en `store.ts` (no explota si falta) y un mock en `tests/setup.ts` (para poder testear tema/`usePrefersReducedMotion` en el futuro).
+
+**Verificado en vivo** (Playwright contra dev real, `mateojaras@gmail.com`): Inicio y Reportes completos (KPIs, tabla de desglose, donas, área, barras) en oscuro con buen contraste; persiste tras recargar (`localStorage`); vuelve a claro sin dejar el atributo.
 
 ---
 

@@ -79,7 +79,58 @@
   --space-card: 20px;
 }
 
-/* Dark mode: la estructura ya lo permite (mismas variables redefinidas). No es
-   requisito hoy — no invertir esfuerzo, pero tampoco romper el mecanismo. */
+/* Dark mode (27/08/2026). Mismas variables que :root, redefinidas — nada
+   nuevo se agrega a `@theme inline`, así que todo lo que ya usa
+   `bg-background`/`text-muted-foreground`/etc. se adapta solo, sin tocar
+   componentes. Reglas al elegir los valores:
+
+   - Superficies: `--bg-app` más oscuro que `--bg-surface` se invierte
+     mentalmente distinto en dark — acá `--bg-surface` (cards/sidebar/topbar)
+     queda un punto MÁS CLARO que `--bg-app` (fondo general), el patrón
+     estándar de "superficie elevada" que da profundidad sin sombra.
+   - Los pares "soft + fuerte" (`--brand-50`+`--brand-700`, `--success`+
+     `--success-soft`, etc.) invierten roles: en claro, el "soft" es casi
+     blanco y el "fuerte" es el texto encima; en oscuro, el "soft" pasa a ser
+     un tinte oscuro del color y el texto encima se aclara — mismo contraste
+     relativo, no los mismos números.
+   - `--platform` (banda del panel super-admin) se mantiene MÁS OSCURA que
+     `--bg-app` normal, no igual — la razón de existir de ese color es que
+     nunca se confunda con el resto de la app, y en oscuro eso solo se
+     sostiene si sigue siendo distinguible. */
 [data-theme='dark'] {
+  /* ==== Marca ==== */
+  --brand-50: #0d2e2a; /* fondos suaves, item activo de sidebar, chips */
+  --brand-100: #124038;
+  --brand-500: #22c7b0; /* primario — un poco más claro que en luz para leerse sobre fondo oscuro */
+  --brand-600: #3ad4bd; /* hover del primario: más claro, no más oscuro (invertido vs. luz) */
+  --brand-700: #7fe3d1; /* pressed / focos / texto sobre brand-50 */
+  --brand-contrast: #06231f; /* texto sobre botones primarios: oscuro, brand-500 ya es claro */
+
+  /* ==== Semánticos ==== */
+  --success: #3dd68c;
+  --success-soft: #0f2e21;
+  --warning: #f0b955;
+  --warning-soft: #362508;
+  --danger: #f36b70;
+  --danger-soft: #3a1416;
+  --info: #6ea8fb;
+  --info-soft: #16233d;
+
+  /* ==== Neutrales (superficies y texto) ==== */
+  --bg-app: #0f1520;
+  --bg-surface: #171f2e; /* cards, sidebar, topbar, modales — un punto más claro que bg-app */
+  --border: #2a3446;
+  --text-strong: #f1f5f9;
+  --text-body: #cbd5e1;
+  --text-muted: #8595ab;
+
+  /* ==== Gráficas ==== */
+  --chart-3: #22b8cf; /* el #0e7490 de luz es casi ilegible sobre fondo oscuro */
+
+  /* ==== Panel de plataforma ==== */
+  --platform: #04070d; /* más oscura que --bg-app a propósito: sigue siendo "otro lugar" */
+
+  /* ==== Forma: sombra dark-on-dark es invisible, sube la opacidad ==== */
+  --shadow-card: 0 1px 3px rgb(0 0 0 / 0.4);
+  --shadow-modal: 0 20px 50px rgb(0 0 0 / 0.6);
 }

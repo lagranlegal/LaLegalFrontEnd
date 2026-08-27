@@ -5,6 +5,23 @@
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Compraventa</title>
+    <!--
+      Aplica el tema ANTES de que React monte y antes del primer pintado —
+      sin esto, la app siempre nace en claro y "salta" a oscuro un instante
+      después (parpadeo). Misma lógica que `src/app/store.ts::setTheme`,
+      repetida a propósito: en este punto ningún módulo de la app cargó
+      todavía.
+    -->
+    <script>
+      (function () {
+        try {
+          var stored = localStorage.getItem('theme')
+          var theme = stored === 'light' || stored === 'dark' ? stored : 'system'
+          var isDark = theme === 'dark' || (theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches)
+          if (isDark) document.documentElement.setAttribute('data-theme', 'dark')
+        } catch (e) {}
+      })()
+    </script>
   </head>
   <body>
     <div id="root"></div>
