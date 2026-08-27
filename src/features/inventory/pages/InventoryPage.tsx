@@ -20,7 +20,7 @@ import { entryOriginLabel, exitTypeLabel, SELECTABLE_ENTRY_ORIGINS, SELECTABLE_E
 import { useEntriesList, useExitsList, useItemsList, useProductsList, type Entry, type Exit, type Product } from '@/features/inventory/api'
 import type { Item } from '@/lib/inventory/items'
 import { ItemEditDialog } from '@/features/inventory/components/ItemEditDialog'
-import { EntryDetailDialog } from '@/features/inventory/components/EntryDetailDialog'
+import { EntryDetailDialog } from '@/components/shared/EntryDetailDialog'
 import { ProductRow } from '@/features/inventory/components/ProductRow'
 import { ProductPriceDialog } from '@/features/inventory/components/ProductPriceDialog'
 import { EmptyState } from '@/components/shared/EmptyState'

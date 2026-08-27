@@ -39,14 +39,6 @@ export function useEntriesList(filters: EntryFilters = {}) {
   )
 }
 
-export function useEntry(entryId: string | undefined) {
-  return useQuery({
-    queryKey: ['inventory', 'entries', entryId] as const,
-    queryFn: () => unwrap(api.GET('/api/v1/inventory/entries/{entry_id}', { params: { path: { entry_id: entryId! } } })),
-    enabled: !!entryId,
-  })
-}
-
 /**
  * SÍ mueve dinero (corregido): un ingreso de compra entrega plata al
  * proveedor y desde la migración 00014 del backend genera su movimiento de
@@ -150,29 +142,8 @@ export function usePublishItem() {
   })
 }
 
-export type EntryPayIn = components['schemas']['EntryPayIn']
-
-/**
- * Salda una compra que quedó pendiente de pago.
- *
- * Es mutación de dinero: genera el egreso de caja. El egreso cae en la sesión
- * abierta de HOY, no en la fecha de la compra — una sesión cerrada es
- * inmutable, así que no hay forma (ni debería haberla) de afectar la caja de
- * un día ya cuadrado y firmado.
- */
-export function usePayEntry() {
-  return useMoneyMutation<Entry, { entryId: string; body: EntryPayIn }>({
-    mutationFn: ({ entryId, body }, idempotencyKey) =>
-      unwrap(
-        api.POST('/api/v1/inventory/entries/{entry_id}/pay', {
-          params: { path: { entry_id: entryId } },
-          body,
-          headers: { 'Idempotency-Key': idempotencyKey },
-        }),
-      ),
-    invalidateKeys: [['inventory'], ['dashboard'], ['cashbox']],
-  })
-}
+// `EntryPayIn`/`useEntry`/`usePayEntry` viven en `lib/inventory/entries.ts`
+// desde que `EntryDetailDialog` pasó a ser compartido (docs/PENDIENTES_FRONTEND.md #2).
 
 // ---- Productos (00021) ----
 

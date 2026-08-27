@@ -2,7 +2,7 @@
 
 > Documento de traspaso, mismo criterio que `PENDIENTES_BACKEND_INFRA.md`: no es una queja, es la lista concreta de 11 puntos que Mateo reportó tras usar la app en vivo, cada uno con archivo/línea real y diagnóstico verificado — no suposiciones. Investigado con tres agentes de exploración en paralelo (loading/overflow, navegación, tema/export/rendimiento), sin tocar código.
 >
-> **Resueltos el mismo día (7 de 11):** 1, 1b, 3, 4, 5, 6, 9, 10 — son 8 puntos en 7 números porque el 1 se dividió en dos hallazgos. **11 (rendimiento) parcialmente resuelto** el mismo día en una segunda ronda — ver abajo. Quedan abiertos: 2 (proveedor → detalle de compra), 7 (tema oscuro), 8 (exportar a Excel).
+> **Resueltos el mismo día (9 de 11):** 1, 1b, 2, 3, 4, 5, 6, 9, 10 — son 9 puntos en 8 números porque el 1 se dividió en dos hallazgos. **11 (rendimiento) parcialmente resuelto** el mismo día en una segunda ronda — ver abajo. Quedan abiertos: 7 (tema oscuro), 8 (exportar a Excel).
 
 ---
 
@@ -32,13 +32,13 @@ Candidatos que hoy podían desbordar: `CompanyDetailDialog` (historial de suscri
 
 ---
 
-## 2. Historial de proveedores → no lleva al detalle de la compra
+## 2. ✅ Resuelto (27/08/2026) — Historial de proveedores no llevaba al detalle de la compra
 
-**Abierto, con la solución ya identificada.** La fila de "Historial de compras" en `SupplierDetailPage.tsx` (líneas 131-145) no tiene `onRowClick` — el clic literalmente no hace nada (compárese con la tabla de "Contratos" en `CustomerDetailPage.tsx:171`, que sí lo tiene). El detalle real de una compra (`EntryDetailDialog`) vive en `features/inventory/components/`, con su fetch por id ya escrito (`useEntry(entryId)`, `features/inventory/api.ts:42-48`) — la pieza técnica que falta ya existe, solo no está conectada desde `catalogs`.
+El obstáculo era de arquitectura, no técnico: `catalogs` no puede importar internals de `inventory` (CLAUDE.md regla 3). `EntryDetailDialog` vivía en `features/inventory/components/`, y `useEntry`/`usePayEntry` en `features/inventory/api.ts` sin usarse desde ningún lado (código muerto).
 
-**El obstáculo es de arquitectura, no técnico:** `catalogs` no puede importar internals de `inventory` (CLAUDE.md regla 3). La solución es el mismo movimiento que ya se hizo una vez para este problema exacto — cuando `SaleReceiptDialog` pasó de `features/sales/` a `components/shared/` porque `customers` también lo necesitaba (documentado en el propio comentario del componente). Acá: promover `EntryDetailDialog` + `useEntry` a `components/shared/`/`lib/inventory/`, y conectar `onRowClick` en `SupplierDetailPage`.
+**Fix, mismo movimiento que ya se hizo una vez con `SaleReceiptDialog`:** `EntryDetailDialog` promovido a `components/shared/`, `useEntry`/`usePayEntry` promovidos a `lib/inventory/entries.ts`. `SupplierDetailPage.tsx` ahora pide el ingreso por id al hacer clic en una fila del historial y abre el mismo diálogo que usa Inventario.
 
-**Bonus, mismo hueco en un segundo lugar:** la pestaña "Compras" de cada producto (`ProductRow.tsx`) tampoco tiene `onRowClick` en sus filas — no es solo un problema de `catalogs`, es un patrón que quedó sin terminar de conectar en más de un sitio.
+**Bonus incluido en el mismo fix:** la pestaña "Compras" de cada producto (`ProductRow.tsx`) tenía el mismo hueco (sin `onRowClick`) — se conectó al mismo `useEntry`/`EntryDetailDialog` compartido.
 
 ---
 

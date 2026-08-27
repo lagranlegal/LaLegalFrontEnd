@@ -8,10 +8,12 @@ import { PageHeader } from '@/components/shared/PageHeader'
 import { DataTable } from '@/components/shared/DataTable'
 import { KpiCard, KpiRow } from '@/components/shared/KpiCard'
 import { Money } from '@/components/shared/Money'
+import { EntryDetailDialog } from '@/components/shared/EntryDetailDialog'
 import { Button } from '@/components/ui/button'
 import { formatDate } from '@/lib/dates'
 import { useSupplierSummary, useSupplierPurchases, useSuppliersList, type SupplierPurchase } from '@/features/catalogs/api'
 import { SupplierFormDialog } from '@/features/catalogs/components/SupplierFormDialog'
+import { useEntry } from '@/lib/inventory/entries'
 
 const purchaseColumns: ColumnDef<SupplierPurchase>[] = [
   { accessorKey: 'number', header: 'Ingreso', cell: (info) => `#${info.getValue<number>()}` },
@@ -50,6 +52,13 @@ const purchaseColumns: ColumnDef<SupplierPurchase>[] = [
 export function SupplierDetailPage() {
   const { supplierId } = useParams({ from: '/app-layout/proveedores/$supplierId' })
   const [editOpen, setEditOpen] = useState(false)
+  // El historial solo trae el resumen de cada compra (`SupplierPurchaseOut`,
+  // sin `items[]`) — el detalle real (`EntryDetailDialog`, compartido con
+  // Inventario) necesita el ingreso completo, así que se pide por id recién
+  // al hacer click (docs/PENDIENTES_FRONTEND.md #2: antes el click no hacía
+  // nada, el detalle "solo vivía en Inventario").
+  const [viewingEntryId, setViewingEntryId] = useState<string | null>(null)
+  const { data: viewingEntry } = useEntry(viewingEntryId ?? undefined)
   const { data: summary, isPending, isError, refetch } = useSupplierSummary(supplierId)
   // El formulario de edición necesita el proveedor COMPLETO (documento,
   // dirección, notas), y el resumen solo trae lo que se muestra en la ficha.
@@ -139,10 +148,14 @@ export function SupplierDetailPage() {
           hasNextPage={hasNextPage}
           isFetchingNextPage={isFetchingNextPage}
           onLoadMore={() => fetchNextPage()}
+          onRowClick={(row) => setViewingEntryId(row.entry_id)}
         />
       </div>
 
       {supplier && <SupplierFormDialog key={supplier.id} open={editOpen} onOpenChange={setEditOpen} supplier={supplier} />}
+      {viewingEntry && (
+        <EntryDetailDialog open={!!viewingEntryId} onOpenChange={(open) => !open && setViewingEntryId(null)} entry={viewingEntry} />
+      )}
     </div>
   )
 }

@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { ChevronDown, ChevronRight } from 'lucide-react'
 import { KardexDialog } from '@/features/inventory/components/KardexDialog'
+import { EntryDetailDialog } from '@/components/shared/EntryDetailDialog'
 import { Money } from '@/components/shared/Money'
 import { StatusBadge } from '@/components/shared/StatusBadge'
 import { Button } from '@/components/ui/button'
@@ -8,6 +9,7 @@ import { Can } from '@/components/shared/Can'
 import { cn } from '@/lib/utils'
 import { formatDate } from '@/lib/dates'
 import { useProductLots, useProductPurchases, type Product } from '@/features/inventory/api'
+import { useEntry } from '@/lib/inventory/entries'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { formatQuantity } from '@/lib/inventory/units'
 import { TableSkeleton } from '@/components/shared/TableSkeleton'
@@ -32,6 +34,11 @@ function SupplierName({ supplierId }: { supplierId: string | null }) {
  */
 function PurchaseList({ productId }: { productId: string }) {
   const { data: purchases, isPending, isError } = useProductPurchases(productId)
+  // Mismo hueco que el historial de proveedores (docs/PENDIENTES_FRONTEND.md
+  // #2): el detalle de una compra "solo vivía en Inventario" — clic en una
+  // fila lo abre desde acá también.
+  const [viewingEntryId, setViewingEntryId] = useState<string | null>(null)
+  const { data: viewingEntry } = useEntry(viewingEntryId ?? undefined)
 
   if (isPending) return <TableSkeleton rows={2} columns={6} />
   if (isError) return <p className="px-3 py-2 text-sm text-danger">No se pudo cargar el historial de compras.</p>
@@ -65,7 +72,11 @@ function PurchaseList({ productId }: { productId: string }) {
             const esMenor = hayComparacion && costo === menor
             const esMayor = hayComparacion && costo === mayor
             return (
-              <tr key={`${compra.entry_id}-${compra.lot_code ?? compra.entry_number}`} className="border-t border-border">
+              <tr
+                key={`${compra.entry_id}-${compra.lot_code ?? compra.entry_number}`}
+                className="cursor-pointer border-t border-border hover:bg-background"
+                onClick={() => setViewingEntryId(compra.entry_id)}
+              >
                 <td className="px-3 py-1.5 text-muted-foreground">#{compra.entry_number}</td>
                 <td className="px-3 py-1.5 text-muted-foreground">{formatDate(compra.entry_date)}</td>
                 <td className="px-3 py-1.5 text-foreground">
@@ -89,6 +100,9 @@ function PurchaseList({ productId }: { productId: string }) {
           })}
         </tbody>
       </table>
+      {viewingEntry && (
+        <EntryDetailDialog open={!!viewingEntryId} onOpenChange={(open) => !open && setViewingEntryId(null)} entry={viewingEntry} />
+      )}
     </div>
   )
 }

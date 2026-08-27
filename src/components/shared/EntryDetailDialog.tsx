@@ -10,11 +10,9 @@ import { Can } from '@/components/shared/Can'
 import { entryOriginLabel } from '@/lib/inventory/entryTypes'
 import { CashSessionRequiredDialog } from '@/components/shared/CashSessionRequiredDialog'
 import { ApiError } from '@/lib/api/client'
-import { usePayEntry } from '@/features/inventory/api'
+import { usePayEntry, type Entry } from '@/lib/inventory/entries'
 import { useState } from 'react'
 import { toast } from 'sonner'
-import type { Entry } from '@/features/inventory/api'
-
 
 /**
  * Salda una compra que quedó pendiente. El egreso cae en la sesión de caja de
@@ -90,7 +88,14 @@ function PayPendingPurchase({ entry }: { entry: Entry }) {
   )
 }
 
-/** Ver ingreso — solo lectura, los artículos que creó ya vienen embebidos en `EntryOut.items`. */
+/**
+ * Ver ingreso — solo lectura, los artículos que creó ya vienen embebidos en
+ * `EntryOut.items`. Vive en `components/shared/` (movido desde
+ * `features/inventory/`, docs/PENDIENTES_FRONTEND.md #2): el detalle de una
+ * compra "solo vivía en Inventario" — el historial de un proveedor la abre
+ * ahora también, mismo movimiento que ya se hizo una vez con el comprobante
+ * de venta.
+ */
 export function EntryDetailDialog({ open, onOpenChange, entry }: { open: boolean; onOpenChange: (open: boolean) => void; entry: Entry }) {
   const isPendingPurchase = entry.origin_type === 'purchase' && !entry.paid_at
 
