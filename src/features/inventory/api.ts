@@ -1,7 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api, unwrap } from '@/lib/api/client'
-import { useCursorInfiniteQuery } from '@/lib/api/pagination'
+import { useCursorInfiniteQuery, fetchAllPages } from '@/lib/api/pagination'
 import { useMoneyMutation } from '@/lib/api/useMoneyMutation'
+import type { Item } from '@/lib/inventory/items'
 import type { components } from '@/types/api'
 
 export type Entry = components['schemas']['EntryOut']
@@ -102,11 +103,8 @@ export interface ItemFilters {
   origin?: string
 }
 
-export function useItemsList(filters: ItemFilters = {}) {
-  // Los filtros van en la queryKey: cada combinación es su propia lista
-  // paginada en cache, y cambiar un filtro arranca la paginación desde cero
-  // en vez de mezclar páginas de dos búsquedas distintas.
-  const query = {
+function _itemsQuery(filters: ItemFilters) {
+  return {
     status: filters.status || undefined,
     q: filters.q?.trim() || undefined,
     cat1_id: filters.cat1_id || undefined,
@@ -115,7 +113,27 @@ export function useItemsList(filters: ItemFilters = {}) {
     supplier_id: filters.supplier_id || undefined,
     origin: filters.origin || undefined,
   }
+}
+
+export function useItemsList(filters: ItemFilters = {}) {
+  // Los filtros van en la queryKey: cada combinación es su propia lista
+  // paginada en cache, y cambiar un filtro arranca la paginación desde cero
+  // en vez de mezclar páginas de dos búsquedas distintas.
+  const query = _itemsQuery(filters)
   return useCursorInfiniteQuery(['inventory', 'items', 'list', query] as const, (cursor) =>
+    unwrap(api.GET('/api/v1/inventory/items', { params: { query: { ...query, cursor } } })),
+  )
+}
+
+/**
+ * Trae TODOS los artículos que matchean los filtros actuales — para
+ * exportar a Excel, no para una tabla con scroll infinito (eso es
+ * `useItemsList`). Mismo query que arma `useItemsList`, así el archivo
+ * exportado coincide exactamente con lo que la pantalla está mostrando.
+ */
+export function fetchAllItems(filters: ItemFilters = {}): Promise<Item[]> {
+  const query = _itemsQuery(filters)
+  return fetchAllPages<Item>((cursor) =>
     unwrap(api.GET('/api/v1/inventory/items', { params: { query: { ...query, cursor } } })),
   )
 }

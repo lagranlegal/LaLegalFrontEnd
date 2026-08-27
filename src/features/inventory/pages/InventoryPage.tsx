@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import type { ColumnDef } from '@tanstack/react-table'
 import { useNavigate } from '@tanstack/react-router'
+import { Download } from 'lucide-react'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { DataTable } from '@/components/shared/DataTable'
 import { StatusBadge } from '@/components/shared/StatusBadge'
@@ -13,12 +14,14 @@ import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { cn } from '@/lib/utils'
-import { formatDate, formatDateTime } from '@/lib/dates'
+import { formatDate, formatDateTime, todayBogota } from '@/lib/dates'
 import { useCategories, type Category } from '@/lib/catalogs/categories'
 import { useSuppliers } from '@/lib/catalogs/suppliers'
 import { entryOriginLabel, exitTypeLabel, SELECTABLE_ENTRY_ORIGINS, SELECTABLE_EXIT_TYPES } from '@/lib/inventory/entryTypes'
-import { useEntriesList, useExitsList, useItemsList, useProductsList, type Entry, type Exit, type Product } from '@/features/inventory/api'
+import { fetchAllItems, useEntriesList, useExitsList, useItemsList, useProductsList, type Entry, type Exit, type Product } from '@/features/inventory/api'
 import type { Item } from '@/lib/inventory/items'
+import { unitLabel } from '@/lib/inventory/units'
+import { exportRowsToExcel } from '@/lib/export/xlsx'
 import { ItemEditDialog } from '@/features/inventory/components/ItemEditDialog'
 import { EntryDetailDialog } from '@/components/shared/EntryDetailDialog'
 import { ProductRow } from '@/features/inventory/components/ProductRow'
@@ -36,6 +39,9 @@ const ITEM_STATUS_TABS = [
   { value: 'sold', label: 'Vendido' },
   { value: 'written_off', label: 'Dado de baja' },
 ]
+const ITEM_STATUS_LABELS: Record<string, string> = Object.fromEntries(
+  ITEM_STATUS_TABS.filter((t) => t.value).map((t) => [t.value, t.label]),
+)
 
 /** De dónde salió el artículo. Espeja el enum `item_origin` del backend. */
 const ORIGIN_OPTIONS = [
@@ -314,7 +320,7 @@ function ItemsTab() {
   const setSupplierId = (v: string) => setSearch({ supplier: v })
   const { data: categories } = useCategories()
   const { data: suppliers } = useSuppliers()
-  const { data, isPending, isFetching, isError, error, refetch, hasNextPage, isFetchingNextPage, fetchNextPage } = useItemsList({
+  const itemFilters = {
     status,
     q,
     // Solo se manda la categoría MÁS específica elegida: el backend filtra por
@@ -325,9 +331,39 @@ function ItemsTab() {
     cat3_id: cat3Id,
     supplier_id: supplierId,
     origin,
-  })
+  }
+  const { data, isPending, isFetching, isError, error, refetch, hasNextPage, isFetchingNextPage, fetchNextPage } = useItemsList(itemFilters)
   const [editingItem, setEditingItem] = useState<Item | null>(null)
   const [dialogNonce, setDialogNonce] = useState(0)
+  const [isExporting, setIsExporting] = useState(false)
+
+  // Mismos filtros que la pantalla, pero sin el límite de la tabla: el
+  // archivo exportado tiene que coincidir con lo que el usuario está viendo,
+  // no con la primera página que ya cargó.
+  async function handleExport() {
+    setIsExporting(true)
+    try {
+      const allItems = await fetchAllItems(itemFilters)
+      const categoryNameById = new Map((categories ?? []).map((c) => [c.id, c.name]))
+      const supplierNameById = new Map((suppliers ?? []).map((s) => [s.id, s.name]))
+      const rows = allItems.map((item) => ({
+        Código: item.code ?? '',
+        Nombre: item.name,
+        Categoría:
+          categoryNameById.get(item.cat3_id) ?? categoryNameById.get(item.cat2_id) ?? categoryNameById.get(item.cat1_id) ?? '',
+        Proveedor: item.supplier_id ? (supplierNameById.get(item.supplier_id) ?? '') : '',
+        Costo: Number(item.cost),
+        'Precio de venta': item.sale_price ? Number(item.sale_price) : '',
+        Cantidad: Number(item.quantity),
+        Unidad: unitLabel(item.unit),
+        Estado: ITEM_STATUS_LABELS[item.status] ?? item.status,
+        'Fecha de entrada': item.entry_date,
+      }))
+      await exportRowsToExcel(`inventario-${todayBogota()}.xlsx`, 'Inventario', rows)
+    } finally {
+      setIsExporting(false)
+    }
+  }
 
   const level1Options = (categories ?? []).filter((c) => c.level === 1 && c.active)
   const level2Options = (categories ?? []).filter((c) => c.level === 2 && c.active && c.parent_id === cat1Id)
@@ -420,6 +456,15 @@ function ItemsTab() {
             Limpiar filtros
           </Button>
         )}
+
+        {/* Exporta TODOS los artículos que cumplen los filtros de arriba, no
+            solo la página ya cargada en pantalla — mismo criterio que
+            "Cargar más": el archivo tiene que coincidir con lo que el
+            usuario cree que está pidiendo. */}
+        <Button variant="outline" size="sm" className="ml-auto" disabled={isExporting} onClick={handleExport}>
+          <Download className="size-4" />
+          {isExporting ? 'Exportando…' : 'Exportar a Excel'}
+        </Button>
       </div>
 
       <DataTable

@@ -2,7 +2,7 @@
 
 > Documento de traspaso, mismo criterio que `PENDIENTES_BACKEND_INFRA.md`: no es una queja, es la lista concreta de 11 puntos que Mateo reportó tras usar la app en vivo, cada uno con archivo/línea real y diagnóstico verificado — no suposiciones. Investigado con tres agentes de exploración en paralelo (loading/overflow, navegación, tema/export/rendimiento), sin tocar código.
 >
-> **Resueltos el mismo día (9 de 11):** 1, 1b, 2, 3, 4, 5, 6, 9, 10 — son 9 puntos en 8 números porque el 1 se dividió en dos hallazgos. **11 (rendimiento) parcialmente resuelto** el mismo día en una segunda ronda, que de paso cerró también el hueco de `?customer_id=` en `GET /contracts` (`docs/PENDIENTES_BACKEND_INFRA.md` #2) — ver abajo. Quedan abiertos: 7 (tema oscuro), 8 (exportar a Excel).
+> **Resueltos el mismo día (10 de 11):** 1, 1b, 2, 3, 4, 5, 6, 8, 9, 10 — son 10 puntos en 9 números porque el 1 se dividió en dos hallazgos. **11 (rendimiento) parcialmente resuelto** el mismo día en una segunda ronda, que de paso cerró también el hueco de `?customer_id=` en `GET /contracts` (`docs/PENDIENTES_BACKEND_INFRA.md` #2) — ver abajo. **8 (Excel) resuelto en parte:** Inventario sí, el resto de listados queda para cuando haga falta. Queda abierto: 7 (tema oscuro).
 
 ---
 
@@ -66,11 +66,15 @@ El patrón bueno (`AccountFormDialog`/`SettleAccountDialog`/`TransferDialog`, `f
 
 ---
 
-## 8. Exportar inventario (y otros listados) a Excel
+## 8. ✅ Resuelto en parte (27/08/2026) — Exportar inventario a Excel
 
-**Abierto — feature nueva desde cero.** Cero mecanismo de exportación en todo el repo, cero librería (`xlsx`/`papaparse`/similar) en `package.json`. Lo que sí ayuda: `fetchAllPages()` (`lib/api/pagination.ts:48-58`) ya resuelve la parte difícil — traer un listado completo de una sola vez en vez de por páginas — y ya se usa así en Reportes. Falta: agregar una librería y el botón por pantalla que dispare `fetchAllPages` sobre el `queryFn` que ya existe.
+**Pestaña "Lotes" de Inventario, con los filtros activos aplicados.** Botón "Exportar a Excel" nuevo junto a "Limpiar filtros": trae TODOS los artículos que matchean los filtros actuales (`fetchAllItems`, mismo query que arma `useItemsList`, vía `fetchAllPages`) — no solo la página ya cargada en pantalla — y genera un `.xlsx` real (`xlsx`/SheetJS, `lib/export/xlsx.ts`) con Código, Nombre, Categoría, Proveedor, Costo, Precio de venta, Cantidad, Unidad, Estado y Fecha de entrada. Categoría y Proveedor se resuelven a nombre (no se exportan ids sueltos). Verificado en vivo contra dev real: 16 filas, valores correctos.
 
-**Ojo con el tope:** `fetchAllPages` corta en `maxPages=50` × `limit≤200` = 10.000 filas, en silencio. Para inventario debería alcanzar en la mayoría de los casos, pero si una empresa tiene un histórico más grande, el export se cortaría sin avisar — vale la pena decidir si eso amerita un aviso o subir el tope antes de lanzarlo.
+**`xlsx` no está en npm actualizado** (SheetJS dejó de publicar ahí; la versión de npm tiene 2 CVEs sin parche — prototype pollution y ReDoS, ambos en el lector). Se instaló desde el CDN oficial (`https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz`, pineado en `package.json`), 0 vulnerabilidades. Solo se usa el lado de ESCRITURA (`json_to_sheet`/`writeFile`), que no toca el código de parsing donde viven esos CVEs — pero mejor la versión parcheada de todas formas.
+
+**Cargada con `import()` dinámico**, no en el bundle principal: pesa 330KB sin comprimir (108KB gzip) y solo quien exporta lo descarga — el bundle principal (item #11.5, code-splitting por ruta, sigue sin tocarse) no creció ni un byte por esta feature.
+
+**Lo que falta:** el resto de listados ("y demás" — Contratos, Ventas, Reportes). Mismo patrón, se replica cuando haga falta: `fetchAllRows(filters)` + `exportRowsToExcel` ya son genéricos, lo único específico de cada pantalla es el `queryFn` y el mapeo de columnas. Ojo con el tope de `fetchAllPages` (`maxPages=50` × `limit≤200` = 10.000 filas, corta en silencio) si se aplica a un listado con más historial que inventario.
 
 ---
 
