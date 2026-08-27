@@ -25,6 +25,8 @@ function tituloMovimiento(linea: KardexLine): string {
       return 'Venta'
     case 'sale_void':
       return 'Venta anulada'
+    case 'sale_return':
+      return 'Devolución de cliente'
   }
 }
 

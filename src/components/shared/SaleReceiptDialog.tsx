@@ -1,17 +1,20 @@
+import { useState } from 'react'
 import { toast } from 'sonner'
 import { AppDialog } from '@/components/shared/AppDialog'
 import { PrintLayout } from '@/components/shared/PrintLayout'
 import { Money } from '@/components/shared/Money'
 import { StatusBadge } from '@/components/shared/StatusBadge'
 import { Can } from '@/components/shared/Can'
+import { ReturnFormDialog } from '@/components/shared/ReturnFormDialog'
 import { Button } from '@/components/ui/button'
 import { confirm } from '@/components/shared/confirmStore'
-import { formatDateTime } from '@/lib/dates'
+import { formatDate, formatDateTime } from '@/lib/dates'
 import { PAYMENT_METHOD_LABELS } from '@/lib/paymentMethods'
 import { useCustomer } from '@/lib/customers/search'
 import { useItem } from '@/lib/inventory/items'
 import { formatQuantity } from '@/lib/inventory/units'
 import { useVoidSale, type Sale } from '@/lib/sales/void'
+import { useSaleReturns, RETURN_REASON_LABELS, RETURN_SETTLEMENT_LABELS } from '@/lib/sales/returns'
 import type { components } from '@/types/api'
 
 type SaleLine = components['schemas']['SaleLineOut']
@@ -44,7 +47,9 @@ function SaleLineRow({ line, forPrint = false }: { line: SaleLine; forPrint?: bo
  */
 export function SaleReceiptDialog({ open, onOpenChange, sale }: { open: boolean; onOpenChange: (open: boolean) => void; sale: Sale }) {
   const { data: customer } = useCustomer(sale.customer_id ?? '')
+  const { data: returns } = useSaleReturns(sale.id)
   const voidSale = useVoidSale()
+  const [returnDialogOpen, setReturnDialogOpen] = useState(false)
   const isVoided = sale.status === 'voided'
   const hasDiscount = Number(sale.discount_amount) > 0
 
@@ -79,6 +84,13 @@ export function SaleReceiptDialog({ open, onOpenChange, sale }: { open: boolean;
             <Button type="button" className="w-full rounded-pill" onClick={() => window.print()}>
               Imprimir comprobante
             </Button>
+            {!isVoided && (
+              <Can permission="sales.return">
+                <Button type="button" variant="outline" className="w-full rounded-pill" onClick={() => setReturnDialogOpen(true)}>
+                  Devolver
+                </Button>
+              </Can>
+            )}
             {!isVoided && (
               <Can permission="sales.void">
                 <Button type="button" variant="outline" disabled={voidSale.isPending} className="w-full rounded-pill text-danger hover:text-danger" onClick={handleVoid}>
@@ -125,8 +137,30 @@ export function SaleReceiptDialog({ open, onOpenChange, sale }: { open: boolean;
               Total <Money value={sale.total} />
             </p>
           </div>
+
+          {returns && returns.length > 0 && (
+            <div>
+              <h3 className="mb-2 text-sm font-medium text-foreground">Devoluciones</h3>
+              <div className="divide-y divide-border overflow-hidden rounded-input border border-border text-sm">
+                {returns.map((ret) => (
+                  <div key={ret.id} className="flex items-center justify-between gap-3 px-3 py-2">
+                    <div>
+                      <p className="text-foreground">
+                        #{ret.number} · {RETURN_REASON_LABELS[ret.reason as keyof typeof RETURN_REASON_LABELS] ?? ret.reason} ·{' '}
+                        {RETURN_SETTLEMENT_LABELS[ret.settlement_method as keyof typeof RETURN_SETTLEMENT_LABELS] ?? ret.settlement_method}
+                      </p>
+                      <p className="text-xs text-muted-foreground">{formatDate(ret.return_date)}</p>
+                    </div>
+                    <Money value={ret.total_amount} />
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       </AppDialog>
+
+      <ReturnFormDialog open={returnDialogOpen} onOpenChange={setReturnDialogOpen} sale={sale} />
 
       <PrintLayout title={`Venta #${sale.number}`}>
         <p className="mb-1 text-sm">{customer ? `${customer.full_name} — ${customer.doc_type.toUpperCase()} ${customer.doc_number}` : 'Consumidor final'}</p>

@@ -43,6 +43,12 @@ export const API_ERROR_CODES = [
   // caso de que llegue igual. Cae al banner genérico: el mensaje del backend
   // ya explica qué elegir en su lugar.
   'ACCOUNT_CANNOT_FUND_PAYMENT',
+  // Devolución de cliente (00042-00045). Los tres caen al banner genérico
+  // del formulario — el mensaje del backend ya explica qué hacer (usar nota
+  // crédito, liquidar la cuenta, o que alguien con el permiso lo registre).
+  'SALE_ACCOUNT_NOT_SETTLED',
+  'RETURN_TIME_LIMIT_EXCEEDED',
+  'CREDIT_NOTE_INSUFFICIENT_BALANCE',
 ] as const
 
 export type ApiErrorCode = (typeof API_ERROR_CODES)[number]

@@ -12,11 +12,13 @@ import { Can } from '@/components/shared/Can'
 import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { ApiError } from '@/lib/api/client'
-import { multiplyMoney, subtractMoney, sumMoney } from '@/lib/money'
+import { formatCOP, multiplyMoney, subtractMoney, sumMoney } from '@/lib/money'
 import { AccountPicker } from '@/components/shared/AccountPicker'
 import { PAYMENT_METHOD_LABELS } from '@/lib/paymentMethods'
 import { useCreateSale } from '@/features/sales/api'
 import { allowsFractions, unitAbbr, unitLabel } from '@/lib/inventory/units'
+import { useCustomerCreditNotes } from '@/lib/sales/creditNotes'
+import { minMoney } from '@/lib/money'
 import type { Item } from '@/lib/inventory/items'
 import type { Customer } from '@/lib/customers/search'
 
@@ -39,6 +41,17 @@ export function SaleFormPage() {
   const [formError, setFormError] = useState<string | null>(null)
   const [accountId, setAccountId] = useState<string | null>(null)
   const [cashDialogOpen, setCashDialogOpen] = useState(false)
+  const [creditNoteId, setCreditNoteId] = useState<string | null>(null)
+  const [creditNoteAmount, setCreditNoteAmount] = useState('0.00')
+
+  const { data: creditNotesData } = useCustomerCreditNotes(customer?.id ?? '')
+  const availableCreditNotes = (creditNotesData?.pages.flatMap((page) => page.items) ?? []).filter((note) => Number(note.balance) > 0)
+
+  function chooseCustomer(next: Customer | null) {
+    setCustomer(next)
+    setCreditNoteId(null)
+    setCreditNoteAmount('0.00')
+  }
 
   function addToCart(item: Item) {
     setCart((prev) => {
@@ -77,6 +90,8 @@ export function SaleFormPage() {
   const subtotal = sumMoney(...cart.map((line) => multiplyMoney(line.item.sale_price ?? '0.00', line.quantity)))
   const hasDiscount = Number(discountAmount) > 0
   const total = hasDiscount ? subtractMoney(subtotal, discountAmount) : subtotal
+  const hasCreditNote = !!creditNoteId && Number(creditNoteAmount) > 0
+  const cashAmount = hasCreditNote ? subtractMoney(total, creditNoteAmount) : total
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -97,6 +112,8 @@ export function SaleFormPage() {
         lines: cart.map((line) => ({ item_id: line.item.id, quantity: String(line.quantity), unit_price: line.item.sale_price ?? '0.00' })),
         discount_amount: hasDiscount ? discountAmount : null,
         discount_reason: hasDiscount ? discountReason : null,
+        credit_note_id: hasCreditNote ? creditNoteId : null,
+        credit_note_amount: hasCreditNote ? creditNoteAmount : null,
       })
       toast.success(`Venta #${sale.number} registrada`)
       await navigate({ to: '/ventas' })
@@ -184,10 +201,47 @@ export function SaleFormPage() {
             <div>
               <label className="text-sm font-medium text-foreground">Cliente (opcional)</label>
               <div className="mt-1">
-                <CustomerPicker value={customer} onChange={setCustomer} />
+                <CustomerPicker value={customer} onChange={chooseCustomer} />
               </div>
               {!customer && <p className="mt-1 text-xs text-muted-foreground">Sin seleccionar: se vende a "Consumidor final".</p>}
             </div>
+
+            {availableCreditNotes.length > 0 && (
+              <div>
+                <label className="text-sm font-medium text-foreground">Aplicar nota crédito</label>
+                <Select
+                  value={creditNoteId ?? '__none__'}
+                  onValueChange={(v) => {
+                    if (v === '__none__') {
+                      setCreditNoteId(null)
+                      setCreditNoteAmount('0.00')
+                      return
+                    }
+                    const note = availableCreditNotes.find((n) => n.id === v)
+                    setCreditNoteId(v)
+                    setCreditNoteAmount(note ? minMoney(note.balance, total) : '0.00')
+                  }}
+                >
+                  <SelectTrigger className="mt-1 w-full">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__none__">Ninguna</SelectItem>
+                    {availableCreditNotes.map((note) => (
+                      <SelectItem key={note.id} value={note.id}>
+                        #{note.number} · saldo {formatCOP(note.balance)}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {hasCreditNote && (
+                  <div className="mt-2">
+                    <label className="text-xs text-muted-foreground">Monto a aplicar</label>
+                    <MoneyInput className="mt-1" value={creditNoteAmount} onChange={setCreditNoteAmount} />
+                  </div>
+                )}
+              </div>
+            )}
 
             <div>
               <label className="text-sm font-medium text-foreground">Medio de pago</label>
@@ -245,6 +299,18 @@ export function SaleFormPage() {
               <span>Total</span>
               <Money value={total} />
             </div>
+            {hasCreditNote && (
+              <>
+                <div className="flex items-center justify-between">
+                  <span className="text-muted-foreground">Nota crédito aplicada</span>
+                  <Money value={creditNoteAmount} tone="out" />
+                </div>
+                <div className="flex items-center justify-between border-t border-border pt-2 text-base font-semibold text-foreground">
+                  <span>A cobrar</span>
+                  <Money value={cashAmount} />
+                </div>
+              </>
+            )}
           </div>
 
           {formError && <p className="rounded-input bg-danger-soft px-3 py-2 text-sm text-danger">{formError}</p>}

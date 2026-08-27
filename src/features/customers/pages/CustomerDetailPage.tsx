@@ -14,6 +14,8 @@ import { useCustomer } from '@/lib/customers/search'
 import { useCustomerContracts, useCustomerSales, type ContractSummary, type SaleSummary } from '@/features/customers/history'
 import { CustomerFormDialog } from '@/features/customers/components/CustomerFormDialog'
 import { SaleReceiptDialog } from '@/components/shared/SaleReceiptDialog'
+import { useCustomerCreditNotes, type CreditNote } from '@/lib/sales/creditNotes'
+import { formatCOP, sumMoney } from '@/lib/money'
 
 const DOC_TYPE_LABELS: Record<string, string> = { cc: 'Cédula de ciudadanía', ce: 'Cédula de extranjería', passport: 'Pasaporte', nit: 'NIT' }
 
@@ -29,6 +31,13 @@ const saleColumns: ColumnDef<SaleSummary>[] = [
   { accessorKey: 'sold_at', header: 'Fecha', cell: (info) => formatDateTime(info.getValue<string>()) },
   { accessorKey: 'total', header: 'Total', cell: (info) => <Money value={info.getValue<string>()} /> },
   { accessorKey: 'status', header: 'Estado', cell: (info) => <StatusBadge status={info.getValue<string>()} /> },
+]
+
+const creditNoteColumns: ColumnDef<CreditNote>[] = [
+  { accessorKey: 'number', header: 'Número', cell: (info) => `#${info.getValue<number>()}` },
+  { accessorKey: 'created_at', header: 'Emitida', cell: (info) => formatDateTime(info.getValue<string>()) },
+  { accessorKey: 'amount', header: 'Monto', cell: (info) => <Money value={info.getValue<string>()} /> },
+  { accessorKey: 'balance', header: 'Saldo', cell: (info) => <Money value={info.getValue<string>()} /> },
 ]
 
 function CustomerDetailSkeleton() {
@@ -56,6 +65,17 @@ export function CustomerDetailPage() {
     fetchNextPage: fetchNextSalesPage,
   } = useCustomerSales(customerId)
   const sales = salesData?.pages.flatMap((page) => page.items) ?? []
+  const {
+    data: creditNotesData,
+    isPending: creditNotesPending,
+    isError: creditNotesError,
+    refetch: refetchCreditNotes,
+    hasNextPage: creditNotesHasNextPage,
+    isFetchingNextPage: creditNotesFetchingNextPage,
+    fetchNextPage: fetchNextCreditNotesPage,
+  } = useCustomerCreditNotes(customerId)
+  const creditNotes = creditNotesData?.pages.flatMap((page) => page.items) ?? []
+  const creditNoteBalance = sumMoney(...creditNotes.map((note) => note.balance))
   const [editOpen, setEditOpen] = useState(false)
   const [editNonce, setEditNonce] = useState(0)
   const [viewingSale, setViewingSale] = useState<SaleSummary | null>(null)
@@ -84,6 +104,11 @@ export function CustomerDetailPage() {
         description={`${DOC_TYPE_LABELS[customer.doc_type] ?? customer.doc_type.toUpperCase()} ${customer.doc_number}`}
         actions={
           <div className="flex items-center gap-2">
+            {Number(creditNoteBalance) > 0 && (
+              <span className="rounded-pill bg-success-soft px-3 py-1 text-xs font-medium text-success">
+                Saldo a favor: {formatCOP(creditNoteBalance)}
+              </span>
+            )}
             <StatusBadge status={customer.status} />
             <Can permission="customers.create">
               <Button
@@ -161,6 +186,22 @@ export function CustomerDetailPage() {
           hasNextPage={salesHasNextPage}
           isFetchingNextPage={salesFetchingNextPage}
           onLoadMore={() => fetchNextSalesPage()}
+        />
+      </div>
+
+      <div>
+        <h2 className="mb-3 text-sm font-medium text-foreground">Notas crédito</h2>
+        <DataTable
+          columns={creditNoteColumns}
+          data={creditNotes}
+          getRowId={(row) => row.id}
+          isLoading={creditNotesPending}
+          isError={creditNotesError}
+          onRetry={() => refetchCreditNotes()}
+          emptyTitle="Sin notas crédito"
+          hasNextPage={creditNotesHasNextPage}
+          isFetchingNextPage={creditNotesFetchingNextPage}
+          onLoadMore={() => fetchNextCreditNotesPage()}
         />
       </div>
 

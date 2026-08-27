@@ -111,3 +111,13 @@ export function subtractMoney(a: string, b: string): string {
 export function multiplyMoney(unitPrice: string, quantity: number): string {
   return centsToDecimal(toCents(unitPrice) * quantity)
 }
+
+/**
+ * Mínimo de PRESENTACIÓN — acota en la UI el monto de nota crédito a
+ * aplicar (nunca más que el saldo de la nota ni que el total de la venta);
+ * el backend vuelve a validar el límite real. `minMoney("500000.00",
+ * "300000.00")` → `"300000.00"`.
+ */
+export function minMoney(a: string, b: string): string {
+  return toCents(a) <= toCents(b) ? a : b
+}

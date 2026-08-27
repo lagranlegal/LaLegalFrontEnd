@@ -2,6 +2,43 @@
 
 > Registro vivo de qué existe en el código, cómo está armado y por qué se tomó cada decisión — para que cualquiera (humano o Claude Code) pueda retomar el proyecto sin releer todo el historial de commits. Se actualiza en cada paso del "Orden de implementación" de `CLAUDE.md`. No repite lo que ya está en `ARCHITECTURE.md`/`DESIGN_SYSTEM.md` (el qué-debería-ser); esto es el qué-hay-hoy y las decisiones concretas tomadas al construirlo.
 
+## Devolución de cliente y nota crédito (25-26/08/2026)
+
+Migraciones backend `00041`-`00045`. 00033 (agosto) ya había dejado escrito que esto quedaba afuera "a propósito" porque merecía su propio camino — es ese camino.
+
+### La decisión de fondo: dos formas de liquidar, elegidas por transacción
+
+En Colombia el derecho de retracto (Ley 1480/2011) solo aplica a ventas a distancia — una compra en tienda física **no tiene devolución por cambio de opinión como derecho legal**, es política comercial de cada negocio. Sin un estándar que imponga una respuesta, la abstracción correcta no es "cómo lo hace la mayoría" sino la que ya existía en el sistema para Sistecrédito: `account_id` desacopla "medio de pago" de "cuándo entra la plata". Una devolución reusa exactamente esa idea, espejada: **efectivo** (toca caja, requiere sesión abierta) o **nota crédito** (pasivo derivado — nunca una columna `balance` guardada, mismo patrón que cuentas por pagar a proveedor — redimible desde el día uno en una venta futura). Elegidas caso por caso, no configuradas por empresa.
+
+### Los dos caminos de reapertura de lote
+
+Como el ítem puede ser fraccionable (gramos), "¿la pieza sigue existiendo?" no es la pregunta correcta — lo es "¿qué le pasó al REMANENTE del lote entre la venta y la devolución?":
+
+- **Camino A**: el lote sigue `sold`/`available` (nadie lo tocó) → se reabre el MISMO `inventory_item`, exactamente el mecanismo que ya usaba `sales.void_sale`. Se sintetiza en el kardex (quinto `union all`, mismo truco que `sale_void`).
+- **Camino B**: el lote quedó `written_off` (su remanente se transformó, se dio de baja, etc. después de la venta) → no se reabre; se reingresa como lote NUEVO por el mecanismo real de `inventory_entry` (mismo patrón que los `produced` de una transformación), con el costo ya congelado en la línea de venta original y un cuarto puntero de origen (`source_return_id`) que emite la letra **`D`** al publicarlo. Este camino aparece gratis en el kardex vía el `entry` existente.
+
+Reingresar mercancía es una decisión aparte de cómo se liquida (`restock` por línea, default `true`) — puede haber devolución puramente financiera.
+
+### Guardrail que no estaba en el pedido original
+
+`sales.repository.insert_sale` nunca escribía `sale.account_id` pese a que la columna existe desde `00024` — un hueco inofensivo hasta que esta feature necesitó saber si una devolución en efectivo estaba sacando plata de una venta cobrada por Sistecrédito y todavía sin liquidar (eso sería devolver dinero que el negocio nunca recibió). Se corrigió como prerrequisito, no es scope creep: la regla nueva (`SALE_ACCOUNT_NOT_SETTLED`) es literalmente irrealizable sin el dato.
+
+### Plazo: advierte, no bloquea
+
+`company.settings.return_window_days` (default 30, `0`=sin límite) — no hay un plazo legal fijo que justifique un bloqueo absoluto. Pasado el plazo se rechaza salvo que el actor tenga `sales.return_override_time_limit`; con el permiso, pasa y viaja `time_limit_warning=true` en la respuesta.
+
+### Backend: qué se tocó
+
+`app/modules/sales/{schemas,service,repository,router}.py` (endpoints nuevos bajo `/sales/{id}/returns` y router propio `/credit-notes`), `app/modules/inventory/{schemas,service,repository}.py` (letra `D`, kardex, `source_return_id`), `app/modules/accounts/integration.py` (nuevo — faltaba, necesario para el guardrail sin importar `accounts.service`), `app/modules/platform/{service,integration,repository}.py` (permiso excluido de Moderador, `return_window_days`), `app/modules/company/{schemas,service}.py`. Tests nuevos en `tests/integration/test_sale_returns.py` (8 casos: camino A con kardex, camino B con letra `D`, devolución parcial, `restock=false`, idempotencia, plazo con/sin permiso, nota crédito emitida+redimida en dos ventas, bloqueo de settlement no liquidada). 294/294 tests en verde.
+
+### Frontend: qué se tocó
+
+`lib/sales/returns.ts` y `lib/sales/creditNotes.ts` (nuevos — viven en `lib/` y no en `features/sales/api.ts` porque `SaleReceiptDialog`, que los consume, es compartido y no puede importar otra feature, mismo motivo por el que `useVoidSale` ya vivía ahí). `components/shared/ReturnFormDialog.tsx` (nuevo, mismo criterio de ubicación). `SaleReceiptDialog` (botón "Devolver" + lista de devoluciones previas), `SaleFormPage` (aplicar nota crédito del cliente elegido, separa "Nota crédito aplicada" de "A cobrar"), `CustomerDetailPage` (tabla de notas crédito + saldo total destacado en el encabezado). `KardexDialog` ganó el caso `sale_return` en su switch de títulos (el `tsc` lo marcó como no exhaustivo apenas se regeneraron los tipos — la prueba de que el tipado real sirve). `lib/money.ts` ganó `minMoney` (acotar el monto de nota crédito a aplicar). `tsc`, ESLint, Vitest (129/129) y `npm run build` en verde.
+
+### Lo que falta, explícito
+
+**No se probó en un navegador real** — el `.env` de este repo apunta `VITE_SUPABASE_URL` al proyecto Supabase de dev remoto, así que un login real necesita credenciales que esta sesión no tiene, y armar un usuario de prueba contra el Auth local no estaba en el alcance. La cobertura real de la lógica de negocio (los 8 casos de `test_sale_returns.py`, contra Postgres real vía HTTP) es fuerte; lo que falta es la vuelta visual — clic a clic en el flujo completo (vender → devolver → ver el comprobante → aplicar la nota en una venta nueva → revisar la ficha del cliente) en la app corriendo de verdad. Migraciones `00041`-`00045` aplicadas y verificadas en **local únicamente** — faltan en la Supabase dev remota (recordatorio: `psql`, nunca `supabase db push`, y aplicar en el orden 00041→00045). Deploy del backend (`fly deploy -c fly.dev.toml`) tampoco se hizo todavía.
+
 ## Kardex por producto (23/08/2026)
 
 Migración `00040_kardex_indexes.sql` (solo índices).

@@ -1172,11 +1172,11 @@ export interface paths {
          *     *"¿Qué pasó con este producto?"* es la dirección contraria, y no la
          *     respondía nadie.
          *
-         *     Reúne cuatro clases de movimiento, y **una de ellas no existe como fila**:
-         *     anular una venta repone el stock pero no escribe ninguna línea inversa
-         *     —solo cambia el estado de la venta—, así que se sintetiza. Sin eso el
-         *     kardex mostraría una salida que nunca vuelve y su saldo no cuadraría contra
-         *     el stock real.
+         *     Reúne cinco clases de movimiento, y **dos de ellas no existen como fila**:
+         *     anular una venta y devolver un lote intacto reponen el stock pero no
+         *     escriben ninguna línea inversa —solo cambian estado/cantidad—, así que se
+         *     sintetizan. Sin eso el kardex mostraría una salida que nunca vuelve y su
+         *     saldo no cuadraría contra el stock real.
          *
          *     **La valoración es POR LOTE, nunca promediada** (identificación específica,
          *     NIIF). Dos lotes del mismo producto comprados a precios distintos salen
@@ -1346,6 +1346,75 @@ export interface paths {
         put?: never;
         /** Void Sale */
         post: operations["void_sale_api_v1_sales__sale_id__void_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/sales/{sale_id}/returns": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Returns */
+        get: operations["list_returns_api_v1_sales__sale_id__returns_get"];
+        put?: never;
+        /** Create Return */
+        post: operations["create_return_api_v1_sales__sale_id__returns_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/sales/{sale_id}/returns/{return_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Return */
+        get: operations["get_return_api_v1_sales__sale_id__returns__return_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/credit-notes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Credit Notes */
+        get: operations["list_credit_notes_api_v1_credit_notes_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/credit-notes/{credit_note_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Credit Note */
+        get: operations["get_credit_note_api_v1_credit_notes__credit_note_id__get"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -1960,6 +2029,8 @@ export interface components {
             /** Currency */
             currency: string;
             documents: components["schemas"]["DocumentSettingsOut"];
+            /** Return Window Days */
+            return_window_days: number;
         };
         /**
          * CompanySettingsUpdateIn
@@ -1984,6 +2055,8 @@ export interface components {
             /** Signature Url */
             signature_url?: string | null;
             documents?: components["schemas"]["DocumentSettingsIn"] | null;
+            /** Return Window Days */
+            return_window_days?: number | null;
         };
         /** ContractCreateIn */
         ContractCreateIn: {
@@ -2202,6 +2275,39 @@ export interface components {
             /** Signed Photo Url */
             signed_photo_url?: string | null;
         };
+        /** CreditNoteOut */
+        CreditNoteOut: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Number */
+            number: number;
+            /**
+             * Customer Id
+             * Format: uuid
+             */
+            customer_id: string;
+            /**
+             * Sale Return Id
+             * Format: uuid
+             */
+            sale_return_id: string;
+            /** Amount */
+            amount: string;
+            /** Redeemed Amount */
+            redeemed_amount: string;
+            /** Balance */
+            balance: string;
+            /** Notes */
+            notes: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+        };
         /** CursorPage[AuditLogOut] */
         CursorPage_AuditLogOut_: {
             /** Items */
@@ -2227,6 +2333,13 @@ export interface components {
         CursorPage_ContractOut_: {
             /** Items */
             items: components["schemas"]["ContractOut"][];
+            /** Next Cursor */
+            next_cursor?: string | null;
+        };
+        /** CursorPage[CreditNoteOut] */
+        CursorPage_CreditNoteOut_: {
+            /** Items */
+            items: components["schemas"]["CreditNoteOut"][];
             /** Next Cursor */
             next_cursor?: string | null;
         };
@@ -2881,6 +2994,8 @@ export interface components {
             source_contract_id: string | null;
             /** Source Transformation Id */
             source_transformation_id?: string | null;
+            /** Source Return Id */
+            source_return_id?: string | null;
             /** Cost */
             cost: string;
             /** Sale Price */
@@ -2944,7 +3059,7 @@ export interface components {
              * Kind
              * @enum {string}
              */
-            kind: "entry" | "exit" | "sale" | "sale_void";
+            kind: "entry" | "exit" | "sale" | "sale_void" | "sale_return";
             /** Kind Detail */
             kind_detail: string;
             /**
@@ -3524,6 +3639,10 @@ export interface components {
             discount_amount?: number | string | null;
             /** Discount Reason */
             discount_reason?: string | null;
+            /** Credit Note Id */
+            credit_note_id?: string | null;
+            /** Credit Note Amount */
+            credit_note_amount?: number | string | null;
         };
         /** SaleLineIn */
         SaleLineIn: {
@@ -3591,6 +3710,106 @@ export interface components {
             created_at: string;
             /** Lines */
             lines: components["schemas"]["SaleLineOut"][];
+            /** Account Id */
+            account_id: string | null;
+            /** Credit Note Redeemed Amount */
+            credit_note_redeemed_amount?: string | null;
+        };
+        /** SaleReturnCreateIn */
+        SaleReturnCreateIn: {
+            /** Lines */
+            lines: components["schemas"]["SaleReturnLineIn"][];
+            /**
+             * Reason
+             * @enum {string}
+             */
+            reason: "defect" | "change_of_mind" | "other";
+            /**
+             * Settlement Method
+             * @enum {string}
+             */
+            settlement_method: "cash" | "credit_note";
+            /** Customer Id */
+            customer_id?: string | null;
+            /** Notes */
+            notes?: string | null;
+        };
+        /** SaleReturnLineIn */
+        SaleReturnLineIn: {
+            /**
+             * Sale Line Id
+             * Format: uuid
+             */
+            sale_line_id: string;
+            /** Quantity */
+            quantity: number | string;
+            /**
+             * Restock
+             * @default true
+             */
+            restock: boolean;
+        };
+        /** SaleReturnLineOut */
+        SaleReturnLineOut: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Sale Line Id
+             * Format: uuid
+             */
+            sale_line_id: string;
+            /** Item Id */
+            item_id: string | null;
+            /** Quantity */
+            quantity: string;
+            /** Unit Cost */
+            unit_cost: string;
+            /** Restock */
+            restock: boolean;
+        };
+        /** SaleReturnOut */
+        SaleReturnOut: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Number */
+            number: number;
+            /**
+             * Sale Id
+             * Format: uuid
+             */
+            sale_id: string;
+            /** Customer Id */
+            customer_id: string | null;
+            /** Reason */
+            reason: string;
+            /** Settlement Method */
+            settlement_method: string;
+            /** Notes */
+            notes: string | null;
+            /**
+             * Return Date
+             * Format: date
+             */
+            return_date: string;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Lines */
+            lines: components["schemas"]["SaleReturnLineOut"][];
+            /** Credit Note Id */
+            credit_note_id: string | null;
+            /** Total Amount */
+            total_amount: string;
+            /** Time Limit Warning */
+            time_limit_warning: boolean;
         };
         /** SalesKpisOut */
         SalesKpisOut: {
@@ -7066,6 +7285,170 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["SaleOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_returns_api_v1_sales__sale_id__returns_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                sale_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SaleReturnOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_return_api_v1_sales__sale_id__returns_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: string | null;
+            };
+            path: {
+                sale_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SaleReturnCreateIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SaleReturnOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_return_api_v1_sales__sale_id__returns__return_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                sale_id: string;
+                return_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SaleReturnOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_credit_notes_api_v1_credit_notes_get: {
+        parameters: {
+            query?: {
+                customer_id?: string | null;
+                cursor?: string | null;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CursorPage_CreditNoteOut_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_credit_note_api_v1_credit_notes__credit_note_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                credit_note_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CreditNoteOut"];
                 };
             };
             /** @description Validation Error */
