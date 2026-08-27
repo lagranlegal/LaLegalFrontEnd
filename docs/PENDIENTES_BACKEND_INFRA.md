@@ -111,6 +111,8 @@ Confirmado: el único filtro es `?status=`. El front ya tiene un buscador (agreg
 
 **Sugerencia:** `?q=` en `GET /contracts` que busque por número de contrato, `legacy_code`, y — si es razonable del lado del backend — nombre/documento del cliente (un `JOIN` contra `customer`, que el front no puede hacer eficientemente).
 
+**✅ Resuelto en parte (27/08/2026):** `GET /contracts` ya acepta `?customer_id=` (mismo patrón que `?customer_id=` de `GET /sales`, punto 3 abajo) — resuelve el historial de cliente, que era el consumidor real de este parche. `?q=` por número/`legacy_code`/nombre de cliente (búsqueda libre, no por id) sigue sin existir.
+
 ## 3. `GET /sales` no tiene NINGÚN filtro (ni siquiera `status`)
 
 Confirmado en el schema: `{cursor?, limit?}` únicamente. Ni `customer_id`, ni `status`, ni fecha. Esto bloquea two cosas:
@@ -121,7 +123,7 @@ Confirmado en el schema: `{cursor?, limit?}` únicamente. Ni `customer_id`, ni `
 
 **✅ Resuelto (19/08/2026):** `GET /sales` ya acepta `?customer_id=` y `?status=`. Ver `docs/pending/API_GUIDE.md` §10. `?q=` con número de contrato/`legacy_code`/cliente en `GET /contracts` (punto 2) y filtros de fecha en `GET /sales` (parte del punto 13) siguen pendientes.
 
-**Del lado del front, ya resuelto (19/08/2026):** `useCustomerSales` (`features/customers/history.ts`) pasó del parche de traer 200 ventas y filtrar en cliente a `useCursorInfiniteQuery` con `?customer_id=` real — paginado de verdad en el historial de cliente. `useCustomerContracts` se dejó igual (sigue con el parche) porque `GET /contracts` (punto 2) todavía no tiene `?customer_id=`.
+**Del lado del front, ya resuelto (19/08/2026):** `useCustomerSales` (`features/customers/history.ts`) pasó del parche de traer 200 ventas y filtrar en cliente a `useCursorInfiniteQuery` con `?customer_id=` real — paginado de verdad en el historial de cliente. `useCustomerContracts` se dejó igual entonces porque `GET /contracts` (punto 2) no tenía `?customer_id=` — **ya resuelto también (27/08/2026):** `useCustomerContracts` ahora manda `?customer_id=` real al backend en vez de filtrar 200 contratos en el navegador (sigue sin paginar por cursor, a diferencia de `useCustomerSales`, porque la ficha de cliente no tiene "cargar más" para contratos todavía — mismo `limit=200` pero ya filtrado en el servidor, no en el cliente).
 
 ## 4. `CompanyOut` (panel de plataforma) no trae plan ni fecha de expiración de suscripción
 

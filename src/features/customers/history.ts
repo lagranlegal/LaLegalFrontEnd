@@ -10,18 +10,17 @@ export type SaleSummary = components['schemas']['SaleOut']
  * Historial de cliente (CONTEXTO.md §4: "ficha única + historial cruzado
  * contratos+compras").
  *
- * `GET /contracts` sigue sin filtro por `customer_id` (confirmado contra
- * `docs/PENDIENTES_BACKEND_INFRA.md` punto 2, todavía pendiente) — se trae
- * la página más grande posible (200, el máximo real de `limit`) y se filtra
- * client-side. Documentado como hueco conocido: si un cliente tiene
- * contratos más allá de esa ventana, el historial puede no mostrarlos
- * todos.
+ * `GET /contracts` ya acepta `?customer_id=` (resuelto 27/08/2026, ver
+ * `docs/PENDIENTES_BACKEND_INFRA.md` punto 2) — filtro real del backend,
+ * reemplaza el parche client-side de 200 registros que tenía esta función
+ * antes (mismo movimiento que ya se hizo con `useCustomerSales`).
  */
 export function useCustomerContracts(customerId: string) {
   return useQuery({
     queryKey: ['customers', customerId, 'contracts'] as const,
-    queryFn: () => unwrap(api.GET('/api/v1/contracts', { params: { query: { limit: 200 } } })),
-    select: (page) => page.items.filter((contract) => contract.customer_id === customerId),
+    queryFn: () =>
+      unwrap(api.GET('/api/v1/contracts', { params: { query: { customer_id: customerId, limit: 200 } } })),
+    select: (page) => page.items,
     enabled: !!customerId,
   })
 }

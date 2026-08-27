@@ -5877,6 +5877,7 @@ export interface operations {
                 cursor?: string | null;
                 limit?: number;
                 status?: string | null;
+                customer_id?: string | null;
             };
             header?: never;
             path?: never;

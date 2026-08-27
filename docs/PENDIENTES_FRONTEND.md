@@ -2,7 +2,7 @@
 
 > Documento de traspaso, mismo criterio que `PENDIENTES_BACKEND_INFRA.md`: no es una queja, es la lista concreta de 11 puntos que Mateo reportó tras usar la app en vivo, cada uno con archivo/línea real y diagnóstico verificado — no suposiciones. Investigado con tres agentes de exploración en paralelo (loading/overflow, navegación, tema/export/rendimiento), sin tocar código.
 >
-> **Resueltos el mismo día (9 de 11):** 1, 1b, 2, 3, 4, 5, 6, 9, 10 — son 9 puntos en 8 números porque el 1 se dividió en dos hallazgos. **11 (rendimiento) parcialmente resuelto** el mismo día en una segunda ronda — ver abajo. Quedan abiertos: 7 (tema oscuro), 8 (exportar a Excel).
+> **Resueltos el mismo día (9 de 11):** 1, 1b, 2, 3, 4, 5, 6, 9, 10 — son 9 puntos en 8 números porque el 1 se dividió en dos hallazgos. **11 (rendimiento) parcialmente resuelto** el mismo día en una segunda ronda, que de paso cerró también el hueco de `?customer_id=` en `GET /contracts` (`docs/PENDIENTES_BACKEND_INFRA.md` #2) — ver abajo. Quedan abiertos: 7 (tema oscuro), 8 (exportar a Excel).
 
 ---
 
@@ -76,10 +76,10 @@ El patrón bueno (`AccountFormDialog`/`SettleAccountDialog`/`TransferDialog`, `f
 
 ## 11. Velocidad de respuesta lenta
 
-**5 causas concretas identificadas; 2 de las 5 ya resueltas el mismo día (27/08/2026, segunda ronda).**
+**5 causas concretas identificadas; 3 de las 5 ya resueltas (27/08/2026, segunda y tercera ronda).**
 
 1. **✅ Resuelto — requests N+1**, en 3 componentes: `SaleReceiptDialog`, `ReturnFormDialog` (uno por línea de venta/devolución) y `ContractDetailPage` (uno por prenda rematada). Una venta de 8 líneas disparaba 8 requests en paralelo solo para abrir el comprobante. Backend: `GET /inventory/items?ids=` nuevo (aditivo, mismo endpoint/permiso/`ItemOut`, repetible — `?ids=a&ids=b`). Frontend: `useItemsByIds()` (`lib/inventory/items.ts`) reemplaza los `useItem` por línea con una sola consulta que devuelve un `Map`.
-2. **Abierto.** Listados completos traídos para filtrar en el cliente: historial de contratos de un cliente (`limit=200`, porque `GET /contracts` no filtra por `customer_id` en el backend) y Reportes (`fetchAllPages` sobre ventas + artículos, hasta 5.000 de cada uno).
+2. **✅ Resuelto en parte — historial de contratos del cliente.** `GET /contracts` ya acepta `?customer_id=` (backend, sin migración — mismo patrón que `?customer_id=` de `GET /sales`, resuelto 19/08). `useCustomerContracts` (`features/customers/history.ts`) ya no trae 200 contratos para filtrar client-side. Reportes queda abierto: `fetchAllPages` sobre ventas + artículos, hasta 5.000 de cada uno, es un problema distinto (agregación completa para KPIs, no un filtro por id).
 3. **Abierto, menor.** Cascada: `ContractDetailPage` pide el contrato y recién cuando ese responde pide el cliente (`enabled: !!contract?.customer_id`) — inherente a la forma del dato (no se puede saber el cliente sin conocer antes el contrato), así que no es tan barato de evitar como parece; impacto bajo (un salto adicional, no N).
 4. **✅ Resuelto — sin `staleTime` global.** `QueryClient` tenía el default de TanStack Query (`0`: todo obsoleto al instante), así que `refetchOnWindowFocus: true` (a propósito, "app operativa") reejecutaba TODO lo montado en cada alt-tab. Ahora `staleTime: 15_000` — sigue siendo "casi al instante" para una app operativa (ya se acepta hasta 60s de desfase en permisos vía `/me`), y absorbe el caso real: revisar un mensaje y volver a la pestaña.
 5. **Abierto — el más grande.** Bundle de 1.7MB en un solo archivo, cero code-splitting por ruta (`router.tsx` tiene 38 imports estáticos, ningún `.lazy.tsx`, sin `manualChunks` en `vite.config.ts`). Las 12 features completas se descargan de una sola vez en el primer load. Deliberadamente no se tocó hoy: requiere reestructurar cómo se definen las rutas (TanStack Router código-based, no file-based) y agregar `Suspense`/fallbacks consistentes con el patrón de `RouteTransitionBar` ya existente — el riesgo de reintroducir pantallas en blanco a medio terminar es real, mejor como su propia tanda de trabajo.
