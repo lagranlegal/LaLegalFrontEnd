@@ -163,6 +163,17 @@ function TemplateDraftPanel({
         </div>
       </div>
 
+      {!template && (
+        <div className="rounded-input bg-warning-soft px-4 py-2 text-sm text-warning">
+          Al guardar queda como borrador — no se usará al imprimir hasta que le des <strong>Activar</strong>.
+        </div>
+      )}
+      {template && !template.is_active && (
+        <div className="rounded-input bg-warning-soft px-4 py-2 text-sm text-warning">
+          Esta plantilla no está activa — mientras tanto se sigue imprimiendo con el formato de siempre. Dale <strong>Activar</strong> arriba para que se use.
+        </div>
+      )}
+
       <Suspense fallback={<p className="text-sm text-muted-foreground">Cargando editor…</p>}>
         <LazyTemplateEditor documentType={documentType} value={draftBody} onChange={setDraftBody} />
       </Suspense>
