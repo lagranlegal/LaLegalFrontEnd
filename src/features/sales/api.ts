@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
 import { api, unwrap } from '@/lib/api/client'
-import { useCursorInfiniteQuery } from '@/lib/api/pagination'
+import { useCursorInfiniteQuery, fetchAllPages } from '@/lib/api/pagination'
 import { useMoneyMutation } from '@/lib/api/useMoneyMutation'
 import type { components } from '@/types/api'
 
@@ -9,6 +9,15 @@ export type SaleCreateIn = components['schemas']['SaleCreateIn']
 
 export function useSalesList() {
   return useCursorInfiniteQuery(['sales', 'list'] as const, (cursor) => unwrap(api.GET('/api/v1/sales', { params: { query: { cursor } } })))
+}
+
+/**
+ * Trae TODAS las ventas — para exportar a Excel, no para la tabla con
+ * scroll infinito (eso es `useSalesList`). Esta pantalla no tiene filtros
+ * todavía, así que exporta el mismo universo que `useSalesList` sin acotar.
+ */
+export function fetchAllSales(): Promise<Sale[]> {
+  return fetchAllPages<Sale>((cursor) => unwrap(api.GET('/api/v1/sales', { params: { query: { cursor } } })))
 }
 
 export function useSale(saleId: string | undefined) {

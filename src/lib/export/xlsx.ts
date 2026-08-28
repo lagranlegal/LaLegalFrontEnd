@@ -11,9 +11,23 @@
  * dependencia sí era nueva y evitable desde el día uno.
  */
 export async function exportRowsToExcel(filename: string, sheetName: string, rows: Record<string, unknown>[]) {
+  await exportSheetsToExcel(filename, [{ name: sheetName, rows }])
+}
+
+/**
+ * Igual que `exportRowsToExcel`, pero con varias hojas en un mismo archivo
+ * — para reportes agregados (Reportes: Resumen/Desglose/Rankings), donde el
+ * dato ya no es "una fila por registro" sino varias tablas distintas
+ * armadas en la misma pantalla.
+ */
+export async function exportSheetsToExcel(filename: string, sheets: { name: string; rows: Record<string, unknown>[] }[]) {
   const { utils, writeFile } = await import('xlsx')
-  const worksheet = utils.json_to_sheet(rows)
   const workbook = utils.book_new()
-  utils.book_append_sheet(workbook, worksheet, sheetName)
+  for (const sheet of sheets) {
+    // Nombre de hoja de Excel: máximo 31 caracteres, sin : \ / ? * [ ].
+    const safeName = sheet.name.replace(/[:\\/?*[\]]/g, ' ').slice(0, 31)
+    const worksheet = utils.json_to_sheet(sheet.rows)
+    utils.book_append_sheet(workbook, worksheet, safeName)
+  }
   writeFile(workbook, filename)
 }

@@ -1,10 +1,12 @@
 import { useMemo, useState, type ReactNode } from 'react'
+import { Download } from 'lucide-react'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { KpiCard, KpiRow } from '@/components/shared/KpiCard'
 import { Money } from '@/components/shared/Money'
 import { EmptyState } from '@/components/shared/EmptyState'
 import { DateRangePicker, type DateRangeValue } from '@/components/shared/DateRangePicker'
 import { Button } from '@/components/ui/button'
+import { exportSheetsToExcel } from '@/lib/export/xlsx'
 import { ContractsStatusChart, type StatusDatum } from '@/components/shared/charts/ContractsStatusChart'
 import { DailyTrendChart } from '@/components/shared/charts/DailyTrendChart'
 import { DonutChart, type DonutDatum } from '@/components/shared/charts/DonutChart'
@@ -317,6 +319,10 @@ export function ReportesPage() {
   const { data: expenseCategories } = useExpenseCategories()
   const { data: allTimeSales } = useAllTimeItemSales()
   const { data: categories } = useCategories()
+  // Mismo hook que ya usa `IncomeStatementCard` — misma query key, mismo
+  // cache: no dispara un segundo request, solo lee lo que ya está pedido.
+  const { data: incomeStatement } = useIncomeStatement(range)
+  const [isExporting, setIsExporting] = useState(false)
 
   const moduleParam = moduleFilter === 'all' ? undefined : moduleFilter
   const summary = useMemo(() => aggregateFinancialSummary(sessions ?? [], moduleParam), [sessions, moduleParam])
@@ -357,6 +363,50 @@ export function ReportesPage() {
   const showCapital = showCapitalEmpeño || showCapitalTienda
   const showCartera = moduleFilter !== 'store'
 
+  // A diferencia de Inventario/Contratos/Ventas, acá no hay nada que pedir:
+  // todo lo que se exporta ya está en memoria (`summary`/`incomeStatement`/
+  // `ranking`), calculado a partir de lo que la pantalla ya cargó para
+  // pintarse. Tres hojas — Resumen, Desglose, Rankings — porque Reportes no
+  // es "una fila por registro" como los otros tres, es varias tablas
+  // distintas armadas en la misma pantalla.
+  async function handleExportReport() {
+    setIsExporting(true)
+    try {
+      const resumen = incomeStatement
+        ? [
+            { Concepto: 'Ventas', Monto: Number(incomeStatement.sales_revenue) },
+            { Concepto: 'Intereses cobrados', Monto: Number(incomeStatement.interest_revenue) },
+            { Concepto: 'Ingresos totales', Monto: Number(incomeStatement.total_revenue) },
+            { Concepto: 'Costo de la mercancía vendida', Monto: Number(incomeStatement.cost_of_goods_sold) },
+            { Concepto: 'Utilidad bruta', Monto: Number(incomeStatement.gross_profit) },
+            { Concepto: 'Gastos operativos', Monto: Number(incomeStatement.operating_expenses) },
+            { Concepto: 'Utilidad', Monto: Number(incomeStatement.operating_profit) },
+          ]
+        : []
+
+      const desglose = summary.totalsByConcept.map((line) => ({
+        Módulo: MODULE_LABELS[line.module as keyof typeof MODULE_LABELS] ?? line.module,
+        Concepto: conceptLabel(line.concept),
+        Medio: PAYMENT_METHOD_LABELS[line.paymentMethod as keyof typeof PAYMENT_METHOD_LABELS] ?? line.paymentMethod,
+        Dirección: line.direction === 'in' ? 'Entrada' : 'Salida',
+        Total: Number(line.total),
+      }))
+
+      const rankings = [
+        ...ranking.topItems.map((i) => ({ Tipo: 'Prenda', Nombre: i.code ? `${i.name} (${i.code})` : i.name, Cantidad: i.quantity, Ingresos: Number(i.revenue) })),
+        ...ranking.topCategories.map((c) => ({ Tipo: 'Categoría', Nombre: c.name, Cantidad: c.quantity, Ingresos: Number(c.revenue) })),
+      ]
+
+      await exportSheetsToExcel(`reportes-${range?.from ?? todayBogota()}-a-${range?.to ?? todayBogota()}.xlsx`, [
+        { name: 'Resumen', rows: resumen },
+        { name: 'Desglose', rows: desglose },
+        { name: 'Rankings', rows: rankings },
+      ])
+    } finally {
+      setIsExporting(false)
+    }
+  }
+
   return (
     <div className="flex flex-col gap-6">
       <PageHeader title="Reportes" description="Cómo va el negocio: resultados del período y estado contable de hoy." />
@@ -374,7 +424,16 @@ export function ReportesPage() {
         </TabsList>
 
         <TabsContent value="periodo" className="flex flex-col gap-6">
-          <div className="flex justify-end">
+          <div className="flex flex-wrap items-center justify-end gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={isExporting || !range || rangeTooWide || !sessions || sessions.length === 0}
+              onClick={handleExportReport}
+            >
+              <Download className="size-4" />
+              {isExporting ? 'Exportando…' : 'Exportar a Excel'}
+            </Button>
             <DateRangePicker value={range} onChange={setRange} />
           </div>
 

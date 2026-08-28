@@ -2,7 +2,7 @@
 
 > Documento de traspaso, mismo criterio que `PENDIENTES_BACKEND_INFRA.md`: no es una queja, es la lista concreta de 11 puntos que Mateo reportó tras usar la app en vivo, cada uno con archivo/línea real y diagnóstico verificado — no suposiciones. Investigado con tres agentes de exploración en paralelo (loading/overflow, navegación, tema/export/rendimiento), sin tocar código.
 >
-> **Resueltos los 11 puntos** (27/08/2026, mismo día) — 1, 1b, 2, 3, 4, 5, 6, 7, 8, 9, 10 son 11 puntos en 10 números porque el 1 se dividió en dos hallazgos. **11 (rendimiento) parcialmente resuelto**, que de paso cerró también el hueco de `?customer_id=` en `GET /contracts` (`docs/PENDIENTES_BACKEND_INFRA.md` #2) — ver abajo. **8 (Excel) resuelto en parte:** Inventario sí, el resto de listados queda para cuando haga falta.
+> **Resueltos los 11 puntos** (27/08/2026, mismo día) — 1, 1b, 2, 3, 4, 5, 6, 7, 8, 9, 10 son 11 puntos en 10 números porque el 1 se dividió en dos hallazgos. **11 (rendimiento) parcialmente resuelto**, que de paso cerró también el hueco de `?customer_id=` en `GET /contracts` (`docs/PENDIENTES_BACKEND_INFRA.md` #2) — ver abajo. **8 (Excel) resuelto por completo:** Inventario, Contratos, Ventas y Reportes.
 
 ---
 
@@ -76,7 +76,7 @@ El patrón bueno (`AccountFormDialog`/`SettleAccountDialog`/`TransferDialog`, `f
 
 ---
 
-## 8. ✅ Resuelto en parte (27/08/2026) — Exportar inventario a Excel
+## 8. ✅ Resuelto (27/08/2026) — Exportar a Excel
 
 **Pestaña "Lotes" de Inventario, con los filtros activos aplicados.** Botón "Exportar a Excel" nuevo junto a "Limpiar filtros": trae TODOS los artículos que matchean los filtros actuales (`fetchAllItems`, mismo query que arma `useItemsList`, vía `fetchAllPages`) — no solo la página ya cargada en pantalla — y genera un `.xlsx` real (`xlsx`/SheetJS, `lib/export/xlsx.ts`) con Código, Nombre, Categoría, Proveedor, Costo, Precio de venta, Cantidad, Unidad, Estado y Fecha de entrada. Categoría y Proveedor se resuelven a nombre (no se exportan ids sueltos). Verificado en vivo contra dev real: 16 filas, valores correctos.
 
@@ -88,7 +88,11 @@ El patrón bueno (`AccountFormDialog`/`SettleAccountDialog`/`TransferDialog`, `f
 
 **Cliente resuelto a nombre sin `?ids=` en `GET /customers`** (ese filtro no existe todavía, a diferencia de `GET /inventory/items` y ahora `GET /contracts`): `fetchAllCustomers()` (`features/customers/api.ts`) trae TODOS los clientes en una sola tanda de requests — razonable para el tamaño de clientela de una compraventa, pero si la base de clientes crece mucho, un `?ids=` sería más preciso que el mismo movimiento que ya se hizo para artículos.
 
-**Lo que falta:** Ventas, Reportes. Mismo patrón, se replica cuando haga falta: `fetchAllRows(filters)` + `exportRowsToExcel` ya son genéricos, lo único específico de cada pantalla es el `queryFn` y el mapeo de columnas. Ojo con el tope de `fetchAllPages` (`maxPages=50` × `limit≤200` = 10.000 filas, corta en silencio) si se aplica a un listado con más historial que inventario/contratos.
+**Ventas, agregado el mismo día.** Sin filtros en pantalla (`useSalesList()` no acepta ninguno todavía), así que `fetchAllSales()` exporta el universo completo, sin acotar. Columnas: Número, Fecha, Cliente (resuelto vía el mismo `fetchAllCustomers()` de Contratos), Medio de pago, Descuento, Nota crédito redimida, Total, Estado, Motivo de anulación. El estado usa `statusLabel()` (exportado de `StatusBadge`, no una copia) — y con eso se notó que `completed`/`voided` de venta NUNCA estuvieron en `STATUS_LABELS`: hoy en pantalla el badge de una venta ya muestra el código crudo en inglés, no una traducción. No es un bug introducido por el export — ya estaba así — pero quedó documentado como hallazgo, no arreglado (fuera de alcance de "exportar a Excel").
+
+**Reportes, agregado el mismo día — el más distinto de los cuatro.** No es "una fila por registro": es un dashboard agregado, así que no hay nada que pedir con `fetchAllPages` — todo lo que se exporta (`summary`, `incomeStatement`, `ranking`) ya está en memoria, calculado para pintar la pantalla. Por eso el export es sincrónico sobre datos ya cargados, no un fetch nuevo. Genera un `.xlsx` de TRES hojas (`exportSheetsToExcel`, nuevo en `lib/export/xlsx.ts` — `exportRowsToExcel` de una sola hoja ahora es un wrapper de éste): "Resumen" (el Estado de resultados: Ventas, Intereses, Ingresos totales, Costo de mercancía, Utilidad bruta, Gastos operativos, Utilidad), "Desglose" (Módulo × Concepto × Medio × Dirección × Total, mismas filas que la tabla en pantalla) y "Rankings" (Prendas más vendidas + Categorías más movidas en una sola hoja, con columna "Tipo"). Botón junto al `DateRangePicker`, deshabilitado sin rango elegido o sin cierres de caja en el rango — exporta el período y módulo (Todo/Empeño/Tienda) que estén elegidos en ese momento en pantalla.
+
+**Ojo con el tope de `fetchAllPages`** (`maxPages=50` × `limit≤200` = 10.000 filas, corta en silencio) para Contratos/Ventas/`fetchAllCustomers` si el histórico crece mucho — no aplica a Reportes (no usa `fetchAllPages`, todo sale de lo ya cargado en pantalla).
 
 ---
 
