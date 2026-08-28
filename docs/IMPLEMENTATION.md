@@ -2,6 +2,18 @@
 
 > Registro vivo de qué existe en el código, cómo está armado y por qué se tomó cada decisión — para que cualquiera (humano o Claude Code) pueda retomar el proyecto sin releer todo el historial de commits. Se actualiza en cada paso del "Orden de implementación" de `CLAUDE.md`. No repite lo que ya está en `ARCHITECTURE.md`/`DESIGN_SYSTEM.md` (el qué-debería-ser); esto es el qué-hay-hoy y las decisiones concretas tomadas al construirlo.
 
+## Fix: insertar un campo dinámico borraba el anterior (28/08/2026)
+
+Reportado en vivo por Mateo tras probar el editor: "difícil colocar campos porque se borra el último, el cursor desaparece... no hay forma de colocarlos al lado uno del otro". Los 4 síntomas eran la misma causa.
+
+### La causa: un nodo atómico, insertado solo, deja una NodeSelection sin caret
+
+`mergeField` es un nodo inline **atómico** (no editable por dentro). `editor.chain().focus().insertContent({ type: 'mergeField', ... }).run()` lo insertaba, pero la selección resultante quedaba como una **NodeSelection sobre el nodo recién insertado** — no un cursor de texto normal parado después. Una `NodeSelection` no muestra caret ("el cursor desaparece"), y si el siguiente `insertContent` se ejecuta con esa selección activa, **reemplaza** el nodo seleccionado en vez de insertar al lado — exactamente "se borra el último campo" y "no hay forma de ponerlos uno al lado del otro".
+
+**Fix** (`TemplateEditor.tsx`): insertar `[{type:'mergeField', attrs:{key}}, {type:'text', text:' '}]` — el espacio de texto después del campo fuerza que la selección final sea un cursor colapsado DESPUÉS del campo, listo para seguir escribiendo o insertar el siguiente sin pisar el anterior.
+
+**Bonus, mismo diagnóstico:** no había NINGÚN estilo para `.ProseMirror-selectednode` (la clase que ProseMirror agrega sola al hacer clic en un nodo atómico) — así que hacer clic en un campo no daba ninguna señal visual de que quedó seleccionado, y por lo tanto tampoco de que Supr/Backspace lo borra. Se agregó un contorno visible (`globals.css`) — aplica a los 3 nodos atómicos (campo, tabla de prendas, firma), no solo a los campos. También un `title` con el hint de borrado en el chip del campo.
+
 ## Formatos visuales de documentos — Clásico / Moderno / Compacto (28/08/2026)
 
 Migración backend `00047_document_template_layout.sql`. Feedback de Mateo tras probar el editor de plantillas: el mecanismo de texto le gustó, pero pidió variar la PRESENTACIÓN — "se siente muy minimalista" — sin tener que reescribir el contenido.
