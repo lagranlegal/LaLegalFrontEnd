@@ -27,8 +27,13 @@ function CompanyLogo({ path }: { path: string }) {
  *
  * `layout` (`lib/documents/layouts.ts`) da la identidad visual — tipografía,
  * borde del encabezado, barra de acento — de una plantilla activa; sin
- * plantilla activa el caller no pasa `layout` y cae en `'classic'`, que
- * tiene que verse IDÉNTICO al look de siempre (cero regresión).
+ * plantilla activa el caller no pasa `layout` y cae en `'classic'`. El
+ * CONTENIDO de una empresa que nunca toca esta feature no cambia ni un
+ * carácter (fallback de código, ver `ContractPrintView`), pero `classic` en
+ * sí NO es pixel-idéntico al look de antes de esta feature — el borde bajo
+ * el encabezado es intencionalmente doble (`LAYOUT_HEADER_DIVIDER_CLASS`),
+ * antes era una línea simple. Decisión consciente de Mateo (28/08/2026):
+ * mejora estética aceptada, no una regresión a corregir.
  *
  * `screenPreview` hace que el MISMO componente se vea directo en pantalla en
  * vez de solo al imprimir — usado por la vista previa de
