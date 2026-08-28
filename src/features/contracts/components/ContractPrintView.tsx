@@ -81,7 +81,7 @@ export function ContractPrintView({ contract, customer, categories }: { contract
       item_appraisal: item.item_appraisal,
     }))
     return (
-      <PrintLayout title={`Contrato de empeño #${contract.number}`}>
+      <PrintLayout title={`Contrato de empeño #${contract.number}`} layout={activeTemplate.layout}>
         <Suspense fallback={null}>
           <LazyTemplateRenderer
             body={activeTemplate.body as JSONContent}
@@ -89,6 +89,7 @@ export function ContractPrintView({ contract, customer, categories }: { contract
             items={items}
             companySignatureUrl={me?.company.signature_url ?? null}
             companyLegalName={me?.company.legal_name ?? null}
+            layout={activeTemplate.layout}
           />
         </Suspense>
       </PrintLayout>

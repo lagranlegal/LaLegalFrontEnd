@@ -2,6 +2,40 @@
 
 > Registro vivo de qué existe en el código, cómo está armado y por qué se tomó cada decisión — para que cualquiera (humano o Claude Code) pueda retomar el proyecto sin releer todo el historial de commits. Se actualiza en cada paso del "Orden de implementación" de `CLAUDE.md`. No repite lo que ya está en `ARCHITECTURE.md`/`DESIGN_SYSTEM.md` (el qué-debería-ser); esto es el qué-hay-hoy y las decisiones concretas tomadas al construirlo.
 
+## Formatos visuales de documentos — Clásico / Moderno / Compacto (28/08/2026)
+
+Migración backend `00047_document_template_layout.sql`. Feedback de Mateo tras probar el editor de plantillas: el mecanismo de texto le gustó, pero pidió variar la PRESENTACIÓN — "se siente muy minimalista" — sin tener que reescribir el contenido.
+
+### El hallazgo antes de construir nada: los estilos de texto enriquecido nunca estuvieron activos
+
+`TemplateEditor.tsx` ya usaba clases `prose prose-sm` desde la tanda anterior, asumiendo el plugin `@tailwindcss/typography` — que **nunca se instaló** (no estaba en `package.json`, no había `tailwind.config.*` ni `@plugin` en `globals.css`). El preflight de Tailwind resetea `font-size`/`font-weight` de encabezados y quita el `list-style` de listas, así que un `<h2>` o una lista con viñetas de Tiptap se veían exactamente igual que un párrafo, en el editor Y en cualquier impresión — sin jerarquía visual alguna. Esto explicaba buena parte de "se siente plano", más allá de que solo existiera una presentación. Se instaló el paquete de verdad (`@plugin '@tailwindcss/typography';` en `globals.css`) antes de construir los 3 formatos — variedad sin esa base se seguiría viendo plana en los 3.
+
+### `layout` es un atributo de cada plantilla, no una preferencia global
+
+Igual que `name`/`body`: un campo más en `document_template` (`document_layout` enum: `classic | modern | compact`, default `classic`). No hizo falta ningún concepto nuevo — cada plantilla ya era autocontenida, y una empresa puede tener varias plantillas del mismo tipo con formatos distintos.
+
+### `PrintLayout` se volvió el único lugar donde vive la identidad visual
+
+Gana dos props: `layout` (tipografía/borde/barra de acento del encabezado, con `classic` reproduciendo EXACTO el look de siempre) y `screenPreview` (el mismo componente, visible en pantalla en vez de solo al imprimir). La vista previa de `/configuracion/documentos` dejó de ser un `<div className="bg-white p-6">` a mano y pasó a envolver `<PrintLayout screenPreview>` de verdad — así lo que el usuario ve al elegir un formato y lo que realmente sale impreso no pueden divergir, mismo principio que ya regía `TemplateEditor`/`TemplateRenderer` compartiendo los Node extensions de Tiptap.
+
+Como el div raíz de `PrintLayout` alterna `display:none` (pantalla normal) / visible (imprimiendo o `screenPreview`), las clases de los elementos DE ADENTRO (encabezado, barra de acento) no necesitan el prefijo `print:` — son irrelevantes mientras el ancestro tiene `display:none`, y se activan solas cuando el ancestro se vuelve visible. Solo el contenedor raíz necesita la lógica condicional de clases.
+
+### Las 3 identidades
+
+- **Clásico** (default): serif, borde doble bajo el encabezado — el más parecido al look de siempre, es la garantía de cero regresión para una plantilla sin `layout` explícito o sin plantilla activa.
+- **Moderno**: sans-serif (Inter, coherente con el resto de la marca), barra de acento en el color primario arriba de todo el documento, encabezado apilado a la izquierda en vez del bloque de dos columnas, títulos coloreados con `var(--brand-600)`.
+- **Compacto**: tipografía más chica y espaciado reducido, pensado para contratos con tablas de prendas largas.
+
+### Qué se tocó
+
+Backend: `supabase/migrations/00047_document_template_layout.sql`, `app/modules/company/{schemas,repository,service}.py` (campo `layout` en los 3 schemas + columnas/SQL), extendido `test_company.py` (default `classic`, round-trip al crear/actualizar). 307/307 tests, mypy y ruff limpios. Desplegado a Fly y verificado en vivo contra `openapi.json`.
+
+Frontend: `@tailwindcss/typography` instalado + `@plugin` en `globals.css`, `lib/documents/layouts.ts` (nuevo — catálogo de labels/clases por formato, mismo patrón que `mergeFields.ts`), `components/shared/PrintLayout.tsx` (gana `layout`/`screenPreview`), `components/shared/documentTemplate/TemplateRenderer.tsx` (gana `layout`, envuelve el contenido en las clases `prose` del catálogo), `ContractPrintView.tsx`/`SettlementPrintView.tsx` (pasan `activeTemplate.layout` a ambos), `DocumentTemplatesPage.tsx` (selector de 3 botones + vista previa ahora usa `PrintLayout` real). `tsc`, ESLint, Vitest (135/135, +2 nuevos) y `npm run build` en verde — bundle principal sin cambios (488KB gzip; el plugin de tipografía es CSS de build, no JS de runtime).
+
+### Lo que falta, explícito
+
+Mismo hueco que la feature anterior: sin verificación en navegador real todavía (no hay Playwright disponible en este entorno). Falta confirmar visualmente que los 3 formatos se vean claramente distintos tanto en la vista previa como en el contrato impreso de verdad, y que una plantilla `classic`/sin plantilla activa siga imprimiendo pixel-idéntico a como imprimía antes de esta tanda.
+
 ## Plantillas de documentos editables — Contrato + Paz y salvo (27-28/08/2026)
 
 Migración backend `00046_document_templates.sql`. Pedido de Mateo tras usar la app: poder editar "casi completamente" el texto del contrato imprimible (y de cualquier otro documento), manteniendo dinámicos los campos como nombre del cliente o número de contrato. Arrancó solo con Contrato para validar el mecanismo; Paz y salvo se sumó en la misma tanda como documento nuevo (se habilita cuando un contrato llega a `status='paid'`, antes no existía ningún documento imprimible para ese momento).

@@ -2749,6 +2749,12 @@ export interface components {
             body: {
                 [key: string]: unknown;
             };
+            /**
+             * Layout
+             * @default classic
+             * @enum {string}
+             */
+            layout: "classic" | "modern" | "compact";
         };
         /**
          * DocumentTemplateOut
@@ -2773,6 +2779,11 @@ export interface components {
             body: {
                 [key: string]: unknown;
             };
+            /**
+             * Layout
+             * @enum {string}
+             */
+            layout: "classic" | "modern" | "compact";
             /** Is Active */
             is_active: boolean;
             /**
@@ -2794,6 +2805,8 @@ export interface components {
             body?: {
                 [key: string]: unknown;
             } | null;
+            /** Layout */
+            layout?: ("classic" | "modern" | "compact") | null;
         };
         /** EntryCreateIn */
         EntryCreateIn: {

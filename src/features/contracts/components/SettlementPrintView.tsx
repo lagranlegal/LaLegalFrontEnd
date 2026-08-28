@@ -29,13 +29,14 @@ export function SettlementPrintView({ contract, customer, settlement }: { contra
 
   if (activeTemplate) {
     return (
-      <PrintLayout title={`Paz y salvo — Contrato #${contract.number}`}>
+      <PrintLayout title={`Paz y salvo — Contrato #${contract.number}`} layout={activeTemplate.layout}>
         <Suspense fallback={null}>
           <LazyTemplateRenderer
             body={activeTemplate.body as JSONContent}
             mergeFieldContext={context}
             companySignatureUrl={me?.company.signature_url ?? null}
             companyLegalName={me?.company.legal_name ?? null}
+            layout={activeTemplate.layout}
           />
         </Suspense>
       </PrintLayout>

@@ -3,6 +3,7 @@ import StarterKit from '@tiptap/starter-kit'
 import { MergeFieldNode } from '@/lib/documents/nodes/MergeFieldNode'
 import { ItemsTableBlockNode, type PrintableContractItem } from '@/lib/documents/nodes/ItemsTableBlockNode'
 import { SignatureBlockNode } from '@/lib/documents/nodes/SignatureBlockNode'
+import { LAYOUT_CONTENT_CLASSES, type DocumentLayout } from '@/lib/documents/layouts'
 import type { MergeFieldContext } from '@/lib/documents/mergeFields'
 import type { JSONContent } from '@tiptap/core'
 
@@ -20,12 +21,14 @@ export function TemplateRenderer({
   items,
   companySignatureUrl = null,
   companyLegalName = null,
+  layout = 'classic',
 }: {
   body: JSONContent
   mergeFieldContext: MergeFieldContext
   items?: PrintableContractItem[]
   companySignatureUrl?: string | null
   companyLegalName?: string | null
+  layout?: DocumentLayout
 }) {
   const editor = useEditor(
     {
@@ -42,5 +45,9 @@ export function TemplateRenderer({
     [body, mergeFieldContext, items, companySignatureUrl, companyLegalName],
   )
 
-  return <EditorContent editor={editor} />
+  return (
+    <div className={LAYOUT_CONTENT_CLASSES[layout]}>
+      <EditorContent editor={editor} />
+    </div>
+  )
 }

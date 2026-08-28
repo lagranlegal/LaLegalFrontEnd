@@ -2,11 +2,13 @@ import { Suspense, useState } from 'react'
 import { toast } from 'sonner'
 import { BackLink } from '@/components/shared/BackLink'
 import { PageHeader } from '@/components/shared/PageHeader'
+import { PrintLayout } from '@/components/shared/PrintLayout'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { useMe } from '@/lib/auth/me'
 import { LazyTemplateEditor, LazyTemplateRenderer } from '@/components/shared/documentTemplate/lazy'
 import { buildSampleContractContext, buildSampleSettlementContext, type DocumentType } from '@/lib/documents/mergeFields'
+import { LAYOUT_LABELS, LAYOUT_OPTIONS, type DocumentLayout } from '@/lib/documents/layouts'
 import { STARTING_TEMPLATES } from '@/lib/documents/startingTemplates'
 import type { PrintableContractItem } from '@/lib/documents/nodes/ItemsTableBlockNode'
 import {
@@ -55,6 +57,7 @@ function TemplateDraftPanel({
   const { data: me } = useMe()
   const [draftName, setDraftName] = useState(template?.name ?? '')
   const [draftBody, setDraftBody] = useState<JSONContent>((template?.body as JSONContent | undefined) ?? emptyDoc())
+  const [draftLayout, setDraftLayout] = useState<DocumentLayout>(template?.layout ?? 'classic')
 
   const createTemplate = useCreateDocumentTemplate()
   const updateTemplate = useUpdateDocumentTemplate()
@@ -68,11 +71,19 @@ function TemplateDraftPanel({
     }
     try {
       if (!template) {
-        const created = await createTemplate.mutateAsync({ document_type: documentType, name: draftName.trim(), body: draftBody })
+        const created = await createTemplate.mutateAsync({
+          document_type: documentType,
+          name: draftName.trim(),
+          body: draftBody,
+          layout: draftLayout,
+        })
         onSaved(created.id)
         toast.success('Plantilla creada.')
       } else {
-        await updateTemplate.mutateAsync({ templateId: template.id, body: { name: draftName.trim(), body: draftBody } })
+        await updateTemplate.mutateAsync({
+          templateId: template.id,
+          body: { name: draftName.trim(), body: draftBody, layout: draftLayout },
+        })
         toast.success('Plantilla guardada.')
       }
     } catch {
@@ -112,6 +123,24 @@ function TemplateDraftPanel({
           </label>
           <input id="template-name" className={inputClass} value={draftName} onChange={(e) => setDraftName(e.target.value)} />
         </div>
+        <div>
+          <span className="block text-sm text-muted-foreground">Formato</span>
+          <div className="mt-1 flex overflow-hidden rounded-input border border-border">
+            {LAYOUT_OPTIONS.map((option) => (
+              <button
+                key={option}
+                type="button"
+                onClick={() => setDraftLayout(option)}
+                className={cn(
+                  'px-3 py-2 text-sm font-medium transition-colors',
+                  draftLayout === option ? 'bg-primary text-primary-foreground' : 'bg-background text-muted-foreground hover:bg-accent',
+                )}
+              >
+                {LAYOUT_LABELS[option]}
+              </button>
+            ))}
+          </div>
+        </div>
         <div className="flex items-center gap-2">
           {!template && (
             <Button type="button" variant="outline" size="sm" onClick={() => setDraftBody(STARTING_TEMPLATES[documentType])}>
@@ -140,16 +169,23 @@ function TemplateDraftPanel({
 
       <div>
         <h2 className="mb-2 text-sm font-medium text-foreground">Vista previa (con datos de ejemplo)</h2>
-        <div className="rounded-card border border-border bg-white p-6 text-black">
-          <Suspense fallback={<p className="text-sm text-muted-foreground">Cargando vista previa…</p>}>
-            <LazyTemplateRenderer
-              body={draftBody}
-              mergeFieldContext={sampleContext}
-              items={documentType === 'contract' ? SAMPLE_ITEMS : undefined}
-              companySignatureUrl={me?.company.signature_url ?? null}
-              companyLegalName={me?.company.legal_name ?? null}
-            />
-          </Suspense>
+        <div className="overflow-hidden rounded-card border border-border">
+          <PrintLayout
+            title={documentType === 'contract' ? 'Contrato de empeño' : 'Paz y salvo'}
+            layout={draftLayout}
+            screenPreview
+          >
+            <Suspense fallback={<p className="text-sm text-muted-foreground">Cargando vista previa…</p>}>
+              <LazyTemplateRenderer
+                body={draftBody}
+                mergeFieldContext={sampleContext}
+                items={documentType === 'contract' ? SAMPLE_ITEMS : undefined}
+                companySignatureUrl={me?.company.signature_url ?? null}
+                companyLegalName={me?.company.legal_name ?? null}
+                layout={draftLayout}
+              />
+            </Suspense>
+          </PrintLayout>
         </div>
       </div>
     </div>

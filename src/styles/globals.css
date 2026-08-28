@@ -3,6 +3,7 @@
 @import 'tw-animate-css';
 @import 'shadcn/tailwind.css';
 @import '@fontsource-variable/inter';
+@plugin '@tailwindcss/typography';
 
 /* Un solo mecanismo de dark mode: el atributo que ya usa tokens.css. */
 @custom-variant dark (&:is([data-theme='dark'] *));
