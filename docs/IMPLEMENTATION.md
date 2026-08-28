@@ -20,9 +20,14 @@ Antes: `(sessions: {sessionDate, report}[], moduleFilter?)`, iterando el `report
 
 Función pura, sin red — se pudo verificar con tests unitarios reales sin tocar la app corriendo. Encontrados y actualizados DOS archivos de test que usaban la firma vieja (`tests/reports-aggregate.test.ts` y `tests/accounts.test.ts`, este último con la cobertura más completa de traslados/cuentas por cobrar) — ninguno apareció en una búsqueda inicial por estar fuera de `src/features/reports/` (los tests de este proyecto NO están colocados junto al código, viven todos en `tests/` en la raíz). 135/135 en verde tras el ajuste, mismo número que antes (cobertura neta sin cambios, dos tests redundantes que se habían agregado de más se retiraron al notar que `accounts.test.ts` ya cubría esos casos).
 
-### Qué NO se pudo probar en vivo, y por qué
+### Verificado en vivo tras desplegar (no se pudo antes: CORS)
 
-CORS: el backend dev solo permite el origen de Vercel, así que `vite preview` local (`http://localhost:4321`) no puede pegarle a `https://compraventa-backend-dev.fly.dev` para probar antes de desplegar — confirmado al intentarlo (bloqueado por política CORS, sin `Access-Control-Allow-Origin`). La verificación en vivo con Playwright se hizo DESPUÉS de desplegar a `dev`/Vercel, no antes.
+El backend dev solo permite el origen de Vercel, así que `vite preview` local (`http://localhost:4321`) no puede pegarle a `https://compraventa-backend-dev.fly.dev` para probar antes de desplegar — confirmado al intentarlo (bloqueado por política CORS, sin `Access-Control-Allow-Origin`). La verificación se hizo con Playwright DESPUÉS de desplegar a `dev`/Vercel, con el login real de Mateo:
+
+- `GET /reports/closings-breakdown` se dispara dos veces (rango actual + rango anterior de la comparación) y **cero veces** el N+1 viejo (`GET /cashbox/sessions/{id}/report`) — confirmado mirando cada request real de la carga de `/reportes`.
+- Cambiar entre las pestañas Todo/Empeño/Tienda sigue sin disparar ninguna request nueva (`0` requests medidas tras cada click) — la agregación client-side por `useMemo` sigue funcionando igual que antes.
+- Los números se recalculan correctamente al filtrar: en "Empeño", Ventas cae a `$0`, la tabla de desglose muestra solo filas `Empeño`, "Gastos por categoría" pasa a "Sin datos en este rango todavía" (el único gasto real era de módulo `general`) — todo instantáneo y correcto.
+- Sin errores de consola ni de página durante toda la prueba.
 
 ## Fix: "Imprimir" podía imprimir el documento de siempre en vez de la plantilla activa (28/08/2026)
 
