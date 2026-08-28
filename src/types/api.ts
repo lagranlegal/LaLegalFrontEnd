@@ -112,6 +112,33 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/platform/companies/{company_id}/audit-log": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Company Audit Log
+         * @description El registro de SEGURIDAD (roles, remates, anulaciones, cierres) de
+         *     CUALQUIER empresa — a diferencia de `/subscription/events` (histórico
+         *     COMERCIAL), que ya no tenía este hueco. `audit_log` tiene RLS forzado
+         *     (CLAUDE.md regla 1), así que un super-admin con `get_tenant_db` normal
+         *     nunca vería el de una empresa que no es la suya — de ahí `get_db`
+         *     (bypass explícito, mismo mecanismo que ya usa este router para
+         *     `/companies` y `/subscription/events`) con `company_id` siempre en el
+         *     WHERE de la query, nunca confiado a RLS.
+         */
+        get: operations["list_company_audit_log_api_v1_platform_companies__company_id__audit_log_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/platform/plans": {
         parameters: {
             query?: never;
@@ -1480,6 +1507,31 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/reports/closings-breakdown": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Closings Breakdown
+         * @description Módulo × concepto × medio × cuenta × día, sumado sobre TODAS las
+         *     sesiones cerradas del rango en una sola consulta — reemplaza el patrón
+         *     del front de pedir `GET /cashbox/sessions/{id}/report` una vez por cada
+         *     sesión del rango (hasta 90 requests para 90 días, docs/PENDIENTES_
+         *     FRONTEND.md #11). Mismos dos permisos que `/closings`: es un reporte del
+         *     histórico de caja.
+         */
+        get: operations["get_closings_breakdown_api_v1_reports_closings_breakdown_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/reports/profit": {
         parameters: {
             query?: never;
@@ -1958,6 +2010,38 @@ export interface components {
              * Format: date-time
              */
             closed_at: string;
+        };
+        /** ClosingsBreakdownLineOut */
+        ClosingsBreakdownLineOut: {
+            /** Module */
+            module: string;
+            /** Direction */
+            direction: string;
+            /** Concept */
+            concept: string;
+            /** Payment Method */
+            payment_method: string | null;
+            /**
+             * Account Id
+             * Format: uuid
+             */
+            account_id: string;
+            /** Account Name */
+            account_name: string;
+            /** Account Type */
+            account_type: string;
+            /**
+             * Session Date
+             * Format: date
+             */
+            session_date: string;
+            /** Total */
+            total: string;
+        };
+        /** ClosingsBreakdownOut */
+        ClosingsBreakdownOut: {
+            /** Lines */
+            lines: components["schemas"]["ClosingsBreakdownLineOut"][];
         };
         /** CompanyCreateIn */
         CompanyCreateIn: {
@@ -4708,6 +4792,44 @@ export interface operations {
             };
         };
     };
+    list_company_audit_log_api_v1_platform_companies__company_id__audit_log_get: {
+        parameters: {
+            query?: {
+                cursor?: string | null;
+                limit?: number;
+                module?: string | null;
+                entity_type?: string | null;
+                entity_id?: string | null;
+                user_id?: string | null;
+            };
+            header?: never;
+            path: {
+                company_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CursorPage_AuditLogOut_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     list_plans_api_v1_platform_plans_get: {
         parameters: {
             query?: never;
@@ -5878,6 +6000,8 @@ export interface operations {
                 limit?: number;
                 status?: string | null;
                 customer_id?: string | null;
+                /** @description Número, código anterior o nombre/documento del cliente */
+                q?: string | null;
             };
             header?: never;
             path?: never;
@@ -7542,6 +7666,38 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["CursorPage_ClosingHistoryOut_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_closings_breakdown_api_v1_reports_closings_breakdown_get: {
+        parameters: {
+            query?: {
+                from_date?: string | null;
+                to_date?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ClosingsBreakdownOut"];
                 };
             };
             /** @description Validation Error */

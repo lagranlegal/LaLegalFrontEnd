@@ -54,25 +54,19 @@ export function useReadyForAuction() {
 }
 
 /**
- * `GET /contracts` no tiene `?q=` (confirmado en `docs/pending/API_GUIDE.md`
- * §7 — solo `status`/`cursor`/`limit`) — mismo hueco ya documentado para
- * `legacy_code` en `RECOMENDACIONES.md` §1.6 y para artículos de inventario
- * (`lib/inventory/items.ts`, paso 7). Se trae la página más grande posible
- * (200) y se filtra client-side por número de contrato o código anterior —
- * NO por nombre del cliente, porque `ContractOut` solo trae `customer_id`
- * (resolver el nombre de cada fila para filtrar sería N+1 requests). Mismo
- * hueco conocido: contratos fuera de esa ventana de 200 no aparecen.
+ * `GET /contracts?q=` ya existe (resuelto 27/08/2026, mismo patrón que
+ * `customers.list_customers`) — busca por número, `legacy_code` y nombre/
+ * documento del cliente, del lado del backend. Reemplaza el parche que
+ * traía 200 contratos y filtraba en el navegador SIN poder buscar por
+ * cliente (`ContractOut` solo trae `customer_id`, no el nombre).
  */
 export function useContractSearch(q: string) {
+  const query = q.trim()
   return useQuery({
-    queryKey: ['contracts', 'search'] as const,
-    queryFn: () => unwrap(api.GET('/api/v1/contracts', { params: { query: { limit: 200 } } })),
-    select: (page) => {
-      const query = q.trim().toLowerCase()
-      if (!query) return []
-      return page.items.filter((c) => String(c.number).includes(query) || c.legacy_code?.toLowerCase().includes(query)).slice(0, 20)
-    },
-    enabled: q.trim().length > 0,
+    queryKey: ['contracts', 'search', query] as const,
+    queryFn: () => unwrap(api.GET('/api/v1/contracts', { params: { query: { q: query, limit: 20 } } })),
+    select: (page) => page.items,
+    enabled: query.length > 0,
   })
 }
 
