@@ -2,6 +2,56 @@
 
 > Registro vivo de qué existe en el código, cómo está armado y por qué se tomó cada decisión — para que cualquiera (humano o Claude Code) pueda retomar el proyecto sin releer todo el historial de commits. Se actualiza en cada paso del "Orden de implementación" de `CLAUDE.md`. No repite lo que ya está en `ARCHITECTURE.md`/`DESIGN_SYSTEM.md` (el qué-debería-ser); esto es el qué-hay-hoy y las decisiones concretas tomadas al construirlo.
 
+## Plantillas de documentos editables — Contrato + Paz y salvo (27-28/08/2026)
+
+Migración backend `00046_document_templates.sql`. Pedido de Mateo tras usar la app: poder editar "casi completamente" el texto del contrato imprimible (y de cualquier otro documento), manteniendo dinámicos los campos como nombre del cliente o número de contrato. Arrancó solo con Contrato para validar el mecanismo; Paz y salvo se sumó en la misma tanda como documento nuevo (se habilita cuando un contrato llega a `status='paid'`, antes no existía ningún documento imprimible para ese momento).
+
+### La plantilla activa es siempre la actual, nunca versionada por contrato
+
+Decisión explícita de Mateo: editar la plantilla activa aplica retroactivamente a contratos viejos también — no hace falta congelar una copia por contrato. La razón es que ya existe una copia histórica real: `signed_photo_url`, la foto del documento físico firmado por el cliente en su momento, que no cambia aunque la plantilla se edite después. Construir versionado de plantillas habría sido resolver un problema que el producto ya resuelve de otra forma.
+
+### El swap transaccional de "una plantilla activa por tipo"
+
+`document_template` tiene un índice único parcial `where is_active` — como máximo una plantilla activa por `(company_id, document_type)`. Activar una plantilla nueva no pide "desactiva la otra primero": el service hace `deactivate_active_template` y **después**, en la misma transacción, `activate_template(id)`. En ese orden el índice nunca se viola en ningún punto intermedio — invertir el orden (activar antes de desactivar) sí lo haría.
+
+### El hallazgo crítico: el permiso de LECTURA no puede ser el mismo que el de escritura
+
+`ContractDetailPage` (botón "Imprimir") está gateado por `contracts.view`, no por `company.configure` — cualquier asesor imprime un contrato hoy. Si `GET .../active` (la plantilla activa, la que de verdad se necesita para imprimir) exigiera `company.configure` como el resto del CRUD, un asesor sin ese permiso se quedaría sin poder imprimir en cuanto una empresa activara una plantilla — regresión real, no hipotética. Se separó: los 5 endpoints de escritura van con `company.configure`; `GET /company/document-templates/active` va con `contracts.view`. Mismo criterio que ya usan `header_note`/`legal_notice` (salen de `GET /me`, no de `GET /company/settings`).
+
+### `body` es JSON estructurado (ProseMirror), nunca HTML
+
+El editor es Tiptap (elegido por Mateo — rich text tipo Word: negrita, títulos, listas — sobre texto plano con inserción de campos). El documento se guarda como JSON de ProseMirror, no como string HTML: el renderer solo puede emitir las etiquetas que sus Node/Mark conocidos definen, así que no hay superficie de XSS aunque cualquier usuario con `company.configure` escriba lo que quiera en el editor.
+
+### Tres Node extensions atómicos comparten los mismos dos componentes
+
+`MergeFieldNode` (campo dinámico — chip en edición, valor resuelto en impresión; si la key no existe en el contexto muestra `[campo desconocido: x]`, nunca vacío en silencio), `ItemsTableBlockNode` (tabla de prendas, solo Contrato) y `SignatureBlockNode` (firma cliente/empresa, reusa `signature_url`). `TemplateEditor` (editable) y `TemplateRenderer` (`editable:false`) montan exactamente los mismos tres Node extensions — la vista previa del editor y lo que realmente imprime no pueden divergir porque es literalmente el mismo motor.
+
+Catálogo único de campos por tipo de documento en `lib/documents/mergeFields.ts` (`MERGE_FIELDS`, `resolveMergeField`) — función pura, testeada con Vitest sin montar el editor. Un test propio (`las keys compartidas... usan el mismo label`) encontró una inconsistencia real: `contrato.fecha_inicio` y `contrato.capital` tenían labels distintos entre el catálogo de Contrato y el de Paz y salvo — corregido.
+
+### Fallback de código, no una plantilla sembrada en la base de datos
+
+`ContractPrintView`/`SettlementPrintView`: si hay una plantilla activa, renderizan `TemplateRenderer`; si no, cae al JSX hardcodeado de siempre (Contrato) o a un texto simple hardcodeado (Paz y salvo, documento nuevo sin JSX previo que replicar). Una empresa que nunca toque `/configuracion/documentos` imprime exactamente igual que antes — cero riesgo de regresión.
+
+### El regression de bundle que el propio `npm run build` detectó
+
+Tiptap (`@tiptap/react`+`core`+`starter-kit`+`pm`, ~134KB gzip) se había importado de forma estática en 5 archivos, violando la regla ya establecida en este repo para dependencias pesadas (mismo criterio que `xlsx`, item 8 de `PENDIENTES_FRONTEND.md`): el bundle principal subió de 482.59KB a 616.15KB gzip. Fix: `components/shared/documentTemplate/lazy.ts` centraliza `React.lazy()` para `TemplateEditor`/`TemplateRenderer` — los 3 consumidores (`DocumentTemplatesPage`, `ContractPrintView`, `SettlementPrintView`) importan de ahí, nunca de los archivos reales. Vuelta a ~488KB gzip en el bundle principal, Tiptap en su propio chunk (`SignatureBlockNode-*.js`, 126KB gzip) que solo se descarga cuando hace falta.
+
+**Detalle no obvio con `window.print()`:** es síncrono/bloqueante — si el chunk de Tiptap no había terminado de cargar en el momento del click, `Suspense` mostraría su fallback y ESO es lo que se imprimiría. `ContractPrintView`/`SettlementPrintView` llaman `preloadTemplateRenderer()` (mismo módulo, mismo cache de `import()` que `LazyTemplateRenderer`) en un `useEffect` apenas se sabe que hay plantilla activa, dándole tiempo de sobra a la descarga antes de que el usuario llegue a hacer click en "Imprimir".
+
+### `GET /contracts/{id}/settlement` — la fecha de cancelación se deriva
+
+Mismo principio del proyecto ("los saldos se derivan, nunca se guardan"): no hay columna `settled_at`. El backend busca el `contract_payment` con `new_capital_balance=0` (el abono que saldó el crédito) y devuelve su fecha + `receipt_number`. Derivarlo en el front paginando pagos habría sido frágil (créditos con muchos abonos parciales); resuelto con una query de una fila en el backend. 404 si el contrato no está `status='paid'`.
+
+### Qué se tocó
+
+Backend: `supabase/migrations/00046_document_templates.sql`, `app/modules/company/{schemas,repository,service,router}.py` (6 endpoints de plantillas), `app/modules/contracts/{schemas,repository,service,router}.py` (`GET /{id}/settlement`), tests en `test_company.py`/`test_contracts.py`/`test_tenant_isolation.py`. 306/306 tests, mypy y ruff limpios. Desplegado a Fly y verificado en vivo contra `openapi.json`.
+
+Frontend: `lib/documents/{mergeFields,startingTemplates}.ts`, `lib/documents/nodes/{MergeFieldNode,ItemsTableBlockNode,SignatureBlockNode}.tsx`, `components/shared/documentTemplate/{TemplateEditor,TemplateRenderer,lazy}.tsx`, `features/settings/documentTemplates/{api.ts,pages/DocumentTemplatesPage.tsx}`, `features/contracts/settlement.ts`, `features/contracts/components/SettlementPrintView.tsx` (nuevo), cambios en `ContractPrintView.tsx`/`ContractDetailPage.tsx`/`router.tsx`/`SettingsPage.tsx`. `tsc`, ESLint, Vitest (133/133) y `npm run build` en verde.
+
+### Lo que falta, explícito
+
+**No probado en navegador real todavía** — ni local ni contra dev desplegado. Falta: crear/editar/activar/eliminar una plantilla de punta a punta con Playwright y credenciales reales, confirmar que "Empezar desde la plantilla actual" precarga algo razonable, confirmar que una empresa SIN plantilla activa sigue imprimiendo el contrato exactamente igual que antes (la garantía central de este diseño), confirmar que el botón "Imprimir paz y salvo" solo aparece con `status='paid'`, y confirmar que un usuario con solo `contracts.view` puede imprimir pero no ve `/configuracion/documentos`. Migración `00046` aplicada en local y en la Supabase dev remota. Commit/push/deploy del frontend: pendiente.
+
 ## Devolución de cliente y nota crédito (25-26/08/2026)
 
 Migraciones backend `00041`-`00045`. 00033 (agosto) ya había dejado escrito que esto quedaba afuera "a propósito" porque merecía su propio camino — es ese camino.

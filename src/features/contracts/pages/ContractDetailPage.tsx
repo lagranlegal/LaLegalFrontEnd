@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { flushSync } from 'react-dom'
 import { Link, useParams } from '@tanstack/react-router'
 import type { ColumnDef } from '@tanstack/react-table'
 import { toast } from 'sonner'
@@ -24,6 +25,8 @@ import { PaymentOptionsPanel } from '@/features/contracts/components/PaymentOpti
 import { ContractMetricsPanel } from '@/features/contracts/components/ContractMetricsPanel'
 import { ContractEditDialog } from '@/features/contracts/components/ContractEditDialog'
 import { ContractPrintView } from '@/features/contracts/components/ContractPrintView'
+import { SettlementPrintView } from '@/features/contracts/components/SettlementPrintView'
+import { useSettlementInfo } from '@/features/contracts/settlement'
 
 const PAYABLE_STATUSES = new Set(['active', 'in_arrears', 'in_extension'])
 
@@ -89,6 +92,14 @@ export function ContractDetailPage() {
   const auctionContract = useAuctionContract()
   const [editDialogOpen, setEditDialogOpen] = useState(false)
   const [editDialogNonce, setEditDialogNonce] = useState(0)
+  // 'paid' es terminal (no lo toca el recálculo activo→en_mora→prórroga, ver
+  // service.py::get_settlement_info) — la columna cruda alcanza, sin
+  // necesitar `effectiveContractStatus`. Antes de saber si `contract` cargó
+  // (los hooks no pueden ser condicionales) — mismo criterio que
+  // `useItemsByIds` arriba.
+  const isPaid = contract?.status === 'paid'
+  const { data: settlement } = useSettlementInfo(contractId, isPaid)
+  const [printMode, setPrintMode] = useState<'contract' | 'settlement'>('contract')
 
   if (isPending) return <ContractDetailSkeleton />
 
@@ -133,9 +144,30 @@ export function ContractDetailPage() {
           <div className="flex items-center gap-2">
             {contract.legacy_code && <LegacyCodeBadge code={contract.legacy_code} />}
             <StatusBadge status={effectiveContractStatus(contract)} />
-            <Button variant="outline" onClick={() => window.print()}>
+            <Button
+              variant="outline"
+              onClick={() => {
+                // `window.print()` es sincrónico y bloquea — sin `flushSync`,
+                // el setState de `printMode` queda batcheado para DESPUÉS de
+                // que el diálogo de impresión ya se abrió con el DOM viejo
+                // (imprimiría el documento que estaba antes, no el elegido).
+                flushSync(() => setPrintMode('contract'))
+                window.print()
+              }}
+            >
               Imprimir
             </Button>
+            {isPaid && settlement && (
+              <Button
+                variant="outline"
+                onClick={() => {
+                  flushSync(() => setPrintMode('settlement'))
+                  window.print()
+                }}
+              >
+                Imprimir paz y salvo
+              </Button>
+            )}
             <Can permission="contracts.edit">
               <Button
                 variant="outline"
@@ -284,7 +316,11 @@ export function ContractDetailPage() {
       <ContractEditDialog key={editDialogNonce} open={editDialogOpen} onOpenChange={setEditDialogOpen} contract={contract} />
     </div>
 
-    <ContractPrintView contract={contract} customer={customer} categories={categories} />
+    {printMode === 'settlement' && settlement ? (
+      <SettlementPrintView contract={contract} customer={customer} settlement={settlement} />
+    ) : (
+      <ContractPrintView contract={contract} customer={customer} categories={categories} />
+    )}
     </>
   )
 }

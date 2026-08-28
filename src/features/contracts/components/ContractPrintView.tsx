@@ -1,11 +1,17 @@
+import { Suspense, useEffect } from 'react'
 import { PrintLayout } from '@/components/shared/PrintLayout'
 import { Money } from '@/components/shared/Money'
 import { formatDate } from '@/lib/dates'
 import { useMe } from '@/lib/auth/me'
 import { useSignedPhotoUrl } from '@/lib/storage/photos'
+import { LazyTemplateRenderer, preloadTemplateRenderer } from '@/components/shared/documentTemplate/lazy'
+import { useActiveDocumentTemplate } from '@/features/settings/documentTemplates/api'
+import { buildContractContext } from '@/lib/documents/mergeFields'
+import type { PrintableContractItem } from '@/lib/documents/nodes/ItemsTableBlockNode'
 import type { Contract } from '@/features/contracts/api'
 import type { Customer } from '@/lib/customers/search'
 import type { Category } from '@/lib/catalogs/categories'
+import type { JSONContent } from '@tiptap/core'
 
 function categoryName(categories: Category[] | undefined, categoryId: string): string {
   return categories?.find((c) => c.id === categoryId)?.name ?? '—'
@@ -44,16 +50,51 @@ function months(count: number): string {
  * que `ClosingActDialog` (paso 6): vive como hermano de cualquier diálogo,
  * nunca anidado (`print:hidden` en un ancestro lo taparía).
  *
- * **La firma de la empresa ya se estampa automáticamente** cuando está
- * cargada en /configuracion (`company.signature_url`, vía `GET /me`) — es lo
- * que CONTEXTO.md §3 pedía desde el principio y que estuvo bloqueado hasta
- * que existió `GET/PATCH /company/settings`. Si no hay firma cargada, cae a
- * la línea en blanco de siempre para firmar a mano, así que el documento
- * nunca queda peor que antes. El cliente sigue firmando el impreso (fase 1,
- * sin firma en pantalla) y el operador sube la foto del documento ya firmado
- * desde "Editar" → `signed_photo_url`.
+ * Si la empresa activó una plantilla propia (`/configuracion/documentos`),
+ * se renderiza esa — mismo `PrintLayout` por fuera, el `body` guardado por
+ * dentro vía `TemplateRenderer`. Si no hay ninguna activa (el caso de HOY
+ * para toda empresa que no toque esta feature), se sigue imprimiendo con
+ * el JSX de siempre, sin cambios: fallback de código, no una plantilla
+ * sembrada en la base de datos — cero riesgo de regresión. La firma de la
+ * empresa (`CompanySignature`, en el fallback) se estampa automáticamente
+ * si está cargada en /configuracion, si no cae a la línea en blanco de
+ * siempre.
  */
 export function ContractPrintView({ contract, customer, categories }: { contract: Contract; customer: Customer | undefined; categories: Category[] | undefined }) {
+  const { data: me } = useMe()
+  const { data: activeTemplate } = useActiveDocumentTemplate('contract')
+
+  // `window.print()` es síncrono — precargar el chunk de Tiptap apenas se
+  // sabe que hay plantilla activa, para que ya esté en caché cuando el
+  // usuario alcance a hacer click en "Imprimir".
+  useEffect(() => {
+    if (activeTemplate) void preloadTemplateRenderer()
+  }, [activeTemplate])
+
+  if (activeTemplate) {
+    const items: PrintableContractItem[] = contract.items.map((item) => ({
+      id: item.id,
+      description: item.description,
+      categoryName: categoryName(categories, item.category_id),
+      weight_grams: item.weight_grams,
+      serial_imei: item.serial_imei,
+      item_appraisal: item.item_appraisal,
+    }))
+    return (
+      <PrintLayout title={`Contrato de empeño #${contract.number}`}>
+        <Suspense fallback={null}>
+          <LazyTemplateRenderer
+            body={activeTemplate.body as JSONContent}
+            mergeFieldContext={buildContractContext(contract, customer, me?.company)}
+            items={items}
+            companySignatureUrl={me?.company.signature_url ?? null}
+            companyLegalName={me?.company.legal_name ?? null}
+          />
+        </Suspense>
+      </PrintLayout>
+    )
+  }
+
   return (
     <PrintLayout title={`Contrato de empeño #${contract.number}`}>
       <section className="mb-6 grid grid-cols-2 gap-4 text-sm">

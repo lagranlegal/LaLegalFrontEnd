@@ -507,6 +507,76 @@ export interface paths {
         patch: operations["update_settings_api_v1_company_settings_patch"];
         trace?: never;
     };
+    "/api/v1/company/document-templates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Document Templates */
+        get: operations["list_document_templates_api_v1_company_document_templates_get"];
+        put?: never;
+        /** Create Document Template */
+        post: operations["create_document_template_api_v1_company_document_templates_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/company/document-templates/active": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Active Document Template */
+        get: operations["get_active_document_template_api_v1_company_document_templates_active_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/company/document-templates/{template_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Delete Document Template */
+        delete: operations["delete_document_template_api_v1_company_document_templates__template_id__delete"];
+        options?: never;
+        head?: never;
+        /** Update Document Template */
+        patch: operations["update_document_template_api_v1_company_document_templates__template_id__patch"];
+        trace?: never;
+    };
+    "/api/v1/company/document-templates/{template_id}/activate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Activate Document Template */
+        post: operations["activate_document_template_api_v1_company_document_templates__template_id__activate_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/customers": {
         parameters: {
             query?: never;
@@ -759,6 +829,28 @@ export interface paths {
         put?: never;
         /** Create Payment */
         post: operations["create_payment_api_v1_contracts__contract_id__payments_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/contracts/{contract_id}/settlement": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Settlement Info
+         * @description Para el documento de paz y salvo. 404 si el contrato no está
+         *     `status='paid'` — no tiene sentido imprimir un paz y salvo de un
+         *     contrato que sigue vigente.
+         */
+        get: operations["get_settlement_info_api_v1_contracts__contract_id__settlement_get"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -2644,6 +2736,65 @@ export interface components {
             /** Legal Notice */
             legal_notice?: string | null;
         };
+        /** DocumentTemplateCreateIn */
+        DocumentTemplateCreateIn: {
+            /**
+             * Document Type
+             * @enum {string}
+             */
+            document_type: "contract" | "settlement";
+            /** Name */
+            name: string;
+            /** Body */
+            body: {
+                [key: string]: unknown;
+            };
+        };
+        /**
+         * DocumentTemplateOut
+         * @description `body` es el documento ProseMirror/Tiptap completo (JSON estructurado,
+         *     nunca HTML crudo — esa es la mitigación de XSS: el renderer del frontend
+         *     solo emite las etiquetas que sus nodos conocidos definen).
+         */
+        DocumentTemplateOut: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Document Type
+             * @enum {string}
+             */
+            document_type: "contract" | "settlement";
+            /** Name */
+            name: string;
+            /** Body */
+            body: {
+                [key: string]: unknown;
+            };
+            /** Is Active */
+            is_active: boolean;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+        };
+        /** DocumentTemplateUpdateIn */
+        DocumentTemplateUpdateIn: {
+            /** Name */
+            name?: string | null;
+            /** Body */
+            body?: {
+                [key: string]: unknown;
+            } | null;
+        };
         /** EntryCreateIn */
         EntryCreateIn: {
             /**
@@ -4001,6 +4152,21 @@ export interface components {
             amount_settled: number | string;
             /** Notes */
             notes?: string | null;
+        };
+        /**
+         * SettlementInfoOut
+         * @description Para el documento de paz y salvo — `settled_at` se deriva del abono
+         *     que saldó el contrato (`new_capital_balance=0`), nunca una columna
+         *     guardada aparte.
+         */
+        SettlementInfoOut: {
+            /**
+             * Settled At
+             * Format: date-time
+             */
+            settled_at: string;
+            /** Receipt Number */
+            receipt_number: number;
         };
         /** SettlementOut */
         SettlementOut: {
@@ -5525,6 +5691,196 @@ export interface operations {
             };
         };
     };
+    list_document_templates_api_v1_company_document_templates_get: {
+        parameters: {
+            query: {
+                document_type: "contract" | "settlement";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DocumentTemplateOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_document_template_api_v1_company_document_templates_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DocumentTemplateCreateIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DocumentTemplateOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_active_document_template_api_v1_company_document_templates_active_get: {
+        parameters: {
+            query: {
+                document_type: "contract" | "settlement";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DocumentTemplateOut"] | null;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_document_template_api_v1_company_document_templates__template_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                template_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_document_template_api_v1_company_document_templates__template_id__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                template_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DocumentTemplateUpdateIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DocumentTemplateOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    activate_document_template_api_v1_company_document_templates__template_id__activate_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                template_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DocumentTemplateOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     list_customers_api_v1_customers_get: {
         parameters: {
             query?: {
@@ -6254,6 +6610,37 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PaymentOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_settlement_info_api_v1_contracts__contract_id__settlement_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                contract_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SettlementInfoOut"];
                 };
             };
             /** @description Validation Error */

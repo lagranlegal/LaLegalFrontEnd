@@ -3,6 +3,8 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { Controller, useForm } from 'react-hook-form'
 import { z } from 'zod'
 import { toast } from 'sonner'
+import { Link } from '@tanstack/react-router'
+import { FileEdit } from 'lucide-react'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { PhotoUploader } from '@/components/shared/PhotoUploader'
 import { EmptyState } from '@/components/shared/EmptyState'
@@ -246,6 +248,20 @@ export function SettingsPage() {
           title="Documentos impresos"
           description="Textos del contrato, el comprobante de venta y el acta de cierre de caja."
         >
+          <div className="flex items-start justify-between gap-4 rounded-input border border-border bg-background p-3">
+            <div>
+              <p className="text-sm font-medium text-foreground">Editar el contenido de cada documento</p>
+              <p className="text-xs text-muted-foreground">
+                Además del encabezado/pie de abajo, ahora puedes editar el texto completo del contrato (y del paz y salvo) con
+                plantillas propias.
+              </p>
+            </div>
+            <Button variant="outline" size="sm" asChild>
+              <Link to="/configuracion/documentos">
+                <FileEdit className="size-4" /> Documentos
+              </Link>
+            </Button>
+          </div>
           <Field
             label="Nota de encabezado"
             hint="Línea corta bajo el nombre de la empresa. Ej.: “Casa de empeño y compraventa · Vigilado Supersociedades”."

@@ -35,6 +35,7 @@ import { AuditPage } from '@/features/audit/pages/AuditPage'
 import { ReportesPage } from '@/features/reports/pages/ReportesPage'
 import { AccountsPage } from '@/features/accounts/pages/AccountsPage'
 import { SettingsPage } from '@/features/settings/pages/SettingsPage'
+import { DocumentTemplatesPage } from '@/features/settings/documentTemplates/pages/DocumentTemplatesPage'
 import { CompaniesPage } from '@/features/platform/pages/CompaniesPage'
 
 interface RouterContext {
@@ -405,6 +406,20 @@ const settingsRoute = createRoute({
   },
 })
 
+// Mismo guard que /configuracion — es la misma superficie de "cómo se ve/
+// comunica la empresa" (docs/API_GUIDE.md §4 bis).
+const documentTemplatesRoute = createRoute({
+  getParentRoute: () => appLayoutRoute,
+  path: '/configuracion/documentos',
+  component: DocumentTemplatesPage,
+  beforeLoad: ({ context }) => {
+    const me = context.queryClient.getQueryData(meQueryOptions().queryKey)
+    if (me && !me.permissions.includes('company.configure')) {
+      throw redirect({ to: '/' })
+    }
+  },
+})
+
 // El módulo tiene permisos propios desde 00029 (antes se colaba por
 // `cashbox.view`/`company.configure`, lo que lo hacía imposible de otorgar
 // solo). El guard de ruta usa el de LECTURA: un asesor que cobra necesita ver
@@ -490,6 +505,7 @@ const routeTree = rootRoute.addChildren([
     auditRoute,
     accountsRoute,
     settingsRoute,
+    documentTemplatesRoute,
   ]),
 ])
 
