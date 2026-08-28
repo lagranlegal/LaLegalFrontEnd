@@ -1,24 +1,28 @@
 import { describe, expect, it } from 'vitest'
-import { aggregateFinancialSummary, aggregateExpensesByCategory, computeDelta, daysBetweenDateOnly, previousRangeFor } from '@/features/reports/aggregate'
-import type { SessionReport, Expense, ExpenseCategory } from '@/features/cashbox/api'
+import { aggregateFinancialSummary, aggregateExpensesByCategory, computeDelta, daysBetweenDateOnly, previousRangeFor, type ClosingsBreakdownLine } from '@/features/reports/aggregate'
+import type { Expense, ExpenseCategory } from '@/features/cashbox/api'
 
-function report(lines: SessionReport['lines']): SessionReport {
-  return { session_id: 's1', status: 'closed', opening_balance: '0.00', expected_cash: '0.00', lines }
+function line(overrides: Partial<ClosingsBreakdownLine> & Pick<ClosingsBreakdownLine, 'module' | 'direction' | 'concept' | 'total' | 'session_date'>): ClosingsBreakdownLine {
+  return {
+    payment_method: 'cash',
+    account_id: 'acc-1',
+    account_name: 'Caja',
+    account_type: 'cash',
+    ...overrides,
+  }
 }
 
 describe('aggregateFinancialSummary', () => {
   it('separa ingreso/gasto operativo (P&L) del movimiento de capital — un préstamo no es gasto, un abono no es ingreso', () => {
-    const summary = aggregateFinancialSummary([
-      {
-        sessionDate: '2026-08-01',
-        report: report([
-          { module: 'pawn', direction: 'in', concept: 'interest_payment', payment_method: 'cash', total: '17500.00' },
-          { module: 'pawn', direction: 'in', concept: 'capital_payment', payment_method: 'cash', total: '50000.00' },
-          { module: 'pawn', direction: 'out', concept: 'loan_disbursed', payment_method: 'cash', total: '1000000.00' },
-          { module: 'general', direction: 'out', concept: 'expense', payment_method: 'cash', total: '45000.00' },
-        ]),
-      },
-    ])
+    const summary = aggregateFinancialSummary(
+      [
+        line({ module: 'pawn', direction: 'in', concept: 'interest_payment', payment_method: 'cash', total: '17500.00', session_date: '2026-08-01' }),
+        line({ module: 'pawn', direction: 'in', concept: 'capital_payment', payment_method: 'cash', total: '50000.00', session_date: '2026-08-01' }),
+        line({ module: 'pawn', direction: 'out', concept: 'loan_disbursed', payment_method: 'cash', total: '1000000.00', session_date: '2026-08-01' }),
+        line({ module: 'general', direction: 'out', concept: 'expense', payment_method: 'cash', total: '45000.00', session_date: '2026-08-01' }),
+      ],
+      ['2026-08-01'],
+    )
 
     // Ingreso/gasto operativo real: solo intereses (ingreso) y gasto — NO el
     // capital abonado (ingreso) ni el préstamo desembolsado (gasto).
@@ -47,16 +51,14 @@ describe('aggregateFinancialSummary', () => {
     // gastos y dejar que un mes de reposición de mercancía se viera como un
     // mes de pérdida. Comprar convierte efectivo en un activo; el costo se
     // vuelve gasto cuando el artículo se VENDE, no cuando se compra.
-    const summary = aggregateFinancialSummary([
-      {
-        sessionDate: '2026-08-01',
-        report: report([
-          { module: 'store', direction: 'in', concept: 'sale', payment_method: 'cash', total: '300000.00' },
-          { module: 'store', direction: 'out', concept: 'purchase', payment_method: 'cash', total: '2000000.00' },
-          { module: 'general', direction: 'out', concept: 'expense', payment_method: 'cash', total: '50000.00' },
-        ]),
-      },
-    ])
+    const summary = aggregateFinancialSummary(
+      [
+        line({ module: 'store', direction: 'in', concept: 'sale', payment_method: 'cash', total: '300000.00', session_date: '2026-08-01' }),
+        line({ module: 'store', direction: 'out', concept: 'purchase', payment_method: 'cash', total: '2000000.00', session_date: '2026-08-01' }),
+        line({ module: 'general', direction: 'out', concept: 'expense', payment_method: 'cash', total: '50000.00', session_date: '2026-08-01' }),
+      ],
+      ['2026-08-01'],
+    )
 
     expect(summary.comprasInventario).toBe('2000000.00')
     // El gasto operativo es SOLO el gasto real, no la compra.
@@ -69,38 +71,35 @@ describe('aggregateFinancialSummary', () => {
   })
 
   it('la compra tampoco distorsiona la tendencia diaria de gastos', () => {
-    const summary = aggregateFinancialSummary([
-      {
-        sessionDate: '2026-08-01',
-        report: report([{ module: 'store', direction: 'out', concept: 'purchase', payment_method: 'cash', total: '5000000.00' }]),
-      },
-    ])
+    const summary = aggregateFinancialSummary(
+      [line({ module: 'store', direction: 'out', concept: 'purchase', payment_method: 'cash', total: '5000000.00', session_date: '2026-08-01' })],
+      ['2026-08-01'],
+    )
 
     expect(summary.byDay).toEqual([{ date: '2026-08-01', ingresos: '0.00', gastos: '0.00' }])
   })
 
   it('el filtro por módulo separa compras (tienda) de desembolsos (empeño)', () => {
-    const sessions = [
-      {
-        sessionDate: '2026-08-01',
-        report: report([
-          { module: 'store', direction: 'out', concept: 'purchase', payment_method: 'cash', total: '800000.00' },
-          { module: 'pawn', direction: 'out', concept: 'loan_disbursed', payment_method: 'cash', total: '1000000.00' },
-        ]),
-      },
+    const lines = [
+      line({ module: 'store', direction: 'out', concept: 'purchase', payment_method: 'cash', total: '800000.00', session_date: '2026-08-01' }),
+      line({ module: 'pawn', direction: 'out', concept: 'loan_disbursed', payment_method: 'cash', total: '1000000.00', session_date: '2026-08-01' }),
     ]
+    const sessionDates = ['2026-08-01']
 
-    expect(aggregateFinancialSummary(sessions, 'store').comprasInventario).toBe('800000.00')
-    expect(aggregateFinancialSummary(sessions, 'store').capitalDesembolsado).toBe('0.00')
-    expect(aggregateFinancialSummary(sessions, 'pawn').comprasInventario).toBe('0.00')
-    expect(aggregateFinancialSummary(sessions, 'pawn').capitalDesembolsado).toBe('1000000.00')
+    expect(aggregateFinancialSummary(lines, sessionDates, 'store').comprasInventario).toBe('800000.00')
+    expect(aggregateFinancialSummary(lines, sessionDates, 'store').capitalDesembolsado).toBe('0.00')
+    expect(aggregateFinancialSummary(lines, sessionDates, 'pawn').comprasInventario).toBe('0.00')
+    expect(aggregateFinancialSummary(lines, sessionDates, 'pawn').capitalDesembolsado).toBe('1000000.00')
   })
 
   it('suma la misma combinación módulo/concepto/medio a través de varias sesiones, no float', () => {
-    const summary = aggregateFinancialSummary([
-      { sessionDate: '2026-08-01', report: report([{ module: 'store', direction: 'in', concept: 'sale', payment_method: 'cash', total: '0.10' }]) },
-      { sessionDate: '2026-08-02', report: report([{ module: 'store', direction: 'in', concept: 'sale', payment_method: 'cash', total: '0.20' }]) },
-    ])
+    const summary = aggregateFinancialSummary(
+      [
+        line({ module: 'store', direction: 'in', concept: 'sale', payment_method: 'cash', total: '0.10', session_date: '2026-08-01' }),
+        line({ module: 'store', direction: 'in', concept: 'sale', payment_method: 'cash', total: '0.20', session_date: '2026-08-02' }),
+      ],
+      ['2026-08-01', '2026-08-02'],
+    )
 
     // 0.10 + 0.20 en floats da 0.30000000000000004 — sumMoney (centavos enteros) no.
     expect(summary.ventas).toBe('0.30')
@@ -110,16 +109,14 @@ describe('aggregateFinancialSummary', () => {
   })
 
   it('separa ingreso OPERATIVO por módulo para el split Empeño/Tienda — sin mezclar capital abonado', () => {
-    const summary = aggregateFinancialSummary([
-      {
-        sessionDate: '2026-08-01',
-        report: report([
-          { module: 'pawn', direction: 'in', concept: 'interest_payment', payment_method: 'cash', total: '30000.00' },
-          { module: 'pawn', direction: 'in', concept: 'capital_payment', payment_method: 'cash', total: '999999.00' },
-          { module: 'store', direction: 'in', concept: 'sale', payment_method: 'card', total: '70000.00' },
-        ]),
-      },
-    ])
+    const summary = aggregateFinancialSummary(
+      [
+        line({ module: 'pawn', direction: 'in', concept: 'interest_payment', payment_method: 'cash', total: '30000.00', session_date: '2026-08-01' }),
+        line({ module: 'pawn', direction: 'in', concept: 'capital_payment', payment_method: 'cash', total: '999999.00', session_date: '2026-08-01' }),
+        line({ module: 'store', direction: 'in', concept: 'sale', payment_method: 'card', total: '70000.00', session_date: '2026-08-01' }),
+      ],
+      ['2026-08-01'],
+    )
 
     expect(summary.ingresosOperativosByModule.pawn).toBe('30000.00')
     expect(summary.ingresosOperativosByModule.store).toBe('70000.00')
@@ -127,28 +124,36 @@ describe('aggregateFinancialSummary', () => {
   })
 
   it('arma un punto por día ordenado cronológicamente para la tendencia (ingreso/gasto operativo)', () => {
-    const summary = aggregateFinancialSummary([
-      { sessionDate: '2026-08-03', report: report([{ module: 'store', direction: 'in', concept: 'sale', payment_method: 'cash', total: '100.00' }]) },
-      { sessionDate: '2026-08-01', report: report([{ module: 'store', direction: 'in', concept: 'sale', payment_method: 'cash', total: '50.00' }]) },
-    ])
+    const summary = aggregateFinancialSummary(
+      [
+        line({ module: 'store', direction: 'in', concept: 'sale', payment_method: 'cash', total: '100.00', session_date: '2026-08-03' }),
+        line({ module: 'store', direction: 'in', concept: 'sale', payment_method: 'cash', total: '50.00', session_date: '2026-08-01' }),
+      ],
+      ['2026-08-03', '2026-08-01'],
+    )
 
     expect(summary.byDay.map((d) => d.date)).toEqual(['2026-08-01', '2026-08-03'])
   })
 
   it('un desembolso grande en un día no lo hace ver como "gasto" en la tendencia diaria', () => {
-    const summary = aggregateFinancialSummary([
-      { sessionDate: '2026-08-01', report: report([{ module: 'pawn', direction: 'out', concept: 'loan_disbursed', payment_method: 'cash', total: '1000000.00' }]) },
-    ])
+    const summary = aggregateFinancialSummary(
+      [line({ module: 'pawn', direction: 'out', concept: 'loan_disbursed', payment_method: 'cash', total: '1000000.00', session_date: '2026-08-01' })],
+      ['2026-08-01'],
+    )
     expect(summary.byDay).toEqual([{ date: '2026-08-01', ingresos: '0.00', gastos: '0.00' }])
   })
 
   it('cuenta días de sesión sin movimientos como día vacío (ambos 0.00)', () => {
-    const summary = aggregateFinancialSummary([{ sessionDate: '2026-08-01', report: report([]) }])
+    // Una sesión que abrió y cerró sin ningún movimiento no deja ninguna
+    // línea en `closings-breakdown` — por eso `sessionDates` es una lista
+    // aparte (`GET /reports/closings`), no algo que se derive de `lines`.
+    const summary = aggregateFinancialSummary([], ['2026-08-01'])
     expect(summary.byDay).toEqual([{ date: '2026-08-01', ingresos: '0.00', gastos: '0.00' }])
+    expect(summary.sessionCount).toBe(1)
   })
 
   it('sin sesiones, todo en 0.00 y sin filas', () => {
-    const summary = aggregateFinancialSummary([])
+    const summary = aggregateFinancialSummary([], [])
     expect(summary.sessionCount).toBe(0)
     expect(summary.ingresosOperativos).toBe('0.00')
     expect(summary.gastosOperativos).toBe('0.00')
@@ -157,15 +162,13 @@ describe('aggregateFinancialSummary', () => {
   })
 
   it('ingresosOperativosByPaymentMethod excluye capital abonado — no infla el total frente a ingresosOperativos', () => {
-    const summary = aggregateFinancialSummary([
-      {
-        sessionDate: '2026-08-01',
-        report: report([
-          { module: 'pawn', direction: 'in', concept: 'interest_payment', payment_method: 'cash', total: '110000.00' },
-          { module: 'pawn', direction: 'in', concept: 'capital_payment', payment_method: 'cash', total: '385000.00' },
-        ]),
-      },
-    ])
+    const summary = aggregateFinancialSummary(
+      [
+        line({ module: 'pawn', direction: 'in', concept: 'interest_payment', payment_method: 'cash', total: '110000.00', session_date: '2026-08-01' }),
+        line({ module: 'pawn', direction: 'in', concept: 'capital_payment', payment_method: 'cash', total: '385000.00', session_date: '2026-08-01' }),
+      ],
+      ['2026-08-01'],
+    )
 
     expect(summary.ingresosOperativosByPaymentMethod).toEqual([{ paymentMethod: 'cash', total: '110000.00' }])
     // La suma por medio de pago debe cuadrar exactamente con ingresosOperativos, no con flujoEntradas (que sí incluiría el capital).
@@ -174,29 +177,26 @@ describe('aggregateFinancialSummary', () => {
   })
 
   it('con moduleFilter, solo suma líneas de ese módulo — el resto queda en 0', () => {
-    const sessions = [
-      {
-        sessionDate: '2026-08-01',
-        report: report([
-          { module: 'pawn', direction: 'in', concept: 'interest_payment', payment_method: 'cash', total: '30000.00' },
-          { module: 'store', direction: 'in', concept: 'sale', payment_method: 'card', total: '70000.00' },
-          { module: 'general', direction: 'out', concept: 'expense', payment_method: 'cash', total: '10000.00' },
-        ]),
-      },
+    const lines = [
+      line({ module: 'pawn', direction: 'in', concept: 'interest_payment', payment_method: 'cash', total: '30000.00', session_date: '2026-08-01' }),
+      line({ module: 'store', direction: 'in', concept: 'sale', payment_method: 'card', total: '70000.00', session_date: '2026-08-01' }),
+      line({ module: 'general', direction: 'out', concept: 'expense', payment_method: 'cash', total: '10000.00', session_date: '2026-08-01' }),
     ]
+    const sessionDates = ['2026-08-01']
 
-    const pawnOnly = aggregateFinancialSummary(sessions, 'pawn')
+    const pawnOnly = aggregateFinancialSummary(lines, sessionDates, 'pawn')
     expect(pawnOnly.ingresosOperativos).toBe('30000.00')
     expect(pawnOnly.gastosOperativos).toBe('0.00')
     expect(pawnOnly.totalsByConcept).toHaveLength(1)
 
-    const storeOnly = aggregateFinancialSummary(sessions, 'store')
+    const storeOnly = aggregateFinancialSummary(lines, sessionDates, 'store')
     expect(storeOnly.ingresosOperativos).toBe('70000.00')
 
-    const all = aggregateFinancialSummary(sessions)
+    const all = aggregateFinancialSummary(lines, sessionDates)
     expect(all.ingresosOperativos).toBe('100000.00')
     expect(all.gastosOperativos).toBe('10000.00')
   })
+
 })
 
 describe('daysBetweenDateOnly', () => {

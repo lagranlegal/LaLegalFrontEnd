@@ -1,7 +1,8 @@
 import { sumMoney } from '@/lib/money'
-import type { SessionReport, Expense, ExpenseCategory } from '@/features/cashbox/api'
+import type { Expense, ExpenseCategory } from '@/features/cashbox/api'
+import type { components } from '@/types/api'
 
-type BreakdownLine = SessionReport['lines'][number]
+export type ClosingsBreakdownLine = components['schemas']['ClosingsBreakdownLineOut']
 type Module = 'pawn' | 'store' | 'general'
 
 export interface ConceptTotal {
@@ -97,18 +98,23 @@ export interface FinancialSummary {
 }
 
 /**
- * Agrega el desglose (`BreakdownLineOut[]`) de N sesiones de caja cerradas
- * en un rango — pura suma de PRESENTACIÓN sobre montos que YA calculó el
- * backend (`sumMoney`, decimal-safe, CLAUDE.md regla 5); no inventa ninguna
- * regla de negocio, solo suma lo que cada `GET /cashbox/sessions/{id}/report`
- * ya trae. Función pura y testeable — sin red, sin React Query acá
- * (ver `features/reports/api.ts` para el hook que la envuelve).
+ * Agrega el desglose (`ClosingsBreakdownLineOut[]`, `GET /reports/closings-breakdown`)
+ * de TODAS las sesiones de caja cerradas de un rango, ya sumado por el
+ * backend en una sola consulta — pura suma de PRESENTACIÓN sobre montos que
+ * YA calculó el backend (`sumMoney`, decimal-safe, CLAUDE.md regla 5); no
+ * inventa ninguna regla de negocio. Función pura y testeable — sin red, sin
+ * React Query acá (ver `features/reports/api.ts` para el hook que la envuelve).
+ *
+ * `sessionDates` es la lista de fechas de TODAS las sesiones cerradas del
+ * rango (`GET /reports/closings`, pedido aparte) — no se puede derivar solo
+ * de `lines`, porque una sesión sin ningún movimiento no deja ninguna línea
+ * y aun así cuenta para `sessionCount` y necesita su entrada en `byDay`.
  *
  * Distingue P&L (ingresos/gastos operativos) de movimiento de capital
  * (desembolsos/abonos) — mezclarlos daría una "utilidad" que en realidad
  * mide cuánto se prestó, no cuánto ganó el negocio.
  */
-export function aggregateFinancialSummary(sessions: { sessionDate: string; report: SessionReport }[], moduleFilter?: Module): FinancialSummary {
+export function aggregateFinancialSummary(lines: ClosingsBreakdownLine[], sessionDates: string[], moduleFilter?: Module): FinancialSummary {
   const conceptMap = new Map<string, ConceptTotal>()
   const dayMap = new Map<string, { ingresos: string; gastos: string }>()
   const moduleRevenue: Record<Module, string> = { pawn: '0.00', store: '0.00', general: '0.00' }
@@ -124,7 +130,8 @@ export function aggregateFinancialSummary(sessions: { sessionDate: string; repor
   let flujoEntradas = '0.00'
   let flujoSalidas = '0.00'
 
-  function addLine(sessionDate: string, line: BreakdownLine) {
+  function addLine(line: ClosingsBreakdownLine) {
+    const sessionDate = line.session_date
     if (moduleFilter && line.module !== moduleFilter) return
     // `payment_method` es opcional desde 00027: un movimiento entre cuentas
     // (liquidar un convenio) no se cobró por ningún medio, solo cambió de
@@ -192,8 +199,8 @@ export function aggregateFinancialSummary(sessions: { sessionDate: string; repor
     if (line.direction === 'out' && line.concept === 'purchase') comprasInventario = sumMoney(comprasInventario, line.total)
   }
 
-  for (const { sessionDate, report } of sessions) {
-    for (const line of report.lines) addLine(sessionDate, line)
+  for (const line of lines) addLine(line)
+  for (const sessionDate of sessionDates) {
     if (!dayMap.has(sessionDate)) dayMap.set(sessionDate, { ingresos: '0.00', gastos: '0.00' })
   }
 
@@ -202,7 +209,7 @@ export function aggregateFinancialSummary(sessions: { sessionDate: string; repor
     .sort((a, b) => a.date.localeCompare(b.date))
 
   return {
-    sessionCount: sessions.length,
+    sessionCount: sessionDates.length,
     ingresosOperativos,
     gastosOperativos,
     intereses,

@@ -1,11 +1,16 @@
 import { describe, expect, it } from 'vitest'
 import { accountTypeLabel, defaultAccountTypeFor } from '@/lib/accounts/types'
 import { paymentMethodLabel } from '@/lib/paymentMethods'
-import { aggregateFinancialSummary } from '@/features/reports/aggregate'
-import type { SessionReport } from '@/features/cashbox/api'
+import { aggregateFinancialSummary, type ClosingsBreakdownLine } from '@/features/reports/aggregate'
 
-function report(lines: SessionReport['lines']): SessionReport {
-  return { session_id: 's1', status: 'closed', opening_balance: '0.00', expected_cash: '0.00', lines }
+function line(overrides: Partial<ClosingsBreakdownLine> & Pick<ClosingsBreakdownLine, 'module' | 'direction' | 'concept' | 'total' | 'session_date'>): ClosingsBreakdownLine {
+  return {
+    payment_method: 'cash',
+    account_id: 'acc-1',
+    account_name: 'Caja',
+    account_type: 'cash',
+    ...overrides,
+  }
 }
 
 describe('defaultAccountTypeFor', () => {
@@ -48,15 +53,13 @@ describe('paymentMethodLabel', () => {
 
 describe('aggregateFinancialSummary con movimientos sin medio de pago', () => {
   it('no descarta ni rompe con payment_method nulo', () => {
-    const summary = aggregateFinancialSummary([
-      {
-        sessionDate: '2026-08-01',
-        report: report([
-          { module: 'store', direction: 'in', concept: 'sale', payment_method: null, total: '80000.00' },
-          { module: 'store', direction: 'in', concept: 'sale', payment_method: 'cash', total: '20000.00' },
-        ] as SessionReport['lines']),
-      },
-    ])
+    const summary = aggregateFinancialSummary(
+      [
+        line({ module: 'store', direction: 'in', concept: 'sale', payment_method: null, total: '80000.00', session_date: '2026-08-01' }),
+        line({ module: 'store', direction: 'in', concept: 'sale', payment_method: 'cash', total: '20000.00', session_date: '2026-08-01' }),
+      ],
+      ['2026-08-01'],
+    )
 
     // La plata entró: cuenta como ingreso igual que cualquier otra venta.
     expect(summary.ingresosOperativos).toBe('100000.00')
@@ -79,16 +82,14 @@ describe('traslados entre cuentas en el resumen financiero', () => {
     // Registrar el traslado como gasto (que era la única salida antes de
     // 00032) habría reportado 80.000 de gasto que nunca existieron, y sumarlo
     // al flujo habría inflado entradas y salidas por el mismo monto.
-    const summary = aggregateFinancialSummary([
-      {
-        sessionDate: '2026-08-21',
-        report: report([
-          { module: 'store', direction: 'in', concept: 'sale', payment_method: 'cash', total: '100000.00' },
-          { module: 'general', direction: 'out', concept: 'transfer_out', payment_method: 'cash', total: '80000.00' },
-          { module: 'general', direction: 'in', concept: 'transfer_in', payment_method: 'transfer', total: '80000.00' },
-        ] as SessionReport['lines']),
-      },
-    ])
+    const summary = aggregateFinancialSummary(
+      [
+        line({ module: 'store', direction: 'in', concept: 'sale', payment_method: 'cash', total: '100000.00', session_date: '2026-08-21' }),
+        line({ module: 'general', direction: 'out', concept: 'transfer_out', payment_method: 'cash', total: '80000.00', session_date: '2026-08-21' }),
+        line({ module: 'general', direction: 'in', concept: 'transfer_in', payment_method: 'transfer', total: '80000.00', session_date: '2026-08-21' }),
+      ],
+      ['2026-08-21'],
+    )
 
     expect(summary.ingresosOperativos).toBe('100000.00')
     expect(summary.gastosOperativos).toBe('0.00')
@@ -101,14 +102,10 @@ describe('traslados entre cuentas en el resumen financiero', () => {
   it('el traslado sigue visible en el desglose por concepto', () => {
     // Excluirlo de los totales no es esconderlo: el acta del cierre tiene que
     // mostrar que esa plata salió del cajón, o el arqueo no se explica.
-    const summary = aggregateFinancialSummary([
-      {
-        sessionDate: '2026-08-21',
-        report: report([
-          { module: 'general', direction: 'out', concept: 'transfer_out', payment_method: 'cash', total: '80000.00' },
-        ] as SessionReport['lines']),
-      },
-    ])
+    const summary = aggregateFinancialSummary(
+      [line({ module: 'general', direction: 'out', concept: 'transfer_out', payment_method: 'cash', total: '80000.00', session_date: '2026-08-21' })],
+      ['2026-08-21'],
+    )
 
     expect(summary.totalsByConcept.some((row) => row.concept === 'transfer_out' && row.total === '80000.00')).toBe(true)
   })
@@ -123,15 +120,13 @@ describe('cuentas por cobrar en el flujo de caja', () => {
     //
     // La migración 00024 lo dice literal: "settlement — el dinero NO está:
     // alguien te lo debe".
-    const summary = aggregateFinancialSummary([
-      {
-        sessionDate: '2026-08-22',
-        report: report([
-          { module: 'store', direction: 'in', concept: 'sale', payment_method: 'cash', account_type: 'cash', total: '450000.00' },
-          { module: 'store', direction: 'in', concept: 'sale', payment_method: 'other', account_type: 'settlement', total: '1000000.00' },
-        ] as SessionReport['lines']),
-      },
-    ])
+    const summary = aggregateFinancialSummary(
+      [
+        line({ module: 'store', direction: 'in', concept: 'sale', payment_method: 'cash', account_type: 'cash', total: '450000.00', session_date: '2026-08-22' }),
+        line({ module: 'store', direction: 'in', concept: 'sale', payment_method: 'other', account_type: 'settlement', total: '1000000.00', session_date: '2026-08-22' }),
+      ],
+      ['2026-08-22'],
+    )
 
     // Las DOS son ingreso operativo: la venta ocurrió y el ingreso se reconoce
     // al vender, no al cobrar.
@@ -144,15 +139,13 @@ describe('cuentas por cobrar en el flujo de caja', () => {
     // Al liquidar, la plata llega DE VERDAD al banco: eso sí es flujo. Lo que
     // sale de la cuenta por cobrar no es una salida — es la deuda que se
     // extingue, y contarla inflaba `flujoSalidas` sin que saliera un peso.
-    const summary = aggregateFinancialSummary([
-      {
-        sessionDate: '2026-08-22',
-        report: report([
-          { module: 'store', direction: 'out', concept: 'settlement_out', payment_method: 'other', account_type: 'settlement', total: '1000000.00' },
-          { module: 'store', direction: 'in', concept: 'settlement_in', payment_method: 'transfer', account_type: 'bank', total: '940000.00' },
-        ] as SessionReport['lines']),
-      },
-    ])
+    const summary = aggregateFinancialSummary(
+      [
+        line({ module: 'store', direction: 'out', concept: 'settlement_out', payment_method: 'other', account_type: 'settlement', total: '1000000.00', session_date: '2026-08-22' }),
+        line({ module: 'store', direction: 'in', concept: 'settlement_in', payment_method: 'transfer', account_type: 'bank', total: '940000.00', session_date: '2026-08-22' }),
+      ],
+      ['2026-08-22'],
+    )
 
     expect(summary.flujoEntradas).toBe('940000.00')
     expect(summary.flujoSalidas).toBe('0.00')
@@ -166,14 +159,10 @@ describe('cuentas por cobrar en el flujo de caja', () => {
     // anteriores a 00038 conservan `concept='adjustment'`. Por eso la
     // exclusión se hace por TIPO DE CUENTA y no por concepto: si dependiera
     // del concepto, el arreglo solo valdría para lo nuevo.
-    const summary = aggregateFinancialSummary([
-      {
-        sessionDate: '2026-08-01',
-        report: report([
-          { module: 'store', direction: 'out', concept: 'adjustment', payment_method: 'other', account_type: 'settlement', total: '500000.00' },
-        ] as SessionReport['lines']),
-      },
-    ])
+    const summary = aggregateFinancialSummary(
+      [line({ module: 'store', direction: 'out', concept: 'adjustment', payment_method: 'other', account_type: 'settlement', total: '500000.00', session_date: '2026-08-01' })],
+      ['2026-08-01'],
+    )
 
     expect(summary.flujoSalidas).toBe('0.00')
   })

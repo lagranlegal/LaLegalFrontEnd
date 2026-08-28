@@ -19,7 +19,7 @@ import { usePermission } from '@/lib/permissions/usePermission'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { ContablesSection } from '@/features/reports/components/ContablesSection'
 import { useExpenseCategories } from '@/features/cashbox/api'
-import { useIncomeStatement, useRawSessions, useCarteraActual, useExpensesByCategory, useAllTimeItemSales, useProfitSummary, usePawnPerformance, MAX_RANGE_DAYS } from '@/features/reports/api'
+import { useIncomeStatement, useClosingsBreakdown, useClosingsInRange, useCarteraActual, useExpensesByCategory, useAllTimeItemSales, useProfitSummary, usePawnPerformance, MAX_RANGE_DAYS } from '@/features/reports/api'
 import { aggregateFinancialSummary, aggregateExpensesByCategory, computeDelta, daysBetweenDateOnly, previousRangeFor } from '@/features/reports/aggregate'
 import { aggregateItemRanking } from '@/features/reports/rankings'
 import { ModuleSplitBar } from '@/features/reports/components/ModuleSplitBar'
@@ -312,10 +312,22 @@ export function ReportesPage() {
   // 00031: el resumen financiero del período se arma con los cierres de caja,
   // que ahora son histórico y llevan su propio permiso.
   const canViewHistory = usePermission('cashbox.view_history')
-  const { data: sessions, isPending, isError, refetch } = useRawSessions(range)
-  const { data: previousSessions } = useRawSessions(previousRange)
+  // Dos queries en paralelo por rango: el desglose agregado (`closings-breakdown`,
+  // una sola consulta) y el listado de cierres (necesario para `sessionCount`/
+  // `byDay` completos y para los `session_id` de `useExpensesByCategory` — ver
+  // `features/reports/api.ts`). Ya no hay N+1 de `GET /cashbox/sessions/{id}/report`.
+  const { data: breakdown, isPending: breakdownPending, isError: breakdownError, refetch: refetchBreakdown } = useClosingsBreakdown(range)
+  const { data: closings, isPending: closingsPending, isError: closingsError, refetch: refetchClosings } = useClosingsInRange(range)
+  const { data: previousBreakdown } = useClosingsBreakdown(previousRange)
+  const { data: previousClosings } = useClosingsInRange(previousRange)
+  const isPending = breakdownPending || closingsPending
+  const isError = breakdownError || closingsError
+  const refetch = () => {
+    void refetchBreakdown()
+    void refetchClosings()
+  }
   const { data: cartera } = useCarteraActual()
-  const { data: expenses } = useExpensesByCategory(sessions)
+  const { data: expenses } = useExpensesByCategory(closings)
   const { data: expenseCategories } = useExpenseCategories()
   const { data: allTimeSales } = useAllTimeItemSales()
   const { data: categories } = useCategories()
@@ -325,8 +337,16 @@ export function ReportesPage() {
   const [isExporting, setIsExporting] = useState(false)
 
   const moduleParam = moduleFilter === 'all' ? undefined : moduleFilter
-  const summary = useMemo(() => aggregateFinancialSummary(sessions ?? [], moduleParam), [sessions, moduleParam])
-  const previousSummary = useMemo(() => (previousSessions ? aggregateFinancialSummary(previousSessions, moduleParam) : null), [previousSessions, moduleParam])
+  const sessionDates = useMemo(() => closings?.map((c) => c.session_date) ?? [], [closings])
+  const previousSessionDates = useMemo(() => previousClosings?.map((c) => c.session_date) ?? [], [previousClosings])
+  const summary = useMemo(
+    () => aggregateFinancialSummary(breakdown?.lines ?? [], sessionDates, moduleParam),
+    [breakdown, sessionDates, moduleParam],
+  )
+  const previousSummary = useMemo(
+    () => (previousBreakdown ? aggregateFinancialSummary(previousBreakdown.lines, previousSessionDates, moduleParam) : null),
+    [previousBreakdown, previousSessionDates, moduleParam],
+  )
 
   // Filtrado por el mismo módulo que el resto de la página — `ExpenseOut.module`
   // usa el mismo enum pawn|store|general que `BreakdownLineOut.module`.
@@ -428,7 +448,7 @@ export function ReportesPage() {
             <Button
               variant="outline"
               size="sm"
-              disabled={isExporting || !range || rangeTooWide || !sessions || sessions.length === 0}
+              disabled={isExporting || !range || rangeTooWide || !closings || closings.length === 0}
               onClick={handleExportReport}
             >
               <Download className="size-4" />
@@ -461,7 +481,7 @@ export function ReportesPage() {
         <div className="rounded-card border border-border bg-card shadow-card">
           <EmptyState
             title={`Elige un rango de ${MAX_RANGE_DAYS} días o menos`}
-            description="Este reporte suma cada sesión de caja del rango una por una — rangos más largos necesitan un endpoint de agregación en el backend (docs/PENDIENTES_BACKEND_INFRA.md, punto 13)."
+            description="Los gastos por categoría todavía se piden sesión por sesión — rangos más largos necesitan un endpoint de agregación para esa dimensión en el backend."
           />
         </div>
       ) : !canViewHistory ? (
@@ -484,7 +504,7 @@ export function ReportesPage() {
             Reintentar
           </Button>
         </div>
-      ) : !sessions || sessions.length === 0 ? (
+      ) : !closings || closings.length === 0 ? (
         <div className="rounded-card border border-border bg-card shadow-card">
           <EmptyState title="No hay cierres de caja en este rango" description="El reporte se arma a partir de las sesiones de caja ya cerradas." />
         </div>

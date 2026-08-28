@@ -2,6 +2,28 @@
 
 > Registro vivo de qué existe en el código, cómo está armado y por qué se tomó cada decisión — para que cualquiera (humano o Claude Code) pueda retomar el proyecto sin releer todo el historial de commits. Se actualiza en cada paso del "Orden de implementación" de `CLAUDE.md`. No repite lo que ya está en `ARCHITECTURE.md`/`DESIGN_SYSTEM.md` (el qué-debería-ser); esto es el qué-hay-hoy y las decisiones concretas tomadas al construirlo.
 
+## Reportes: conectado el frontend a `GET /reports/closings-breakdown` (28/08/2026)
+
+Pendiente desde el 27/08 (el backend lo trajo ese día, el front seguía con el N+1 de siempre). Reemplaza `useRawSessions` (un `GET /cashbox/sessions/{id}/report` por CADA sesión de caja cerrada del rango, hasta 90 requests en un rango de 90 días — y el doble contando el período anterior de la comparación) por una sola consulta agregada por rango.
+
+### Dos hooks, no uno — `closings-breakdown` no trae todo
+
+`useClosingsBreakdown(range)` pide el desglose ya sumado por el backend (`{lines: ClosingsBreakdownLineOut[]}`, módulo×concepto×medio×cuenta×fecha de sesión). Pero el endpoint nuevo NO resuelve dos cosas que el front todavía necesita:
+- Una sesión que cerró sin ningún movimiento no deja ninguna línea, así que `sessionCount` y el punto en `byDay` de esa fecha se perderían si solo se mirara `lines`.
+- La categoría de gasto (`ExpenseOut.category_id`) no es una dimensión de `closings-breakdown` — sigue haciendo falta `GET /cashbox/expenses` por sesión para la card "Gastos por categoría".
+
+Por eso `useClosingsInRange(range)` se mantiene aparte, envolviendo `fetchAllClosingsInRange` (una consulta paginada, NO N+1) — dos queries en paralelo por rango en vez de una cadena. `useExpensesByCategory` pasó de recibir `RawSession[]` (con el reporte completo ya resuelto) a recibir directamente la lista de cierres — sigue siendo un N+1 propio (`GET /cashbox/expenses?session_id=`), así que `MAX_RANGE_DAYS` (90 días) se mantiene como tope en AMBOS hooks, no porque `closings-breakdown` lo necesite (el backend no le pone límite), sino para no dispararlo sabiendo que la UI lo va a esconder de todos modos (`rangeTooWide`) y para seguir acotando el N+1 que sí queda.
+
+### `aggregateFinancialSummary` cambió de firma, no de reglas de negocio
+
+Antes: `(sessions: {sessionDate, report}[], moduleFilter?)`, iterando el `report.lines` de cada sesión. Ahora: `(lines: ClosingsBreakdownLine[], sessionDates: string[], moduleFilter?)` — recibe las líneas YA aplanadas de todas las sesiones del rango, más la lista completa de fechas de sesión aparte (para el caso "sesión sin movimientos" de arriba). La lógica de clasificación ingreso/gasto/capital/flujo (`addLine`, con todos sus comentarios sobre por qué un traslado o una cuenta por cobrar no son flujo) no se tocó — mismo cuerpo, solo cambió de dónde saca `sessionDate` (ahora viene en la propia línea, `line.session_date`, en vez de pasarse aparte por cada sesión).
+
+Función pura, sin red — se pudo verificar con tests unitarios reales sin tocar la app corriendo. Encontrados y actualizados DOS archivos de test que usaban la firma vieja (`tests/reports-aggregate.test.ts` y `tests/accounts.test.ts`, este último con la cobertura más completa de traslados/cuentas por cobrar) — ninguno apareció en una búsqueda inicial por estar fuera de `src/features/reports/` (los tests de este proyecto NO están colocados junto al código, viven todos en `tests/` en la raíz). 135/135 en verde tras el ajuste, mismo número que antes (cobertura neta sin cambios, dos tests redundantes que se habían agregado de más se retiraron al notar que `accounts.test.ts` ya cubría esos casos).
+
+### Qué NO se pudo probar en vivo, y por qué
+
+CORS: el backend dev solo permite el origen de Vercel, así que `vite preview` local (`http://localhost:4321`) no puede pegarle a `https://compraventa-backend-dev.fly.dev` para probar antes de desplegar — confirmado al intentarlo (bloqueado por política CORS, sin `Access-Control-Allow-Origin`). La verificación en vivo con Playwright se hizo DESPUÉS de desplegar a `dev`/Vercel, no antes.
+
 ## Fix: "Imprimir" podía imprimir el documento de siempre en vez de la plantilla activa (28/08/2026)
 
 Encontrado durante la verificación en navegador real de la tanda de plantillas (ver más abajo), no reportado por Mateo — probando el flujo completo de imprimir un contrato real de punta a punta.

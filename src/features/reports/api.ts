@@ -1,53 +1,61 @@
 import { useQuery } from '@tanstack/react-query'
 import { api, unwrap } from '@/lib/api/client'
 import { fetchAllPages } from '@/lib/api/pagination'
-import { fetchAllClosingsInRange } from '@/lib/cashbox/closings'
+import { fetchAllClosingsInRange, type ClosingHistory } from '@/lib/cashbox/closings'
 import { usePermission } from '@/lib/permissions/usePermission'
 import type { DateRangeValue } from '@/components/shared/DateRangePicker'
 import { daysBetweenDateOnly } from '@/features/reports/aggregate'
-import type { SessionReport, Expense } from '@/features/cashbox/api'
+import type { Expense } from '@/features/cashbox/api'
 import type { Sale } from '@/lib/sales/void'
 import type { components } from '@/types/api'
 import type { Item } from '@/lib/inventory/items'
 
 export const MAX_RANGE_DAYS = 90
 
-export interface RawSession {
-  sessionDate: string
-  report: SessionReport
+/**
+ * El desglose módulo×concepto×medio×cuenta de TODAS las sesiones de caja
+ * cerradas de un rango, ya sumado por el backend en una sola consulta
+ * (`GET /reports/closings-breakdown`) — reemplaza el N+1 de antes (un
+ * `GET /cashbox/sessions/{id}/report` por sesión, ~1/día del rango).
+ * La agregación en sí vive en `aggregateFinancialSummary`
+ * (features/reports/aggregate.ts), llamada desde la página vía `useMemo` —
+ * así cambiar el filtro de módulo (Todo/Empeño/Tienda) sigue siendo
+ * instantáneo, sin refetch: el endpoint no filtra por módulo server-side,
+ * se pide el rango completo una vez y se agrega client-side por pestaña.
+ */
+export function useClosingsBreakdown(range: DateRangeValue | null) {
+  // El backend no le pone tope a este endpoint (una sola consulta agregada),
+  // pero se respeta el mismo `MAX_RANGE_DAYS` que el resto de la pantalla
+  // para no disparar una request que la UI va a descartar igual (`rangeTooWide`
+  // en `ReportesPage` esconde toda esta sección) — y porque `useClosingsInRange`,
+  // que sí necesita el tope por su N+1 de gastos, se pide siempre junto a este.
+  const withinCap = !!range && daysBetweenDateOnly(range.from, range.to) <= MAX_RANGE_DAYS
+  // Mismos dos permisos que exigía el N+1 de antes — comprobar antes de
+  // disparar evita un 403 sabido de antemano mirando los permisos del rol.
+  const canViewHistory = usePermission('cashbox.view_history')
+  return useQuery({
+    queryKey: ['reports', 'closings-breakdown', range] as const,
+    enabled: withinCap && canViewHistory,
+    queryFn: () =>
+      unwrap(api.GET('/api/v1/reports/closings-breakdown', { params: { query: { from_date: range!.from, to_date: range!.to } } })),
+  })
 }
 
 /**
- * Sesiones de caja cerradas de un rango + su desglose (`GET /reports/closings`
- * + `GET /cashbox/sessions/{id}/report` por cada una) — SIN agregar. La
- * agregación vive en `aggregateFinancialSummary` (features/reports/aggregate.ts),
- * llamada desde la página vía `useMemo` — así cambiar el filtro de módulo
- * (Todo/Empeño/Tienda) es instantáneo, sin refetch. No existe hoy un endpoint
- * del backend que dé esto agregado por rango (docs/PENDIENTES_BACKEND_INFRA.md
- * punto 13) — mientras tanto, N+1 acotado: una request por sesión de caja,
- * ~1/día, tope explícito de `MAX_RANGE_DAYS` (impuesto por el caller, no acá).
+ * El listado de cierres del rango (`GET /reports/closings`, una consulta
+ * paginada, no N+1) — `closings-breakdown` no incluye una sesión que cerró
+ * sin ningún movimiento, así que hace falta esta lista aparte para
+ * `sessionCount`/`byDay` completos (`aggregateFinancialSummary`) y para los
+ * `session_id` que necesita `useExpensesByCategory` (categoría de gasto es
+ * una dimensión que el desglose tampoco trae).
  */
-export function useRawSessions(range: DateRangeValue | null) {
+export function useClosingsInRange(range: DateRangeValue | null) {
   const withinCap = !!range && daysBetweenDateOnly(range.from, range.to) <= MAX_RANGE_DAYS
-  // Desde 00031 las DOS llamadas de acá (`/reports/closings` y el reporte de
-  // cada sesión pasada) exigen `cashbox.view_history`. Se comprueba antes de
-  // disparar: sin esto, un rol con `reports.view` pero sin histórico haría
-  // una ráfaga de 403 en cada carga de /reportes por algo que ya sabemos
-  // mirando sus permisos. La UI oculta, el backend protege — pero no hay
-  // razón para tocar la puerta sabiendo que está cerrada.
   const canViewHistory = usePermission('cashbox.view_history')
-  return useQuery<RawSession[]>({
-    queryKey: ['reports', 'raw-sessions', range] as const,
+  return useQuery<ClosingHistory[]>({
+    queryKey: ['reports', 'closings-list', range] as const,
     enabled: withinCap && canViewHistory,
-    queryFn: async () => {
-      const closings = await fetchAllClosingsInRange(range!)
-      return Promise.all(
-        closings.map(async (closing) => ({
-          sessionDate: closing.session_date,
-          report: await unwrap(api.GET('/api/v1/cashbox/sessions/{session_id}/report', { params: { path: { session_id: closing.session_id } } })),
-        })),
-      )
-    },
+    queryFn: () => fetchAllClosingsInRange(range!),
   })
 }
 
@@ -66,15 +74,16 @@ export function useCarteraActual() {
 }
 
 /**
- * Gastos de cada sesión ya resuelta por `useRawSessions` — dimensión de
- * categoría (`ExpenseOut.category_id`) que NO viene en el desglose de
- * `GET /cashbox/sessions/{id}/report` (ese solo trae módulo×concepto×medio).
- * Recibe las sesiones YA resueltas (no vuelve a pedir `GET /reports/closings`)
- * para no duplicar esa request. Una página por sesión alcanza (mismo criterio
- * pragmático que `useAvailableItemsSearch`, `lib/inventory/items.ts`).
+ * Gastos de cada sesión ya resuelta por `useClosingsInRange` — dimensión de
+ * categoría (`ExpenseOut.category_id`) que NO viene en `closings-breakdown`
+ * (ese solo trae módulo×concepto×medio×cuenta). Recibe los cierres YA
+ * resueltos (no vuelve a pedir `GET /reports/closings`) para no duplicar esa
+ * request. Sigue siendo un N+1 (`GET /cashbox/expenses` por sesión) — el
+ * endpoint nuevo no cubre esta dimensión — por eso `useClosingsInRange`
+ * mantiene el tope de `MAX_RANGE_DAYS`.
  */
-export function useExpensesByCategory(sessions: RawSession[] | undefined) {
-  const sessionIds = sessions?.map((s) => s.report.session_id)
+export function useExpensesByCategory(closings: ClosingHistory[] | undefined) {
+  const sessionIds = closings?.map((c) => c.session_id)
   return useQuery<Expense[]>({
     queryKey: ['reports', 'expenses-by-category', sessionIds] as const,
     enabled: !!sessionIds,
