@@ -79,7 +79,23 @@ export function TemplateEditor({ documentType, value, onChange }: { documentType
           </DropdownMenuTrigger>
           <DropdownMenuContent align="start" className="max-h-72 overflow-y-auto">
             {fields.map((field) => (
-              <DropdownMenuItem key={field.key} onSelect={() => editor.chain().focus().insertContent({ type: 'mergeField', attrs: { key: field.key } }).run()}>
+              <DropdownMenuItem
+                key={field.key}
+                onSelect={() =>
+                  editor
+                    .chain()
+                    .focus()
+                    // El campo es un nodo atómico — insertarlo SOLO deja el
+                    // cursor como una NodeSelection sobre él (sin caret
+                    // visible), así que insertar otro campo justo después
+                    // reemplaza el anterior en vez de agregarlo al lado. El
+                    // espacio de texto que sigue fuerza un cursor normal
+                    // colapsado DESPUÉS del campo, para poder seguir
+                    // escribiendo o insertar otro campo a continuación.
+                    .insertContent([{ type: 'mergeField', attrs: { key: field.key } }, { type: 'text', text: ' ' }])
+                    .run()
+                }
+              >
                 {field.label}
               </DropdownMenuItem>
             ))}

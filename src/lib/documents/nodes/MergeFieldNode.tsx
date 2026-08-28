@@ -16,7 +16,11 @@ function MergeFieldView({ node, editor, extension }: ReactNodeViewProps) {
   if (editor.isEditable) {
     const label = MERGE_FIELD_LABELS[key] ?? key
     return (
-      <NodeViewWrapper as="span" className="mx-0.5 inline-flex items-center rounded-pill bg-brand-100 px-2 py-0.5 text-xs font-medium text-brand-700">
+      <NodeViewWrapper
+        as="span"
+        className="mx-0.5 inline-flex cursor-pointer items-center rounded-pill bg-brand-100 px-2 py-0.5 text-xs font-medium text-brand-700"
+        title="Clic para seleccionar — Supr/Backspace para borrar"
+      >
         {label}
       </NodeViewWrapper>
     )

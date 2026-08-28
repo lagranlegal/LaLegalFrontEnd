@@ -116,6 +116,19 @@
   }
 }
 
+/* Estado seleccionado de un nodo atómico de Tiptap (campo dinámico, tabla de
+   prendas, firma) — ProseMirror agrega esta clase sola al elemento del
+   NodeView cuando el usuario le hace clic (NodeSelection), pero sin este
+   estilo no había ninguna señal visual de que el clic hizo algo: el cursor
+   de texto no aparece sobre un nodo atómico (no es editable por dentro), así
+   que sin este contorno no había forma de saber que el campo quedó
+   seleccionado — y por lo tanto tampoco que Supr/Backspace lo borra. */
+.ProseMirror-selectednode {
+  outline: 2px solid var(--brand-500);
+  outline-offset: 2px;
+  border-radius: var(--radius-input);
+}
+
 /* Barra indeterminada de `RefreshingBar` — indica que una lista con datos
    está pidiendo otros (buscar, filtrar, refrescar tras guardar). Vive acá y
    no en el componente porque Tailwind v4 resuelve las animaciones desde CSS.
