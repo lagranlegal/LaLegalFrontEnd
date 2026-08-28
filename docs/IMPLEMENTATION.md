@@ -2,6 +2,10 @@
 
 > Registro vivo de qué existe en el código, cómo está armado y por qué se tomó cada decisión — para que cualquiera (humano o Claude Code) pueda retomar el proyecto sin releer todo el historial de commits. Se actualiza en cada paso del "Orden de implementación" de `CLAUDE.md`. No repite lo que ya está en `ARCHITECTURE.md`/`DESIGN_SYSTEM.md` (el qué-debería-ser); esto es el qué-hay-hoy y las decisiones concretas tomadas al construirlo.
 
+## Fix: no era claro que "Guardar" ≠ "Activar" (28/08/2026)
+
+Reportado en vivo: Mateo creó una plantilla, la guardó, y al imprimir un contrato seguía saliendo el formato viejo — no era un bug (confirmado consultando `document_template` directo en la base: la plantilla existía con `is_active=false`, nunca le había dado clic a "Activar"), pero nada en pantalla avisaba que crear/guardar y activar son dos pasos separados a propósito (evita que un borrador a medias se vuelva lo que imprime la empresa por accidente). Se agregó un banner (`bg-warning-soft`, mismo patrón que la alerta de LTV en `ContractDetailPage`) en `DocumentTemplatesPage.tsx` — uno para una plantilla nueva sin guardar todavía, otro para una ya guardada pero inactiva — apuntando al botón Activar.
+
 ## Fix: insertar un campo dinámico borraba el anterior (28/08/2026)
 
 Reportado en vivo por Mateo tras probar el editor: "difícil colocar campos porque se borra el último, el cursor desaparece... no hay forma de colocarlos al lado uno del otro". Los 4 síntomas eran la misma causa.
