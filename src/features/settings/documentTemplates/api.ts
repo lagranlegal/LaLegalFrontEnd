@@ -19,11 +19,15 @@ export function useDocumentTemplates(documentType: DocumentType) {
  * al imprimir de verdad. Permiso distinto del resto de este archivo
  * (`contracts.view`, no `company.configure` — ver `docs/API_GUIDE.md` §4
  * bis): cualquier asesor que imprime un contrato necesita poder leerla.
+ * `ContractDetailPage` llama este mismo hook (mismo `queryKey`, sin request
+ * duplicado) solo para leer `isLoading` y deshabilitar "Imprimir" mientras
+ * tanto — ver el comentario en ese archivo.
  */
-export function useActiveDocumentTemplate(documentType: DocumentType) {
+export function useActiveDocumentTemplate(documentType: DocumentType, options?: { enabled?: boolean }) {
   return useQuery({
     queryKey: ['company', 'document-templates', 'active', documentType] as const,
     queryFn: () => unwrap(api.GET('/api/v1/company/document-templates/active', { params: { query: { document_type: documentType } } })),
+    enabled: options?.enabled ?? true,
   })
 }
 

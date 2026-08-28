@@ -27,6 +27,7 @@ import { ContractEditDialog } from '@/features/contracts/components/ContractEdit
 import { ContractPrintView } from '@/features/contracts/components/ContractPrintView'
 import { SettlementPrintView } from '@/features/contracts/components/SettlementPrintView'
 import { useSettlementInfo } from '@/features/contracts/settlement'
+import { useActiveDocumentTemplate } from '@/features/settings/documentTemplates/api'
 
 const PAYABLE_STATUSES = new Set(['active', 'in_arrears', 'in_extension'])
 
@@ -99,6 +100,17 @@ export function ContractDetailPage() {
   // `useItemsByIds` arriba.
   const isPaid = contract?.status === 'paid'
   const { data: settlement } = useSettlementInfo(contractId, isPaid)
+  // `ContractPrintView`/`SettlementPrintView` (montados abajo, print:hidden)
+  // piden la plantilla activa por su cuenta — mismo `queryKey`, sin request
+  // duplicado. Se vuelve a pedir ACÁ solo para saber cuándo está resuelta:
+  // sin esto, "Imprimir" quedaba habilitado desde el primer render, y
+  // `window.print()` (sincrónico) podía disparar mientras la plantilla
+  // todavía no había llegado — imprimiendo el documento de siempre en vez
+  // del configurado, sin ningún aviso. Confirmado en vivo: la ventana real
+  // ronda ~3s en la primera visita de la sesión (esta página encadena varios
+  // requests antes de pedir la plantilla).
+  const { isLoading: contractTemplateLoading } = useActiveDocumentTemplate('contract')
+  const { isLoading: settlementTemplateLoading } = useActiveDocumentTemplate('settlement', { enabled: isPaid })
   const [printMode, setPrintMode] = useState<'contract' | 'settlement'>('contract')
 
   if (isPending) return <ContractDetailSkeleton />
@@ -146,6 +158,7 @@ export function ContractDetailPage() {
             <StatusBadge status={effectiveContractStatus(contract)} />
             <Button
               variant="outline"
+              disabled={contractTemplateLoading}
               onClick={() => {
                 // `window.print()` es sincrónico y bloquea — sin `flushSync`,
                 // el setState de `printMode` queda batcheado para DESPUÉS de
@@ -155,17 +168,18 @@ export function ContractDetailPage() {
                 window.print()
               }}
             >
-              Imprimir
+              {contractTemplateLoading ? 'Cargando…' : 'Imprimir'}
             </Button>
             {isPaid && settlement && (
               <Button
                 variant="outline"
+                disabled={settlementTemplateLoading}
                 onClick={() => {
                   flushSync(() => setPrintMode('settlement'))
                   window.print()
                 }}
               >
-                Imprimir paz y salvo
+                {settlementTemplateLoading ? 'Cargando…' : 'Imprimir paz y salvo'}
               </Button>
             )}
             <Can permission="contracts.edit">

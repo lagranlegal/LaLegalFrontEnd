@@ -2,6 +2,20 @@
 
 > Registro vivo de qué existe en el código, cómo está armado y por qué se tomó cada decisión — para que cualquiera (humano o Claude Code) pueda retomar el proyecto sin releer todo el historial de commits. Se actualiza en cada paso del "Orden de implementación" de `CLAUDE.md`. No repite lo que ya está en `ARCHITECTURE.md`/`DESIGN_SYSTEM.md` (el qué-debería-ser); esto es el qué-hay-hoy y las decisiones concretas tomadas al construirlo.
 
+## Fix: "Imprimir" podía imprimir el documento de siempre en vez de la plantilla activa (28/08/2026)
+
+Encontrado durante la verificación en navegador real de la tanda de plantillas (ver más abajo), no reportado por Mateo — probando el flujo completo de imprimir un contrato real de punta a punta.
+
+### La causa: `ContractPrintView`/`SettlementPrintView` piden la plantilla activa por su cuenta, y `ContractDetailPage` no esperaba esa respuesta
+
+`useActiveDocumentTemplate` se llama DENTRO de `ContractPrintView` — un componente `print:hidden` que igual vive montado en el DOM todo el tiempo (para que `window.print()`, sincrónico, tenga contenido que imprimir apenas se clickea). El botón "Imprimir" de `ContractDetailPage` nunca esperaba esa query: quedaba habilitado desde el primer render de la página, mientras `ContractPrintView` seguía mostrando su propio fallback (el JSX de siempre, `if (activeTemplate)` todavía falso) hasta que la respuesta llegara.
+
+Medido en vivo con Playwright (`page.on('request'|'response')` + polling del DOM cada 150ms): en una visita fría a `/contratos/$id`, la página encadena `GET /me` (~1.7s) → `GET /contracts/{id}` + `payments` + `categories` + `cashbox/sessions/current` en paralelo (~1s más) → **recién ahí** dispara `GET /company/document-templates/active` y `GET /customers/{id}`. La plantilla activa no llegaba hasta **~t=3.8s**. Cualquier click en "Imprimir" antes de eso imprimía el documento sin personalizar — sin ningún aviso, ni para el usuario ni en ningún log.
+
+No es un problema de latencia general (ya conocido, ver `ESTADO.md` sobre la región de Fly) — es que nada bloqueaba la acción de imprimir mientras el dato que decide QUÉ se imprime seguía en vuelo. Mismo principio ya aprendido con el router: si la app no muestra que está trabajando, para el usuario está rota — acá ni siquiera mostraba que estaba trabajando, dejaba clickear.
+
+**Fix:** `useActiveDocumentTemplate` (`features/settings/documentTemplates/api.ts`) gana un `options?.enabled` (patrón ya usado en `lib/cashbox/closings.ts` y otros). `ContractDetailPage` llama el mismo hook (mismo `queryKey` que `ContractPrintView`/`SettlementPrintView` — TanStack Query dedupea, cero requests nuevos) solo para leer `isLoading`, y deshabilita "Imprimir"/"Imprimir paz y salvo" con el mismo patrón `isPending ? 'Cargando…' : 'Imprimir'` que ya usa el resto de la app (`DocumentTemplatesPage`, `DataTable`, etc.). La query de paz y salvo se pide con `enabled: isPaid` — no tiene sentido pedirla para un contrato que no puede tener paz y salvo todavía.
+
 ## Fix: no era claro que "Guardar" ≠ "Activar" (28/08/2026)
 
 Reportado en vivo: Mateo creó una plantilla, la guardó, y al imprimir un contrato seguía saliendo el formato viejo — no era un bug (confirmado consultando `document_template` directo en la base: la plantilla existía con `is_active=false`, nunca le había dado clic a "Activar"), pero nada en pantalla avisaba que crear/guardar y activar son dos pasos separados a propósito (evita que un borrador a medias se vuelva lo que imprime la empresa por accidente). Se agregó un banner (`bg-warning-soft`, mismo patrón que la alerta de LTV en `ContractDetailPage`) en `DocumentTemplatesPage.tsx` — uno para una plantilla nueva sin guardar todavía, otro para una ya guardada pero inactiva — apuntando al botón Activar.
@@ -48,9 +62,14 @@ Backend: `supabase/migrations/00047_document_template_layout.sql`, `app/modules/
 
 Frontend: `@tailwindcss/typography` instalado + `@plugin` en `globals.css`, `lib/documents/layouts.ts` (nuevo — catálogo de labels/clases por formato, mismo patrón que `mergeFields.ts`), `components/shared/PrintLayout.tsx` (gana `layout`/`screenPreview`), `components/shared/documentTemplate/TemplateRenderer.tsx` (gana `layout`, envuelve el contenido en las clases `prose` del catálogo), `ContractPrintView.tsx`/`SettlementPrintView.tsx` (pasan `activeTemplate.layout` a ambos), `DocumentTemplatesPage.tsx` (selector de 3 botones + vista previa ahora usa `PrintLayout` real). `tsc`, ESLint, Vitest (135/135, +2 nuevos) y `npm run build` en verde — bundle principal sin cambios (488KB gzip; el plugin de tipografía es CSS de build, no JS de runtime).
 
-### Lo que falta, explícito
+### Verificado en navegador real (28/08/2026)
 
-Mismo hueco que la feature anterior: sin verificación en navegador real todavía (no hay Playwright disponible en este entorno). Falta confirmar visualmente que los 3 formatos se vean claramente distintos tanto en la vista previa como en el contrato impreso de verdad, y que una plantilla `classic`/sin plantilla activa siga imprimiendo pixel-idéntico a como imprimía antes de esta tanda.
+Playwright SÍ está disponible en este entorno vía el caché de npx (`~/.npm/_npx/.../node_modules/playwright`, Chromium ya descargado) — corrige lo anotado el 28/08 de que no había forma de probar visualmente. Login real contra `https://la-legal-front-end.vercel.app` con la cuenta de Mateo, sobre su plantilla "prueba mateo 1" (activa) ya existente:
+- Los 3 formatos se confirmaron visualmente distintos, tanto en el editor como en `PrintLayout`: Clásico (serif, línea divisoria bajo el encabezado), Moderno (barra de acento turquesa arriba, títulos coloreados), Compacto (sans-serif, espaciado reducido, sin línea divisoria).
+- El fix de inserción de campos consecutivos se confirmó insertando dos campos (`Nombre del cliente` + `Fecha de hoy`) uno justo después del otro sin escribir nada en el medio: ambos quedaron uno al lado del otro (conteo de nodos `mergeField` subió de a uno por inserción, sin reemplazo), y la vista previa los renderizó juntos ("Cliente de ejemplo 28/08/2026").
+- Ninguna de las dos pruebas se guardó (`Guardar` nunca se clickeó) — se releyó la plantilla al final y quedó bit a bit igual a como estaba antes (mismo conteo de campos, mismo formato).
+
+No probado en este pase: que `classic`/sin plantilla activa imprima pixel-idéntico a como imprimía antes de esta tanda (no se tocó ninguna plantilla en estado `classic` ni se probó el caso sin plantilla).
 
 ## Plantillas de documentos editables — Contrato + Paz y salvo (27-28/08/2026)
 
