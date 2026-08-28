@@ -1,6 +1,7 @@
 import { AppDialog } from '@/components/shared/AppDialog'
 import { Money } from '@/components/shared/Money'
 import { StatusBadge } from '@/components/shared/StatusBadge'
+import { TableSkeleton } from '@/components/shared/TableSkeleton'
 import { formatDate, formatDateTime } from '@/lib/dates'
 import { PAYMENT_METHOD_LABELS, paymentMethodLabel } from '@/lib/paymentMethods'
 import { Button } from '@/components/ui/button'
@@ -95,61 +96,113 @@ function PayPendingPurchase({ entry }: { entry: Entry }) {
  * compra "solo vivía en Inventario" — el historial de un proveedor la abre
  * ahora también, mismo movimiento que ya se hizo una vez con el comprobante
  * de venta.
+ *
+ * `entry` es OPCIONAL a propósito: en `InventoryPage` la fila del listado ya
+ * trae el ingreso completo (se abre al instante, sin pedir nada). En
+ * `SupplierDetailPage`/`ProductRow` el historial solo trae el resumen — el
+ * detalle real se pide por id recién al abrir, y ESE hueco entre el click y
+ * la respuesta necesita mostrarse: sin `isPending`, el diálogo simplemente
+ * no aparecía hasta que el dato llegaba y el click se sentía como que no
+ * había hecho nada (bug real, reportado en vivo 27/08/2026) — mismo
+ * principio que ya costó un bug antes: "si la app no muestra que está
+ * trabajando, para el usuario está rota".
  */
-export function EntryDetailDialog({ open, onOpenChange, entry }: { open: boolean; onOpenChange: (open: boolean) => void; entry: Entry }) {
-  const isPendingPurchase = entry.origin_type === 'purchase' && !entry.paid_at
+export function EntryDetailDialog({
+  open,
+  onOpenChange,
+  entry,
+  isPending,
+  isError,
+  onRetry,
+}: {
+  open: boolean
+  onOpenChange: (open: boolean) => void
+  entry: Entry | undefined
+  isPending?: boolean
+  isError?: boolean
+  onRetry?: () => void
+}) {
+  const isPendingPurchase = !!entry && entry.origin_type === 'purchase' && !entry.paid_at
 
   return (
-    <AppDialog open={open} onOpenChange={onOpenChange} title={`Ingreso #${entry.number}`} description={formatDateTime(entry.created_at)} size="lg">
+    <AppDialog
+      open={open}
+      onOpenChange={onOpenChange}
+      title={entry ? `Ingreso #${entry.number}` : 'Ingreso'}
+      description={entry ? formatDateTime(entry.created_at) : undefined}
+      size="lg"
+    >
       <div className="flex flex-col gap-4">
-        <div className="grid grid-cols-2 gap-3 rounded-input bg-background p-3 text-sm sm:grid-cols-3">
-          <div>
-            <p className="text-xs text-muted-foreground">Origen</p>
-            <p className="font-medium text-foreground">{entryOriginLabel(entry.origin_type)}</p>
+        {isPending && (
+          <div className="flex flex-col gap-4">
+            <div className="h-16 animate-pulse rounded-input bg-border" />
+            <TableSkeleton rows={2} columns={3} />
           </div>
-          <div>
-            <p className="text-xs text-muted-foreground">Factura</p>
-            <p className="font-medium text-foreground">{entry.supplier_invoice ?? '—'}</p>
-          </div>
-          <div>
-            <p className="text-xs text-muted-foreground">Costo total</p>
-            <Money value={entry.total_cost} className="font-medium" />
-          </div>
-          <div>
-            <p className="text-xs text-muted-foreground">Entrada de mercancía</p>
-            <p className="font-medium text-foreground">{formatDate(entry.entry_date)}</p>
-          </div>
-          {/* Solo las compras lo llevan: un ingreso "Otro" no entrega plata a
-              nadie y no genera egreso de caja. */}
-          {entry.payment_method && (
-            <div>
-              <p className="text-xs text-muted-foreground">Medio de pago</p>
-              <p className="font-medium text-foreground">{paymentMethodLabel(entry.payment_method)}</p>
-            </div>
-          )}
-        </div>
-        {entry.paid_at && (
-          <p className="text-xs text-muted-foreground">
-            Pagado el {formatDateTime(entry.paid_at)} — registrado como egreso de caja del módulo Tienda, se refleja en el cierre de
-            ese día y en Reportes como inversión en inventario.
-          </p>
         )}
-        {isPendingPurchase && <PayPendingPurchase entry={entry} />}
-        {entry.notes && <p className="text-sm text-foreground">{entry.notes}</p>}
-        <div className="flex flex-col gap-2">
-          {entry.items.map((item) => (
-            <div key={item.id} className="flex items-center justify-between gap-3 rounded-input border border-border p-3 text-sm">
+
+        {isError && (
+          <div className="flex flex-col items-start gap-2">
+            <p className="text-sm text-danger">No se pudo cargar el ingreso.</p>
+            {onRetry && (
+              <Button variant="outline" size="sm" onClick={onRetry}>
+                Reintentar
+              </Button>
+            )}
+          </div>
+        )}
+
+        {entry && (
+          <>
+            <div className="grid grid-cols-2 gap-3 rounded-input bg-background p-3 text-sm sm:grid-cols-3">
               <div>
-                <p className="font-medium text-foreground">{item.name}</p>
-                {item.code && <p className="font-mono text-xs text-muted-foreground">{item.code}</p>}
+                <p className="text-xs text-muted-foreground">Origen</p>
+                <p className="font-medium text-foreground">{entryOriginLabel(entry.origin_type)}</p>
               </div>
-              <div className="flex items-center gap-3">
-                <Money value={item.cost} />
-                <StatusBadge status={item.status} />
+              <div>
+                <p className="text-xs text-muted-foreground">Factura</p>
+                <p className="font-medium text-foreground">{entry.supplier_invoice ?? '—'}</p>
               </div>
+              <div>
+                <p className="text-xs text-muted-foreground">Costo total</p>
+                <Money value={entry.total_cost} className="font-medium" />
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground">Entrada de mercancía</p>
+                <p className="font-medium text-foreground">{formatDate(entry.entry_date)}</p>
+              </div>
+              {/* Solo las compras lo llevan: un ingreso "Otro" no entrega plata a
+                  nadie y no genera egreso de caja. */}
+              {entry.payment_method && (
+                <div>
+                  <p className="text-xs text-muted-foreground">Medio de pago</p>
+                  <p className="font-medium text-foreground">{paymentMethodLabel(entry.payment_method)}</p>
+                </div>
+              )}
             </div>
-          ))}
-        </div>
+            {entry.paid_at && (
+              <p className="text-xs text-muted-foreground">
+                Pagado el {formatDateTime(entry.paid_at)} — registrado como egreso de caja del módulo Tienda, se refleja en el cierre de
+                ese día y en Reportes como inversión en inventario.
+              </p>
+            )}
+            {isPendingPurchase && <PayPendingPurchase entry={entry} />}
+            {entry.notes && <p className="text-sm text-foreground">{entry.notes}</p>}
+            <div className="flex flex-col gap-2">
+              {entry.items.map((item) => (
+                <div key={item.id} className="flex items-center justify-between gap-3 rounded-input border border-border p-3 text-sm">
+                  <div>
+                    <p className="font-medium text-foreground">{item.name}</p>
+                    {item.code && <p className="font-mono text-xs text-muted-foreground">{item.code}</p>}
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <Money value={item.cost} />
+                    <StatusBadge status={item.status} />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </>
+        )}
       </div>
     </AppDialog>
   )

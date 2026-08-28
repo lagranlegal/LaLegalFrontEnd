@@ -38,7 +38,12 @@ function PurchaseList({ productId }: { productId: string }) {
   // #2): el detalle de una compra "solo vivía en Inventario" — clic en una
   // fila lo abre desde acá también.
   const [viewingEntryId, setViewingEntryId] = useState<string | null>(null)
-  const { data: viewingEntry } = useEntry(viewingEntryId ?? undefined)
+  const {
+    data: viewingEntry,
+    isPending: entryPending,
+    isError: entryError,
+    refetch: refetchEntry,
+  } = useEntry(viewingEntryId ?? undefined)
 
   if (isPending) return <TableSkeleton rows={2} columns={6} />
   if (isError) return <p className="px-3 py-2 text-sm text-danger">No se pudo cargar el historial de compras.</p>
@@ -100,9 +105,14 @@ function PurchaseList({ productId }: { productId: string }) {
           })}
         </tbody>
       </table>
-      {viewingEntry && (
-        <EntryDetailDialog open={!!viewingEntryId} onOpenChange={(open) => !open && setViewingEntryId(null)} entry={viewingEntry} />
-      )}
+      <EntryDetailDialog
+        open={!!viewingEntryId}
+        onOpenChange={(open) => !open && setViewingEntryId(null)}
+        entry={viewingEntry}
+        isPending={entryPending}
+        isError={entryError}
+        onRetry={() => refetchEntry()}
+      />
     </div>
   )
 }

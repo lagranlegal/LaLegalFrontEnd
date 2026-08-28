@@ -71,7 +71,7 @@ export function KardexDialog({
       onOpenChange={onOpenChange}
       title={data ? `Kardex — ${data.name}` : 'Kardex'}
       description="Todo lo que le pasó a este producto, en orden."
-      size="lg"
+      size="xl"
     >
       <div className="flex flex-col gap-4">
         {isPending && (

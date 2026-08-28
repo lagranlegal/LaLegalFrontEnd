@@ -58,7 +58,12 @@ export function SupplierDetailPage() {
   // al hacer click (docs/PENDIENTES_FRONTEND.md #2: antes el click no hacía
   // nada, el detalle "solo vivía en Inventario").
   const [viewingEntryId, setViewingEntryId] = useState<string | null>(null)
-  const { data: viewingEntry } = useEntry(viewingEntryId ?? undefined)
+  const {
+    data: viewingEntry,
+    isPending: entryPending,
+    isError: entryError,
+    refetch: refetchEntry,
+  } = useEntry(viewingEntryId ?? undefined)
   const { data: summary, isPending, isError, refetch } = useSupplierSummary(supplierId)
   // El formulario de edición necesita el proveedor COMPLETO (documento,
   // dirección, notas), y el resumen solo trae lo que se muestra en la ficha.
@@ -153,9 +158,14 @@ export function SupplierDetailPage() {
       </div>
 
       {supplier && <SupplierFormDialog key={supplier.id} open={editOpen} onOpenChange={setEditOpen} supplier={supplier} />}
-      {viewingEntry && (
-        <EntryDetailDialog open={!!viewingEntryId} onOpenChange={(open) => !open && setViewingEntryId(null)} entry={viewingEntry} />
-      )}
+      <EntryDetailDialog
+        open={!!viewingEntryId}
+        onOpenChange={(open) => !open && setViewingEntryId(null)}
+        entry={viewingEntry}
+        isPending={entryPending}
+        isError={entryError}
+        onRetry={() => refetchEntry()}
+      />
     </div>
   )
 }

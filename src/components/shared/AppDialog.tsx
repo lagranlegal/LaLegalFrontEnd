@@ -6,6 +6,12 @@ const SIZE_CLASSES = {
   sm: 'sm:max-w-sm',
   md: 'sm:max-w-md',
   lg: 'sm:max-w-lg',
+  // `lg` (512px) alcanza para formularios pero se queda corto para una
+  // tabla ancha (Kardex: 7 columnas con fechas, montos y códigos de lote) —
+  // el scroll horizontal quedaba "raro" (visible siempre, con la mayoría de
+  // la tabla oculta) en vez de ser el respiradero para pantallas angostas
+  // que debería ser. `xl` es para ESO, no un tamaño "grande" genérico.
+  xl: 'sm:max-w-3xl',
 } as const
 
 /**
