@@ -8,6 +8,7 @@ import { PageHeader } from '@/components/shared/PageHeader'
 import { DataTable } from '@/components/shared/DataTable'
 import { KpiCard, KpiRow } from '@/components/shared/KpiCard'
 import { Money } from '@/components/shared/Money'
+import { RecordNumber } from '@/components/shared/RecordNumber'
 import { EntryDetailDialog } from '@/components/shared/EntryDetailDialog'
 import { Button } from '@/components/ui/button'
 import { formatDate } from '@/lib/dates'
@@ -16,7 +17,7 @@ import { SupplierFormDialog } from '@/features/catalogs/components/SupplierFormD
 import { useEntry } from '@/lib/inventory/entries'
 
 const purchaseColumns: ColumnDef<SupplierPurchase>[] = [
-  { accessorKey: 'number', header: 'Ingreso', cell: (info) => `#${info.getValue<number>()}` },
+  { accessorKey: 'number', header: 'Ingreso', cell: (info) => <RecordNumber value={info.getValue<number>()} /> },
   { accessorKey: 'entry_date', header: 'Entrada', cell: (info) => formatDate(info.getValue<string>()) },
   {
     accessorKey: 'supplier_invoice',

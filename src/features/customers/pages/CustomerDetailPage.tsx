@@ -5,6 +5,7 @@ import { BackLink } from '@/components/shared/BackLink'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { StatusBadge } from '@/components/shared/StatusBadge'
 import { PhotoThumbnail } from '@/components/shared/PhotoThumbnail'
+import { RecordNumber } from '@/components/shared/RecordNumber'
 import { DataTable } from '@/components/shared/DataTable'
 import { Money } from '@/components/shared/Money'
 import { Can } from '@/components/shared/Can'
@@ -20,21 +21,21 @@ import { formatCOP, sumMoney } from '@/lib/money'
 const DOC_TYPE_LABELS: Record<string, string> = { cc: 'Cédula de ciudadanía', ce: 'Cédula de extranjería', passport: 'Pasaporte', nit: 'NIT' }
 
 const contractColumns: ColumnDef<ContractSummary>[] = [
-  { accessorKey: 'number', header: 'Número', cell: (info) => `#${info.getValue<number>()}` },
+  { accessorKey: 'number', header: 'Número', cell: (info) => <RecordNumber value={info.getValue<number>()} /> },
   { accessorKey: 'principal', header: 'Capital', cell: (info) => <Money value={info.getValue<string>()} /> },
   { accessorKey: 'capital_balance', header: 'Saldo', cell: (info) => <Money value={info.getValue<string>()} /> },
   { accessorKey: 'status', header: 'Estado', cell: (info) => <StatusBadge status={info.getValue<string>()} /> },
 ]
 
 const saleColumns: ColumnDef<SaleSummary>[] = [
-  { accessorKey: 'number', header: 'Número', cell: (info) => `#${info.getValue<number>()}` },
+  { accessorKey: 'number', header: 'Número', cell: (info) => <RecordNumber value={info.getValue<number>()} /> },
   { accessorKey: 'sold_at', header: 'Fecha', cell: (info) => formatDateTime(info.getValue<string>()) },
   { accessorKey: 'total', header: 'Total', cell: (info) => <Money value={info.getValue<string>()} /> },
   { accessorKey: 'status', header: 'Estado', cell: (info) => <StatusBadge status={info.getValue<string>()} /> },
 ]
 
 const creditNoteColumns: ColumnDef<CreditNote>[] = [
-  { accessorKey: 'number', header: 'Número', cell: (info) => `#${info.getValue<number>()}` },
+  { accessorKey: 'number', header: 'Número', cell: (info) => <RecordNumber value={info.getValue<number>()} /> },
   { accessorKey: 'created_at', header: 'Emitida', cell: (info) => formatDateTime(info.getValue<string>()) },
   { accessorKey: 'amount', header: 'Monto', cell: (info) => <Money value={info.getValue<string>()} /> },
   { accessorKey: 'balance', header: 'Saldo', cell: (info) => <Money value={info.getValue<string>()} /> },

@@ -7,6 +7,7 @@ import { DataTable } from '@/components/shared/DataTable'
 import { SearchInput } from '@/components/shared/SearchInput'
 import { StatusBadge, STATUS_LABELS, type KnownStatus } from '@/components/shared/StatusBadge'
 import { LegacyCodeBadge } from '@/components/shared/LegacyCodeBadge'
+import { RecordNumber } from '@/components/shared/RecordNumber'
 import { Money } from '@/components/shared/Money'
 import { Can } from '@/components/shared/Can'
 import { Button } from '@/components/ui/button'
@@ -85,7 +86,7 @@ export function ContractsListPage() {
       header: 'Número',
       cell: (info) => (
         <div className="flex items-center gap-2">
-          <span>#{info.getValue<number>()}</span>
+          <RecordNumber value={info.getValue<number>()} />
           {info.row.original.legacy_code && <LegacyCodeBadge code={info.row.original.legacy_code} />}
         </div>
       ),

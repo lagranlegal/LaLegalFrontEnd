@@ -25,6 +25,7 @@ import { PaymentOptionsPanel } from '@/features/contracts/components/PaymentOpti
 import { ContractMetricsPanel } from '@/features/contracts/components/ContractMetricsPanel'
 import { ContractEditDialog } from '@/features/contracts/components/ContractEditDialog'
 import { ContractPrintView } from '@/features/contracts/components/ContractPrintView'
+import { RecordNumber } from '@/components/shared/RecordNumber'
 import { SettlementPrintView } from '@/features/contracts/components/SettlementPrintView'
 import { useSettlementInfo } from '@/features/contracts/settlement'
 import { useActiveDocumentTemplate } from '@/features/settings/documentTemplates/api'
@@ -150,7 +151,7 @@ export function ContractDetailPage() {
       <BackLink to="/contratos" label="Contratos" />
 
       <PageHeader
-        title={`Contrato #${contract.number}`}
+        title={<>Contrato <RecordNumber value={contract.number} className="text-2xl" /></>}
         description={customer ? `${customer.full_name} · ${customer.doc_type.toUpperCase()} ${customer.doc_number}` : undefined}
         actions={
           <div className="flex items-center gap-2">

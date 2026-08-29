@@ -2,6 +2,7 @@ import { useState } from 'react'
 import type { ColumnDef } from '@tanstack/react-table'
 import { DataTable } from '@/components/shared/DataTable'
 import { Money } from '@/components/shared/Money'
+import { RecordNumber } from '@/components/shared/RecordNumber'
 import { formatDate } from '@/lib/dates'
 import { useTransformationsList, type TransformationSummary } from '@/features/inventory/api'
 import { TransformationDetailDialog } from '@/features/inventory/components/TransformationDetailDialog'
@@ -45,7 +46,7 @@ export function TransformationsTab() {
   const filas = data?.pages.flatMap((page) => page.items) ?? []
 
   const columns: ColumnDef<TransformationSummary>[] = [
-    { accessorKey: 'number', header: 'Número', cell: (info) => `#${info.getValue<number>()}` },
+    { accessorKey: 'number', header: 'Número', cell: (info) => <RecordNumber value={info.getValue<number>()} /> },
     {
       accessorKey: 'transform_date',
       header: 'Fecha',

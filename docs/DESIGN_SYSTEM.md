@@ -8,7 +8,7 @@ El cliente aprobó como referencia de UI/UX las capturas de un software administ
 
 Lo que define el look y hay que replicar:
 
-- **Shell:** sidebar blanca fija a la izquierda (íconos + texto, item activo con fondo teal suave y texto teal), topbar blanca con buscador global centrado, ayuda/notificaciones/apps y avatar del usuario a la derecha. Fondo general gris muy claro (`#F5F7FA` aprox), contenido en **cards blancas** con borde sutil y radio generoso.
+- **Shell:** sidebar **teal muy oscuro** fija a la izquierda (28/08/2026 — antes blanca, ver nota de contraste en §2; ítem activo con fondo sólido + barra de acento a la izquierda), topbar blanca con buscador global centrado, ayuda/notificaciones/apps y avatar del usuario a la derecha. Fondo general gris muy claro (`#F5F7FA` aprox), contenido en **cards blancas** con borde sutil y radio generoso. Pie de página oscuro (mismo tono que el sidebar) con los datos de la empresa — ver `AppFooter` en §3.
 - **Dashboard:** fila superior de **KPIs** separados por divisores (etiqueta pequeña gris + cifra grande — cifras en color según semántica: rojo cuentas por cobrar, teal ventas), debajo cards de gráficas: área/línea de ingresos vs gastos con toggle de pestañas ("Causado/Pagado" → nuestro equivalente: Empeño/Tienda), barras apiladas, dona de mejores clientes con leyenda.
 - **Formularios y POS:** panel "Factura de venta" — selects arriba (lista de precio, numeración), cliente con botón "+ Nuevo" al lado, líneas con stepper − 1 +, resumen Subtotal/Descuento/IVA, **CTA grande de ancho completo teal con el total dentro del botón** ("Vender $419.170").
 - **Modales:** centrados, blanco, radio grande (~24px), X arriba a la derecha, título grande centrado, subtítulo gris, campos con label arriba y bordes redondeados suaves, **botón primario tipo pastilla (pill) teal centrado**. TODOS los modales de la app siguen exactamente este patrón (requisito explícito).
@@ -37,11 +37,23 @@ CSS variables consumidas por Tailwind (`@theme` en Tailwind v4). Las features us
 
   /* ==== Neutrales (superficies y texto) ==== */
   --bg-app: #F5F7FA;          /* fondo general */
-  --bg-surface: #FFFFFF;      /* cards, sidebar, topbar, modales */
+  --bg-surface: #FFFFFF;      /* cards, topbar, modales */
+  --bg-muted: #EBEEF3;        /* hover de botones/filas, skeletons — distinto de bg-app a propósito (28/08/2026): antes eran el mismo color y un botón "outline" desaparecía sobre el fondo de página */
   --border: #E5EAF0;          /* bordes de cards, inputs, divisores */
   --text-strong: #1E2A3B;     /* títulos, cifras */
   --text-body: #44546A;
   --text-muted: #8A97A8;      /* labels de KPI, hints, placeholders */
+
+  /* ==== Sidebar (28/08/2026) — superficie propia, NO --bg-surface ====
+     Teal muy oscuro, distinto del navy de --platform (ese es exclusivo del
+     panel super-admin). Antes el sidebar era el mismo blanco que cualquier
+     card — cero contraste con el resto del shell. */
+  --sidebar-bg: #0A2622;
+  --sidebar-bg-hover: #123830;
+  --sidebar-active-bg: #15453B;
+  --sidebar-fg: #BCDAD3;
+  --sidebar-fg-strong: #FFFFFF;
+  --sidebar-border: #123830;
 
   /* ==== Estados de dominio (badges) ==== */
   --status-active: var(--success);        /* Vigente / disponible / activa */
@@ -91,7 +103,9 @@ Construidos UNA vez sobre shadcn/ui + tokens; las features solo los componen. Si
 
 | Componente | Qué es / reglas |
 |---|---|
-| `AppShell` | Sidebar (blanca, colapsable a íconos; en mobile drawer con overlay) + topbar (buscador global — hoy `disabled`, es un placeholder visual de la referencia, ninguna búsqueda unificada real todavía, ver RECOMENDACIONES §3; avatar con menú: hoy solo "Cerrar sesión" — "perfil"/"cambiar contraseña" siguen pendientes de `PATCH /me`, ver PENDIENTES_BACKEND_INFRA.md punto 15) + `CashSessionBanner` + contenido con `--space-page`. Orden real del menú (`AppShell.tsx`): Inicio, Contratos, Ventas, Inventario, Clientes, Caja, Catálogos, Identidad (usuarios + roles en una sola pantalla, filtrada por `identity.manage_users`/`identity.manage_roles`), Reportes, Auditoría, Configuración. **Solo "Configuración" se muestra sin `to:` (deshabilitado a propósito)** — bloqueado del lado del backend (RECOMENDACIONES §1 punto 5), visible para no esconder que existe pero sin ruta real todavía; "Reportes" sí tiene ruta (`/reportes`, construido — ver §5 y `docs/IMPLEMENTATION.md`). El resto de ítems se filtra por permiso. |
+| `AppShell` | Sidebar (teal oscuro — `--sidebar-*`, no `--bg-surface`, ver §2 —, colapsable a íconos; en mobile drawer con overlay y animación de entrada) + topbar (buscador global — hoy `disabled`, es un placeholder visual de la referencia, ninguna búsqueda unificada real todavía, ver RECOMENDACIONES §3; avatar con menú: hoy solo "Cerrar sesión" — "perfil"/"cambiar contraseña" siguen pendientes de `PATCH /me`, ver PENDIENTES_BACKEND_INFRA.md punto 15) + `CashSessionBanner` + contenido con `--space-page` + `AppFooter`. Orden real del menú (`AppShell.tsx`): Inicio, Contratos, Ventas, Inventario, Clientes, Caja, Catálogos, Identidad (usuarios + roles en una sola pantalla, filtrada por `identity.manage_users`/`identity.manage_roles`), Reportes, Auditoría, Configuración. **Solo "Configuración" se muestra sin `to:` (deshabilitado a propósito)** — bloqueado del lado del backend (RECOMENDACIONES §1 punto 5), visible para no esconder que existe pero sin ruta real todavía; "Reportes" sí tiene ruta (`/reportes`, construido — ver §5 y `docs/IMPLEMENTATION.md`). El resto de ítems se filtra por permiso. |
+| `AppFooter` | Pie de página real (28/08/2026, `components/shared/AppFooter.tsx` — antes vivía inline en `AppShell.tsx` como una línea de texto). Reusa los tokens del sidebar (`bg-sidebar`) — cierra la página con el mismo tono oscuro que la abre por el costado. Marca + tagline, datos de la empresa (`legal_name`/`tax_id`/`address` de `me.company`, solo si existen), contacto (`tel:`/`mailto:` reales). Sin links institucionales inventados (Términos, Ayuda) — no existen esas páginas todavía. |
+| `RecordNumber` | El número de un documento (`#123`) con tratamiento tipográfico real — `#` en `text-muted-foreground`, número en `tnum font-semibold` (28/08/2026, antes texto plano `` `#${x}` `` repetido en ~15 lugares). Usado en listas/detalles de contratos, ventas, clientes, inventario. |
 | `PageHeader` | Título + breadcrumb + acciones a la derecha (botón primario único). Toda página lo usa — consistencia de jerarquía. |
 | `KpiCard` / `KpiRow` | Fila de KPIs del dashboard según la referencia (§1): label pequeña `--text-muted` + cifra grande `tnum`, color semántico opcional, divisores verticales, responsive a grid 2×N en mobile. `KpiCard` acepta un `delta?` opcional (`{pct, favorable}`) que agrega una segunda línea pequeña "▲/▼ N% vs período anterior" en verde/rojo — usado en Reportes (§5), la dirección "favorable" se decide por KPI (subir ingresos es verde, subir gastos es rojo), nunca se asume. |
 | `DataTable` | Sobre TanStack Table: encabezado gris claro, hover de fila, celdas de dinero alineadas a la derecha con `formatCOP`, columna de acciones con menú `⋯`, estados loading (skeleton de filas)/vacío/error integrados, paginación por cursor ("Cargar más"). En mobile colapsa a cards (render alterno por fila). |

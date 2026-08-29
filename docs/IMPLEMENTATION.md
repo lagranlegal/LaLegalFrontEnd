@@ -2,6 +2,35 @@
 
 > Registro vivo de qué existe en el código, cómo está armado y por qué se tomó cada decisión — para que cualquiera (humano o Claude Code) pueda retomar el proyecto sin releer todo el historial de commits. Se actualiza en cada paso del "Orden de implementación" de `CLAUDE.md`. No repite lo que ya está en `ARCHITECTURE.md`/`DESIGN_SYSTEM.md` (el qué-debería-ser); esto es el qué-hay-hoy y las decisiones concretas tomadas al construirlo.
 
+## Primer pase de rediseño visual — sidebar, footer, botones, "#" (28/08/2026)
+
+Pedido directo de Mateo tras usar la app varios días: "se siente muy vacía (muy IA)", botones que se confunden con el fondo, poca animación, el `#` de los números de documento se ve mal, quiere que el sidebar contraste más y un footer profesional con los datos de la empresa. Auditoría con capturas reales (Playwright, login real) antes de tocar nada — ver el diagnóstico completo en `docs/DESIGN_SYSTEM.md` §2.
+
+### La causa raíz de "todo se ve igual": dos tokens mal alineados
+
+`--color-sidebar` apuntaba a `--bg-surface` — el sidebar era literalmente el mismo blanco que cualquier card, distinguible solo por un borde de 1px. Y `--color-muted` apuntaba a `--bg-app` (el fondo de página) — cualquier botón/estado que usara "muted" (el outline de `Button`, por ejemplo) se volvía invisible apenas se paraba sobre el fondo de la página en vez de sobre una card blanca, que es exactamente donde vive la mayoría de los botones "Imprimir"/"Editar" del `PageHeader`. Los dos son hallazgos de una sola auditoría, no dos features separadas.
+
+**Fix, 100% en tokens (CLAUDE.md regla 4, cero features tocadas para esto):**
+- `tokens.css` gana `--bg-muted` (un paso más oscuro que `--bg-app`, se nota tanto sobre el fondo como sobre una card) y un set completo de tokens de sidebar (`--sidebar-bg/-bg-hover/-active-bg/-fg/-fg-strong/-border`), con sus valores para claro y oscuro. Teal muy oscuro, no gris genérico — ata la identidad de marca al costado fijo de la app, y tiene que ser un tono DISTINTO de `--platform` (el navy del panel super-admin, que existe justamente para que ningún tenant lo vea nunca — no podía compartirse).
+- `globals.css` remapea `--color-sidebar-*`/`--color-muted` a estos tokens nuevos, sin tocar ni un componente (el mismo mecanismo que ya sostiene el rebranding completo con 6 líneas).
+- `Button` (`variant="outline"`): pasa de `bg-background` (el gris de página) a `bg-card` + `shadow-xs` — un botón "superficie" que se lee igual sobre el fondo o sobre una card, en vez de depender de dónde lo pongan.
+
+### Sidebar: contraste + identidad, no solo un color más oscuro
+
+`AppShell.tsx` — ítem activo con fondo sólido + barra de acento izquierda (`border-l-2 border-sidebar-primary`, no el brand-50 casi blanco que se usaba antes, invisible sobre fondo oscuro), marca de la empresa (inicial en un cuadrado con el color primario) en el encabezado del sidebar y del drawer mobile. El drawer mobile gana una animación de entrada real (`animate-in slide-in-from-left duration-200`, tw-animate-css) — antes aparecía/desaparecía de golpe.
+
+### Footer nuevo — componente propio, no una línea de texto
+
+`AppFooter.tsx` (antes vivía inline en `AppShell.tsx`, 6 líneas): reusa los tokens del sidebar (`bg-sidebar`) a propósito — cierra visualmente la página con el mismo tono oscuro que la abre por el costado, en vez de inventar un tercer color. Tres columnas: marca + tagline, datos de la empresa (`legal_name`/`tax_id`/`address` de `me.company`, **solo si existen** — nada inventado, una empresa sin esos campos cargados en `/configuracion` sigue viendo un pie completo, sin columnas rotas), contacto (teléfono/correo, como links `tel:`/`mailto:` reales). Barra de copyright abajo. Deliberadamente NO lleva links institucionales inventados (Términos, Privacidad, Ayuda) — no existen esas páginas todavía, y un link que no lleva a ningún lado es peor que no tener el link.
+
+### El "#" de los documentos — un componente, no 15 strings sueltas
+
+`RecordNumber.tsx` (nuevo, `components/shared`): el `#` en `text-muted-foreground`, el número en `tnum font-semibold` — mismo tratamiento tipográfico que cualquier cifra de la app. Reemplaza `` `#${x}` `` como texto plano en los lugares de mayor uso diario: lista y detalle de contratos, dashboard ("Listos para remate"), ventas, clientes (contratos/ventas/notas crédito del historial), inventario (transformaciones, ingresos de proveedor). `PageHeader.title` pasó de `string` a `ReactNode` para poder componer "Contrato " + `<RecordNumber>` en el encabezado del detalle — cambio compatible hacia atrás (`ReactNode` incluye `string`), no rompe ningún otro caller. Quedan sin tocar los lugares dentro de texto corrido de baja visibilidad (`SettlementPrintView`, `KardexDialog`, etc.) — mismo componente disponible para cuando se necesiten.
+
+### Lo que NO se tocó en este primer pase
+
+Esto es un primer pase centralizado (tokens + shell + el patrón más repetido), no un rediseño pantalla por pantalla. Sigue pendiente, a propósito: más animación en listas/tablas individuales, revisar espacios en blanco grandes en pantallas específicas (ej. detalle de contrato), y aplicar `RecordNumber` en los ~10 lugares de menor tráfico que quedaron con el string plano.
+
 ## Reportes: conectado el frontend a `GET /reports/closings-breakdown` (28/08/2026)
 
 Pendiente desde el 27/08 (el backend lo trajo ese día, el front seguía con el N+1 de siempre). Reemplaza `useRawSessions` (un `GET /cashbox/sessions/{id}/report` por CADA sesión de caja cerrada del rango, hasta 90 requests en un rango de 90 días — y el doble contando el período anterior de la comparación) por una sola consulta agregada por rango.

@@ -24,11 +24,26 @@
 
   /* ==== Neutrales (superficies y texto) ==== */
   --bg-app: #f5f7fa; /* fondo general */
-  --bg-surface: #ffffff; /* cards, sidebar, topbar, modales */
+  --bg-surface: #ffffff; /* cards, topbar, modales */
+  --bg-muted: #ebeef3; /* hover de botones/filas, skeletons — un paso más oscuro que bg-app: tiene que notarse tanto sobre el fondo gris como sobre una card blanca */
   --border: #e5eaf0; /* bordes de cards, inputs, divisores */
   --text-strong: #1e2a3b; /* títulos, cifras */
   --text-body: #44546a;
   --text-muted: #8a97a8; /* labels de KPI, hints, placeholders */
+
+  /* ==== Sidebar (28/08/2026) ====
+     Antes aliaseaba a --bg-surface (blanco, igual que cualquier card) — cero
+     contraste con el resto del shell. Teal muy oscuro, no gris genérico:
+     ata la identidad de marca al costado fijo de toda la app en vez de un
+     navy neutro (que además ya está reservado para --platform — el super-
+     admin necesita un tono que NINGÚN tenant vea nunca, así que el sidebar
+     normal no puede compartirlo). */
+  --sidebar-bg: #0a2622;
+  --sidebar-bg-hover: #123830; /* ítem inactivo al pasar el mouse */
+  --sidebar-active-bg: #15453b; /* ítem activo — sólido, no el brand-50 casi blanco que se usa sobre fondo claro */
+  --sidebar-fg: #bcdad3; /* texto/ícono de ítems inactivos */
+  --sidebar-fg-strong: #ffffff; /* nombre de la empresa, ítem activo */
+  --sidebar-border: #123830;
 
   /* ==== Estados de dominio (badges) ==== */
   --status-active: var(--success); /* Vigente / disponible / activa */
@@ -118,11 +133,23 @@
 
   /* ==== Neutrales (superficies y texto) ==== */
   --bg-app: #0f1520;
-  --bg-surface: #171f2e; /* cards, sidebar, topbar, modales — un punto más claro que bg-app */
+  --bg-surface: #171f2e; /* cards, topbar, modales — un punto más claro que bg-app */
+  --bg-muted: #202a3d; /* un paso más claro que bg-surface, se nota como hover sobre una card oscura */
   --border: #2a3446;
   --text-strong: #f1f5f9;
   --text-body: #cbd5e1;
   --text-muted: #8595ab;
+
+  /* ==== Sidebar ====
+     Sigue siendo la superficie MÁS oscura de la app incluso en dark mode —
+     si quedara igual a --bg-surface volvería a perder el contraste que
+     tiene en claro. Mismo tinte teal que en luz, más profundo. */
+  --sidebar-bg: #071a17;
+  --sidebar-bg-hover: #0e2a24;
+  --sidebar-active-bg: #12362f;
+  --sidebar-fg: #9dc2ba;
+  --sidebar-fg-strong: #ffffff;
+  --sidebar-border: #0e2a24;
 
   /* ==== Gráficas ==== */
   --chart-3: #22b8cf; /* el #0e7490 de luz es casi ilegible sobre fondo oscuro */

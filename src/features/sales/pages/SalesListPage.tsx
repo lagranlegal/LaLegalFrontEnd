@@ -7,6 +7,7 @@ import { DataTable } from '@/components/shared/DataTable'
 import { StatusBadge, statusLabel } from '@/components/shared/StatusBadge'
 import { Money } from '@/components/shared/Money'
 import { Can } from '@/components/shared/Can'
+import { RecordNumber } from '@/components/shared/RecordNumber'
 import { Button } from '@/components/ui/button'
 import { formatDateTime, todayBogota } from '@/lib/dates'
 import { PAYMENT_METHOD_LABELS } from '@/lib/paymentMethods'
@@ -49,7 +50,7 @@ export function SalesListPage() {
   }
 
   const columns: ColumnDef<Sale>[] = [
-    { accessorKey: 'number', header: 'Número', cell: (info) => `#${info.getValue<number>()}` },
+    { accessorKey: 'number', header: 'Número', cell: (info) => <RecordNumber value={info.getValue<number>()} /> },
     { accessorKey: 'sold_at', header: 'Fecha', cell: (info) => formatDateTime(info.getValue<string>()) },
     { accessorKey: 'payment_method', header: 'Medio', cell: (info) => PAYMENT_METHOD_LABELS[info.getValue<'cash' | 'transfer' | 'other'>()] ?? info.getValue<string>() },
     { accessorKey: 'total', header: 'Total', cell: (info) => <Money value={info.getValue<string>()} /> },

@@ -26,7 +26,7 @@
   --color-primary-foreground: var(--brand-contrast);
   --color-secondary: var(--brand-50);
   --color-secondary-foreground: var(--brand-700);
-  --color-muted: var(--bg-app);
+  --color-muted: var(--bg-muted);
   --color-muted-foreground: var(--text-muted);
   --color-accent: var(--brand-50);
   --color-accent-foreground: var(--brand-700);
@@ -65,14 +65,16 @@
   --color-platform: var(--platform);
   --color-platform-foreground: var(--platform-foreground);
 
-  /* Sidebar (AppShell) */
-  --color-sidebar: var(--bg-surface);
-  --color-sidebar-foreground: var(--text-strong);
+  /* Sidebar (AppShell) — superficie propia, deliberadamente distinta de
+     --bg-surface (docs/DESIGN_SYSTEM.md §2): antes eran el mismo blanco. */
+  --color-sidebar: var(--sidebar-bg);
+  --color-sidebar-foreground: var(--sidebar-fg);
   --color-sidebar-primary: var(--brand-500);
   --color-sidebar-primary-foreground: var(--brand-contrast);
-  --color-sidebar-accent: var(--brand-50);
-  --color-sidebar-accent-foreground: var(--brand-700);
-  --color-sidebar-border: var(--border);
+  --color-sidebar-accent: var(--sidebar-active-bg);
+  --color-sidebar-accent-foreground: var(--sidebar-fg-strong);
+  --color-sidebar-hover: var(--sidebar-bg-hover);
+  --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--brand-500);
 
   /* Forma */

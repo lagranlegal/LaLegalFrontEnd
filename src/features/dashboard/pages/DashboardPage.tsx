@@ -4,6 +4,7 @@ import { useDashboard, useReadyForAuction } from '@/features/dashboard/api'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { KpiCard, KpiRow } from '@/components/shared/KpiCard'
 import { Money } from '@/components/shared/Money'
+import { RecordNumber } from '@/components/shared/RecordNumber'
 import { EmptyState } from '@/components/shared/EmptyState'
 import { isPermissionError } from '@/lib/api/isPermissionError'
 import { ContractsStatusChart, type StatusDatum } from '@/components/shared/charts/ContractsStatusChart'
@@ -106,9 +107,11 @@ export function DashboardPage() {
                   key={contract.id}
                   to="/contratos/$contractId"
                   params={{ contractId: contract.id }}
-                  className="flex items-center justify-between gap-3 py-2.5 text-sm hover:text-primary"
+                  className="-mx-2 flex items-center justify-between gap-3 rounded-input px-2 py-2.5 text-sm transition-colors hover:bg-accent"
                 >
-                  <span className="font-medium text-foreground">Contrato #{contract.number}</span>
+                  <span className="font-medium text-foreground">
+                    Contrato <RecordNumber value={contract.number} />
+                  </span>
                   <span className="text-muted-foreground">Vencido el {formatDate(contract.due_date)}</span>
                   <Money value={contract.capital_balance} />
                 </Link>

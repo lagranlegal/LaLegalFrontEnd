@@ -6,6 +6,7 @@ import { PageHeader } from '@/components/shared/PageHeader'
 import { DataTable } from '@/components/shared/DataTable'
 import { StatusBadge } from '@/components/shared/StatusBadge'
 import { Money } from '@/components/shared/Money'
+import { RecordNumber } from '@/components/shared/RecordNumber'
 import { sumMoney } from '@/lib/money'
 import { Can } from '@/components/shared/Can'
 import { SearchInput } from '@/components/shared/SearchInput'
@@ -521,7 +522,7 @@ function EntriesTab() {
   const entries = data?.pages.flatMap((page) => page.items) ?? []
 
   const columns: ColumnDef<Entry>[] = [
-    { accessorKey: 'number', header: 'Número', cell: (info) => `#${info.getValue<number>()}` },
+    { accessorKey: 'number', header: 'Número', cell: (info) => <RecordNumber value={info.getValue<number>()} /> },
     { accessorKey: 'origin_type', header: 'Origen', cell: (info) => entryOriginLabel(info.getValue<string>()) },
     { accessorKey: 'items', header: 'Artículos', cell: (info) => info.row.original.items.length },
     { accessorKey: 'total_cost', header: 'Costo total', cell: (info) => <Money value={info.getValue<string>()} /> },
@@ -634,7 +635,7 @@ function ExitsTab() {
   const exits = data?.pages.flatMap((page) => page.items) ?? []
 
   const columns: ColumnDef<Exit>[] = [
-    { accessorKey: 'number', header: 'Número', cell: (info) => `#${info.getValue<number>()}` },
+    { accessorKey: 'number', header: 'Número', cell: (info) => <RecordNumber value={info.getValue<number>()} /> },
     { accessorKey: 'exit_type', header: 'Tipo', cell: (info) => exitTypeLabel(info.getValue<string>()) },
     { accessorKey: 'reason', header: 'Motivo' },
     { accessorKey: 'created_at', header: 'Fecha', cell: (info) => formatDateTime(info.getValue<string>()) },

@@ -26,6 +26,7 @@ import { Button } from '@/components/ui/button'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { CashSessionBanner } from '@/components/shared/CashSessionBanner'
 import { ThemeToggle } from '@/components/shared/ThemeToggle'
+import { AppFooter } from '@/components/shared/AppFooter'
 
 interface NavItem {
   label: string
@@ -61,27 +62,6 @@ const NAV_ITEMS: NavItem[] = [
   { label: 'Configuración', icon: Settings, to: '/configuracion', anyPermission: ['company.configure'] },
 ]
 
-/**
- * Pie genérico: la plataforma no tiene marca propia todavía, así que se
- * nombra por lo que hace y se acompaña del nombre de la empresa del usuario
- * (`me.company.name`) para que se sienta suya sin inventar un nombre
- * comercial. `print:hidden` como el resto del shell — los documentos
- * imprimibles llevan su propio pie, configurable desde /configuracion.
- */
-function AppFooter() {
-  const { data: me } = useMe()
-  const year = new Date().getFullYear()
-
-  return (
-    <footer className="border-t border-border px-4 py-3 text-xs text-muted-foreground print:hidden">
-      <div className="flex flex-col items-center justify-between gap-1 sm:flex-row">
-        <span>Sistema de gestión para compraventas</span>
-        <span>{me?.company.name ? `${me.company.name} · ${year}` : year}</span>
-      </div>
-    </footer>
-  )
-}
-
 function SidebarContent({ collapsed, onNavigate }: { collapsed: boolean; onNavigate?: () => void }) {
   const { data: me } = useMe()
   const items = NAV_ITEMS.filter((item) => !item.anyPermission || item.anyPermission.some((code) => me?.permissions.includes(code)))
@@ -96,7 +76,7 @@ function SidebarContent({ collapsed, onNavigate }: { collapsed: boolean; onNavig
               key={item.label}
               aria-disabled="true"
               className={cn(
-                'flex items-center gap-3 rounded-input px-3 py-2 text-sm text-muted-foreground/50',
+                'flex items-center gap-3 rounded-input border-l-2 border-transparent px-3 py-2 text-sm text-sidebar-foreground/35',
                 collapsed && 'justify-center',
               )}
               title={`${item.label} — próximamente`}
@@ -112,10 +92,10 @@ function SidebarContent({ collapsed, onNavigate }: { collapsed: boolean; onNavig
             to={item.to}
             onClick={onNavigate}
             className={cn(
-              'flex items-center gap-3 rounded-input px-3 py-2 text-sm text-foreground transition-colors hover:bg-accent',
+              'flex items-center gap-3 rounded-input border-l-2 border-transparent px-3 py-2 text-sm text-sidebar-foreground/80 transition-all hover:border-sidebar-primary/40 hover:bg-sidebar-hover hover:text-sidebar-foreground',
               collapsed && 'justify-center',
             )}
-            activeProps={{ className: 'bg-accent text-accent-foreground font-medium' }}
+            activeProps={{ className: 'border-sidebar-primary bg-sidebar-accent text-sidebar-accent-foreground font-medium hover:border-sidebar-primary hover:bg-sidebar-accent hover:text-sidebar-accent-foreground' }}
           >
             <Icon className="size-5 shrink-0" />
             {!collapsed && <span>{item.label}</span>}
@@ -152,8 +132,21 @@ export function AppShell() {
         )}
       >
         <div className="flex h-14 items-center justify-between border-b border-sidebar-border px-3">
-          {!sidebarCollapsed && <span className="truncate text-sm font-semibold text-sidebar-foreground">{me?.company.name ?? 'Compraventa'}</span>}
-          <Button variant="ghost" size="icon-sm" onClick={toggleSidebarCollapsed} aria-label={sidebarCollapsed ? 'Expandir menú' : 'Colapsar menú'}>
+          {!sidebarCollapsed && (
+            <div className="flex min-w-0 items-center gap-2">
+              <span className="flex size-7 shrink-0 items-center justify-center rounded-input bg-sidebar-primary text-sm font-bold text-primary-foreground">
+                {(me?.company.name ?? 'C').charAt(0).toUpperCase()}
+              </span>
+              <span className="truncate text-sm font-semibold text-sidebar-foreground">{me?.company.name ?? 'Compraventa'}</span>
+            </div>
+          )}
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            className="shrink-0 text-sidebar-foreground/70 hover:bg-sidebar-hover hover:text-sidebar-foreground"
+            onClick={toggleSidebarCollapsed}
+            aria-label={sidebarCollapsed ? 'Expandir menú' : 'Colapsar menú'}
+          >
             {sidebarCollapsed ? <PanelLeftOpen className="size-4" /> : <PanelLeftClose className="size-4" />}
           </Button>
         </div>
@@ -166,13 +159,24 @@ export function AppShell() {
           <button
             type="button"
             aria-label="Cerrar menú"
-            className="absolute inset-0 bg-foreground/40"
+            className="absolute inset-0 animate-in bg-foreground/40 fade-in duration-200"
             onClick={() => setMobileDrawerOpen(false)}
           />
-          <aside className="absolute inset-y-0 left-0 flex w-64 flex-col bg-sidebar shadow-modal">
+          <aside className="absolute inset-y-0 left-0 flex w-64 animate-in flex-col bg-sidebar shadow-modal slide-in-from-left duration-200">
             <div className="flex h-14 items-center justify-between border-b border-sidebar-border px-3">
-              <span className="truncate text-sm font-semibold text-sidebar-foreground">{me?.company.name ?? 'Compraventa'}</span>
-              <Button variant="ghost" size="icon-sm" onClick={() => setMobileDrawerOpen(false)} aria-label="Cerrar menú">
+              <div className="flex min-w-0 items-center gap-2">
+                <span className="flex size-7 shrink-0 items-center justify-center rounded-input bg-sidebar-primary text-sm font-bold text-primary-foreground">
+                  {(me?.company.name ?? 'C').charAt(0).toUpperCase()}
+                </span>
+                <span className="truncate text-sm font-semibold text-sidebar-foreground">{me?.company.name ?? 'Compraventa'}</span>
+              </div>
+              <Button
+                variant="ghost"
+                size="icon-sm"
+                className="shrink-0 text-sidebar-foreground/70 hover:bg-sidebar-hover hover:text-sidebar-foreground"
+                onClick={() => setMobileDrawerOpen(false)}
+                aria-label="Cerrar menú"
+              >
                 <X className="size-4" />
               </Button>
             </div>
