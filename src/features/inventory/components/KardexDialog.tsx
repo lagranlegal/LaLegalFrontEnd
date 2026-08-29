@@ -1,5 +1,6 @@
 import { AppDialog } from '@/components/shared/AppDialog'
 import { Money } from '@/components/shared/Money'
+import { RecordNumber } from '@/components/shared/RecordNumber'
 import { EmptyState } from '@/components/shared/EmptyState'
 import { TableSkeleton } from '@/components/shared/TableSkeleton'
 import { Button } from '@/components/ui/button'
@@ -146,7 +147,7 @@ export function KardexDialog({
                           </td>
                           <td className="px-3 py-2">
                             <span className="text-foreground">{tituloMovimiento(linea)}</span>
-                            <span className="ml-1.5 text-xs text-muted-foreground">#{linea.reference_number}</span>
+                            <RecordNumber value={linea.reference_number} className="ml-1.5 text-xs font-normal text-muted-foreground" />
                             {linea.detail && (
                               <span className="block max-w-[28ch] truncate text-xs text-muted-foreground" title={linea.detail}>
                                 {linea.detail}

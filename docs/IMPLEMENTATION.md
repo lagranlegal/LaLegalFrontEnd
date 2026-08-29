@@ -2,6 +2,16 @@
 
 > Registro vivo de qué existe en el código, cómo está armado y por qué se tomó cada decisión — para que cualquiera (humano o Claude Code) pueda retomar el proyecto sin releer todo el historial de commits. Se actualiza en cada paso del "Orden de implementación" de `CLAUDE.md`. No repite lo que ya está en `ARCHITECTURE.md`/`DESIGN_SYSTEM.md` (el qué-debería-ser); esto es el qué-hay-hoy y las decisiones concretas tomadas al construirlo.
 
+## Segundo pase de rediseño visual — pendientes del primero (29/08/2026)
+
+Cierra los tres pendientes que había dejado explícitos el pase anterior.
+
+**`RecordNumber` en el resto de lugares de tráfico medio:** recibos de abono (`ContractDetailPage`), notas crédito en el selector de venta (`SaleFormPage`), referencia de movimiento en el kardex (`KardexDialog`), número de ingreso y de lote en la ficha de producto (`ProductRow`), devoluciones en el comprobante de venta (`SaleReceiptDialog`). Quedaron DOS casos deliberadamente sin tocar (`ItemEditDialog.tsx`, "contrato #123"/"transformación #123"): son la frase completa de un link, y el `#` de `RecordNumber` fuerza `text-muted-foreground` — meterlo ahí habría partido el link en dos colores en vez de leerse como un solo link. El componente se aplica donde encaja, no en todos lados por sistema.
+
+**Más animación en listas, sin caer en "animar cada fila" (regla ya escrita en `docs/DESIGN_SYSTEM.md` §2 — `enter-up` va en el contenedor, no en cada hijo):** `DataTable` gana `enter-up` en sus tres estados (con datos, vacío, error) — antes solo aparecía de golpe. Las filas de mobile (`onRowClick`) ganan `active:bg-accent/60` — antes un tap no daba ninguna señal antes de navegar. Las dos cards del dashboard ("Contratos por estado", "Listos para remate") ganan `enter-up`, mismo criterio que ya usaban las cards de Reportes.
+
+**El espacio vacío del detalle de contrato:** la card "Documento firmado" ocupaba el ancho completo de la pantalla para una miniatura de 96px — mucho aire alrededor de un dato chico. Pasó a ser una celda más de la grilla superior (Capital/Saldo/Tasa/…), mismo criterio que ya usan las fotos de "Prendas" más abajo (inline, no en su propio bloque). Investigado y descartado como falso positivo: el bloque gris grande bajo "Registrar abono" que se veía en una captura anterior era el skeleton de carga (`animate-pulse`) atrapado a mitad de camino por el timing del screenshot, no un problema real — y el estado vacío de "Historial de abonos" es el patrón `EmptyState` intencional del sistema de diseño, no espacio desperdiciado.
+
 ## Primer pase de rediseño visual — sidebar, footer, botones, "#" (28/08/2026)
 
 Pedido directo de Mateo tras usar la app varios días: "se siente muy vacía (muy IA)", botones que se confunden con el fondo, poca animación, el `#` de los números de documento se ve mal, quiere que el sidebar contraste más y un footer profesional con los datos de la empresa. Auditoría con capturas reales (Playwright, login real) antes de tocar nada — ver el diagnóstico completo en `docs/DESIGN_SYSTEM.md` §2.

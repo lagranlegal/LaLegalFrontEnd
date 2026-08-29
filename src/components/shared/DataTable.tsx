@@ -77,7 +77,7 @@ export function DataTable<T>({
     // qué pasa y a quién pedírselo.
     const sinPermiso = isPermissionError(error)
     return (
-      <div className="flex flex-col items-center gap-3 rounded-card border border-border bg-card p-card text-center">
+      <div className="enter-up flex flex-col items-center gap-3 rounded-card border border-border bg-card p-card text-center">
         <p className="text-sm text-muted-foreground">
           {sinPermiso
             ? 'Tu rol no tiene permiso para ver esto. Pídele a un administrador que te lo habilite.'
@@ -94,14 +94,14 @@ export function DataTable<T>({
 
   if (data.length === 0) {
     return (
-      <div className="rounded-card border border-border bg-card shadow-card">
+      <div className="enter-up rounded-card border border-border bg-card shadow-card">
         <EmptyState title={emptyTitle} description={emptyDescription} action={emptyAction} />
       </div>
     )
   }
 
   return (
-    <div className="overflow-hidden rounded-card border border-border bg-card shadow-card">
+    <div className="enter-up overflow-hidden rounded-card border border-border bg-card shadow-card">
       {/* Los datos que se ven siguen siendo válidos, solo están por cambiar:
           una barra delgada arriba avisa sin vaciar la tabla ni hacerla saltar. */}
       <RefreshingBar active={!!isRefreshing} />
@@ -121,7 +121,7 @@ export function DataTable<T>({
           {table.getRowModel().rows.map((row) => (
             <tr
               key={row.id}
-              className={cn('transition-colors hover:bg-accent/50', onRowClick && 'cursor-pointer')}
+              className={cn('transition-colors hover:bg-accent/50', onRowClick && 'cursor-pointer active:bg-accent')}
               onClick={() => onRowClick?.(row.original)}
             >
               {row.getVisibleCells().map((cell) => (
@@ -139,7 +139,7 @@ export function DataTable<T>({
         {table.getRowModel().rows.map((row) => (
           <div
             key={row.id}
-            className={cn('flex flex-col gap-1.5 p-4', onRowClick && 'cursor-pointer')}
+            className={cn('flex flex-col gap-1.5 p-4', onRowClick && 'cursor-pointer transition-colors active:bg-accent/60')}
             onClick={() => onRowClick?.(row.original)}
           >
             {row.getVisibleCells().map((cell) => {

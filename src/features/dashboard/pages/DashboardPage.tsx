@@ -91,12 +91,12 @@ export function DashboardPage() {
       </KpiRow>
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-        <div className="rounded-card border border-border bg-card p-card shadow-card">
+        <div className="enter-up rounded-card border border-border bg-card p-card shadow-card">
           <h2 className="text-sm font-medium text-foreground">Contratos por estado</h2>
           <ContractsStatusChart data={contractsByStatus} />
         </div>
 
-        <div className="rounded-card border border-border bg-card p-card shadow-card">
+        <div className="enter-up rounded-card border border-border bg-card p-card shadow-card">
           <h2 className="text-sm font-medium text-foreground">Listos para remate</h2>
           {!readyForAuction || readyForAuction.length === 0 ? (
             <EmptyState title="Nada pendiente de remate" description="Los contratos vencidos que agotan su prórroga aparecen aquí." />

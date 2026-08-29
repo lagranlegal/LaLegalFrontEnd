@@ -33,7 +33,7 @@ import { useActiveDocumentTemplate } from '@/features/settings/documentTemplates
 const PAYABLE_STATUSES = new Set(['active', 'in_arrears', 'in_extension'])
 
 const paymentColumns: ColumnDef<Payment>[] = [
-  { accessorKey: 'receipt_number', header: 'Recibo', cell: (info) => `#${info.getValue<number>()}` },
+  { accessorKey: 'receipt_number', header: 'Recibo', cell: (info) => <RecordNumber value={info.getValue<number>()} /> },
   { accessorKey: 'paid_at', header: 'Fecha', cell: (info) => formatDateTime(info.getValue<string>()) },
   { accessorKey: 'months_covered', header: 'Meses' },
   { accessorKey: 'interest_amount', header: 'Interés', cell: (info) => <Money value={info.getValue<string>()} /> },
@@ -248,19 +248,22 @@ export function ContractDetailPage() {
             <p className="text-sm text-foreground">{formatDate(contract.extension_ends_at)}</p>
           </div>
         )}
+        {/* Antes era su propia card de ancho completo para una sola miniatura
+            de 96px — mucho espacio vacío alrededor de un solo dato chico. Acá
+            es una celda más de la grilla, mismo criterio que ya usan las
+            fotos de "Prendas" más abajo (inline, no en su propio bloque). */}
+        {contract.signed_photo_url && (
+          <div>
+            <p className="text-xs text-muted-foreground">Documento firmado</p>
+            <PhotoThumbnail path={contract.signed_photo_url} className="mt-1.5 size-14" />
+          </div>
+        )}
       </div>
 
       {contract.notes && (
         <div className="rounded-card border border-border bg-card p-card shadow-card">
           <p className="text-xs text-muted-foreground">Notas</p>
           <p className="mt-1 text-sm text-foreground">{contract.notes}</p>
-        </div>
-      )}
-
-      {contract.signed_photo_url && (
-        <div className="rounded-card border border-border bg-card p-card shadow-card">
-          <p className="text-xs text-muted-foreground">Documento firmado</p>
-          <PhotoThumbnail path={contract.signed_photo_url} className="mt-2 size-24" />
         </div>
       )}
 

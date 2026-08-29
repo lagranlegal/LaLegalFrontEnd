@@ -8,6 +8,7 @@ import { AppDialog } from '@/components/shared/AppDialog'
 import { ItemPicker } from '@/components/shared/ItemPicker'
 import { CustomerPicker } from '@/components/shared/CustomerPicker'
 import { Money } from '@/components/shared/Money'
+import { RecordNumber } from '@/components/shared/RecordNumber'
 import { MoneyInput } from '@/components/shared/MoneyInput'
 import { CashSessionRequiredDialog } from '@/components/shared/CashSessionRequiredDialog'
 import { Can } from '@/components/shared/Can'
@@ -243,7 +244,7 @@ export function SaleFormPage() {
                     <SelectItem value="__none__">Ninguna</SelectItem>
                     {availableCreditNotes.map((note) => (
                       <SelectItem key={note.id} value={note.id}>
-                        #{note.number} · saldo {formatCOP(note.balance)}
+                        <RecordNumber value={note.number} /> · saldo {formatCOP(note.balance)}
                       </SelectItem>
                     ))}
                   </SelectContent>

@@ -3,6 +3,7 @@ import { toast } from 'sonner'
 import { AppDialog } from '@/components/shared/AppDialog'
 import { PrintLayout } from '@/components/shared/PrintLayout'
 import { Money } from '@/components/shared/Money'
+import { RecordNumber } from '@/components/shared/RecordNumber'
 import { StatusBadge } from '@/components/shared/StatusBadge'
 import { Can } from '@/components/shared/Can'
 import { ReturnFormDialog } from '@/components/shared/ReturnFormDialog'
@@ -149,7 +150,7 @@ export function SaleReceiptDialog({ open, onOpenChange, sale }: { open: boolean;
                   <div key={ret.id} className="flex items-center justify-between gap-3 px-3 py-2">
                     <div>
                       <p className="text-foreground">
-                        #{ret.number} · {RETURN_REASON_LABELS[ret.reason as keyof typeof RETURN_REASON_LABELS] ?? ret.reason} ·{' '}
+                        <RecordNumber value={ret.number} /> · {RETURN_REASON_LABELS[ret.reason as keyof typeof RETURN_REASON_LABELS] ?? ret.reason} ·{' '}
                         {RETURN_SETTLEMENT_LABELS[ret.settlement_method as keyof typeof RETURN_SETTLEMENT_LABELS] ?? ret.settlement_method}
                       </p>
                       <p className="text-xs text-muted-foreground">{formatDate(ret.return_date)}</p>

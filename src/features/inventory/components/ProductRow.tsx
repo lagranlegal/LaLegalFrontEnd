@@ -3,6 +3,7 @@ import { ChevronDown, ChevronRight } from 'lucide-react'
 import { KardexDialog } from '@/features/inventory/components/KardexDialog'
 import { EntryDetailDialog } from '@/components/shared/EntryDetailDialog'
 import { Money } from '@/components/shared/Money'
+import { RecordNumber } from '@/components/shared/RecordNumber'
 import { StatusBadge } from '@/components/shared/StatusBadge'
 import { Button } from '@/components/ui/button'
 import { Can } from '@/components/shared/Can'
@@ -79,10 +80,12 @@ function PurchaseList({ productId }: { productId: string }) {
             return (
               <tr
                 key={`${compra.entry_id}-${compra.lot_code ?? compra.entry_number}`}
-                className="cursor-pointer border-t border-border hover:bg-background"
+                className="cursor-pointer border-t border-border transition-colors hover:bg-background"
                 onClick={() => setViewingEntryId(compra.entry_id)}
               >
-                <td className="px-3 py-1.5 text-muted-foreground">#{compra.entry_number}</td>
+                <td className="px-3 py-1.5 text-muted-foreground">
+                  <RecordNumber value={compra.entry_number} className="font-normal text-muted-foreground" />
+                </td>
                 <td className="px-3 py-1.5 text-muted-foreground">{formatDate(compra.entry_date)}</td>
                 <td className="px-3 py-1.5 text-foreground">
                   {compra.supplier_name ?? <span className="text-muted-foreground">Sin proveedor</span>}
@@ -143,7 +146,9 @@ function LotList({ productId }: { productId: string }) {
         <tbody>
           {lots?.map((lot) => (
             <tr key={lot.id} className="border-t border-border">
-              <td className="px-3 py-1.5 font-mono text-xs text-foreground">{lot.code ?? `#${lot.lot_number ?? '—'}`}</td>
+              <td className="px-3 py-1.5 font-mono text-xs text-foreground">
+                {lot.code ?? (lot.lot_number ? <RecordNumber value={lot.lot_number} className="font-mono text-xs" /> : '—')}
+              </td>
               <td className="px-3 py-1.5">
                 <SupplierName supplierId={lot.supplier_id} />
               </td>
