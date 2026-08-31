@@ -2,6 +2,12 @@
 
 > Registro vivo de qué existe en el código, cómo está armado y por qué se tomó cada decisión — para que cualquiera (humano o Claude Code) pueda retomar el proyecto sin releer todo el historial de commits. Se actualiza en cada paso del "Orden de implementación" de `CLAUDE.md`. No repite lo que ya está en `ARCHITECTURE.md`/`DESIGN_SYSTEM.md` (el qué-debería-ser); esto es el qué-hay-hoy y las decisiones concretas tomadas al construirlo.
 
+## Footer: de bloque oscuro de 3 columnas a una línea (30/08/2026)
+
+Feedback directo tras ver el segundo pase en producción: "el footer me parece muy invasivo y se ve muy raro, hazlo mucho menos invasivo". El footer del 28/08 (`AppFooter.tsx`) reusaba los tokens del sidebar (`bg-sidebar`, oscuro) en un bloque de 3 columnas con ícono de marca, datos de la empresa y contacto — pensado como "cierre visual" de la página, pero en el uso real competía con el contenido en vez de acompañarlo.
+
+**Nuevo diseño: una sola línea**, mismo fondo que cualquier card (`bg-card`, no un tono oscuro) con un borde superior — copyright + nombre legal (+ NIT si existe) a la izquierda, teléfono de contacto (o el tagline genérico si no hay teléfono cargado) a la derecha. Sin ícono de marca, sin columnas, sin el bloque oscuro. Sigue mostrando datos reales de `me.company` solo si existen — nada inventado — pero ya no reserva espacio ni peso visual para columnas que muchas empresas van a tener vacías.
+
 ## Segundo pase de rediseño visual — pendientes del primero (29/08/2026)
 
 Cierra los tres pendientes que había dejado explícitos el pase anterior.
