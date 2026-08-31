@@ -14,6 +14,8 @@ La mayor parte del tiempo eso solo era trabajo de más (recrear el editor en cad
 
 **Fix:** `sampleContext` en `DocumentTemplatesPage.tsx` pasa a `useMemo(() => ..., [documentType, me?.company])` — misma referencia entre renders mientras el tipo de documento y los datos de la empresa no cambien de verdad. El editor de la vista previa deja de recrearse en cada render.
 
+Verificado en vivo tras desplegar, con el repro exacto de Mateo (Playwright, login real): crear una plantilla nueva → abrirla → sin error. Cerrar y volver a abrirla desde la lista → tampoco. Cero `pageerror` capturados en toda la corrida. Plantilla de prueba borrada al terminar.
+
 Feedback directo tras ver el segundo pase en producción: "el footer me parece muy invasivo y se ve muy raro, hazlo mucho menos invasivo". El footer del 28/08 (`AppFooter.tsx`) reusaba los tokens del sidebar (`bg-sidebar`, oscuro) en un bloque de 3 columnas con ícono de marca, datos de la empresa y contacto — pensado como "cierre visual" de la página, pero en el uso real competía con el contenido en vez de acompañarlo.
 
 **Nuevo diseño: una sola línea**, mismo fondo que cualquier card (`bg-card`, no un tono oscuro) con un borde superior — copyright + nombre legal (+ NIT si existe) a la izquierda, teléfono de contacto (o el tagline genérico si no hay teléfono cargado) a la derecha. Sin ícono de marca, sin columnas, sin el bloque oscuro. Sigue mostrando datos reales de `me.company` solo si existen — nada inventado — pero ya no reserva espacio ni peso visual para columnas que muchas empresas van a tener vacías.
