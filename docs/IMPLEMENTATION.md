@@ -4,17 +4,27 @@
 
 ## Fix: crear una plantilla y abrirla tiraba "No se pudo cargar la app" (30/08/2026)
 
-Reportado en vivo por Mateo: crear una plantilla de documento, abrirla, error de pantalla completa ("Cannot read properties of null (reading 'commands')"); "Reintentar" (el error boundary de rutas de TanStack Router) y volver a abrirla ya no fallaba.
+Reportado en vivo por Mateo: crear una plantilla de documento, abrirla, error de pantalla completa ("Cannot read properties of null (reading 'commands')"); "Reintentar" (el error boundary de rutas de TanStack Router) y volver a abrirla ya no fallaba. Dos rondas — la primera solo tapó una parte del problema.
 
-### La causa: un objeto sin memoizar en el array de dependencias de `useEditor`
+### Primera ronda: un objeto sin memoizar en `TemplateRenderer` — reducía el problema, no lo eliminaba
 
-`TemplateRenderer` (la vista previa) le pasa `mergeFieldContext` a `useEditor(options, [body, mergeFieldContext, ...])` — en `@tiptap/react`, ese segundo argumento le dice al editor CUÁNDO destruirse y recrearse desde cero, no solo cuándo re-renderizar. `DocumentTemplatesPage` armaba ese contexto con `buildSampleContractContext(me?.company)` **sin `useMemo`** — una referencia nueva en cada render, así que Tiptap destruía y recreaba el editor de la vista previa constantemente.
+`TemplateRenderer` (la vista previa) le pasa `mergeFieldContext` a `useEditor(options, [body, mergeFieldContext, ...])` — en `@tiptap/react`, ese segundo argumento le dice al editor CUÁNDO destruirse y recrearse desde cero, no solo cuándo re-renderizar. `DocumentTemplatesPage` armaba ese contexto con `buildSampleContractContext(me?.company)` sin `useMemo` — una referencia nueva en cada render, así que Tiptap destruía y recreaba el editor de la vista previa constantemente. Se memoizó (`useMemo(() => ..., [documentType, me?.company])`) y el primer repro (plantilla vacía, crear→abrir) dejó de fallar — pero Mateo reportó que el error **seguía apareciendo**. Verificado con un repro más completo (Playwright, plantilla con contenido real vía "Empezar desde la plantilla actual"): **100% reproducible, 5 de 5 corridas**, incluso en una plantilla ya guardada, abierta en una pestaña nueva — nada que ver con la ventana de carrera de la primera ronda.
 
-La mayor parte del tiempo eso solo era trabajo de más (recrear el editor en cada tecla escrita). Pero justo al crear una plantilla nueva, `onSaved(id)` cambia `selectedId`, lo que remonta `TemplateDraftPanel` (tiene `key={selectedId}`) — y microsegundos después, la invalidación de `useCreateDocumentTemplate` trae el `template` real y dispara OTRO render inmediato. Esa ventana justo coincide con el primer montaje de los NodeViews de React de los campos dinámicos (`ReactNodeViewRenderer`, usado por `MergeFieldNode`/`ItemsTableBlockNode`/`SignatureBlockNode`) — si el editor se destruye mientras un NodeView todavía está montando, ese NodeView queda con una referencia al editor ya nulo, y la librería explota al leer `.commands` sobre `null`. Para una plantilla ya existente (sin esa secuencia crear→re-render inmediato) la ventana de carrera no se da, por eso reabrir "ya no fallaba".
+### Segunda ronda: la causa real, con stack trace — `TemplateEditor.tsx`, no `TemplateRenderer`
 
-**Fix:** `sampleContext` en `DocumentTemplatesPage.tsx` pasa a `useMemo(() => ..., [documentType, me?.company])` — misma referencia entre renders mientras el tipo de documento y los datos de la empresa no cambien de verdad. El editor de la vista previa deja de recrearse en cada render.
+Con el stack trace completo (`page.on('console')`, no solo `pageerror` — el error boundary de React se lo traga antes de que llegue a `window.onerror`) se vio que el crash es en `TemplateEditor.tsx` (el editor EDITABLE, no la vista previa), en su `useEffect` de sincronización:
 
-Verificado en vivo tras desplegar, con el repro exacto de Mateo (Playwright, login real): crear una plantilla nueva → abrirla → sin error. Cerrar y volver a abrirla desde la lista → tampoco. Cero `pageerror` capturados en toda la corrida. Plantilla de prueba borrada al terminar.
+```ts
+const current = JSON.stringify(editor.getJSON())
+const next = JSON.stringify(value)
+if (current !== next) editor.commands.setContent(value)
+```
+
+`JSON.stringify` compara por texto, sensible al ORDEN de las claves — con una plantilla que trae nodos atómicos (campo dinámico/tabla de prendas/firma), `editor.getJSON()` casi nunca produce el mismo string que `value` aunque el contenido sea idéntico, así que esta comparación daba "distinto" y disparaba `setContent` de más, justo al montar. Ese `setContent` reconstruye TODO el documento — mientras los NodeViews de React de esos nodos atómicos (`ReactNodeViewRenderer`, usado por `MergeFieldNode`/`ItemsTableBlockNode`/`SignatureBlockNode`) todavía están montando por primera vez. La reconstrucción los deja con una referencia al editor ya nula, y la librería explota leyendo `.commands` sobre eso — determinístico, no una condición de carrera: pasaba siempre que la plantilla tuviera al menos un nodo atómico.
+
+**Fix real:** reemplazar la comparación por texto por una referencia (`useRef`) que trackea el último `value` que el editor YA refleja — se actualiza tanto en el `useEffect` como en `onUpdate` (para no reaccionar a lo que el editor mismo acaba de reportar). El efecto solo llama `setContent` cuando `value` cambió por una razón EXTERNA (ej. "Empezar desde la plantilla actual"), nunca en el primer render ni como eco de una tecla escrita.
+
+**Lección:** la primera ronda arregló un problema real (recrear el editor de la vista previa en cada tecla) pero no era la causa del crash reportado — encontrarla de verdad necesitó capturar el stack trace completo vía `console`, no solo confiar en que "ya no se reproduce con mi primer repro simple". Un repro que solo cubre el caso más simple (plantilla vacía) puede dar un falso "arreglado".
 
 Feedback directo tras ver el segundo pase en producción: "el footer me parece muy invasivo y se ve muy raro, hazlo mucho menos invasivo". El footer del 28/08 (`AppFooter.tsx`) reusaba los tokens del sidebar (`bg-sidebar`, oscuro) en un bloque de 3 columnas con ícono de marca, datos de la empresa y contacto — pensado como "cierre visual" de la página, pero en el uso real competía con el contenido en vez de acompañarlo.
 

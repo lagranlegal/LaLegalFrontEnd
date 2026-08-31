@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 import { useEditor, EditorContent } from '@tiptap/react'
 import StarterKit from '@tiptap/starter-kit'
 import { Bold, Heading2, Heading3, Italic, List, ListOrdered, PenLine, PlusCircle, Table2 } from 'lucide-react'
@@ -27,20 +27,41 @@ function ToolbarButton({ active, onClick, children, label }: { active?: boolean;
  * cuándo guardar.
  */
 export function TemplateEditor({ documentType, value, onChange }: { documentType: DocumentType; value: JSONContent; onChange: (json: JSONContent) => void }) {
+  // Referencia del último `value` que el editor YA refleja — arranca en el
+  // valor inicial (que `useEditor({content: value})` ya usó para crearlo),
+  // y se actualiza tanto acá como en `onUpdate`. Así el efecto de abajo solo
+  // llama `setContent` cuando `value` cambió por fuera (ej. "Empezar desde
+  // la plantilla actual"), nunca como eco de lo que el editor acaba de
+  // reportar ni en el primer render.
+  //
+  // Antes comparaba con `JSON.stringify(editor.getJSON()) !== JSON.stringify(value)`
+  // — sensible al orden de las claves, así que con una plantilla que trae
+  // nodos atómicos (campo/tabla/firma) casi siempre daba "distinto" incluso
+  // cuando el contenido era el mismo, disparando un `setContent` de más
+  // justo al montar. Ese `setContent` reconstruye todo el documento
+  // mientras los NodeViews de React de esos nodos (`ReactNodeViewRenderer`)
+  // todavía están montando por primera vez — la reconstrucción los deja con
+  // una referencia al editor ya nula, y la librería explota leyendo
+  // `.commands` sobre eso. Reportado en vivo: crear una plantilla con
+  // "Empezar desde..." y abrirla tiraba "Cannot read properties of null
+  // (reading 'commands')", 100% reproducible.
+  const lastSyncedValue = useRef(value)
+
   const editor = useEditor({
     content: value,
     extensions: [StarterKit, MergeFieldNode, ItemsTableBlockNode, SignatureBlockNode],
-    onUpdate: ({ editor }) => onChange(editor.getJSON()),
+    onUpdate: ({ editor }) => {
+      const json = editor.getJSON()
+      lastSyncedValue.current = json
+      onChange(json)
+    },
   })
 
-  // Si el `value` cambia por fuera (ej. "Empezar desde la plantilla
-  // actual"), sincronizar el editor — sin esto, `useEditor` solo lee
-  // `content` en el primer render.
   useEffect(() => {
     if (!editor) return
-    const current = JSON.stringify(editor.getJSON())
-    const next = JSON.stringify(value)
-    if (current !== next) editor.commands.setContent(value)
+    if (value === lastSyncedValue.current) return
+    lastSyncedValue.current = value
+    editor.commands.setContent(value)
   }, [value, editor])
 
   if (!editor) return null
