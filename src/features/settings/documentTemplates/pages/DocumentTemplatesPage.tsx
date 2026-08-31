@@ -1,4 +1,4 @@
-import { Suspense, useState } from 'react'
+import { Suspense, useMemo, useState } from 'react'
 import { toast } from 'sonner'
 import { BackLink } from '@/components/shared/BackLink'
 import { PageHeader } from '@/components/shared/PageHeader'
@@ -112,7 +112,20 @@ function TemplateDraftPanel({
     }
   }
 
-  const sampleContext = documentType === 'contract' ? buildSampleContractContext(me?.company) : buildSampleSettlementContext(me?.company)
+  // `TemplateRenderer` pasa este objeto al array de dependencias de
+  // `useEditor` (@tiptap/react) — sin memoizar, era una referencia NUEVA en
+  // cada render, así que Tiptap destruía y recreaba el editor de la vista
+  // previa en cada tecla escrita. La recreación pisaba el ciclo de vida de
+  // los NodeViews de React de los campos dinámicos (`ReactNodeViewRenderer`)
+  // y producía "Cannot read properties of null (reading 'commands')" —
+  // reportado en vivo: crear una plantilla y abrirla tira ese error, volver
+  // a intentar ya no (el segundo intento no dispara el mismo re-render en
+  // cascada). `useMemo` solo recalcula cuando el tipo de documento o los
+  // datos de la empresa cambian de verdad.
+  const sampleContext = useMemo(
+    () => (documentType === 'contract' ? buildSampleContractContext(me?.company) : buildSampleSettlementContext(me?.company)),
+    [documentType, me?.company],
+  )
 
   return (
     <div className="flex flex-col gap-4">

@@ -2,7 +2,17 @@
 
 > Registro vivo de qué existe en el código, cómo está armado y por qué se tomó cada decisión — para que cualquiera (humano o Claude Code) pueda retomar el proyecto sin releer todo el historial de commits. Se actualiza en cada paso del "Orden de implementación" de `CLAUDE.md`. No repite lo que ya está en `ARCHITECTURE.md`/`DESIGN_SYSTEM.md` (el qué-debería-ser); esto es el qué-hay-hoy y las decisiones concretas tomadas al construirlo.
 
-## Footer: de bloque oscuro de 3 columnas a una línea (30/08/2026)
+## Fix: crear una plantilla y abrirla tiraba "No se pudo cargar la app" (30/08/2026)
+
+Reportado en vivo por Mateo: crear una plantilla de documento, abrirla, error de pantalla completa ("Cannot read properties of null (reading 'commands')"); "Reintentar" (el error boundary de rutas de TanStack Router) y volver a abrirla ya no fallaba.
+
+### La causa: un objeto sin memoizar en el array de dependencias de `useEditor`
+
+`TemplateRenderer` (la vista previa) le pasa `mergeFieldContext` a `useEditor(options, [body, mergeFieldContext, ...])` — en `@tiptap/react`, ese segundo argumento le dice al editor CUÁNDO destruirse y recrearse desde cero, no solo cuándo re-renderizar. `DocumentTemplatesPage` armaba ese contexto con `buildSampleContractContext(me?.company)` **sin `useMemo`** — una referencia nueva en cada render, así que Tiptap destruía y recreaba el editor de la vista previa constantemente.
+
+La mayor parte del tiempo eso solo era trabajo de más (recrear el editor en cada tecla escrita). Pero justo al crear una plantilla nueva, `onSaved(id)` cambia `selectedId`, lo que remonta `TemplateDraftPanel` (tiene `key={selectedId}`) — y microsegundos después, la invalidación de `useCreateDocumentTemplate` trae el `template` real y dispara OTRO render inmediato. Esa ventana justo coincide con el primer montaje de los NodeViews de React de los campos dinámicos (`ReactNodeViewRenderer`, usado por `MergeFieldNode`/`ItemsTableBlockNode`/`SignatureBlockNode`) — si el editor se destruye mientras un NodeView todavía está montando, ese NodeView queda con una referencia al editor ya nulo, y la librería explota al leer `.commands` sobre `null`. Para una plantilla ya existente (sin esa secuencia crear→re-render inmediato) la ventana de carrera no se da, por eso reabrir "ya no fallaba".
+
+**Fix:** `sampleContext` en `DocumentTemplatesPage.tsx` pasa a `useMemo(() => ..., [documentType, me?.company])` — misma referencia entre renders mientras el tipo de documento y los datos de la empresa no cambien de verdad. El editor de la vista previa deja de recrearse en cada render.
 
 Feedback directo tras ver el segundo pase en producción: "el footer me parece muy invasivo y se ve muy raro, hazlo mucho menos invasivo". El footer del 28/08 (`AppFooter.tsx`) reusaba los tokens del sidebar (`bg-sidebar`, oscuro) en un bloque de 3 columnas con ícono de marca, datos de la empresa y contacto — pensado como "cierre visual" de la página, pero en el uso real competía con el contenido en vez de acompañarlo.
 
