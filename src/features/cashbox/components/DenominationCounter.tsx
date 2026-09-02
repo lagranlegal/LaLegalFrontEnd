@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Money } from '@/components/shared/Money'
 import { formatCOP, multiplyMoney, sumMoney } from '@/lib/money'
+import { cn } from '@/lib/utils'
 
 /**
  * Denominaciones del peso colombiano en circulación. El billete de $2.000
@@ -37,25 +38,30 @@ export function DenominationCounter({ onTotalChange }: { onTotalChange: (total: 
 
   return (
     <div className="flex flex-col gap-2 rounded-input border border-border p-3">
-      <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 sm:grid-cols-3">
+      {/* Dos columnas, no tres: con tres, la etiqueta de una denominación
+          quedaba pegada al input de la anterior y el subtotal no alcanzaba a
+          entrar. Contar plata se hace mirando, así que el subtotal por línea
+          tiene que verse. */}
+      <div className="grid grid-cols-1 gap-x-6 gap-y-1.5 sm:grid-cols-2">
         {COP_DENOMINATIONS.map((denom) => {
           const qty = quantities[denom] ?? 0
           return (
-            <div key={denom} className="flex items-center justify-between gap-2">
-              <label htmlFor={`denom-${denom}`} className="tnum shrink-0 text-sm text-muted-foreground">
+            <div key={denom} className="flex items-center gap-2">
+              <label htmlFor={`denom-${denom}`} className="tnum w-20 shrink-0 text-sm text-muted-foreground">
                 {formatCOP(denom, { maximumFractionDigits: 0 })}
               </label>
-              <div className="flex items-center gap-2">
-                <input
-                  id={`denom-${denom}`}
-                  inputMode="numeric"
-                  className={qtyInputClass}
-                  value={qty === 0 ? '' : String(qty)}
-                  placeholder="0"
-                  onChange={(e) => handleQuantityChange(denom, e.target.value)}
-                />
-                {qty > 0 && <Money value={multiplyMoney(denom, qty)} className="tnum w-24 shrink-0 text-right text-xs text-muted-foreground" />}
-              </div>
+              <input
+                id={`denom-${denom}`}
+                inputMode="numeric"
+                className={qtyInputClass}
+                value={qty === 0 ? '' : String(qty)}
+                placeholder="0"
+                onChange={(e) => handleQuantityChange(denom, e.target.value)}
+              />
+              <Money
+                value={multiplyMoney(denom, qty)}
+                className={cn('tnum flex-1 text-right text-xs', qty > 0 ? 'text-muted-foreground' : 'text-transparent')}
+              />
             </div>
           )
         })}
