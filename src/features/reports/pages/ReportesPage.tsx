@@ -603,16 +603,6 @@ export function ReportesPage() {
             <DailyTrendChart data={summary.byDay} />
           </CardShell>
 
-          {/* La serie mensual NO responde al rango de arriba a propósito: es
-              la pregunta larga ("¿cómo viene el año?"), no "¿cómo estuvo este
-              período?". Sale de los documentos, así que incluye lo de hoy
-              aunque la caja siga abierta — y por eso tampoco arrastra el tope
-              de 90 días de la tendencia diaria. */}
-          {series && series.points.length > 0 && (
-            <CardShell title="Últimos 12 meses — ventas, intereses y gastos" subtitle="Independiente del rango elegido arriba">
-              <MonthlyTrendChart data={series.points} />
-            </CardShell>
-          )}
 
           <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
             <CardShell title="Gastos por categoría">
@@ -650,6 +640,17 @@ export function ReportesPage() {
             </div>
           </CardShell>
         </>
+      )}
+
+      {/* Fuera del bloque que exige cierres de caja en el rango, a propósito:
+          la serie de 12 meses no depende del rango, así que esconderla porque
+          el mes en curso todavía no tiene cierres —justo lo que pasa el día 1
+          de cada mes— borraría la tendencia del año entero cuando más se
+          necesita. Sale de los documentos, así que no necesita cierres. */}
+      {series && series.points.length > 0 && (
+        <CardShell title="Últimos 12 meses — ventas, intereses y gastos" subtitle="Independiente del rango elegido arriba">
+          <MonthlyTrendChart data={series.points} />
+        </CardShell>
       )}
 
       <div className="flex flex-col gap-4">
