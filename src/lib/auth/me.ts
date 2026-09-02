@@ -1,4 +1,4 @@
-import { queryOptions, useQuery } from '@tanstack/react-query'
+import { queryOptions, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api, unwrap } from '@/lib/api/client'
 import type { components } from '@/types/api'
 
@@ -23,4 +23,20 @@ export function meQueryOptions() {
 
 export function useMe() {
   return useQuery(meQueryOptions())
+}
+
+export type MeUpdate = components['schemas']['MeUpdateIn']
+
+/**
+ * El usuario edita su propio perfil (nombre y foto). `PATCH /me` devuelve el
+ * `MeOut` completo ya actualizado, así que se escribe directo en el cache en
+ * vez de invalidar y volver a pedir: la pantalla no parpadea y el shell
+ * (nombre en el topbar) se actualiza en el mismo render.
+ */
+export function useUpdateMe() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (body: MeUpdate) => unwrap(api.PATCH('/api/v1/me', { body })),
+    onSuccess: (me) => queryClient.setQueryData(['me'], me),
+  })
 }

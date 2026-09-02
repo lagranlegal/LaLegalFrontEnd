@@ -9,6 +9,7 @@ import { subtractMoney } from '@/lib/money'
 import { cn } from '@/lib/utils'
 import { useCloseSession, useSessionReport, type Session } from '@/features/cashbox/api'
 import { SessionReportPanel } from '@/features/cashbox/components/SessionReportPanel'
+import { DenominationCounter } from '@/features/cashbox/components/DenominationCounter'
 
 const inputClass = 'mt-1 w-full rounded-input border border-border bg-background px-3 py-2 text-sm text-foreground outline-none focus:border-primary'
 
@@ -22,6 +23,7 @@ const inputClass = 'mt-1 w-full rounded-input border border-border bg-background
 export function CloseSessionDialog({ open, onOpenChange, session }: { open: boolean; onOpenChange: (open: boolean) => void; session: Session }) {
   const { data: report, isPending, isError, refetch } = useSessionReport(open ? session.id : undefined)
   const [countedCash, setCountedCash] = useState('0.00')
+  const [showDenominations, setShowDenominations] = useState(false)
   const [reason, setReason] = useState('')
   const [formError, setFormError] = useState<string | null>(null)
   const closeSession = useCloseSession()
@@ -69,10 +71,23 @@ export function CloseSessionDialog({ open, onOpenChange, session }: { open: bool
         {report && <SessionReportPanel report={report} />}
 
         <div>
-          <label htmlFor="counted-cash" className="text-sm font-medium text-foreground">
-            Efectivo contado
-          </label>
-          <MoneyInput id="counted-cash" className="mt-1" value={countedCash} onChange={setCountedCash} autoFocus />
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <label htmlFor="counted-cash" className="text-sm font-medium text-foreground">
+              Efectivo contado
+            </label>
+            <Button type="button" variant="ghost" size="sm" onClick={() => setShowDenominations((v) => !v)}>
+              {showDenominations ? 'Ocultar conteo por denominación' : 'Contar por denominación'}
+            </Button>
+          </div>
+          {/* El conteo por denominación llena este mismo campo — el backend
+              sigue recibiendo un solo `counted_cash`. Se puede digitar el
+              total directo, como siempre; esto es una ayuda opcional. */}
+          {showDenominations && (
+            <div className="mt-2">
+              <DenominationCounter onTotalChange={setCountedCash} />
+            </div>
+          )}
+          <MoneyInput id="counted-cash" className="mt-2" value={countedCash} onChange={setCountedCash} autoFocus />
         </div>
 
         {report && (

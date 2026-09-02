@@ -733,13 +733,21 @@ export function InventoryPage() {
           })
         }
       >
-        <TabsList>
-          <TabsTrigger value="products">Productos</TabsTrigger>
-          <TabsTrigger value="items">Lotes</TabsTrigger>
-          <TabsTrigger value="entries">Ingresos</TabsTrigger>
-          <TabsTrigger value="exits">Egresos</TabsTrigger>
-          <TabsTrigger value="transformations">Transformaciones</TabsTrigger>
-        </TabsList>
+        {/* Cinco pestañas no caben en un teléfono: `TabsList` es `inline-flex
+            w-fit`, así que sin este contenedor la última se cortaba sin
+            forma de llegar a ella. El scroll horizontal vive acá y no en
+            `TabsList` (componente de shadcn/ui, se themea por tokens y no se
+            edita a mano) — las demás pantallas tienen 2-3 pestañas y no lo
+            necesitan. */}
+        <div className="overflow-x-auto">
+          <TabsList>
+            <TabsTrigger value="products">Productos</TabsTrigger>
+            <TabsTrigger value="items">Lotes</TabsTrigger>
+            <TabsTrigger value="entries">Ingresos</TabsTrigger>
+            <TabsTrigger value="exits">Egresos</TabsTrigger>
+            <TabsTrigger value="transformations">Transformaciones</TabsTrigger>
+          </TabsList>
+        </div>
         <TabsContent value="products">
           <ProductsTab />
         </TabsContent>

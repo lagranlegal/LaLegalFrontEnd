@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { addMonthsToDateOnly, BOGOTA_TZ, formatDate, formatDateShort, formatDateTime, formatTime, getActiveTimezone, setActiveTimezone, todayBogota } from '@/lib/dates'
+import { addMonthsToDateOnly, BOGOTA_TZ, formatDate, formatDateShort, formatDateTime, formatMonth, formatTime, getActiveTimezone, setActiveTimezone, todayBogota } from '@/lib/dates'
 
 describe('todayBogota', () => {
   afterEach(() => {
@@ -127,5 +127,26 @@ describe('formatDateShort', () => {
 
   it('rechaza un formato que no sea yyyy-MM-dd en vez de inventar una fecha', () => {
     expect(() => formatDateShort('20/08/2026')).toThrow()
+  })
+})
+
+
+describe('formatMonth', () => {
+  it('nombra el mes y conserva el año — la serie cruza el cambio de año', () => {
+    expect(formatMonth('2026-08-01')).toBe('ago 2026')
+    expect(formatMonth('2026-01-01')).toBe('ene 2026')
+    expect(formatMonth('2025-12-01')).toBe('dic 2025')
+  })
+
+  it('no construye un Date: el día 1 no se corre a diciembre del año anterior', () => {
+    // `new Date('2026-01-01')` se interpreta como UTC y, en una zona al
+    // oeste, retrocede al 31/12 del año anterior. Ese es exactamente el bug
+    // que este proyecto ya pagó en el backend, así que el formateo lee la
+    // cadena y no toca Date.
+    expect(formatMonth('2026-01-01')).toBe('ene 2026')
+  })
+
+  it('rechaza un formato que no sea yyyy-MM-dd en vez de devolver algo raro', () => {
+    expect(() => formatMonth('08/2026')).toThrow()
   })
 })

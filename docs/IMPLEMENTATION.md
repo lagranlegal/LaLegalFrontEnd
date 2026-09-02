@@ -2,6 +2,40 @@
 
 > Registro vivo de qué existe en el código, cómo está armado y por qué se tomó cada decisión — para que cualquiera (humano o Claude Code) pueda retomar el proyecto sin releer todo el historial de commits. Se actualiza en cada paso del "Orden de implementación" de `CLAUDE.md`. No repite lo que ya está en `ARCHITECTURE.md`/`DESIGN_SYSTEM.md` (el qué-debería-ser); esto es el qué-hay-hoy y las decisiones concretas tomadas al construirlo.
 
+## Pendientes cerrados: perfil, serie mensual, filtros de venta, denominaciones (02/09/2026)
+
+Mateo pidió cerrar todo lo que quedaba menos el ambiente de producción. Seis puntos, tres con backend nuevo.
+
+### `PATCH /me` + pantalla de perfil (`/perfil`)
+
+No había pantalla de perfil porque no había endpoint. Ahora el backend acepta `full_name` y `photo_url` — y **solo** esos dos: el schema no admite `role_id`/`status`, que es lo que permite que el endpoint viva sin `require_permission` (editarse a uno mismo no es gestionar usuarios; si aceptara el rol, cualquiera se ascendería a admin desde su perfil). La ruta `/perfil` tampoco lleva guard de permiso, por lo mismo, y se llega desde el menú del avatar en el topbar.
+
+`MeUserOut` gana `photo_url`, y `MeOut` pasa a leer nombre/foto de la FILA en vez del `CurrentUser` cacheado (30s): sin eso, justo después de guardar el usuario seguiría viendo su nombre viejo. La mutación escribe la respuesta directo en el cache de `['me']` (`setQueryData`) en vez de invalidar — el nombre del topbar cambia en el mismo render, sin parpadeo.
+
+El correo y el rol se muestran pero como solo lectura, con el motivo escrito al lado: el correo es la identidad de Supabase Auth (otro flujo, con verificación) y el rol lo asigna un admin desde Identidad. Sin esa aclaración, "¿y por qué no puedo cambiar mi correo?" es un ticket asegurado.
+
+### `GET /reports/series?months=12` + gráfica de 12 meses
+
+La tendencia de `/reportes` se arma desde el desglose de caja: solo cubre sesiones CERRADAS y está topada a 90 días. La serie nueva sale de los DOCUMENTOS (`contract_payment`, `sale`, `expense`) con la MISMA semántica de ingreso que `/profit` y `/pawn-performance` — no una tercera definición — así que incluye lo de hoy y no necesita ese tope.
+
+`MonthlyTrendChart` (nuevo) separa Ventas / Intereses / Gastos en vez de sumar los dos ingresos: en este negocio son dos motores distintos y la pregunta de la tendencia larga es cuál está creciendo. Deliberadamente NO responde al date picker — es "¿cómo viene el año?", no "¿cómo estuvo este período?", y se rotula así en la card. `formatMonth` nuevo en `lib/dates.ts`, con tabla de nombres en vez de `toLocaleDateString`: construir un `Date` a partir de `"2026-01-01"` lo corre a diciembre del año anterior en una zona al oeste, que es el bug que este proyecto ya pagó una vez.
+
+### Rankings acotados al rango (`GET /sales?from_date&to_date`)
+
+"Prendas más vendidas"/"categorías más movidas" eran el histórico completo, rotulado así para no mentir, porque `GET /sales` no tenía filtro de fecha. Ahora lo tiene (comparando `sold_at` en la zona de la EMPRESA, no en UTC — una venta de las 7pm en Bogotá pertenece a ese día) y los rankings siguen el mismo rango que el resto de la pestaña. Los artículos se siguen pidiendo sin filtrar: se usan para resolver nombre y categoría, y una prenda vendida en el rango pudo entrar al inventario mucho antes.
+
+### Conteo por denominación en el cierre de caja
+
+`counted_cash` era "un número suelto" que había que sumar de memoria. `DenominationCounter` (nuevo, opcional, colapsado por defecto) lista las denominaciones del peso colombiano, multiplica por la cantidad digitada y llena el mismo campo de siempre. **El backend no cambió**: sigue recibiendo un solo `counted_cash`. Toda la aritmética pasa por `multiplyMoney`/`sumMoney` (centavos enteros), nunca `parseFloat`.
+
+### Scroll horizontal en las pestañas de Inventario
+
+Cinco pestañas no caben en un teléfono y la última quedaba cortada sin forma de llegar. El `overflow-x-auto` vive en `InventoryPage` y no en `TabsList` (componente de shadcn/ui, se themea por tokens y no se edita a mano) — las demás pantallas tienen 2-3 pestañas y no lo necesitan.
+
+### Latencia de `/catalogs/categories`: falso positivo, cerrado sin cambio de código
+
+Estaba anotado como "~4s consistentes, sin diagnosticar". Medido de verdad: **primera llamada 7.9s, las siguientes ~0.79s** — y `/me`, `/accounts`, `/catalogs/suppliers` y `/reports/dashboard` dan todas ~0.75-0.88s. No hay nada específico de categorías: los ~0.8s son el piso de la app (red hasta Fly + verificación de token + Fly↔Supabase) y los 4s reportados eran el **cold start** de Fly (`min_machines_running = 0`, decisión de costo ya documentada en `fly.dev.toml`). Tampoco falta un índice: los `unique (company_id, ...)` de `category` ya dan índice con `company_id` como columna líder. Se cierra como medición equivocada, no como bug.
+
 ## Fix: crear una plantilla y abrirla tiraba "No se pudo cargar la app" (30/08/2026)
 
 Reportado en vivo por Mateo: crear una plantilla de documento, abrirla, error de pantalla completa ("Cannot read properties of null (reading 'commands')"); "Reintentar" (el error boundary de rutas de TanStack Router) y volver a abrirla ya no fallaba. Dos rondas — la primera solo tapó una parte del problema.

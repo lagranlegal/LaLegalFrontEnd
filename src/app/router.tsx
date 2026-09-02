@@ -36,6 +36,7 @@ import { ReportesPage } from '@/features/reports/pages/ReportesPage'
 import { AccountsPage } from '@/features/accounts/pages/AccountsPage'
 import { SettingsPage } from '@/features/settings/pages/SettingsPage'
 import { DocumentTemplatesPage } from '@/features/settings/documentTemplates/pages/DocumentTemplatesPage'
+import { ProfilePage } from '@/features/settings/pages/ProfilePage'
 import { CompaniesPage } from '@/features/platform/pages/CompaniesPage'
 
 interface RouterContext {
@@ -420,6 +421,15 @@ const documentTemplatesRoute = createRoute({
   },
 })
 
+// Perfil propio: SIN guard de permiso, a diferencia del resto de
+// /configuracion. Editarse el nombre y la foto no es configurar la empresa —
+// cualquier usuario logueado puede, igual que `GET`/`PATCH /me` en el backend.
+const profileRoute = createRoute({
+  getParentRoute: () => appLayoutRoute,
+  path: '/perfil',
+  component: ProfilePage,
+})
+
 // El módulo tiene permisos propios desde 00029 (antes se colaba por
 // `cashbox.view`/`company.configure`, lo que lo hacía imposible de otorgar
 // solo). El guard de ruta usa el de LECTURA: un asesor que cobra necesita ver
@@ -506,6 +516,7 @@ const routeTree = rootRoute.addChildren([
     accountsRoute,
     settingsRoute,
     documentTemplatesRoute,
+    profileRoute,
   ]),
 ])
 

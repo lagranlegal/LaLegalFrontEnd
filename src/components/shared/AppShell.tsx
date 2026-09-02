@@ -219,6 +219,7 @@ export function AppShell() {
                 <span className="block truncate text-xs font-normal text-muted-foreground">{me?.user.email}</span>
               </DropdownMenuLabel>
               <DropdownMenuSeparator />
+              <DropdownMenuItem onSelect={() => void navigate({ to: '/perfil' })}>Mi perfil</DropdownMenuItem>
               <DropdownMenuItem onSelect={handleLogout}>Cerrar sesión</DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>

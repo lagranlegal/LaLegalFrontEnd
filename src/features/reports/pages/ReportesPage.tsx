@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button'
 import { exportSheetsToExcel } from '@/lib/export/xlsx'
 import { ContractsStatusChart, type StatusDatum } from '@/components/shared/charts/ContractsStatusChart'
 import { DailyTrendChart } from '@/components/shared/charts/DailyTrendChart'
+import { MonthlyTrendChart } from '@/components/shared/charts/MonthlyTrendChart'
 import { DonutChart, type DonutDatum } from '@/components/shared/charts/DonutChart'
 import { MODULE_LABELS, conceptLabel } from '@/lib/modules'
 import { PAYMENT_METHOD_LABELS } from '@/lib/paymentMethods'
@@ -19,7 +20,7 @@ import { usePermission } from '@/lib/permissions/usePermission'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { ContablesSection } from '@/features/reports/components/ContablesSection'
 import { useExpenseCategories } from '@/features/cashbox/api'
-import { useIncomeStatement, useClosingsBreakdown, useClosingsInRange, useCarteraActual, useExpensesByCategory, useAllTimeItemSales, useProfitSummary, usePawnPerformance, MAX_RANGE_DAYS } from '@/features/reports/api'
+import { useIncomeStatement, useClosingsBreakdown, useClosingsInRange, useCarteraActual, useExpensesByCategory, useItemSales, useMonthlySeries, useProfitSummary, usePawnPerformance, MAX_RANGE_DAYS } from '@/features/reports/api'
 import { aggregateFinancialSummary, aggregateExpensesByCategory, computeDelta, daysBetweenDateOnly, previousRangeFor } from '@/features/reports/aggregate'
 import { aggregateItemRanking } from '@/features/reports/rankings'
 import { ModuleSplitBar } from '@/features/reports/components/ModuleSplitBar'
@@ -329,7 +330,8 @@ export function ReportesPage() {
   const { data: cartera } = useCarteraActual()
   const { data: expenses } = useExpensesByCategory(closings)
   const { data: expenseCategories } = useExpenseCategories()
-  const { data: allTimeSales } = useAllTimeItemSales()
+  const { data: itemSales } = useItemSales(rangeTooWide ? null : range)
+  const { data: series } = useMonthlySeries(12)
   const { data: categories } = useCategories()
   // Mismo hook que ya usa `IncomeStatementCard` — misma query key, mismo
   // cache: no dispara un segundo request, solo lee lo que ya está pedido.
@@ -356,8 +358,8 @@ export function ReportesPage() {
     [filteredExpenses, expenseCategories],
   )
   const ranking = useMemo(
-    () => (allTimeSales && categories ? aggregateItemRanking(allTimeSales.sales, allTimeSales.items, categories) : { topItems: [], topCategories: [] }),
-    [allTimeSales, categories],
+    () => (itemSales && categories ? aggregateItemRanking(itemSales.sales, itemSales.items, categories) : { topItems: [], topCategories: [] }),
+    [itemSales, categories],
   )
 
   // Ingreso OPERATIVO por medio de pago (ya filtrado por módulo dentro de
@@ -601,6 +603,17 @@ export function ReportesPage() {
             <DailyTrendChart data={summary.byDay} />
           </CardShell>
 
+          {/* La serie mensual NO responde al rango de arriba a propósito: es
+              la pregunta larga ("¿cómo viene el año?"), no "¿cómo estuvo este
+              período?". Sale de los documentos, así que incluye lo de hoy
+              aunque la caja siga abierta — y por eso tampoco arrastra el tope
+              de 90 días de la tendencia diaria. */}
+          {series && series.points.length > 0 && (
+            <CardShell title="Últimos 12 meses — ventas, intereses y gastos" subtitle="Independiente del rango elegido arriba">
+              <MonthlyTrendChart data={series.points} />
+            </CardShell>
+          )}
+
           <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
             <CardShell title="Gastos por categoría">
               <DonutChart data={expenseDonut} />
@@ -640,8 +653,8 @@ export function ReportesPage() {
       )}
 
       <div className="flex flex-col gap-4">
-        <h2 className="text-lg font-semibold text-foreground">Histórico completo</h2>
-        <p className="-mt-3 text-xs text-muted-foreground">No depende del rango elegido arriba — GET /sales todavía no tiene filtro de fecha en el backend.</p>
+        <h2 className="text-lg font-semibold text-foreground">Lo más vendido del período</h2>
+        <p className="-mt-3 text-xs text-muted-foreground">Del mismo rango elegido arriba (02/09/2026: `GET /sales` ganó filtro de fecha — antes esto era el histórico completo).</p>
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
           <CardShell title="Prendas más vendidas">
             <RankingList rows={ranking.topItems.map((i) => ({ key: i.itemId, label: i.code ? `${i.name} (${i.code})` : i.name, quantity: i.quantity, revenue: i.revenue }))} unit="uds" />

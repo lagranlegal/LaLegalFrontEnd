@@ -355,7 +355,20 @@ export interface paths {
         delete?: never;
         options?: never;
         head?: never;
-        patch?: never;
+        /**
+         * Update Me
+         * @description El usuario edita su propio perfil: nombre y foto.
+         *
+         *     Sin `require_permission` a propósito, igual que `GET /me`: editarse a uno
+         *     mismo no es gestionar usuarios. Lo que impide que esto sea un agujero es
+         *     el schema — `MeUpdateIn` no acepta `role_id` ni `status`, así que no hay
+         *     forma de ascenderse desde acá (eso sigue exigiendo
+         *     `identity.manage_users` en `PATCH /identity/users/{id}/role`).
+         *
+         *     Devuelve el `MeOut` completo y ya actualizado: el front rehidrata su
+         *     estado con la misma respuesta, sin un segundo `GET /me`.
+         */
+        patch: operations["update_me_api_v1_me_patch"];
         trace?: never;
     };
     "/api/v1/accounts/transfers": {
@@ -1426,7 +1439,12 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** List Sales */
+        /**
+         * List Sales
+         * @description `from_date`/`to_date` acotan por `sold_at` en la zona horaria de la
+         *     empresa (no UTC), mismo criterio que los reportes. Ambos opcionales e
+         *     independientes — sin ellos, el comportamiento es el de siempre.
+         */
         get: operations["list_sales_api_v1_sales_get"];
         put?: never;
         /** Create Sale */
@@ -1787,6 +1805,34 @@ export interface paths {
          *     vuelve gasto cuando se vende.
          */
         get: operations["get_income_statement_api_v1_reports_income_statement_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/reports/series": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Monthly Series
+         * @description Serie mensual de ingresos operativos (interés + ventas) y gastos.
+         *
+         *     La gráfica de tendencia de `/reportes` se arma hoy con el desglose de caja,
+         *     que solo cubre sesiones CERRADAS y está topado a 90 días por el N+1 de
+         *     gastos por categoría. Esta serie sale de los DOCUMENTOS (`contract_payment`,
+         *     `sale`, `expense`), así que incluye lo de hoy y no necesita ese tope.
+         *
+         *     Los meses sin actividad vienen en cero, no se omiten: un hueco haría que la
+         *     gráfica uniera dos meses no consecutivos con una recta.
+         */
+        get: operations["get_monthly_series_api_v1_reports_series_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -3465,6 +3511,25 @@ export interface components {
              */
             expires_at: string;
         };
+        /**
+         * MeUpdateIn
+         * @description Lo que un usuario puede cambiar DE SÍ MISMO, sin permisos de
+         *     identidad: su nombre y su foto. Nada más.
+         *
+         *     Fuera a propósito: `email` es la identidad de Supabase Auth y cambiarlo
+         *     es un flujo aparte (verificación incluida); `role_id`/`status` son
+         *     gestión de identidad y exigen `identity.manage_users` — si se pudieran
+         *     tocar acá, cualquiera se ascendería a admin editando su perfil.
+         *
+         *     PATCH parcial (`exclude_unset`): omitir un campo lo conserva, mandar
+         *     `null` explícito en `photo_url` borra la foto.
+         */
+        MeUpdateIn: {
+            /** Full Name */
+            full_name?: string | null;
+            /** Photo Url */
+            photo_url?: string | null;
+        };
         /** MeUserOut */
         MeUserOut: {
             /**
@@ -3476,6 +3541,40 @@ export interface components {
             full_name: string;
             /** Email */
             email: string;
+            /** Photo Url */
+            photo_url?: string | null;
+        };
+        /**
+         * MonthlySeriesOut
+         * @description Serie mensual para la gráfica de tendencia del dashboard/reportes.
+         *
+         *     Incluye los meses sin actividad en cero — un mes faltante haría que la
+         *     gráfica uniera dos meses no consecutivos con una recta y mostrara una
+         *     tendencia que nunca existió.
+         */
+        MonthlySeriesOut: {
+            /** Months */
+            months: number;
+            /** Points */
+            points: components["schemas"]["MonthlySeriesPointOut"][];
+        };
+        /**
+         * MonthlySeriesPointOut
+         * @description Un mes de la serie histórica. `month` es el PRIMER día del mes, en la
+         *     zona horaria de la empresa.
+         */
+        MonthlySeriesPointOut: {
+            /**
+             * Month
+             * Format: date
+             */
+            month: string;
+            /** Interest Revenue */
+            interest_revenue: string;
+            /** Sales Revenue */
+            sales_revenue: string;
+            /** Expenses */
+            expenses: string;
         };
         /**
          * PawnPerformanceOut
@@ -5408,6 +5507,39 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["MeOut"];
+                };
+            };
+        };
+    };
+    update_me_api_v1_me_patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MeUpdateIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MeOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
@@ -7697,6 +7829,8 @@ export interface operations {
                 limit?: number;
                 customer_id?: string | null;
                 status?: string | null;
+                from_date?: string | null;
+                to_date?: string | null;
             };
             header?: never;
             path?: never;
@@ -8272,6 +8406,38 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["IncomeStatementOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_monthly_series_api_v1_reports_series_get: {
+        parameters: {
+            query?: {
+                /** @description Meses hacia atrás, incluyendo el actual. */
+                months?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MonthlySeriesOut"];
                 };
             };
             /** @description Validation Error */

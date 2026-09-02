@@ -59,6 +59,24 @@ export function formatDateShort(dateOnly: string): string {
   return `${day}/${month}`
 }
 
+const MONTH_ABBR = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'] as const
+
+/**
+ * `ago 2026` — para el eje de una serie MENSUAL, donde `dd/MM` no dice nada
+ * (todos los puntos caen el día 1) y el año sí importa: la serie cruza el
+ * cambio de año. Tabla de nombres en vez de `toLocaleDateString`, por la
+ * misma razón que `formatDate`: no construir un `Date` a partir de una fecha
+ * sin hora, que es de donde salen los corrimientos de un día.
+ */
+export function formatMonth(dateOnly: string): string {
+  const match = DATE_ONLY_RE.exec(dateOnly)
+  if (!match) {
+    throw new Error(`formatMonth: se esperaba "yyyy-MM-dd", llegó ${JSON.stringify(dateOnly)}`)
+  }
+  const [, year, month] = match
+  return `${MONTH_ABBR[Number(month) - 1]} ${year}`
+}
+
 /**
  * Timestamps con hora (`created_at`, `updated_at`…) se convierten a la zona
  * de la empresa y se formatean `dd/MM/yyyy h:mm a`.

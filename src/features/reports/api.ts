@@ -97,25 +97,51 @@ export function useExpensesByCategory(closings: ClosingHistory[] | undefined) {
 }
 
 /**
- * "Prendas más vendidas"/"categorías más movidas" — TODO el histórico, no el
- * rango elegido arriba (`GET /sales` no tiene filtro de fecha — decisión
- * confirmada con el cliente, ver `features/reports/rankings.ts`). Query
- * independiente del date picker, `staleTime` largo — no se recalcula cada
- * vez que se cambia el rango de las demás cards. Tope defensivo de 50
- * páginas (`fetchAllPages`) en ventas Y artículos, para no crecer sin límite
- * con el historial de una compraventa que lleva años operando.
+ * "Prendas más vendidas"/"categorías más movidas", ACOTADAS al rango elegido
+ * arriba (02/09/2026: `GET /sales` ganó `?from_date`/`?to_date`, que era lo
+ * único que faltaba — antes esto era el histórico completo y se rotulaba
+ * así en la UI para no mentir). Tope defensivo de 50 páginas
+ * (`fetchAllPages`) en ventas Y artículos.
+ *
+ * Los artículos NO se filtran por fecha: se piden para resolver el nombre y
+ * la categoría de lo vendido, y una prenda vendida en el rango pudo haber
+ * entrado al inventario mucho antes.
  */
-export function useAllTimeItemSales() {
+export function useItemSales(range: DateRangeValue | null) {
   return useQuery({
-    queryKey: ['reports', 'all-time-item-sales'] as const,
+    queryKey: ['reports', 'item-sales', range?.from, range?.to] as const,
+    enabled: !!range,
     staleTime: 10 * 60 * 1000,
     queryFn: async () => {
       const [sales, items] = await Promise.all([
-        fetchAllPages<Sale>((cursor) => unwrap(api.GET('/api/v1/sales', { params: { query: { cursor, limit: 100 } } }))),
+        fetchAllPages<Sale>((cursor) =>
+          unwrap(
+            api.GET('/api/v1/sales', {
+              params: { query: { cursor, limit: 100, from_date: range!.from, to_date: range!.to } },
+            }),
+          ),
+        ),
         fetchAllPages<Item>((cursor) => unwrap(api.GET('/api/v1/inventory/items', { params: { query: { cursor, limit: 100 } } }))),
       ])
       return { sales, items }
     },
+  })
+}
+
+export type MonthlySeries = components['schemas']['MonthlySeriesOut']
+
+/**
+ * Serie mensual de ingresos y gastos (`GET /reports/series`, backend
+ * 02/09/2026). No depende del rango del date picker: es la tendencia larga
+ * (12 meses por defecto), la pregunta "¿cómo viene el año?" — distinta de
+ * "¿cómo estuvo este período?", que es lo que responde el resto de la
+ * pantalla. Sale de los documentos, así que incluye lo de hoy.
+ */
+export function useMonthlySeries(months = 12) {
+  return useQuery({
+    queryKey: ['reports', 'series', months] as const,
+    staleTime: 10 * 60 * 1000,
+    queryFn: () => unwrap(api.GET('/api/v1/reports/series', { params: { query: { months } } })),
   })
 }
 
