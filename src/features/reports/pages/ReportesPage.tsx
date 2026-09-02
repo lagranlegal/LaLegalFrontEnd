@@ -655,7 +655,7 @@ export function ReportesPage() {
 
       <div className="flex flex-col gap-4">
         <h2 className="text-lg font-semibold text-foreground">Lo más vendido del período</h2>
-        <p className="-mt-3 text-xs text-muted-foreground">Del mismo rango elegido arriba (02/09/2026: `GET /sales` ganó filtro de fecha — antes esto era el histórico completo).</p>
+        <p className="-mt-3 text-xs text-muted-foreground">Del mismo rango de fechas elegido arriba.</p>
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
           <CardShell title="Prendas más vendidas">
             <RankingList rows={ranking.topItems.map((i) => ({ key: i.itemId, label: i.code ? `${i.name} (${i.code})` : i.name, quantity: i.quantity, revenue: i.revenue }))} unit="uds" />
