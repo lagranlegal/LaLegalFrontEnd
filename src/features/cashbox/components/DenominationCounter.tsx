@@ -58,9 +58,11 @@ export function DenominationCounter({ onTotalChange }: { onTotalChange: (total: 
                 placeholder="0"
                 onChange={(e) => handleQuantityChange(denom, e.target.value)}
               />
+              {/* Ancho FIJO, no `flex-1`: con flexible el subtotal se estiraba
+                  hasta pegarse a la etiqueta de la columna de al lado. */}
               <Money
                 value={multiplyMoney(denom, qty)}
-                className={cn('tnum flex-1 text-right text-xs', qty > 0 ? 'text-muted-foreground' : 'text-transparent')}
+                className={cn('tnum w-24 shrink-0 text-right text-xs', qty > 0 ? 'text-muted-foreground' : 'text-transparent')}
               />
             </div>
           )
