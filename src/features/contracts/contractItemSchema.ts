@@ -10,6 +10,9 @@ import { z } from 'zod'
 export const contractItemSchema = z.object({
   category_id: z.string().min(1, 'Selecciona una categoría'),
   description: z.string().min(1, 'La descripción es obligatoria'),
+  // El peso se normaliza al armar el body (`normalizeDecimalInput`), no acá:
+  // un `.transform()` de Zod cambia el tipo de salida del schema y rompe el
+  // tipado del formulario, que usa `z.infer` como tipo de los campos.
   weight_grams: z.string().optional(),
   serial_imei: z.string().optional(),
   item_appraisal: z.string().optional(),

@@ -80,13 +80,21 @@ export function ContractItemsFields<TFieldValues extends FieldValues & { items: 
                 <input className={inputClass} {...register(`items.${index}.description` as FieldPath<TFieldValues>)} />
                 {itemErrors?.[index]?.description && <p className="mt-1 text-sm text-danger">{itemErrors[index]?.description?.message}</p>}
               </div>
+              {/* Los tres campos de abajo NO mostraban su error. Daba igual
+                  mientras nadie los marcara, pero el backend sí: un peso con
+                  coma ("10,5") devuelve un 422 sobre `weight_grams`, y sin
+                  este `<p>` ese error se marcaba en un campo mudo — el
+                  formulario volvía a su estado inicial sin decir nada.
+                  "Opcional" es sobre llenarlo, no sobre llenarlo mal. */}
               <div>
                 <label className="text-sm font-medium text-foreground">Peso (gramos, opcional)</label>
                 <input inputMode="decimal" className={inputClass} {...register(`items.${index}.weight_grams` as FieldPath<TFieldValues>)} />
+                {itemErrors?.[index]?.weight_grams && <p className="mt-1 text-sm text-danger">{itemErrors[index]?.weight_grams?.message}</p>}
               </div>
               <div>
                 <label className="text-sm font-medium text-foreground">Serial / IMEI (opcional)</label>
                 <input className={inputClass} {...register(`items.${index}.serial_imei` as FieldPath<TFieldValues>)} />
+                {itemErrors?.[index]?.serial_imei && <p className="mt-1 text-sm text-danger">{itemErrors[index]?.serial_imei?.message}</p>}
               </div>
               <div>
                 <label className="text-sm font-medium text-foreground">Avalúo de la prenda (opcional)</label>
@@ -95,6 +103,7 @@ export function ContractItemsFields<TFieldValues extends FieldValues & { items: 
                   name={`items.${index}.item_appraisal` as FieldPath<TFieldValues>}
                   render={({ field: appraisalField }) => <MoneyInput className="mt-1" value={appraisalField.value ?? ''} onChange={appraisalField.onChange} />}
                 />
+                {itemErrors?.[index]?.item_appraisal && <p className="mt-1 text-sm text-danger">{itemErrors[index]?.item_appraisal?.message}</p>}
               </div>
             </div>
 

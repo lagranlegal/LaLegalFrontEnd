@@ -83,6 +83,26 @@ function centsToDecimal(cents: number): string {
  * monto que manda la API (eso siempre lo calcula el backend).
  * `sumMoney("50000.00", "10000.00")` → `"60000.00"`.
  */
+/**
+ * Lo que la persona escribió en un campo decimal libre → lo que entiende la API.
+ *
+ * En Colombia la coma es el separador decimal: "10,5" gramos es lo natural de
+ * escribir, y el teclado numérico de un celular ofrece coma. El backend usa
+ * `Decimal`, que solo acepta punto, y responde 422.
+ *
+ * BUG REAL (03/09/2026): el peso de una prenda escrito con coma hacía fallar
+ * la creación del contrato **sin ningún mensaje** —ver `applyServerErrors`—,
+ * así que el botón parecía no hacer nada. Rechazar la coma nunca fue una
+ * decisión, era un descuido: acá se acepta y se traduce.
+ *
+ * Solo toca la coma. Cualquier otra cosa rara (letras, dos puntos decimales)
+ * sigue su camino y la valida quien corresponda — este helper no es un
+ * validador, es un traductor.
+ */
+export function normalizeDecimalInput(raw: string): string {
+  return raw.replace(',', '.')
+}
+
 export function sumMoney(...values: (string | null | undefined)[]): string {
   const totalCents = values.reduce((total: number, value) => total + (value ? toCents(value) : 0), 0)
   return centsToDecimal(totalCents)

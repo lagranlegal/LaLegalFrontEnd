@@ -4,12 +4,27 @@ import { applyServerErrors } from '@/lib/forms/applyServerErrors'
 
 describe('applyServerErrors', () => {
   it('vuelca VALIDATION_ERROR campo a campo y no retorna banner', () => {
+    // ESTE TEST PASABA CON UN PAYLOAD QUE EL BACKEND NUNCA MANDÓ.
+    //
+    // Decía `details.errors: { doc_number: ['Ya existe'] }` — un objeto campo
+    // → mensajes. El backend siempre respondió una LISTA de Pydantic
+    // (`[{loc, msg, type}]`). El test se escribió contra la suposición, no
+    // contra una respuesta real, así que confirmaba el error en vez de
+    // encontrarlo: durante meses **todo 422 de la app fue invisible** y
+    // había un test en verde diciendo que no.
+    //
+    // El payload de abajo está copiado de una respuesta en vivo.
     const setError = vi.fn()
     const error = new ApiError({
       code: 'VALIDATION_ERROR',
-      message: 'Datos inválidos',
+      message: 'Los datos enviados no son válidos.',
       status: 422,
-      details: { errors: { doc_number: ['Ya existe'], phone: ['Formato inválido'] } },
+      details: {
+        errors: [
+          { type: 'value_error', loc: ['body', 'doc_number'], msg: 'Ya existe' },
+          { type: 'value_error', loc: ['body', 'phone'], msg: 'Formato inválido' },
+        ],
+      },
     })
 
     const banner = applyServerErrors(error, setError)

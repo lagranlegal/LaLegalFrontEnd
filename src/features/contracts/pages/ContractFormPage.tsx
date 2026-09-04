@@ -13,8 +13,10 @@ import { CashSessionRequiredDialog } from '@/components/shared/CashSessionRequir
 import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { useCategories } from '@/lib/catalogs/categories'
+import { normalizeDecimalInput } from '@/lib/money'
 import { applyServerErrors } from '@/lib/forms/applyServerErrors'
 import { collectErrorNames, revealFirstError } from '@/lib/forms/revealFirstError'
+import { serverErrorFieldNames } from '@/lib/forms/applyServerErrors'
 import { ApiError } from '@/lib/api/client'
 import { useCreateContract } from '@/features/contracts/api'
 import type { Customer } from '@/lib/customers/search'
@@ -26,7 +28,9 @@ import { PAYMENT_METHOD_LABELS } from '@/lib/paymentMethods'
 
 const contractSchema = z.object({
   principal: z.string().refine((v) => Number(v) > 0, 'El monto del préstamo debe ser mayor a cero'),
-  interest_rate_pct: z.string().refine((v) => Number(v) > 0, 'La tasa de interés debe ser mayor a cero'),
+  // `normalizeDecimalInput` antes del `Number`: sin eso, "5,5" da NaN y el
+  // usuario recibe "debe ser mayor a cero" por haber escrito una coma.
+  interest_rate_pct: z.string().refine((v) => Number(normalizeDecimalInput(v)) > 0, 'La tasa de interés debe ser mayor a cero'),
   appraisal_value: z.string().optional(),
   payment_method: z.enum(['cash', 'transfer', 'other']),
   account_id: z.string().nullable(),
@@ -113,7 +117,7 @@ export function ContractFormPage() {
       const contract = await createContract.mutateAsync({
         customer_id: customer.id,
         principal: values.principal,
-        interest_rate_pct: values.interest_rate_pct,
+        interest_rate_pct: normalizeDecimalInput(values.interest_rate_pct),
         appraisal_value: values.appraisal_value || null,
         payment_method: values.payment_method,
         account_id: values.account_id,
@@ -122,9 +126,13 @@ export function ContractFormPage() {
         items: values.items.map((item) => ({
           category_id: item.category_id,
           description: item.description,
-          weight_grams: item.weight_grams || null,
+          // La coma decimal se traduce acá, no se rechaza: "10,5" gramos es lo
+          // natural de escribir en Colombia y lo que ofrece el teclado del
+          // celular. Antes llegaba tal cual al backend, que respondía 422 —
+          // y ese 422 era invisible (ver `applyServerErrors`).
+          weight_grams: item.weight_grams ? normalizeDecimalInput(item.weight_grams) : null,
           serial_imei: item.serial_imei || null,
-          item_appraisal: item.item_appraisal || null,
+          item_appraisal: item.item_appraisal ? normalizeDecimalInput(item.item_appraisal) : null,
           photos: item.photos,
         })),
       })
@@ -138,9 +146,10 @@ export function ContractFormPage() {
       }
       const banner = applyServerErrors(error, setError)
       if (banner) setFormError(banner)
-      // Un error por campo que vino del servidor se pinta arriba igual que uno
-      // de Zod, con el mismo problema de quedar fuera de pantalla.
-      revealFirstError(collectErrorNames(errors))
+      // Los nombres salen del error del SERVIDOR, no de `errors` del formState:
+      // ese todavía es el del render anterior — React no lo ha actualizado en
+      // este mismo tick, así que apuntaría al campo equivocado o a ninguno.
+      revealFirstError(serverErrorFieldNames(error))
     }
   }
 
@@ -189,6 +198,7 @@ export function ContractFormPage() {
                 name="appraisal_value"
                 render={({ field }) => <MoneyInput id="appraisal_value" className="mt-1" value={field.value ?? ''} onChange={field.onChange} />}
               />
+              {errors.appraisal_value && <p className="mt-1 text-sm text-danger">{errors.appraisal_value.message}</p>}
             </div>
             <div>
               <label htmlFor="payment_method" className="text-sm font-medium text-foreground">
@@ -248,6 +258,7 @@ export function ContractFormPage() {
             Notas (opcional)
           </label>
           <textarea id="notes" rows={2} className={inputClass} {...register('notes')} />
+          {errors.notes && <p className="mt-1 text-sm text-danger">{errors.notes.message}</p>}
         </section>
 
         {formError && <p className="rounded-input bg-danger-soft px-3 py-2 text-sm text-danger">{formError}</p>}

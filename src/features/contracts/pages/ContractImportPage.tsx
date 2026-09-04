@@ -11,8 +11,10 @@ import { MoneyInput } from '@/components/shared/MoneyInput'
 import { DatePicker } from '@/components/shared/DatePicker'
 import { Button } from '@/components/ui/button'
 import { useCategories } from '@/lib/catalogs/categories'
+import { normalizeDecimalInput } from '@/lib/money'
 import { applyServerErrors } from '@/lib/forms/applyServerErrors'
 import { collectErrorNames, revealFirstError } from '@/lib/forms/revealFirstError'
+import { serverErrorFieldNames } from '@/lib/forms/applyServerErrors'
 import { ApiError } from '@/lib/api/client'
 import { addMonthsToDateOnly, formatDate, todayBogota } from '@/lib/dates'
 import { useImportContract } from '@/features/contracts/api'
@@ -134,9 +136,13 @@ export function ContractImportPage() {
         items: values.items.map((item) => ({
           category_id: item.category_id,
           description: item.description,
-          weight_grams: item.weight_grams || null,
+          // La coma decimal se traduce acá, no se rechaza: "10,5" gramos es lo
+          // natural de escribir en Colombia y lo que ofrece el teclado del
+          // celular. Antes llegaba tal cual al backend, que respondía 422 —
+          // y ese 422 era invisible (ver `applyServerErrors`).
+          weight_grams: item.weight_grams ? normalizeDecimalInput(item.weight_grams) : null,
           serial_imei: item.serial_imei || null,
-          item_appraisal: item.item_appraisal || null,
+          item_appraisal: item.item_appraisal ? normalizeDecimalInput(item.item_appraisal) : null,
           photos: item.photos,
         })),
       })
@@ -154,7 +160,7 @@ export function ContractImportPage() {
       }
       const banner = applyServerErrors(error, setError)
       if (banner) setFormError(banner)
-      revealFirstError(collectErrorNames(errors))
+      revealFirstError(serverErrorFieldNames(error))
     }
   }
 

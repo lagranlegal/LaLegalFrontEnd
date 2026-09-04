@@ -55,9 +55,37 @@ export type ApiErrorCode = (typeof API_ERROR_CODES)[number]
 
 const KNOWN_CODES: ReadonlySet<string> = new Set(API_ERROR_CODES)
 
+/**
+ * Un error de validación tal como lo manda el backend, que es el de Pydantic
+ * sin transformar (`jsonable_encoder(exc.errors())` en `app/core/errors.py`).
+ *
+ * OJO CON `loc`: es la RUTA al campo dentro del body, empezando por `"body"`,
+ * con enteros para los índices de array:
+ *
+ *     ["body", "items", 0, "weight_grams"]
+ *
+ * Quitando el `"body"` y uniendo con puntos queda `items.0.weight_grams`, que
+ * es exactamente como se llama ese input en React Hook Form. Por eso
+ * `applyServerErrors` puede mapearlos sin ninguna tabla de traducción.
+ */
+export interface ValidationIssue {
+  loc: (string | number)[]
+  msg: string
+  type?: string
+}
+
 export interface ApiErrorDetails {
-  /** `VALIDATION_ERROR`: errores por campo para RHF `setError` (422). */
-  errors?: Record<string, string[]>
+  /**
+   * `VALIDATION_ERROR` (422): la LISTA de problemas de Pydantic.
+   *
+   * Este tipo decía `Record<string, string[]>` — un objeto campo → mensajes.
+   * Nunca fue cierto: el backend siempre mandó una lista. Como nada valida
+   * en runtime, TypeScript aceptó la suposición y `applyServerErrors` hacía
+   * `Object.entries(...)` sobre un array, sacaba `undefined` de cada entrada
+   * y salía sin marcar ningún campo Y sin banner: **cada 422 de la app era
+   * invisible**. El botón giraba, volvía a su sitio y no pasaba nada.
+   */
+  errors?: ValidationIssue[]
   [key: string]: unknown
 }
 
