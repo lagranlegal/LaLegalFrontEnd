@@ -2,6 +2,23 @@
 
 > Registro vivo de qué existe en el código, cómo está armado y por qué se tomó cada decisión — para que cualquiera (humano o Claude Code) pueda retomar el proyecto sin releer todo el historial de commits. Se actualiza en cada paso del "Orden de implementación" de `CLAUDE.md`. No repite lo que ya está en `ARCHITECTURE.md`/`DESIGN_SYSTEM.md` (el qué-debería-ser); esto es el qué-hay-hoy y las decisiones concretas tomadas al construirlo.
 
+## El botón "Crear contrato" que no hacía nada (03/09/2026)
+
+Mateo, sobre el punto anterior: *"perfecto lo de la generación del contrato, pero no mostraba ningún error o mensaje informativo con respecto a eso"*. Y tenía razón — el problema es más viejo y más ancho que el de la caja.
+
+**Reproducido en vivo, con todo lleno menos el cliente:** el clic en "Crear contrato" (scrollY 810) pintaba `Selecciona un cliente` arriba del formulario, a ~800px por encima del botón. Sin scroll, sin foco, sin toast. Medido: `visibles sin scroll: (NINGUNO)`. Desde la silla del usuario, **el botón no hacía nada** — y esa es la peor forma de fallar, porque no hay nada que leer ni a quién preguntarle.
+
+Dos huecos se sumaban:
+
+- **React Hook Form enfoca el primer campo inválido, pero solo cuando puede.** `MoneyInput` no reenvía `ref`, así que un error en el monto no movía la pantalla.
+- **El cliente no está en el schema de Zod**: es estado aparte (`useState`), así que RHF no sabe que existe. Peor: si además faltaba otro campo, `handleSubmit` ni llegaba a `onSubmit`, donde vive esa validación — había que enviar **dos veces** para enterarse de que faltaba el cliente.
+
+`lib/forms/revealFirstError.ts` lleva a la vista el problema que esté **más arriba en el documento**, no el primero de la lista. Esa elección es la que permite mezclar los errores de RHF con los de estado propio sin depender del orden en que llegan, y sobrevive a que cambie el orden de los campos.
+
+Aplicado en `ContractFormPage` y en `ContractImportPage` (misma forma: formulario largo, cliente arriba, botón abajo). También al error del servidor: uno por campo se pinta arriba igual que uno de Zod, con el mismo problema.
+
+Verificado en vivo tras el deploy: con todo lleno menos el cliente, la página sube sola a `scrollY 0`, el mensaje queda a la vista y el foco cae en el buscador de cliente — listo para escribir. Con el formulario vacío ahora salen los cinco mensajes de una, incluido el del cliente.
+
 ## Once días sin poder crear contratos: la caja que nadie sabía que estaba cerrada (03/09/2026)
 
 Mateo reportó que en LA GRAN LEGAL **ningún usuario** podía crear contratos, mientras que en su propia empresa sí podía. La sospecha natural era permisos o algo específico de esa empresa.
