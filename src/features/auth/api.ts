@@ -51,14 +51,76 @@ export function setPasswordErrorMessage(error: unknown): string {
     : 'No se pudo guardar la contraseña. Intenta de nuevo.'
 }
 
-/** Invitación: el link de Supabase ya deja la sesión activa (`detectSessionInUrl`) — solo falta que el usuario elija su contraseña. */
+/**
+ * Invitación y recuperación: la sesión ya está activa (viene del enlace) — lo
+ * que falta es que la persona elija su contraseña.
+ *
+ * Y DESPUÉS SE ENTRA CON ELLA, a propósito. La sesión que trae el enlace lleva
+ * `amr: [{method: "otp"}]`; una de verdad lleva `method: "password"`. El
+ * backend usa justo eso para pasar al usuario de `invited` a `active`, porque
+ * abrir un enlace no prueba que exista ninguna contraseña (ver
+ * `app/core/security.py::_sesion_con_contrasena`). Sin este login la persona
+ * se quedaría marcada como "Invitado" hasta la próxima vez que entrara, y el
+ * admin vería pendiente a alguien que ya está trabajando.
+ *
+ * De paso comprueba que la contraseña recién guardada de verdad sirve para
+ * entrar, que es lo único que a esa persona le importa mañana.
+ *
+ * Si este segundo paso falla no se rompe nada: la sesión del enlace sigue
+ * siendo válida y la persona entra igual — solo tardará un login más en
+ * aparecer como activa. Por eso el error se traga.
+ */
 export function useSetPassword() {
   return useMutation({
     mutationFn: async (password: string) => {
-      const { error } = await supabase.auth.updateUser({ password })
+      const { data, error } = await supabase.auth.updateUser({ password })
+      if (error) throw error
+
+      const email = data.user?.email
+      if (email) {
+        await supabase.auth.signInWithPassword({ email, password }).catch(() => undefined)
+      }
+    },
+  })
+}
+
+/**
+ * Cambiar la propia contraseña estando dentro de la app.
+ *
+ * NO EXISTÍA. Quien quería cambiarla —porque alguien se la vio, porque la
+ * comparte, porque el admin se la generó— tenía dos caminos y los dos malos:
+ * "¿Olvidaste tu contraseña?", que manda un correo (el SMTP incluido de
+ * Supabase limita a unos pocos por hora y puede caer en spam), o pedirle un
+ * enlace al administrador, que es una credencial que el administrador
+ * también ve.
+ *
+ * Se verifica la actual entrando con ella primero. Supabase NO la pide
+ * (`updateUser` acepta cualquier sesión válida), así que sin esto bastaba con
+ * una pantalla desatendida un minuto para dejar a alguien fuera de su propia
+ * cuenta.
+ */
+export function useChangeOwnPassword() {
+  return useMutation({
+    mutationFn: async ({ currentPassword, newPassword }: { currentPassword: string; newPassword: string }) => {
+      const { data: sesion } = await supabase.auth.getUser()
+      const email = sesion.user?.email
+      if (!email) throw new Error('No hay una sesión activa.')
+
+      const { error: errorActual } = await supabase.auth.signInWithPassword({ email, password: currentPassword })
+      if (errorActual) throw new WrongCurrentPasswordError()
+
+      const { error } = await supabase.auth.updateUser({ password: newPassword })
       if (error) throw error
     },
   })
+}
+
+/** La contraseña actual no es la que la persona escribió. Caso aparte para no mostrarle el error crudo de Supabase, que habla de credenciales de login. */
+export class WrongCurrentPasswordError extends Error {
+  constructor() {
+    super('La contraseña actual no es correcta.')
+    this.name = 'WrongCurrentPasswordError'
+  }
 }
 
 /**

@@ -49,6 +49,13 @@ export const API_ERROR_CODES = [
   'SALE_ACCOUNT_NOT_SETTLED',
   'RETURN_TIME_LIMIT_EXCEEDED',
   'CREDIT_NOTE_INSUFFICIENT_BALANCE',
+  // Identidad (04/09/2026). Los tres reemplazan errores que se leían como
+  // fallas del sistema —un 500 en texto plano y dos 502 "no se pudo invitar en
+  // Supabase Auth"— cuando en realidad el admin tenía que hacer otra cosa.
+  // Caen al banner genérico: el mensaje del backend ya dice cuál.
+  'USER_ALREADY_INVITED',
+  'USER_ALREADY_EXISTS',
+  'EMAIL_ALREADY_REGISTERED',
 ] as const
 
 export type ApiErrorCode = (typeof API_ERROR_CODES)[number]

@@ -56,7 +56,13 @@ export function InviteUserDialog({ open, onOpenChange }: { open: boolean; onOpen
       // que entre — el enlace no se puede volver a pedir.
       setInviteLink(created.invite_link ?? null)
     } catch (error) {
-      const banner = applyServerErrors(error, setError, { conflictMessage: 'Ya existe un usuario invitado con ese correo.' })
+      // Sin `conflictMessage`: el backend ahora distingue los casos y cada uno
+      // trae su propio mensaje con la acción concreta ("usa Generar enlace de
+      // activación en su ficha", "reactívala", "ya tiene cuenta en la
+      // plataforma"). El texto fijo que había acá era una suposición de
+      // cuando el backend solo devolvía un 502 genérico, y ahora taparía la
+      // respuesta buena.
+      const banner = applyServerErrors(error, setError)
       if (banner) setFormError(banner)
     }
   }

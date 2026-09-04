@@ -6,6 +6,7 @@ import { PhotoUploader } from '@/components/shared/PhotoUploader'
 import { Button } from '@/components/ui/button'
 import { ApiError } from '@/lib/api/client'
 import { useMe, useUpdateMe } from '@/lib/auth/me'
+import { useChangeOwnPassword, WrongCurrentPasswordError, setPasswordErrorMessage } from '@/features/auth/api'
 
 const inputClass =
   'mt-1 w-full rounded-input border border-border bg-background px-3 py-2 text-sm text-foreground outline-none focus:border-primary'
@@ -86,6 +87,88 @@ export function ProfilePage() {
           </Button>
         </div>
       </form>
+
+      <ChangePasswordCard />
     </div>
+  )
+}
+
+/**
+ * Cambiar la propia contraseña. No existía en ninguna parte de la app: quien
+ * quería cambiarla dependía del correo de recuperación (limitado a unos pocos
+ * envíos por hora) o de pedirle un enlace al administrador — que es una
+ * credencial que el administrador también ve.
+ *
+ * Va en una tarjeta aparte y no dentro del formulario del perfil a propósito:
+ * son dos guardados distintos, con dos consecuencias distintas, y mezclarlos
+ * haría que "Guardar cambios" a veces te cambie la contraseña.
+ */
+function ChangePasswordCard() {
+  const cambiar = useChangeOwnPassword()
+  const [actual, setActual] = useState('')
+  const [nueva, setNueva] = useState('')
+  const [confirmacion, setConfirmacion] = useState('')
+  const [error, setError] = useState<string | null>(null)
+
+  const cortaDeMas = nueva.length > 0 && nueva.length < 8
+  const noCoinciden = confirmacion.length > 0 && nueva !== confirmacion
+  const listo = actual.length > 0 && nueva.length >= 8 && nueva === confirmacion
+
+  async function onSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    setError(null)
+    if (!listo) return
+    try {
+      await cambiar.mutateAsync({ currentPassword: actual, newPassword: nueva })
+      setActual('')
+      setNueva('')
+      setConfirmacion('')
+      toast.success('Tu contraseña quedó cambiada.')
+    } catch (err) {
+      setError(err instanceof WrongCurrentPasswordError ? err.message : setPasswordErrorMessage(err))
+    }
+  }
+
+  return (
+    <form onSubmit={onSubmit} className="flex max-w-2xl flex-col gap-4 rounded-card border border-border bg-card p-card shadow-card" noValidate>
+      <div>
+        <h2 className="text-sm font-medium text-foreground">Cambiar mi contraseña</h2>
+        <p className="mt-0.5 text-xs text-muted-foreground">
+          Se te pide la actual para que nadie pueda cambiarla desde tu pantalla si la dejas abierta.
+        </p>
+      </div>
+
+      <div>
+        <label htmlFor="pwd-actual" className="text-sm font-medium text-foreground">
+          Contraseña actual
+        </label>
+        <input id="pwd-actual" type="password" autoComplete="current-password" className={inputClass} value={actual} onChange={(e) => setActual(e.target.value)} />
+      </div>
+
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <div>
+          <label htmlFor="pwd-nueva" className="text-sm font-medium text-foreground">
+            Contraseña nueva
+          </label>
+          <input id="pwd-nueva" type="password" autoComplete="new-password" className={inputClass} value={nueva} onChange={(e) => setNueva(e.target.value)} />
+          {cortaDeMas && <p className="mt-1 text-sm text-danger">Mínimo 8 caracteres.</p>}
+        </div>
+        <div>
+          <label htmlFor="pwd-confirmar" className="text-sm font-medium text-foreground">
+            Confirmar contraseña nueva
+          </label>
+          <input id="pwd-confirmar" type="password" autoComplete="new-password" className={inputClass} value={confirmacion} onChange={(e) => setConfirmacion(e.target.value)} />
+          {noCoinciden && <p className="mt-1 text-sm text-danger">Las contraseñas no coinciden.</p>}
+        </div>
+      </div>
+
+      {error && <p className="rounded-input bg-danger-soft px-3 py-2 text-sm text-danger">{error}</p>}
+
+      <div className="flex justify-end">
+        <Button type="submit" className="rounded-pill" disabled={cambiar.isPending || !listo}>
+          {cambiar.isPending ? 'Cambiando…' : 'Cambiar contraseña'}
+        </Button>
+      </div>
+    </form>
   )
 }
