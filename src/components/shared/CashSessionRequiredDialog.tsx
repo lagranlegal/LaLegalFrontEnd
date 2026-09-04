@@ -28,9 +28,20 @@ export function CashSessionRequiredDialog({ open, onOpenChange }: { open: boolea
           <Can
             permission="cashbox.open_close"
             fallback={
-              <Button variant="outline" className="w-full rounded-pill" onClick={() => onOpenChange(false)}>
-                Entendido
-              </Button>
+              // Sin `cashbox.open_close` esto era un callejón sin salida: el
+              // diálogo decía "Caja cerrada" y ofrecía "Entendido", sin decir
+              // qué hacer ni quién puede hacerlo. Quien no puede abrir la caja
+              // se queda mirando una operación que no vuelve a funcionar hasta
+              // que alguien más haga algo que nadie le nombró.
+              <div className="flex w-full flex-col gap-2">
+                <p className="text-center text-sm text-muted-foreground">
+                  No tienes permiso para abrir la caja. Pídele a un administrador o al responsable del turno que la abra
+                  y vuelve a intentarlo.
+                </p>
+                <Button variant="outline" className="w-full rounded-pill" onClick={() => onOpenChange(false)}>
+                  Entendido
+                </Button>
+              </div>
             }
           >
             <Button

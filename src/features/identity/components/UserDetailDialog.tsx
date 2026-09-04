@@ -42,6 +42,14 @@ export function UserDetailDialog({ open, onOpenChange, user, isSelf }: { open: b
   const [enlace, setEnlace] = useState<string | null>(null)
   const [copiado, setCopiado] = useState(false)
   const recoveryLink = useRecoveryLink()
+  // El endpoint es el mismo (`type=recovery` sirve para ambos), pero para el
+  // admin son dos cosas distintas y llamarlas igual confunde: a quien nunca
+  // entró se le ACTIVA la cuenta; a quien ya entró se le CAMBIA la clave.
+  // Preguntado por Mateo: "si un usuario ya está activo, ¿tiene sentido poder
+  // generar el enlace de activación?". Tiene sentido generar un enlace —es el
+  // único rescate que no depende del correo, que está limitado a unos pocos
+  // envíos por hora—, lo que no tenía sentido era llamarlo "de activación".
+  const sinEstrenar = user.status === 'invited'
 
   async function handleRecoveryLink() {
     setError(null)
@@ -146,7 +154,11 @@ export function UserDetailDialog({ open, onOpenChange, user, isSelf }: { open: b
                 className="w-full rounded-pill"
               >
                 <Link2 className="size-4" />
-                {recoveryLink.isPending ? 'Generando…' : 'Generar enlace de recuperación'}
+                {recoveryLink.isPending
+                  ? 'Generando…'
+                  : sinEstrenar
+                    ? 'Generar enlace de activación'
+                    : 'Generar enlace para cambiar la contraseña'}
               </Button>
             )}
             {isSelf ? (
@@ -175,7 +187,9 @@ export function UserDetailDialog({ open, onOpenChange, user, isSelf }: { open: b
         <div className="flex flex-col gap-4">
           {enlace && (
             <div className="flex flex-col gap-2 rounded-input border border-primary/40 bg-primary/5 p-3">
-              <p className="text-sm font-medium text-foreground">Enlace de recuperación</p>
+              <p className="text-sm font-medium text-foreground">
+                {sinEstrenar ? 'Enlace de activación' : 'Enlace para cambiar la contraseña'}
+              </p>
               <p className="rounded-input border border-border bg-background px-3 py-2 font-mono text-xs break-all text-foreground">
                 {enlace}
               </p>
@@ -187,6 +201,9 @@ export function UserDetailDialog({ open, onOpenChange, user, isSelf }: { open: b
                   quien lo tenga puede cambiar esa contraseña y entrar como esa
                   persona. Mismo texto que la invitación, por la misma razón. */}
               <p className="text-xs text-muted-foreground">
+                {sinEstrenar
+                  ? 'Con él, la persona crea su contraseña y entra por primera vez. '
+                  : 'Con él, la persona elige una contraseña nueva. '}
                 Sirve una sola vez y caduca. Quien lo tenga puede entrar como esta persona, así que envíalo por un medio privado — y
                 guárdalo antes de cerrar: no se puede volver a mostrar.
               </p>
