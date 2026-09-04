@@ -2,6 +2,49 @@
 
 > Registro vivo de qué existe en el código, cómo está armado y por qué se tomó cada decisión — para que cualquiera (humano o Claude Code) pueda retomar el proyecto sin releer todo el historial de commits. Se actualiza en cada paso del "Orden de implementación" de `CLAUDE.md`. No repite lo que ya está en `ARCHITECTURE.md`/`DESIGN_SYSTEM.md` (el qué-debería-ser); esto es el qué-hay-hoy y las decisiones concretas tomadas al construirlo.
 
+## URGENTE resuelto: el enlace de invitación lo quemaban las vistas previas (03/09/2026)
+
+Mateo reportó que en la empresa **La Legal** no se podían crear usuarios: el admin generaba el enlace, la persona lo abría, escribía su contraseña y salía *"No se pudo guardar la contraseña. Intenta de nuevo."* Reintentar nunca funcionaba.
+
+### Por qué nadie podía reproducirlo
+
+Cuatro reproducciones limpias del flujo completo, todas exitosas. La diferencia no estaba en el código sino en **cómo llegaba el enlace hasta la persona**.
+
+El `action_link` que devuelve Supabase es un **GET de un solo uso**:
+
+```bash
+curl -A "WhatsApp/2.23" "$ACTION_LINK"   # → 302 …#access_token=…   (consumido)
+curl "$ACTION_LINK"                      # → 302 …#error_code=otp_expired
+```
+
+Basta con *pedir* la URL para quemarla — no hace falta navegador ni persona. Eso es exactamente lo que hacen los generadores de vista previa de WhatsApp, Telegram y Slack (para armar la tarjetita con título e imagen) y los escáneres de correo. El admin pegaba el enlace en un chat, el crawler lo consumía al instante, y la persona llegaba a `/auth/callback` **sin sesión**: la app le mostraba el formulario igual y `updateUser` fallaba.
+
+El rastro en la base confundía todavía más: el usuario quedaba con `last_sign_in_at` puesto —lo puso el crawler— y sin contraseña nunca.
+
+### El arreglo
+
+**Backend** (`identity/auth_admin.py::_app_link`): el enlace entregado ya no es el de GoTrue sino uno a nuestra app, con el `hashed_token` que `generate_link` también devuelve:
+
+```
+https://<app>/auth/callback?token_hash=<hashed_token>&type=invite|recovery
+```
+
+**Frontend** (`AuthCallbackPage.tsx`): lo canjea con `supabase.auth.verifyOtp({ token_hash, type })`, que es un **POST**. Un crawler que haga GET sobre esa URL solo se baja el HTML de la SPA y no quema nada. El token se borra de la barra de direcciones apenas se canjea: es una credencial y quedaría en el historial y en cualquier captura de pantalla que la persona mande pidiendo ayuda.
+
+**`lib/auth/supabase.ts`**: `initialUrl` se captura **antes** de crear el cliente. `detectSessionInUrl: true` procesa y borra el fragmento al inicializar, o sea antes de que monte ningún componente — sin esa copia no hay forma de distinguir "llegó con `error_code=otp_expired`" de "llegó sin nada", y los dos terminan en el mismo mensaje genérico.
+
+**Pantalla propia para el enlace muerto:** "Este enlace ya se usó — pídele a tu administrador que genere uno nuevo y ábrelo apenas te llegue". El texto anterior decía "los enlaces caducan por seguridad", que manda a creer que la persona se demoró; la causa real casi siempre es que el enlace se abrió solo.
+
+De regalo desaparece el otro problema del `action_link`: sin redirect de Supabase de por medio, ya no importa si la URL está en la lista de Redirect URLs permitidas (donde la de producción **no** está — ver `docs/DEPLOY.md`).
+
+### Verificación en vivo
+
+Se creó una invitación real contra dev, se le hicieron **4 GETs con user-agents de crawler** (WhatsApp, TelegramBot, Googlebot) y *después* se abrió en Chromium real: guardó la contraseña y entró a la app. El mismo token, ya canjeado, muestra "Este enlace ya se usó" — igual que un `#error_code=otp_expired` de un enlace viejo. Usuario de prueba borrado de `app_user` y de `auth.users`.
+
+Tests nuevos: 3 unitarios en el backend (`tests/unit/test_auth_admin.py`) y 4 de componente en el front (`tests/auth-callback.test.tsx`, los tres caminos de llegada más el caso sin token).
+
+Runbook completo con árbol de decisión síntoma → causa: `../../RUNBOOK_USUARIOS.md`.
+
 ## Pendientes cerrados: perfil, serie mensual, filtros de venta, denominaciones (02/09/2026)
 
 Mateo pidió cerrar todo lo que quedaba menos el ambiente de producción. Seis puntos, tres con backend nuevo.

@@ -101,6 +101,44 @@ Tiene que coincidir **exactamente** con `FRONTEND_URL` del backend (`fly secrets
 
 **Sin comodín para los previews de Vercel**, por decisión: `https://…-*.vercel.app/auth/callback` funcionaría, pero significa que cualquier deploy de preview podría recibir tokens de autenticación. El alias de la rama `dev` es estable, así que no hace falta.
 
+### El enlace ya no depende de esta lista (03/09/2026) — pero el del correo sí
+
+El enlace que entrega **"Generar enlace"** (invitación y recuperación) ya **no** pasa por el redirect de Supabase. El backend lo arma él mismo:
+
+```
+https://<FRONTEND_URL>/auth/callback?token_hash=<hashed_token>&type=invite|recovery
+```
+
+y el front lo canjea con `verifyOtp` (POST). Como no hay redirect de GoTrue de por medio, la lista de Redirect URLs **ya no puede romper ese camino**. El cambio se hizo por otra razón —ver abajo— y esto salió de regalo.
+
+**El correo de invitación de Supabase sí sigue dependiendo de la lista**, porque su enlace lo arma la plantilla del proyecto y no pasa por nuestro código. Ese es el camino que usa la creación de empresas (`send_email: true`).
+
+**Estado hoy:** la URL de producción del front (`https://la-legal-front-end.vercel.app`) **NO está** en la lista. Comprobado el 03/09 pidiéndosela a `generate_link`:
+
+| Se pidió | Supabase devolvió |
+|---|---|
+| `https://la-legal-front-end.vercel.app/auth/callback` | `https://la-legal-front-end-git-dev-….vercel.app` — **sin `/auth/callback`** |
+| `https://la-legal-front-end-git-dev-….vercel.app/auth/callback` | igual, correcto |
+
+Por eso `FRONTEND_URL` en Fly **debe** seguir apuntando a la URL de preview de `dev`.
+
+### El `action_link` de GoTrue es un GET de un solo uso — y media internet lo abre sola
+
+**El bug que motivó el cambio de arriba.** Basta con *pedir* el `action_link` para consumirlo:
+
+```bash
+curl -A "WhatsApp/2.23" "$ACTION_LINK"   # → 302 …#access_token=…   (quemado)
+curl "$ACTION_LINK"                      # → 302 …#error_code=otp_expired
+```
+
+Eso hacen los generadores de vista previa de WhatsApp, Telegram y Slack, y los escáneres de correo (Gmail, Outlook Safe Links, antivirus corporativos). El admin pegaba el enlace en un chat, el crawler lo quemaba al instante, y la persona llegaba sin sesión: veía el formulario de contraseña y al guardar recibía un error. Diagnóstico completo en `../../RUNBOOK_USUARIOS.md`.
+
+**Pendiente para cerrar también el camino del correo:** cambiar la plantilla de invitación (Authentication → Emails → Templates) para que use `{{ .TokenHash }}` en vez de `{{ .ConfirmationURL }}`:
+
+```html
+<a href="{{ .SiteURL }}/auth/callback?token_hash={{ .TokenHash }}&type=invite">Crear mi contraseña</a>
+```
+
 ### El correo de invitación tiene un límite de envíos
 
 El servicio de correo **incluido** de Supabase está pensado para pruebas y limita los envíos a unos pocos por hora. Al pasarse devuelve `429` y el backend responde `INVITE_RATE_LIMITED` (429) con "espera unos minutos e invita de nuevo" — no es una falla, hay que esperar.
