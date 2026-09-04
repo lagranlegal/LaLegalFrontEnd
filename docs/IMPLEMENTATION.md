@@ -2,6 +2,34 @@
 
 > Registro vivo de qué existe en el código, cómo está armado y por qué se tomó cada decisión — para que cualquiera (humano o Claude Code) pueda retomar el proyecto sin releer todo el historial de commits. Se actualiza en cada paso del "Orden de implementación" de `CLAUDE.md`. No repite lo que ya está en `ARCHITECTURE.md`/`DESIGN_SYSTEM.md` (el qué-debería-ser); esto es el qué-hay-hoy y las decisiones concretas tomadas al construirlo.
 
+## El alta de empresas dejó de depender del correo (04/09/2026)
+
+El pendiente que quedaba era cambiar las plantillas de correo de Supabase a `{{ .TokenHash }}`. **No se pueden editar en el plan actual del proyecto.** Así que en vez de arreglar el correo, se quitó la dependencia.
+
+### Por qué importaba justo ahí
+
+El alta de una empresa era el **único** camino que exigía correo: invitaba al primer administrador con `send_email=True` y **tiraba el enlace a la basura**. Si ese correo no llegaba —cuota agotada, spam, o un escáner que lo quemó antes de que lo abrieran— el cliente nuevo se quedaba con una empresa creada y sin forma de entrar.
+
+Y no había rescate: para generarle otro enlace hay que estar **dentro** de esa empresa, y él era el único que iba a poder estarlo. Era el peor sitio posible para tener esa dependencia — el primer minuto de un cliente nuevo.
+
+### Cómo quedó
+
+`send_email` es `false` por defecto en `POST /platform/companies`, y `CompanyCreatedOut` trae `admin_invite_link`. El diálogo del panel **no se cierra** al crear: muestra el enlace con su botón de copiar y la misma advertencia que `InviteUserDialog` ("sirve una sola vez… guárdalo antes de cerrar"), porque el enlace solo existe en esa respuesta.
+
+Quien da de alta al cliente es Mateo, hablando con él — entregárselo a mano es además el camino natural.
+
+### El mapa completo, después de todo esto
+
+| Camino | Cómo llega el enlace | ¿Depende del correo? |
+|---|---|---|
+| Alta de una empresa nueva | Lo devuelve el panel de plataforma | **No** |
+| Invitar a un empleado | "Generar enlace" en el diálogo | **No** |
+| Recuperar contraseña (admin cerca) | "Generar enlace" en su ficha | **No** |
+| Cambiar la propia contraseña | En `/perfil`, con la actual | **No** |
+| "¿Olvidaste tu contraseña?" del login | Correo de Supabase | **Sí** — el único que queda |
+
+Ese último es la salida de emergencia para cuando no hay un admin cerca, y **su peor caso ya no es silencioso**: si el enlace llega quemado por un escáner, la pantalla dice "Este enlace ya se usó — pídele a tu administrador que genere uno nuevo".
+
 ## Auditoría de los flujos de identidad: seis estados que mentían (04/09/2026)
 
 Pedida por Mateo tras el incidente del cliente: *"analiza todos los flujos y escenarios de identidad… todo lo que pueda pasar, para evitar en el futuro errores como los que el cliente vio hoy"*.
