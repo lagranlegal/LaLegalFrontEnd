@@ -9,7 +9,7 @@ import { ApiError, type ValidationIssue } from '@/lib/api/errors'
  * y no por el texto, que cambia entre versiones de Pydantic.
  */
 const MENSAJES: Record<string, string> = {
-  decimal_parsing: 'Escribe el número con punto decimal (10.5), no con coma.',
+  decimal_parsing: 'Escribe un número con punto decimal, por ejemplo 10.5',
   int_parsing: 'Escribe un número entero.',
   float_parsing: 'Escribe un número válido.',
   uuid_parsing: 'Selecciona una opción de la lista.',

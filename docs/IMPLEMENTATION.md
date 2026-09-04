@@ -2,6 +2,60 @@
 
 > Registro vivo de qué existe en el código, cómo está armado y por qué se tomó cada decisión — para que cualquiera (humano o Claude Code) pueda retomar el proyecto sin releer todo el historial de commits. Se actualiza en cada paso del "Orden de implementación" de `CLAUDE.md`. No repite lo que ya está en `ARCHITECTURE.md`/`DESIGN_SYSTEM.md` (el qué-debería-ser); esto es el qué-hay-hoy y las decisiones concretas tomadas al construirlo.
 
+## Todo 422 de la aplicación era invisible (03/09/2026)
+
+Mateo, precisando el reporte: *"llenaban todos los datos, le daban crear contrato, aparecía cargando y luego volvía al estado de crear contrato sin realmente crear nada y sin mostrar ningún mensaje"*.
+
+O sea: la petición **sí salía** y fallaba en silencio. Otro bug, más profundo que el del scroll.
+
+### Reproducido en vivo
+
+Formulario completo, con el peso de la prenda escrito **"10,5"** — que es como se escribe en Colombia y lo que ofrece el teclado del celular:
+
+```
+[POST /contracts → 422] {"code":"VALIDATION_ERROR","details":{"errors":[
+  {"type":"decimal_parsing","loc":["body","items",0,"weight_grams"],"msg":"Input should be a valid decimal"}]}}
+mensajes en rojo : []
+toasts           : []
+diálogos         : 0
+```
+
+Nada. En ningún lado.
+
+### La causa
+
+`applyServerErrors` leía `details.errors` como `{campo: [mensajes]}`:
+
+```ts
+for (const [field, messages] of Object.entries(error.details.errors)) {
+  if (messages[0]) setError(field as Path<T>, { message: messages[0] })
+}
+return null
+```
+
+El backend **siempre** mandó la lista de Pydantic sin transformar (`jsonable_encoder(exc.errors())`), o sea `[{loc, msg, type}]`. `Object.entries` sobre un array da `[["0", {…}]]`; `messages[0]` sobre ese objeto da `undefined`; el `if` no entra nunca. Y aun así **retornaba `null`**, que en el contrato de esta función significa "ya lo mostré". El llamador confía y no pinta banner.
+
+Resultado: **todo 422 de la aplicación era invisible**, en todos los formularios, desde siempre.
+
+Tres cosas lo dejaron pasar:
+
+1. **El tipo declaraba la forma inventada.** `ApiErrorDetails.errors?: Record<string, string[]>` — escrito desde la suposición, nunca contrastado con una respuesta. Nada valida en runtime, así que TypeScript la bendecía.
+2. **Había un test en verde.** `tests/applyServerErrors.test.ts` alimentaba `{doc_number: ['Ya existe']}`: el mismo payload imaginario. Confirmaba el error en vez de encontrarlo.
+3. **`return null` no exigía nada.** Prometer "el usuario ya lo está viendo" sin haber marcado un solo campo era gratis.
+
+### El arreglo, en cuatro partes
+
+- **El tipo y el parseo siguen la forma real.** `loc` sin el `"body"` y unido con puntos da `items.0.weight_grams`, que es exactamente como se registra ese input en RHF — no hace falta ninguna tabla de traducción.
+- **`null` solo si de verdad se marcó algún campo.** Si no, banner. Esa es la invariante que faltaba.
+- **Los mensajes de Pydantic se traducen por `type`** (estable), no por el texto (cambia entre versiones): "Input should be a valid decimal" no le sirve a nadie pesando oro en un mostrador.
+- **`weight_grams`, `serial_imei` e `item_appraisal` no pintaban su error.** Daba igual mientras nadie los marcara; con el parseo arreglado habrían seguido mudos. "Opcional" es sobre llenarlo, no sobre llenarlo mal.
+
+### Y la causa de raíz del caso reportado
+
+La coma decimal. `"10,5"` llegaba tal cual al backend. Ahora se traduce a `"10.5"` al armar el body (`normalizeDecimalInput`), junto con la tasa de interés y el avalúo. **Rechazar la coma nunca fue una decisión, era un descuido.**
+
+Verificado en vivo tras el deploy: con `"10,5"` el contrato se crea (201); con un decimal realmente inválido, el mensaje sale junto al campo — *"Escribe un número con punto decimal, por ejemplo 10.5"* — y la pantalla sube hasta él.
+
 ## El botón "Crear contrato" que no hacía nada (03/09/2026)
 
 Mateo, sobre el punto anterior: *"perfecto lo de la generación del contrato, pero no mostraba ningún error o mensaje informativo con respecto a eso"*. Y tenía razón — el problema es más viejo y más ancho que el de la caja.
