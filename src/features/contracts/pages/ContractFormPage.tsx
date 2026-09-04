@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react'
 import { useNavigate, useBlocker } from '@tanstack/react-router'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { Controller, useForm, useWatch } from 'react-hook-form'
+import { Controller, useForm, useWatch, type FieldErrors } from 'react-hook-form'
 import { z } from 'zod'
 import { toast } from 'sonner'
 import { PageHeader } from '@/components/shared/PageHeader'
@@ -14,6 +14,7 @@ import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { useCategories } from '@/lib/catalogs/categories'
 import { applyServerErrors } from '@/lib/forms/applyServerErrors'
+import { collectErrorNames, revealFirstError } from '@/lib/forms/revealFirstError'
 import { ApiError } from '@/lib/api/client'
 import { useCreateContract } from '@/features/contracts/api'
 import type { Customer } from '@/lib/customers/search'
@@ -81,10 +82,30 @@ export function ContractFormPage() {
     withResolver: true,
   })
 
+  /**
+   * Señala TODO lo que falta y lleva a la vista lo primero.
+   *
+   * El botón está al final de un formulario largo: sin esto, con todo lleno
+   * menos el cliente el único mensaje quedaba ~800px por encima, sin foco ni
+   * scroll — el botón parecía no hacer nada (reportado en vivo). El cliente
+   * se revisa acá y no en el schema de Zod porque no vive en el formulario:
+   * es estado aparte, así que RHF no sabe que existe.
+   */
+  function señalarProblemas(errores?: FieldErrors<ContractFormValues>) {
+    const nombres = errores ? collectErrorNames(errores) : []
+    if (customer) {
+      setCustomerError(null)
+    } else {
+      setCustomerError('Selecciona un cliente')
+      nombres.push('customer-picker')
+    }
+    revealFirstError(nombres)
+  }
+
   async function onSubmit(values: ContractFormValues) {
     setFormError(null)
     if (!customer) {
-      setCustomerError('Selecciona un cliente')
+      señalarProblemas()
       return
     }
     setCustomerError(null)
@@ -117,6 +138,9 @@ export function ContractFormPage() {
       }
       const banner = applyServerErrors(error, setError)
       if (banner) setFormError(banner)
+      // Un error por campo que vino del servidor se pinta arriba igual que uno
+      // de Zod, con el mismo problema de quedar fuera de pantalla.
+      revealFirstError(collectErrorNames(errors))
     }
   }
 
@@ -125,10 +149,11 @@ export function ContractFormPage() {
       <BackLink to="/contratos" label="Contratos" />
       <PageHeader title="Nuevo contrato" description="Registra el préstamo y las prendas que quedan en garantía." />
 
-      <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-6" noValidate>
+      <form onSubmit={handleSubmit(onSubmit, señalarProblemas)} className="flex flex-col gap-6" noValidate>
         <section className="flex flex-col gap-4 rounded-card border border-border bg-card p-card shadow-card">
           <h2 className="text-sm font-medium text-foreground">Cliente</h2>
           <CustomerPicker
+            id="customer-picker"
             value={customer}
             onChange={(next) => {
               setCustomer(next)

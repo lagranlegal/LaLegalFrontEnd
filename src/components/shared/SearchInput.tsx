@@ -8,11 +8,14 @@ export function SearchInput({
   onChange,
   placeholder = 'Buscar…',
   className,
+  id,
 }: {
   value: string
   onChange: (value: string) => void
   placeholder?: string
   className?: string
+  /** Para poder señalarlo desde fuera (`revealFirstError`) cuando falta llenarlo. */
+  id?: string
 }) {
   const [draft, setDraft] = useState(value)
   // Ajusta `draft` durante el render si `value` cambió por fuera (ej. un
@@ -36,6 +39,7 @@ export function SearchInput({
     <div className={cn('relative', className)}>
       <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
       <input
+        id={id}
         type="search"
         value={draft}
         onChange={(e) => setDraft(e.target.value)}

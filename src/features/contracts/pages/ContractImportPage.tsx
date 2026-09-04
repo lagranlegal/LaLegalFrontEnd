@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react'
 import { useNavigate, useBlocker } from '@tanstack/react-router'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { Controller, useForm } from 'react-hook-form'
+import { Controller, useForm, type FieldErrors } from 'react-hook-form'
 import { z } from 'zod'
 import { toast } from 'sonner'
 import { PageHeader } from '@/components/shared/PageHeader'
@@ -12,6 +12,7 @@ import { DatePicker } from '@/components/shared/DatePicker'
 import { Button } from '@/components/ui/button'
 import { useCategories } from '@/lib/catalogs/categories'
 import { applyServerErrors } from '@/lib/forms/applyServerErrors'
+import { collectErrorNames, revealFirstError } from '@/lib/forms/revealFirstError'
 import { ApiError } from '@/lib/api/client'
 import { addMonthsToDateOnly, formatDate, todayBogota } from '@/lib/dates'
 import { useImportContract } from '@/features/contracts/api'
@@ -97,10 +98,22 @@ export function ContractImportPage() {
     withResolver: true,
   })
 
+  /** Misma razón que en `ContractFormPage`: botón abajo, errores arriba. */
+  function señalarProblemas(errores?: FieldErrors<ImportFormValues>) {
+    const nombres = errores ? collectErrorNames(errores) : []
+    if (customer) {
+      setCustomerError(null)
+    } else {
+      setCustomerError('Selecciona un cliente')
+      nombres.push('customer-picker')
+    }
+    revealFirstError(nombres)
+  }
+
   async function onSubmit(values: ImportFormValues) {
     setFormError(null)
     if (!customer) {
-      setCustomerError('Selecciona un cliente')
+      señalarProblemas()
       return
     }
     setCustomerError(null)
@@ -141,6 +154,7 @@ export function ContractImportPage() {
       }
       const banner = applyServerErrors(error, setError)
       if (banner) setFormError(banner)
+      revealFirstError(collectErrorNames(errors))
     }
   }
 
@@ -152,7 +166,7 @@ export function ContractImportPage() {
         description="Migra un contrato de empeño del sistema anterior con su saldo real. No desembolsa dinero — ese préstamo ya se entregó afuera."
       />
 
-      <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-6" noValidate>
+      <form onSubmit={handleSubmit(onSubmit, señalarProblemas)} className="flex flex-col gap-6" noValidate>
         <section className="flex flex-col gap-4 rounded-card border border-border bg-card p-card shadow-card">
           <h2 className="text-sm font-medium text-foreground">Referencia y cliente</h2>
           <div>
@@ -163,6 +177,7 @@ export function ContractImportPage() {
             {errors.legacy_code && <p className="mt-1 text-sm text-danger">{errors.legacy_code.message}</p>}
           </div>
           <CustomerPicker
+            id="customer-picker"
             value={customer}
             onChange={(next) => {
               setCustomer(next)

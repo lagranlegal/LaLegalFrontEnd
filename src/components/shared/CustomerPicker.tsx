@@ -9,7 +9,7 @@ import { useCustomerSearch, type Customer } from '@/lib/customers/search'
  * otra pantalla) — dropdown simple sobre `SearchInput` + `useCustomerSearch`
  * (8 resultados, no es un listado paginado).
  */
-export function CustomerPicker({ value, onChange, placeholder = 'Buscar cliente por nombre o documento…' }: { value: Customer | null; onChange: (customer: Customer | null) => void; placeholder?: string }) {
+export function CustomerPicker({ value, onChange, placeholder = 'Buscar cliente por nombre o documento…', id }: { value: Customer | null; onChange: (customer: Customer | null) => void; placeholder?: string; id?: string }) {
   const [q, setQ] = useState('')
   const { data, isFetching } = useCustomerSearch(q)
 
@@ -31,7 +31,7 @@ export function CustomerPicker({ value, onChange, placeholder = 'Buscar cliente 
 
   return (
     <div className="relative">
-      <SearchInput value={q} onChange={setQ} placeholder={placeholder} />
+      <SearchInput id={id} value={q} onChange={setQ} placeholder={placeholder} />
       {q.trim() && (
         <div className="absolute z-10 mt-1 w-full overflow-hidden rounded-input border border-border bg-card shadow-card">
           {isFetching && <p className="px-3 py-2 text-sm text-muted-foreground">Buscando…</p>}
