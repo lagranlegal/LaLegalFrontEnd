@@ -2199,6 +2199,49 @@ export interface components {
             first_admin_email: string;
             /** First Admin Full Name */
             first_admin_full_name: string;
+            /**
+             * Send Email
+             * @default false
+             */
+            send_email: boolean;
+        };
+        /**
+         * CompanyCreatedOut
+         * @description La empresa recién creada, MÁS el enlace de su primer administrador.
+         *
+         *     El alta era el único camino que dependía sí o sí del correo de Supabase:
+         *     invitaba al primer admin con `send_email=True` y **tiraba el enlace a la
+         *     basura**. Si ese correo no llegaba —cuota agotada, spam, o un escáner que
+         *     lo quemó antes— el cliente nuevo se quedaba con una empresa creada y sin
+         *     forma de entrar, y nadie podía rescatarlo salvo generándole otro enlace a
+         *     mano desde una empresa a la que todavía no tenía acceso.
+         *
+         *     Ahora vuelve acá. Es una credencial de un solo uso: solo la ve el
+         *     super-admin que acaba de crear la empresa, y no se escribe en ningún log.
+         */
+        CompanyCreatedOut: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Name */
+            name: string;
+            /** Status */
+            status: string;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Plan Code */
+            plan_code: string | null;
+            /** Plan Name */
+            plan_name: string | null;
+            /** Subscription Expires At */
+            subscription_expires_at: string | null;
+            /** Admin Invite Link */
+            admin_invite_link?: string | null;
         };
         /** CompanyOut */
         CompanyOut: {
@@ -4896,7 +4939,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["CompanyOut"];
+                    "application/json": components["schemas"]["CompanyCreatedOut"];
                 };
             };
             /** @description Validation Error */

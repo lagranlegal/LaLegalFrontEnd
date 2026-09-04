@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { Check, Copy } from 'lucide-react'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { Controller, useForm } from 'react-hook-form'
 import { z } from 'zod'
@@ -25,6 +26,8 @@ const inputClass = 'mt-1 w-full rounded-input border border-border bg-background
 /** El caller monta este diálogo con una `key` que cambie en cada apertura (mismo patrón que `SupplierFormDialog`). */
 export function CompanyFormDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (open: boolean) => void }) {
   const [formError, setFormError] = useState<string | null>(null)
+  const [inviteLink, setInviteLink] = useState<string | null>(null)
+  const [copiado, setCopiado] = useState(false)
   const { data: plans } = usePlans()
   const createCompany = useCreateCompany()
   const {
@@ -41,26 +44,66 @@ export function CompanyFormDialog({ open, onOpenChange }: { open: boolean; onOpe
   async function onSubmit(values: CompanyFormValues) {
     setFormError(null)
     try {
-      await createCompany.mutateAsync(values)
-      onOpenChange(false)
+      // `send_email: false` explícito aunque el backend ya lo tenga por
+      // defecto: acá se decide cómo llega el enlace al cliente nuevo, y eso
+      // tiene que leerse en el sitio donde se decide.
+      const creada = await createCompany.mutateAsync({ ...values, send_email: false })
+      // El diálogo NO se cierra: el enlace del primer admin solo existe acá.
+      // Si se cerrara, el cliente nuevo se quedaría con una empresa creada y
+      // sin forma de entrar — y no hay rescate posible, porque para generarle
+      // otro enlace habría que estar dentro de esa empresa y él es el único
+      // que va a poder estarlo. Mismo patrón que `InviteUserDialog`.
+      setInviteLink(creada.admin_invite_link ?? null)
+      if (!creada.admin_invite_link) onOpenChange(false)
     } catch (error) {
       const banner = applyServerErrors(error, setError, { conflictMessage: 'Ya existe una empresa con ese nombre.' })
       if (banner) setFormError(banner)
     }
   }
 
+  async function copiarEnlace() {
+    if (!inviteLink) return
+    await navigator.clipboard.writeText(inviteLink)
+    setCopiado(true)
+  }
+
   return (
     <AppDialog
       open={open}
       onOpenChange={onOpenChange}
-      title="Nueva empresa"
-      description="Crea el tenant y su primer usuario Admin — le llega una invitación por correo."
+      title={inviteLink ? 'Empresa creada' : 'Nueva empresa'}
+      description={
+        inviteLink
+          ? 'Pásale este enlace a su administrador para que cree su contraseña.'
+          : 'Crea el tenant y su primer usuario Admin. No se envía ningún correo: el enlace te lo devuelve acá para que se lo entregues tú.'
+      }
       footer={
-        <Button form="company-form" type="submit" disabled={createCompany.isPending} className="w-full rounded-pill">
-          {createCompany.isPending ? 'Creando…' : 'Crear empresa'}
-        </Button>
+        inviteLink ? (
+          <Button type="button" onClick={() => onOpenChange(false)} className="w-full rounded-pill">
+            Listo
+          </Button>
+        ) : (
+          <Button form="company-form" type="submit" disabled={createCompany.isPending} className="w-full rounded-pill">
+            {createCompany.isPending ? 'Creando…' : 'Crear empresa'}
+          </Button>
+        )
       }
     >
+      {inviteLink ? (
+        <div className="flex flex-col gap-3">
+          <p className="rounded-input border border-border bg-background px-3 py-2 font-mono text-xs break-all text-foreground">{inviteLink}</p>
+          <Button type="button" variant="outline" onClick={copiarEnlace} className="w-full rounded-pill">
+            {copiado ? <Check className="size-4" /> : <Copy className="size-4" />}
+            {copiado ? 'Copiado' : 'Copiar enlace'}
+          </Button>
+          {/* Advertencia y no letra chica: el enlace ES la credencial del
+              administrador de esa empresa, y no se puede volver a mostrar. */}
+          <p className="text-xs text-muted-foreground">
+            Sirve una sola vez y caduca. Quien lo tenga se convierte en el administrador de esa empresa, así que envíalo por un
+            medio privado — y guárdalo antes de cerrar: no se puede volver a mostrar.
+          </p>
+        </div>
+      ) : (
       <form id="company-form" onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-4" noValidate>
         <div>
           <label htmlFor="company-name" className="text-sm font-medium text-foreground">
@@ -126,6 +169,7 @@ export function CompanyFormDialog({ open, onOpenChange }: { open: boolean; onOpe
 
         {formError && <p className="rounded-input bg-danger-soft px-3 py-2 text-sm text-danger">{formError}</p>}
       </form>
+      )}
     </AppDialog>
   )
 }
