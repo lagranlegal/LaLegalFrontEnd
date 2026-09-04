@@ -5,7 +5,7 @@ import { z } from 'zod'
 import { useNavigate } from '@tanstack/react-router'
 import { Button } from '@/components/ui/button'
 import { supabase } from '@/lib/auth/supabase'
-import { useSetPassword } from '@/features/auth/api'
+import { setPasswordErrorMessage, useSetPassword } from '@/features/auth/api'
 
 const setPasswordSchema = z
   .object({
@@ -121,7 +121,12 @@ export function AuthCallbackPage() {
           {errors.confirmPassword && <p className="mt-1 text-sm text-danger">{errors.confirmPassword.message}</p>}
         </div>
 
-        {setPassword.isError && <p className="rounded-input bg-danger-soft px-3 py-2 text-sm text-danger">No se pudo guardar la contraseña. Intenta de nuevo.</p>}
+        {/* El mensaje sale del error REAL de Supabase, no de un texto fijo:
+            "intenta de nuevo" es el peor consejo posible cuando el enlace ya
+            venció — reintentar no puede funcionar. Ver `setPasswordErrorMessage`. */}
+        {setPassword.isError && (
+          <p className="rounded-input bg-danger-soft px-3 py-2 text-sm text-danger">{setPasswordErrorMessage(setPassword.error)}</p>
+        )}
 
         <Button type="submit" disabled={setPassword.isPending || entrando} className="mt-2 w-full rounded-pill">
           {entrando ? 'Entrando…' : setPassword.isPending ? 'Guardando…' : 'Guardar contraseña'}
