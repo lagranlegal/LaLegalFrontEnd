@@ -2,6 +2,38 @@
 
 > Registro vivo de qué existe en el código, cómo está armado y por qué se tomó cada decisión — para que cualquiera (humano o Claude Code) pueda retomar el proyecto sin releer todo el historial de commits. Se actualiza en cada paso del "Orden de implementación" de `CLAUDE.md`. No repite lo que ya está en `ARCHITECTURE.md`/`DESIGN_SYSTEM.md` (el qué-debería-ser); esto es el qué-hay-hoy y las decisiones concretas tomadas al construirlo.
 
+## Once días sin poder crear contratos: la caja que nadie sabía que estaba cerrada (03/09/2026)
+
+Mateo reportó que en LA GRAN LEGAL **ningún usuario** podía crear contratos, mientras que en su propia empresa sí podía. La sospecha natural era permisos o algo específico de esa empresa.
+
+### Lo que era
+
+No era un bug de contratos. **Esa empresa nunca había abierto una sesión de caja** desde que se creó el 23/08 — la primera de su vida se abrió el 03/09 a las 17:33. El desembolso del préstamo sale en efectivo y el efectivo exige caja abierta (`resolve_account_for_movement`), así que todo intento moría con `CASH_SESSION_NOT_OPEN`. Para todos los usuarios. Siempre.
+
+Reproducido creando una **empresa espejo** con su configuración exacta —mismo árbol de categorías (Joyería › Oro › 18k, con plazo y mora solo en el nivel 1, heredados), una sola cuenta de efectivo, y el rol Asesor copiado permiso por permiso— y corriendo el formulario completo con Playwright: con la caja abierta el contrato se crea sin problema, como Admin y como Asesor; con la caja cerrada falla siempre.
+
+### Por qué nadie se dio cuenta en once días
+
+**Dos mensajes, los dos arreglados.**
+
+**(a) La franja global mentía.** `GET /cashbox/sessions/current` devolvía `NOT_FOUND` cuando no había sesión abierta, y `cashboxCurrentQueryOptions` traduce a "caja cerrada" solo el código `CASH_SESSION_NOT_OPEN`. Como nunca coincidía, la query quedaba en error y el banner mostraba:
+
+> No se pudo consultar el estado de la caja.
+
+…que se lee como "la app está fallando", no como "abre la caja". Y significa que **toda la rama de caja cerrada del banner era código muerto**: el aviso "Caja cerrada — no se pueden registrar operaciones de dinero", el botón "Abrir caja" y el texto "Pídele a un responsable que la abra" llevaban meses escritos y ningún usuario los había visto nunca.
+
+El arreglo va en el backend, que es donde está el error: `NoOpenCashSessionError` mantiene el 404 —se preguntó por la sesión en curso y no hay ninguna— pero lleva el código de dominio. Se distingue a propósito del otro 404 del mismo endpoint ("la empresa no tiene una caja activa configurada"), que sí es un problema de configuración y debe seguir viéndose como falla.
+
+El test que cubría ese endpoint **solo miraba el status**, así que el código pudo derivar sin que nadie lo notara. Ahora lo fija.
+
+**(b) El diálogo era un callejón sin salida.** `CashSessionRequiredDialog` mostraba a quien no tiene `cashbox.open_close` un "Caja cerrada" y un botón "Entendido", sin nombrar la acción que falta ni a quién pedírsela. Su propio docstring prometía el "aviso de pedirle al responsable" desde el día uno; nunca se implementó. Ahora lo dice.
+
+Verificado en vivo tras el deploy, con la caja cerrada: el admin ve "Caja cerrada — no se pueden registrar operaciones de dinero" con el botón "Abrir caja"; el asesor ve "No tienes permiso para abrir la caja. Pídele a un administrador o al responsable del turno que la abra".
+
+### De paso: el enlace de un usuario ya activo
+
+Mateo preguntó si tiene sentido generar el "enlace de activación" de alguien que ya está activo. Sí lo tiene —es el único rescate que no depende del correo, limitado a unos pocos envíos por hora— pero estaba **mal nombrado**: el botón decía "Generar enlace de recuperación" para todos, también para quien nunca ha entrado, a quien no se le recupera nada. Ahora el nombre y la explicación salen del estado del usuario: *activación* para `invited`, *cambiar la contraseña* para `active`. El endpoint es el mismo (`type=recovery` sirve para ambos).
+
 ## URGENTE resuelto: el enlace de invitación lo quemaban las vistas previas (03/09/2026)
 
 Mateo reportó que en la empresa **La Legal** no se podían crear usuarios: el admin generaba el enlace, la persona lo abría, escribía su contraseña y salía *"No se pudo guardar la contraseña. Intenta de nuevo."* Reintentar nunca funcionaba.
