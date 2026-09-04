@@ -56,6 +56,8 @@ export const API_ERROR_CODES = [
   'USER_ALREADY_INVITED',
   'USER_ALREADY_EXISTS',
   'EMAIL_ALREADY_REGISTERED',
+  'AUTH_ACCOUNT_MISSING',
+  'CANNOT_DEACTIVATE_SELF',
 ] as const
 
 export type ApiErrorCode = (typeof API_ERROR_CODES)[number]

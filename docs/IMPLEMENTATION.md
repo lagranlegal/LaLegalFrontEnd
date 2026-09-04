@@ -2,6 +2,62 @@
 
 > Registro vivo de qué existe en el código, cómo está armado y por qué se tomó cada decisión — para que cualquiera (humano o Claude Code) pueda retomar el proyecto sin releer todo el historial de commits. Se actualiza en cada paso del "Orden de implementación" de `CLAUDE.md`. No repite lo que ya está en `ARCHITECTURE.md`/`DESIGN_SYSTEM.md` (el qué-debería-ser); esto es el qué-hay-hoy y las decisiones concretas tomadas al construirlo.
 
+## Auditoría de los flujos de identidad: seis estados que mentían (04/09/2026)
+
+Pedida por Mateo tras el incidente del cliente: *"analiza todos los flujos y escenarios de identidad… todo lo que pueda pasar, para evitar en el futuro errores como los que el cliente vio hoy"*.
+
+Se recorrieron los ocho flujos contra dev, con una empresa espejo creada para eso. **Seis defectos, los seis arreglados y verificados en vivo.** Todos con la misma forma: el sistema sabía qué pasaba y mostraba otra cosa.
+
+### 1. `invited → active` sin que existiera ninguna contraseña — el grave
+
+`app/core/security.py` decía: *"si llegó hasta acá con un JWT válido, ya completó el flujo de invitación (puso contraseña / usó Google)"*. **Falso desde el día que se escribió**: abrir el enlace de invitación ya produce un JWT válido, antes de que exista ninguna clave.
+
+Comprobado: canjear el enlace y hacer **un solo request** dejaba al usuario en `active`; después Supabase le negaba el login con un 400. **El admin veía "Activo" — un badge verde, todo en orden — mientras esa persona estaba bloqueada para siempre.**
+
+El claim `amr` del token de Supabase distingue exactamente los dos casos:
+
+```
+sesión de un enlace  → amr: [{"method": "otp",      ...}]
+login con contraseña → amr: [{"method": "password", ...}]
+```
+
+Ahora solo el segundo activa. Y `useSetPassword`, apenas guarda la contraseña, **entra con ella** — así la activación es inmediata (si no, la persona quedaría "Invitada" hasta su próxima entrada y el admin vería pendiente a alguien que ya trabaja) y de paso se comprueba que la clave recién creada sirve para entrar, que es lo único que a esa persona le importa mañana.
+
+Al invitado se le sigue dejando pasar mientras esté `invited`: esa sesión del enlace es legítima y es justo la que necesita para poner su contraseña.
+
+### 2. Reinvitar al mismo correo → HTTP 500 en texto plano
+
+Y es lo más normal del mundo hacerlo: *"no le llegó, mándaselo otra vez"*. Reventaba el índice único de `app_user` sin envelope de error, así que el front lo mostraba como "Ocurrió un error inesperado". Peor: Supabase **ya había regenerado el enlace**, dejando muerto el que el admin quizá acababa de mandar por WhatsApp — sin que nadie lo supiera.
+
+Hay dos variantes, según si la persona ya abrió el enlace: sin abrir, `generate_link` funciona y revienta la base (500); ya abierto, Supabase responde `email_exists` y salía un 502. Las dos son ahora un 409 que nombra la acción correcta.
+
+### 3, 5. Dos 502 que se leían como fallas del sistema
+
+Invitar un correo ya registrado en otra empresa, y generar el enlace de alguien borrado desde el panel de Supabase. Los dos respondían "No se pudo … en Supabase Auth" con un 502 — que manda a reintentar en círculos, que es exactamente la forma que toma el reporte *"no se pueden crear usuarios"*. Ahora son 409 con qué hacer.
+
+### 4. No se podía cambiar la propia contraseña
+
+No existía en ninguna parte de la app. Las dos salidas eran malas: el correo de recuperación (limitado a unos pocos envíos por hora, puede caer en spam) o pedirle un enlace al administrador — **que es una credencial que el administrador también ve**.
+
+Ahora está en `/perfil`, en tarjeta aparte del formulario del perfil a propósito: son dos guardados con dos consecuencias distintas, y mezclarlos haría que "Guardar cambios" a veces te cambie la contraseña. Se verifica la actual entrando con ella, porque Supabase no la pide (`updateUser` acepta cualquier sesión válida): sin eso bastaba una pantalla desatendida un minuto.
+
+### 6. Desactivarse a uno mismo lo impedía solo la UI
+
+Ocultar no es proteger (CLAUDE.md regla 7). Un admin que no fuera el último podía dejarse fuera de su propia empresa con un request a mano, y la única salida sería que otro lo reactivara.
+
+### Lo que sí estaba bien (comprobado, no supuesto)
+
+- **Empleado desactivado con sesión abierta:** el backend niega el request, `client.ts` refresca, reintenta, sigue en 401 y cierra la sesión de verdad; el guard redirige a `/auth/login?reason=inactive` y la pantalla dice *"Tu usuario o tu empresa están inactivos. Contacta a tu administrador."* Verificado en el navegador de punta a punta.
+- **Último administrador:** los tres caminos cerrados (desactivar, cambiar de rol, quitarle el permiso al único rol que lo tiene). El test de desactivación ahora usa a otro actor —alguien con `identity.manage_users` sin ser admin—, que desde el defecto 6 es el único camino por el que se llega a ese safeguard.
+- **Aislamiento entre empresas:** invitar con un rol ajeno o tocar un usuario de otra empresa responde "no existe en esta empresa", nunca confirma que exista en otra.
+
+### Anotado sin arreglar
+
+- **Desactivar no cierra la sesión de Supabase.** El efecto neto es correcto, pero el cache de `CurrentUser` (30s) deja pasar requests de alguien recién desactivado durante ese rato. Aceptable para un empleado que se va; no para una expulsión urgente.
+- **Las plantillas de correo** siguen usando `{{ .ConfirmationURL }}`, así que ese camino conserva los dos problemas que el enlace copiado ya no tiene.
+
+Runbook completo con el árbol de decisión síntoma → causa: `../../RUNBOOK_USUARIOS.md` §8.
+
 ## Todo 422 de la aplicación era invisible (03/09/2026)
 
 Mateo, precisando el reporte: *"llenaban todos los datos, le daban crear contrato, aparecía cargando y luego volvía al estado de crear contrato sin realmente crear nada y sin mostrar ningún mensaje"*.
