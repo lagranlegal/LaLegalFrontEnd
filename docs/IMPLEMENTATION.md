@@ -2,6 +2,42 @@
 
 > Registro vivo de qué existe en el código, cómo está armado y por qué se tomó cada decisión — para que cualquiera (humano o Claude Code) pueda retomar el proyecto sin releer todo el historial de commits. Se actualiza en cada paso del "Orden de implementación" de `CLAUDE.md`. No repite lo que ya está en `ARCHITECTURE.md`/`DESIGN_SYSTEM.md` (el qué-debería-ser); esto es el qué-hay-hoy y las decisiones concretas tomadas al construirlo.
 
+## Qué cubre la auditoría ahora (08/09/2026)
+
+Mateo, cerrando el punto anterior: *"¿qué cubren los logs actualmente? también debe cubrir la creación, abonos y todo lo relacionado a contratos"*.
+
+Se cruzaron **los 47 endpoints que modifican datos** contra si auditaban o no. Quedaban **doce sin registrar**, y varias eran de dinero o de datos que definen otras cosas.
+
+### Lo que se agregó, y por qué cada uno
+
+| Acción | Por qué importa |
+|---|---|
+| `contracts.update_contract` | Avalúo, notas y la foto del documento firmado. Con `before`/`after`: saber que el avalúo cambió sin saber **de cuánto a cuánto** no sirve de nada. |
+| `inventory.pay_entry` | Pagarle a un proveedor saca plata de una cuenta. Es una operación de dinero como cualquier otra. |
+| `inventory.publish_item` | Emite el código —inmutable, va impreso en la etiqueta— y pone el artículo en vitrina. Sin esto, un artículo aparecía **vendido** sin que constara nunca quién lo puso a la venta. |
+| `inventory.update_product` | Cambiar el precio acá lo cambia **para todos los lotes de una vez**. |
+| `catalogs.create/update_category` | El plazo, la ventana de mora y el LTV salen de acá y se **congelan** en cada contrato al firmarlo. No tocan los contratos vivos, pero sí los que se firmen después — es justo lo que hay que poder rastrear cuando dos contratos del mismo mes tienen plazos distintos. |
+| `catalogs.create/update_supplier` | Su letra va impresa en el código de cada lote que se le compre. |
+| `customers.update_customer` | Datos personales (Ley 1581), y el documento identifica a quien firmó los contratos. |
+| `accounts.create/update_account` | Es **dónde está la plata**: crear o cambiar una reordena a dónde caen cobros y pagos. |
+| `cashbox.create_expense_category` | Barato y completa el catálogo. |
+
+Las ediciones llevan `before` además de `after`. Queda fuera a propósito `inventory.update_item`, que desde 00022 **solo cambia fotos** — el resto se edita en el producto.
+
+### Los contratos, completos
+
+Era lo que Mateo pidió por nombre. El ciclo entero queda registrado:
+
+`create_contract` · `import_contract` · `update_contract` · `create_payment` (el abono) · `apply_payment_discount` · `auction_contract`
+
+Más lo que los condiciona desde afuera: `create/update_category` (el plazo y la mora que se congelan al firmar) y `create/update_customer` (quién firmó).
+
+### Cobertura
+
+**48 acciones auditadas.** Todo endpoint que escribe deja rastro, salvo el de fotos. El test `tests/unit/test_audit_actions.py` lee los `action=` del código y falla ante uno sin registrar — **encontró las doce él solo**, y antes ya había cazado dos nombres que yo había supuesto mal.
+
+Verificado en vivo tras el deploy (editar contrato, editar cliente, crear categoría de gasto): los tres salen en la pantalla con su frase en español y su `before`/`after` guardado.
+
 ## La auditoría no mostraba el trabajo, y lo poco que mostraba salía revuelto (08/09/2026)
 
 Mateo invitó a un empleado, hizo una venta con su usuario y en Auditoría no apareció nada. Comprobado contra la base: ese usuario había creado un cliente y vendido $750.000, y `audit_log` tenía **cero** filas suyas. Eran **tres** defectos encadenados.
