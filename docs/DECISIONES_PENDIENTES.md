@@ -71,3 +71,48 @@ Como la UI no consulta el permiso, hoy pasan dos cosas: quien **no** lo tiene se
 **Pregunta de negocio:** ¿el plazo de devolución es una política real de la compraventa o quedó en su valor por defecto sin pensarlo? De la respuesta depende si vale la pena mostrar el aviso o si conviene poner `return_window_days = 0` (sin límite) y olvidarse.
 
 **Costo de construirlo:** muy bajo — un aviso en `ReturnFormDialog` cuando la venta ya pasó el plazo, con texto distinto según el permiso.
+
+---
+
+## 3. ¿Debe el sistema impedir un desembolso sin efectivo en el cajón?
+
+**Estado: sin decidir (08/09/2026).** Reportado por la auditoría de QA de la Fase 3 (F3-01).
+
+### Qué pasa hoy
+
+Solo los **traslados** comprueban que haya efectivo disponible. El gasto en efectivo y el desembolso de un préstamo —las dos operaciones que más plata sacan del cajón— no lo comprueban. Reproducido con la caja abierta y 240.000 esperados:
+
+```
+préstamo de 1.000.000 × 2  → 201   (esperado: -1.760.000)
+traslado de 10.000         → 400   "No se puede trasladar más de lo que hay en la cuenta de origen"
+gasto en efectivo 10.000   → 201   (esperado: -2.270.000)
+préstamo de 5.000.000      → 201   (esperado: -7.270.000)
+```
+
+**La misma app dice «no puedes mover 10.000 porque no hay» y a la vez «sí puedes prestar 5.000.000».**
+
+### Por qué importa
+
+`expected_cash` queda **negativo**, que es un imposible físico: el sistema espera que en el cajón haya menos siete millones. Y como el cierre no tiene tolerancia —*«todo descuadre exige justificación»*— el cajero termina justificando a mano un descuadre **que el propio sistema fabricó**. Es el mismo problema del punto 21 de `PENDIENTES_BACKEND_INFRA.md` (las compras que no generaban movimiento y obligaban a justificar un descuadre inventado), visto desde el otro lado.
+
+### Por qué no es obvio que deba bloquearse
+
+Hay un argumento real para **no** validar: durante el día entra efectivo por ventas y abonos, y si el registro no es cronológico —el asesor registra el préstamo de las 9am a las 11, después de una venta de las 10— validar estricto bloquearía una operación legítima. En un mostrador eso es peor que un arqueo raro.
+
+Pero entonces el traslado tampoco debería validar. **La inconsistencia es el hallazgo, más que la decisión.**
+
+### Las preguntas de negocio
+
+1. **¿Puede la compraventa desembolsar más efectivo del que registra tener?** En la práctica sí ocurre: el dueño trae plata de su bolsillo o del banco sin registrarlo como traslado. Si eso es normal, bloquear sería estorbar.
+2. **¿Qué debería pasar entonces con el arqueo?** Un esperado negativo no se puede contar. ¿Se asume que el cajero justifica, o el sistema debería empujar a registrar de dónde salió esa plata (un traslado de entrada)?
+3. **¿Y quién decide?** Si se advierte en vez de bloquear, ¿la advertencia basta para un asesor, o el desembolso por encima del efectivo disponible debería pedir un permiso especial, como el descuento?
+
+### Opciones
+
+| | Qué implica | Consecuencia |
+|---|---|---|
+| **A. Advertir sin bloquear** *(recomendada)* | Mismo criterio que ya se tomó para el LTV: el backend devuelve una marca (`cash_warning`) y la UI avisa antes de confirmar. | Coherente con un precedente del propio proyecto; no estorba en el mostrador; el operador se entera **en el momento**, no al cerrar |
+| **B. Validar en las tres operaciones** | El desembolso y el gasto se rechazan igual que el traslado. | El arqueo nunca queda en negativo, pero bloquea registros fuera de orden — que es el caso más común del mostrador |
+| **C. No validar en ninguna** | Quitar la validación del traslado, y que el arqueo revele el descuadre. | La más simple y consistente, pero pierde una red que ya funciona |
+
+**Recomendación de QA: A.** Es la única que resuelve la inconsistencia sin quitarle al operador la posibilidad de registrar lo que de verdad pasó. Sea cual sea la elegida, **las tres operaciones deberían comportarse igual**: hoy dos dicen una cosa y una dice la contraria.
