@@ -2,6 +2,46 @@
 
 > Registro vivo de qué existe en el código, cómo está armado y por qué se tomó cada decisión — para que cualquiera (humano o Claude Code) pueda retomar el proyecto sin releer todo el historial de commits. Se actualiza en cada paso del "Orden de implementación" de `CLAUDE.md`. No repite lo que ya está en `ARCHITECTURE.md`/`DESIGN_SYSTEM.md` (el qué-debería-ser); esto es el qué-hay-hoy y las decisiones concretas tomadas al construirlo.
 
+## La auditoría no mostraba el trabajo, y lo poco que mostraba salía revuelto (08/09/2026)
+
+Mateo invitó a un empleado, hizo una venta con su usuario y en Auditoría no apareció nada. Comprobado contra la base: ese usuario había creado un cliente y vendido $750.000, y `audit_log` tenía **cero** filas suyas. Eran **tres** defectos encadenados.
+
+### 1. El trabajo diario no se auditaba
+
+Se auditaban las **excepciones** —descuentos, anulaciones, remates, cambios de rol— pero no el trabajo: la venta, el abono, abrir la caja, el ingreso de inventario, el cliente. En toda la base de dev no existía **una sola fila `create_sale`**, habiendo ventas hechas.
+
+Es defendible como diseño (`CLAUDE.md`: "toda acción sensible"; y `sale.sold_by` ya guardaba el autor) pero no como producto: una pantalla que se llama Auditoría y calla ante la operación más común del negocio no responde la única pregunta para la que un dueño la abre, y su silencio se lee como *"el sistema no está registrando"*, no como *"eso vive en otra tabla"*.
+
+Se agregaron cinco: `create_sale`, `create_payment`, `open_session`, `create_entry`, `create_customer`. El módulo `customers` no auditaba **nada**, y con datos personales de por medio (Ley 1581) quién registró a alguien es justo lo que hay que poder responder.
+
+### 2. Doce acciones salían en crudo en pantalla
+
+El mapa de etiquetas del front estaba poblado *"con los valores vistos en el audit log de dev el 18/08"*, así que un dueño leía `auction_contract` o `generate_recovery_link` en la columna donde esperaba una frase.
+
+Y al revés: `open_session: 'Abrió la caja'` llevaba meses ahí **para una acción que el backend nunca escribía** — la misma UI muerta que ya había aparecido con el banner de "Caja cerrada". Ahora sí la escribe.
+
+### 3. El log salía en orden ARBITRARIO — el peor de los tres
+
+`order by id`, y los ids son UUID aleatorios. No es "del más viejo al más nuevo": es sin orden. Lo último que hizo un empleado podía caer en cualquier página, así que la pantalla tampoco respondía "¿qué pasó hoy?" **con las acciones que sí se registraban**. Es la otra mitad del reporte: sí aparecían, revueltas entre 143 filas.
+
+Ahora es keyset por `(created_at, id)` — la fecha manda, el id desempata, así que dos filas del mismo instante ni se pierden ni se repiten al paginar. El índice que esto necesita, `ix_audit_company_date (company_id, created_at desc)`, **existía desde la primera migración sin que nadie lo usara**.
+
+El test del endpoint miraba filtros y permisos, nunca el orden. Por eso pasó desapercibido.
+
+### Cómo se evita que vuelva a separarse
+
+`tests/unit/test_audit_actions.py` lee los `action="..."` del código y los compara con un catálogo explícito: una auditoría nueva sin registrar falla el test, con el recordatorio de que la etiqueta también hay que ponerla en `features/audit/labels.ts`. Ya sirvió — encontró que dos nombres que yo había supuesto (`create_transfer`, `settle_account`) no eran los reales.
+
+### Verificado en vivo
+
+Se actuó como el empleado real de Mateo contra dev: crear un cliente y vender. Los dos aparecen en la pantalla de Auditoría, con su frase en español, arriba del todo y en orden:
+
+```
+08/09 1:16 AM  Usuario 1 de prueba  Ventas    Registró una venta    Venta
+08/09 1:15 AM  Usuario 1 de prueba  Clientes  Registró un cliente   Cliente
+07/09 9:50 PM  Mateo Jaramillo      Identidad Invitó a un usuario   Usuario
+```
+
 ## El alta de empresas dejó de depender del correo (04/09/2026)
 
 El pendiente que quedaba era cambiar las plantillas de correo de Supabase a `{{ .TokenHash }}`. **No se pueden editar en el plan actual del proyecto.** Así que en vez de arreglar el correo, se quitó la dependencia.
