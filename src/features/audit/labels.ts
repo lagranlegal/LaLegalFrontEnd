@@ -20,9 +20,11 @@ export const AUDIT_ACTION_LABELS: Record<string, string> = {
   close_session: 'Cerró la caja',
   reopen_session: 'Reabrió la caja',
   create_expense: 'Registró un gasto',
+  create_expense_category: 'Creó una categoría de gasto',
   // Contratos
   create_contract: 'Creó un contrato',
   import_contract: 'Registró un contrato existente',
+  update_contract: 'Editó un contrato',
   create_payment: 'Registró un abono',
   apply_payment_discount: 'Aplicó un descuento a un abono',
   auction_contract: 'Remató un contrato',
@@ -33,10 +35,19 @@ export const AUDIT_ACTION_LABELS: Record<string, string> = {
   create_return: 'Registró una devolución',
   // Inventario
   create_entry: 'Registró un ingreso',
+  pay_entry: 'Pagó una compra',
   create_exit: 'Registró un egreso',
+  publish_item: 'Publicó un artículo',
+  update_product: 'Cambió un producto',
   create_transformation: 'Registró una transformación',
   // Clientes
   create_customer: 'Registró un cliente',
+  update_customer: 'Editó un cliente',
+  // Catálogos
+  create_category: 'Creó una categoría',
+  update_category: 'Editó una categoría',
+  create_supplier: 'Creó un proveedor',
+  update_supplier: 'Editó un proveedor',
   // Identidad
   invite_user: 'Invitó a un usuario',
   update_user_role: 'Cambió el rol de un usuario',
@@ -53,6 +64,8 @@ export const AUDIT_ACTION_LABELS: Record<string, string> = {
   activate_document_template: 'Activó una plantilla de documento',
   delete_document_template: 'Eliminó una plantilla de documento',
   // Cuentas
+  create_account: 'Creó una cuenta',
+  update_account: 'Editó una cuenta',
   account_transfer: 'Trasladó dinero entre cuentas',
   settle_account: 'Liquidó una cuenta por cobrar',
   // Plataforma (super-admin)
@@ -84,6 +97,11 @@ export const AUDIT_ENTITY_TYPE_LABELS: Record<string, string> = {
   subscription: 'Suscripción',
   account: 'Cuenta',
   account_transfer: 'Traslado entre cuentas',
+  category: 'Categoría',
+  expense_category: 'Categoría de gasto',
+  inventory_item: 'Artículo',
+  product: 'Producto',
+  supplier: 'Proveedor',
 }
 
 export function auditEntityTypeLabel(entityType: string): string {
