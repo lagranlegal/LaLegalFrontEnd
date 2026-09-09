@@ -14,7 +14,7 @@ Frontend (React SPA) de la plataforma SaaS **multi-tenant** para compraventas (c
 | `docs/IMPLEMENTATION.md` | **Registro vivo** de qué existe en el código y por qué — léelo antes de tocar algo que ya existe. |
 | `docs/PENDIENTES_BACKEND_INFRA.md` | Documento de traspaso con backend/arquitectura/infraestructura: huecos reales encontrados construyendo el front, qué se verificó y por qué importa para el negocio. |
 | `docs/RECOMENDACIONES.md` | Decisiones tomadas y su porqué, más sugerencias de producto — con su estado real (✅ construido / ❌ no construido / 🚧 parcial). |
-| `docs/pending/` | Copia de los docs del repo **backend** (`API_GUIDE.md`, `ARCHITECTURE.md`, `CONTEXTO.md`) usada como referencia — el shape exacto de cualquier endpoint siempre sale de `/openapi.json`, no de estos archivos. |
+| _(sin `docs/pending/`)_ | Hubo una **copia** de los docs del backend acá. Se eliminó: dos copias del mismo `API_GUIDE` se desincronizan, que es justo lo que el proyecto evita en el código. Los documentos del backend se leen en su repo (`../backend-starter/docs/`), y el shape exacto de cualquier endpoint sale siempre de `/openapi.json`. Las menciones a `docs/pending/…` en documentos con fecha (`IMPLEMENTATION.md`, `PENDIENTES_*`, `RECOMENDACIONES.md`) son de cuando la copia existía: se leen en `../backend-starter/docs/`. |
 
 ## Desarrollo
 

@@ -1,6 +1,6 @@
 # Arquitectura del frontend
 
-> Referencia técnica de cómo está construido el front y por qué. Para el sistema de diseño (referencia visual, tokens, componentes) ver `docs/DESIGN_SYSTEM.md`; para el contrato de la API ver `docs/pending/API_GUIDE.md`; la guía de implementación está en `CLAUDE.md` (raíz del repo).
+> Referencia técnica de cómo está construido el front y por qué. Para el sistema de diseño (referencia visual, tokens, componentes) ver `docs/DESIGN_SYSTEM.md`; para el contrato de la API ver `../backend-starter/docs/API_GUIDE.md`; la guía de implementación está en `CLAUDE.md` (raíz del repo).
 
 ## 1. Qué es
 

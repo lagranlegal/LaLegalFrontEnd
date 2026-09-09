@@ -2,6 +2,59 @@
 
 > Registro vivo de qué existe en el código, cómo está armado y por qué se tomó cada decisión — para que cualquiera (humano o Claude Code) pueda retomar el proyecto sin releer todo el historial de commits. Se actualiza en cada paso del "Orden de implementación" de `CLAUDE.md`. No repite lo que ya está en `ARCHITECTURE.md`/`DESIGN_SYSTEM.md` (el qué-debería-ser); esto es el qué-hay-hoy y las decisiones concretas tomadas al construirlo.
 
+## Lo que el front arregló de la auditoría de QA (09/09/2026)
+
+Tres commits (`555271f`, `047ee53`, `e0f1d17`) con los hallazgos de front de la auditoría de diez fases. El registro completo —qué se probó, cómo y con qué scripts— vive en `backend-starter/docs/QA_AUDITORIA.md`; acá queda **qué se tocó en este repo y por qué**.
+
+### Contraste WCAG AA — `styles/tokens.css`
+
+Un barrido de 12 pantallas × 2 temas encontró **12 combinaciones por debajo de AA en el tema claro y cero en el oscuro**. Que el oscuro —hecho después, con ~25 variables redefinidas— estuviera perfecto y el claro no dice dónde estaba el problema: en el bloque original.
+
+Los seis tokens semánticos de texto se recalcularon **contra los tres fondos donde viven de verdad** (`--bg-app`, `--bg-surface` y su propio `-soft`, el más exigente por compartir tono), conservando el matiz:
+
+```
+--text-muted        #8a97a8 → #647387
+--success           #22a06b → #1b7e54
+--warning           #e8a23d → #9b6312
+--danger            #e5484d → #d51e24
+--info              #3b82f6 → #0b63f3
+--status-extension  #d97706 → #ab5e05
+```
+
+**El teal de marca no se tocó.** Para *texto* teal la guía ya pedía `--brand-600`+ y `--brand-700` cumple (4.53). Lo que no cumple es el **relleno** del botón primario (blanco sobre `--brand-500`, 2.70), y oscurecerlo cambia la identidad visual — decisión de producto, anotada en `DECISIONES_PENDIENTES.md` §4.
+
+`tests/token-contrast.test.ts` calcula los ratios y ya existía con dos casos marcados `it.fails`. Al corregir los tokens empezaron a fallar por *«pasó cuando se esperaba que fallara»* — que es exactamente para lo que servía la marca frente a un `skip`, que se olvida. Se les quitó.
+
+### Desborde a 360 px — y por qué hizo falta medir dos veces
+
+`DESIGN_SYSTEM` §4.11 pide 360 px usable: *«el mostrador puede ser un celular»*. Tres pantallas desbordaban — `/caja` 59 px, `/cuentas` 15, `/contratos` 14.
+
+El primer arreglo fue a `PageHeader` (`flex-wrap` + `min-w-0`), porque es el componente compartido y parecía la causa común. **Al volver a medir sobre el bundle desplegado, `/caja` seguía saliéndose los mismos 59 px.** Sus tres botones no viven en el header sino en una card propia; `/contratos` tenía otro `flex` anidado dentro de sus acciones; y en `/cuentas` era la fila de cada cuenta, que no envolvía. Se arreglaron los tres contenedores reales:
+
+- `CashboxPage.tsx` — la card de acciones de la sesión
+- `ContractsListPage.tsx` — el `flex` anidado dentro de las acciones del header
+- `AccountsPage.tsx` — `flex-wrap` en la fila y en el bloque de acciones, manteniendo `shrink-0`
+
+El fix de `PageHeader` se dejó igual: es correcto y previene el caso general de las pantallas que vengan. Pero no era donde estaba el problema medido — y sin la segunda medición esto se habría dado por arreglado sin estarlo.
+
+**Al medir, distinguir dos cosas:** que el **documento** desborde es el bug; que un elemento sea más ancho que la ventana dentro de un contenedor con `overflow-x: auto` es el patrón correcto (la tabla de desglose de Reportes, las pestañas de Inventario) y no hay nada que arreglar ahí.
+
+### El turno de ayer — `CashSessionBanner.tsx`
+
+El cambio de día dejó una sesión abierta desde el 08/09 y la franja decía solo *«Caja abierta · desde las 4:38 PM»*. Un cajero que llega a las 8 de la mañana no tiene cómo saber que esa hora es de ayer. **La consecuencia se midió:** un gasto registrado el 09/09 entró al turno del 08/09 y el acta de ese día lo incluyó — el acta de un día con movimientos de otro.
+
+El dato ya viajaba (`session_date` en `/cashbox/sessions/current`); solo no se mostraba. Ahora, cuando la sesión no es de hoy, la franja se pone ámbar, dice la fecha y qué hacer.
+
+### El error que quedaba fuera de vista — `EntryFormPage.tsx`
+
+`CONTINUAR.md` lo tenía anotado desde el 03/09: *«mismo patrón sin revisar en otros formularios largos»*. Confirmado midiendo — en Nuevo ingreso, el error más arriba del documento quedaba 108 px por encima de la ventana y el foco caía en otro campo, así que el usuario corregía lo que veía, reenviaba y volvía a fallar por algo que nunca vio. Se aplicó `revealFirstError`, el helper que ya existía.
+
+### Tres etiquetas en inglés crudo
+
+`StatusBadge.tsx` (`completed` / `voided` de venta, el hallazgo que el export a Excel había dejado documentado sin arreglar el 27/08), `lib/modules.ts` (`sale_return` y `other` en el acta de cierre — el mapa de conceptos cubre ahora los 13 valores del enum) y `features/audit/labels.ts` (la acción nueva de desactivar plantilla). Las tres eran valores del enum sin etiqueta, visibles en pantallas de uso diario y en un documento que se imprime y se archiva.
+
+---
+
 ## Qué cubre la auditoría ahora (08/09/2026)
 
 Mateo, cerrando el punto anterior: *"¿qué cubren los logs actualmente? también debe cubrir la creación, abonos y todo lo relacionado a contratos"*.

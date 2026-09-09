@@ -109,3 +109,18 @@ El patrón bueno (`AccountFormDialog`/`SettleAccountDialog`/`TransferDialog`, `f
 3. **Abierto, menor.** Cascada: `ContractDetailPage` pide el contrato y recién cuando ese responde pide el cliente (`enabled: !!contract?.customer_id`) — inherente a la forma del dato (no se puede saber el cliente sin conocer antes el contrato), así que no es tan barato de evitar como parece; impacto bajo (un salto adicional, no N).
 4. **✅ Resuelto — sin `staleTime` global.** `QueryClient` tenía el default de TanStack Query (`0`: todo obsoleto al instante), así que `refetchOnWindowFocus: true` (a propósito, "app operativa") reejecutaba TODO lo montado en cada alt-tab. Ahora `staleTime: 15_000` — sigue siendo "casi al instante" para una app operativa (ya se acepta hasta 60s de desfase en permisos vía `/me`), y absorbe el caso real: revisar un mensaje y volver a la pestaña.
 5. **Abierto — el más grande.** Bundle de 1.7MB en un solo archivo, cero code-splitting por ruta (`router.tsx` tiene 38 imports estáticos, ningún `.lazy.tsx`, sin `manualChunks` en `vite.config.ts`). Las 12 features completas se descargan de una sola vez en el primer load. Deliberadamente no se tocó hoy: requiere reestructurar cómo se definen las rutas (TanStack Router código-based, no file-based) y agregar `Suspense`/fallbacks consistentes con el patrón de `RouteTransitionBar` ya existente — el riesgo de reintroducir pantallas en blanco a medio terminar es real, mejor como su propia tanda de trabajo.
+
+---
+
+## Qué pasó después: la auditoría de QA (09/09/2026)
+
+Este documento se cerró el 27/08 con dos hilos sueltos que quedaron anotados como hallazgo y no como tarea. La auditoría de QA (`backend-starter/docs/QA_AUDITORIA.md`) los retomó:
+
+| Hilo de este documento | Qué pasó |
+|---|---|
+| *«`completed`/`voided` de venta NUNCA estuvieron en `STATUS_LABELS` … documentado como hallazgo, no arreglado»* (punto 8, Ventas) | **Arreglado.** Fue **F8-03**, y en la Fase 9 apareció el mismo patrón en el acta de cierre con `sale_return` (**F9-03**). Se cubrieron los 13 valores del enum de conceptos, no solo los dos vistos |
+| *«Ojo con el tope de `fetchAllPages` … corta en silencio»* (punto 8, cierre) | **Cuantificado y sigue abierto**, ahora como **F10-02**: el techo son 10.000 filas y el llamador no tiene forma de saber si trajo todo. Lo usan las cuatro exportaciones, así que un histórico exportado para el contador puede llegar truncado **pareciendo completo**. El fix propuesto —devolver `{items, truncated}` y que la UI lo diga— toca las cuatro, y por eso se dejó como tanda propia |
+
+**Sin cambios** los dos abiertos del punto 11: la cascada de `ContractDetailPage` (menor, inherente a la forma del dato) y el bundle de 1.7 MB sin code-splitting, que sigue siendo el más grande y sigue mereciendo su propia tanda.
+
+**Lo que la auditoría agregó de su lado** (todo aplicado, ver el cierre de `QA_AUDITORIA.md`): contraste WCAG AA en los seis tokens semánticos, desborde horizontal a 360 px en tres pantallas, `revealFirstError` en el formulario de ingreso, y la franja de caja diciendo la fecha cuando el turno abierto es de otro día.

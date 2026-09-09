@@ -1,7 +1,7 @@
 # CLAUDE.md — Frontend Plataforma SaaS para Compraventas
 
 Guía de implementación para Claude Code. Leer COMPLETO antes de escribir código.
-Arquitectura técnica del front: `docs/ARCHITECTURE.md`. Sistema de diseño (referencia visual, tokens, componentes): `docs/DESIGN_SYSTEM.md`. Contrato de la API del backend: `docs/pending/API_GUIDE.md` (copiado del repo backend — el shape exacto siempre sale de `/openapi.json`, ver abajo).
+Arquitectura técnica del front: `docs/ARCHITECTURE.md`. Sistema de diseño (referencia visual, tokens, componentes): `docs/DESIGN_SYSTEM.md`. Contrato de la API del backend: **`../backend-starter/docs/API_GUIDE.md`** (vive en el repo backend, junto al código que describe — el shape exacto siempre sale de `/openapi.json`, ver abajo).
 
 ## Qué es este proyecto
 
@@ -30,7 +30,7 @@ Frontend (React SPA) de la plataforma SaaS **multi-tenant** para compraventas (c
 
 ## Autenticación (el backend NO tiene login propio)
 
-`supabase-js` habla directo con Supabase Auth: `signInWithPassword`, refresh automático, `onAuthStateChange`. El `access_token` resultante va como `Bearer` al backend en cada request (lo inyecta el client central). Justo después del login (y en cada recarga): **`GET /api/v1/me`** para hidratar permisos, empresa, timezone, rol y suscripción antes de renderizar (regla 7). Signups públicos desactivados — el alta es SOLO por invitación (correo de Supabase → el usuario crea contraseña → login normal). El JWT trae `company_id` y `role_id` como claims. Super-admin de plataforma = claim `app_metadata.platform_role == "super_admin"` (rutas `/platform` separadas del resto). Flujo completo: `docs/pending/API_GUIDE.md` §2.
+`supabase-js` habla directo con Supabase Auth: `signInWithPassword`, refresh automático, `onAuthStateChange`. El `access_token` resultante va como `Bearer` al backend en cada request (lo inyecta el client central). Justo después del login (y en cada recarga): **`GET /api/v1/me`** para hidratar permisos, empresa, timezone, rol y suscripción antes de renderizar (regla 7). Signups públicos desactivados — el alta es SOLO por invitación (correo de Supabase → el usuario crea contraseña → login normal). El JWT trae `company_id` y `role_id` como claims. Super-admin de plataforma = claim `app_metadata.platform_role == "super_admin"` (rutas `/platform` separadas del resto). Flujo completo: `../backend-starter/docs/API_GUIDE.md` §2.
 
 ## Estructura del proyecto (crear así)
 

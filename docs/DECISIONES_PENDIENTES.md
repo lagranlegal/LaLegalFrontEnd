@@ -116,3 +116,27 @@ Pero entonces el traslado tampoco debería validar. **La inconsistencia es el ha
 | **C. No validar en ninguna** | Quitar la validación del traslado, y que el arqueo revele el descuadre. | La más simple y consistente, pero pierde una red que ya funciona |
 
 **Recomendación de QA: A.** Es la única que resuelve la inconsistencia sin quitarle al operador la posibilidad de registrar lo que de verdad pasó. Sea cual sea la elegida, **las tres operaciones deberían comportarse igual**: hoy dos dicen una cosa y una dice la contraria.
+
+---
+
+## 4. El teal de la marca no cumple contraste en el botón primario
+
+**Qué hay hoy.** Tras la corrección de tokens del 09/09 (F6-02), las 12 combinaciones que incumplían WCAG AA se redujeron a **3**, y las tres son la misma: **texto blanco sobre `--brand-500` relleno**, el botón primario de toda la app.
+
+```
+blanco sobre --brand-500  #00b19e   2.70   ✗   (mínimo 4.5)
+blanco sobre --brand-600  #009c8b   3.19   ✗
+blanco sobre --brand-700  #00806f   4.53   ✓
+```
+
+Para **texto** teal sobre fondo claro el problema ya está resuelto: `DESIGN_SYSTEM` §4.10 pedía usar `--brand-600`+ y los números confirman que `--brand-700` cumple. Lo que queda es el **relleno**: el color que la gente identifica como la marca.
+
+**Qué falta.** Decidir si el botón primario pasa a un teal más oscuro.
+
+| Opción | Qué implica | Consecuencia |
+|---|---|---|
+| **A. Dejarlo como está** | Se documenta como excepción consciente y el test de contraste la exceptúa por nombre. | La identidad visual no cambia; la app no cumple AA en su control más frecuente. Aceptable si nadie va a auditarla formalmente |
+| **B. Oscurecer el relleno a `--brand-700`** | Un solo token; el resto de la paleta no se toca. | Cumple AA. El botón se ve **notablemente más oscuro** — es el color que el dueño reconoce como "el de la marca" |
+| **C. Mantener el tono y subir el texto** | Texto en un teal muy oscuro o negro sobre el relleno claro, en vez de blanco. | Cumple sin cambiar el color de marca, pero rompe la convención de botón primario oscuro con texto claro |
+
+**Esto no es una decisión de QA.** Cambiar el color que identifica a la marca es de producto. Lo que sí corresponde decir es el dato: es el control más usado de la aplicación, y hoy es lo único que separa a la app del cumplimiento AA completo.
