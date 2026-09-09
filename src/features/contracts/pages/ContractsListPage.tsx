@@ -102,7 +102,11 @@ export function ContractsListPage() {
       <PageHeader
         title="Contratos"
         actions={
-          <div className="flex items-center gap-2">
+          // `flex-wrap`: son dos botones anchos («Registrar contrato existente»
+          // y «+ Nuevo contrato») y en 360px no caben en una línea. El
+          // `PageHeader` ya envuelve sus hijos, pero este contenedor anidado
+          // los mantenía juntos y empujaba 14px fuera del viewport.
+          <div className="flex flex-wrap items-center gap-2">
             <Can permission="contracts.import">
               <Button variant="outline" onClick={() => navigate({ to: '/contratos/importar' })}>
                 Registrar contrato existente

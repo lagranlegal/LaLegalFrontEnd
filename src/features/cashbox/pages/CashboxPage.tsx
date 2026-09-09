@@ -134,13 +134,18 @@ export function CashboxPage() {
         ) : session ? (
           <div className="rounded-card border border-border bg-card p-card shadow-card">
             <div className="flex flex-wrap items-center justify-between gap-4">
-              <div>
+              <div className="min-w-0">
                 <p className="text-xs text-muted-foreground">Caja abierta desde las {formatTime(session.opened_at)}</p>
                 <p className="tnum text-lg font-semibold text-foreground">
                   Saldo inicial <Money value={session.opening_balance} />
                 </p>
               </div>
-              <div className="flex items-center gap-2">
+              {/* `flex-wrap` y `min-w-0`: son tres botones (gasto, consignar,
+                  cerrar) y en 360px no cabían en una línea, así que la fila
+                  empujaba el contenido 59px fuera del viewport — el peor
+                  desborde de la app, y en la pantalla que más se usa desde el
+                  mostrador (auditoría de QA, F6-03). */}
+              <div className="flex flex-wrap items-center gap-2">
                 <Can permission="cashbox.expense">
                   <Button
                     variant="outline"
