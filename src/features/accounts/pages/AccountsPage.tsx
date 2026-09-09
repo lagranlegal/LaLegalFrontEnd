@@ -30,7 +30,11 @@ function AccountCard({
   onStatement: () => void
 }) {
   return (
-    <li className="flex items-center justify-between gap-4 rounded-card border border-border bg-card p-card shadow-card">
+    // `flex-wrap`: el nombre y el bloque de saldo + acciones (extracto,
+    // liquidar, editar) suman más de 360px, y el bloque derecho es `shrink-0`
+    // a propósito para que los botones no se aplasten. Sin envolver, la fila
+    // empujaba 15px fuera del viewport (auditoría de QA, F6-03).
+    <li className="flex flex-wrap items-center justify-between gap-4 rounded-card border border-border bg-card p-card shadow-card">
       <div className="min-w-0">
         <p className="flex items-center gap-2 truncate text-sm font-medium text-foreground">
           {account.name}
@@ -44,7 +48,7 @@ function AccountCard({
         {account.reference && <p className="mt-0.5 truncate text-xs text-muted-foreground">{account.reference}</p>}
       </div>
 
-      <div className="flex shrink-0 items-center gap-3">
+      <div className="flex shrink-0 flex-wrap items-center justify-end gap-3">
         <Money value={account.balance} className="text-base font-semibold text-foreground" />
         {/* Ver el extracto solo necesita `accounts.view` — es leer, no mover
             plata. Quien puede ver el saldo puede ver de dónde salió. */}
