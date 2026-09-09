@@ -1,7 +1,10 @@
 import { useRef, useState } from 'react'
 import { useNavigate, useBlocker } from '@tanstack/react-router'
 import { zodResolver } from '@hookform/resolvers/zod'
+import type { FieldErrors } from 'react-hook-form'
 import { Controller, useFieldArray, useForm, useWatch } from 'react-hook-form'
+
+import { collectErrorNames, revealFirstError } from '@/lib/forms/revealFirstError'
 import { z } from 'zod'
 import { toast } from 'sonner'
 import { ChevronRight, ImageIcon, Plus, Trash2 } from 'lucide-react'
@@ -329,6 +332,20 @@ export function EntryFormPage() {
   const totalCost = sumMoney(...lines.map((line) => multiplyMoney(line.unit_cost || '0.00', Number(line.quantity || 0))))
   const listasCount = lines.filter(lineIsReady).length
 
+  /**
+   * Lleva a la vista el error que esté MÁS ARRIBA del formulario, no el que
+   * RHF enfocaría por su cuenta.
+   *
+   * Medido en la auditoría de QA (F6-01), enviando el ingreso incompleto: el
+   * error del proveedor quedaba en y=361 con la ventana en 469–1269, o sea
+   * 108px por encima de la vista, y el foco caía en el nombre del artículo. El
+   * usuario corregía lo que veía, reenviaba, y volvía a fallar por algo que
+   * nunca vio. Es la mitad del bug que se arregló en contratos el 03/09.
+   */
+  function señalarProblemas(errores: FieldErrors<EntryFormValues>) {
+    revealFirstError(collectErrorNames(errores))
+  }
+
   async function onSubmit(values: EntryFormValues) {
     setFormError(null)
     try {
@@ -407,7 +424,7 @@ export function EntryFormPage() {
         description="Registra la mercancía que entra al inventario. Con precio queda lista para vender; sin precio, en borrador."
       />
 
-      <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-6" noValidate>
+      <form onSubmit={handleSubmit(onSubmit, señalarProblemas)} className="flex flex-col gap-6" noValidate>
         <section className="flex flex-col gap-4 rounded-card border border-border bg-card p-card shadow-card">
           <h2 className="text-sm font-medium text-foreground">Origen</h2>
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">

@@ -57,13 +57,10 @@ describe('contraste de los tokens (WCAG AA, 4.5:1 para texto normal)', () => {
     expect(ratio(claro['--brand-700'], fondo)).toBeGreaterThanOrEqual(4.5)
   })
 
-  // `it.fails` y no `skip`: hoy NO cumple (Fase 6 de la auditoría, F6-02) y
-  // cambiar el token le toca la cara a toda la app, así que es una decisión de
-  // producto pendiente. Marcarlo así deja CI en verde documentando el defecto
-  // real — y el día que se corrija el token, este test empezará a fallar por
-  // «pasó cuando se esperaba que fallara», obligando a quitarle el `.fails`.
-  // Un skip, en cambio, se olvida.
-  it.fails('el texto secundario es legible sobre los dos fondos de la app', () => {
+  // Estuvo marcado con `it.fails` mientras el token no cumplía, y el día que se
+  // corrigió el test empezó a fallar por «pasó cuando se esperaba que fallara»
+  // — que es exactamente para lo que servía la marca. Ahora vigila de verdad.
+  it('el texto secundario es legible sobre los dos fondos de la app', () => {
     // --text-muted son las labels de KPI, los hints y los placeholders: está
     // en todas las pantallas, así que un fallo acá es sistémico.
     for (const fondo of [claro['--bg-app'], claro['--bg-surface']]) {
@@ -71,8 +68,7 @@ describe('contraste de los tokens (WCAG AA, 4.5:1 para texto normal)', () => {
     }
   })
 
-  // Mismo caso que el anterior: pendiente de decisión, no de código.
-  it.fails('los textos de estado son legibles sobre su propio fondo suave', () => {
+  it('los textos de estado son legibles sobre su propio fondo suave', () => {
     // El peor caso medido fue «Caja cerrada — no se pueden registrar
     // operaciones de dinero» con 1.97:1, y es el mensaje operativo más
     // importante del producto: el que costó once días de trabajo a un cliente.

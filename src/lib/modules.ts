@@ -32,7 +32,18 @@ export const CONCEPT_LABELS: Record<string, string> = {
   // quien firma el arqueo no le dice nada.
   settlement_out: 'Liquidado del convenio',
   settlement_in: 'Recibido del convenio',
+  // 00042. Faltaba: la devolución de un cliente salía como `sale_return` en el
+  // acta de cierre, en inglés y entre conceptos traducidos — en un documento
+  // que se imprime, se firma y se archiva (auditoría de QA, F9-03).
+  sale_return: 'Devolución a cliente',
+  other: 'Otro',
 }
+
+/**
+ * Los 13 valores del enum `cash_concept` están cubiertos arriba. Si el backend
+ * agrega uno nuevo, `CONCEPT_LABELS` lo muestra tal cual —fallback seguro— pero
+ * queda en inglés en el acta: al crear un concepto, agregarle aquí su frase.
+ */
 
 export function conceptLabel(concept: string): string {
   return CONCEPT_LABELS[concept] ?? concept

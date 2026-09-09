@@ -63,6 +63,7 @@ export const AUDIT_ACTION_LABELS: Record<string, string> = {
   update_document_template: 'Editó una plantilla de documento',
   activate_document_template: 'Activó una plantilla de documento',
   delete_document_template: 'Eliminó una plantilla de documento',
+  deactivate_document_template: 'Volvió al documento por defecto',
   // Cuentas
   create_account: 'Creó una cuenta',
   update_account: 'Editó una cuenta',

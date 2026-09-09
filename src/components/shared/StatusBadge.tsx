@@ -22,6 +22,11 @@ export const STATUS_LABELS = {
   // Estado de `ContractItemOut.status` mientras la prenda respalda un
   // contrato vigente — visto en pruebas reales (paso 5, contracts).
   in_custody: 'En custodia',
+  // `SaleOut.status`. Faltaban desde siempre: el badge de una venta mostraba
+  // el valor del enum en inglés en la pantalla de Ventas, que es de uso diario
+  // (hallazgo del 27/08, confirmado por la auditoría de QA en la Fase 8).
+  completed: 'Completada',
+  voided: 'Anulada',
 } as const
 
 export type KnownStatus = keyof typeof STATUS_LABELS
@@ -43,6 +48,11 @@ const STATUS_CLASSES: Record<KnownStatus, string> = {
   open: 'bg-status-active/15 text-status-active',
   closed: 'bg-status-neutral/15 text-status-neutral',
   in_custody: 'bg-status-active/15 text-status-active',
+  // Mismos tokens que sus equivalentes: una venta completada se lee como
+  // «vendido» y una anulada comparte semántica con «rematado / vencida»
+  // (DESIGN_SYSTEM §2, estados de dominio).
+  completed: 'bg-status-paid/15 text-status-paid',
+  voided: 'bg-status-auctioned/15 text-status-auctioned',
 }
 
 const FALLBACK_CLASSES = 'bg-status-neutral/15 text-status-neutral'

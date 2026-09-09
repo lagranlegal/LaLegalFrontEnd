@@ -12,14 +12,23 @@
   --brand-700: #00806f; /* pressed / focos */
   --brand-contrast: #ffffff;
 
-  /* ==== Semánticos ==== */
-  --success: #22a06b;
+  /* ==== Semánticos ====
+     Valores calculados contra `--bg-app` (#f5f7fa), que es el peor caso de los
+     dos fondos, para cumplir WCAG AA 4.5:1 conservando el tono — la auditoría
+     de QA (F6-02) midió 12 combinaciones por debajo en el tema claro y CERO en
+     el oscuro. El tono se mantiene: solo baja la luminosidad lo justo.
+     Cada uno cumple sobre los TRES fondos donde vive: `--bg-app`,
+     `--bg-surface` y su propio `-soft` (que es el más exigente, por compartir
+     tono con el texto).
+     El teal de marca NO se tocó: oscurecerlo cambia la identidad visual y eso
+     es una decisión de diseño, no de accesibilidad. Ver DESIGN_SYSTEM §4.10. */
+  --success: #1b7e54;
   --success-soft: #e6f6ef;
-  --warning: #e8a23d;
+  --warning: #9b6312;
   --warning-soft: #fcf3e3;
-  --danger: #e5484d; /* gastos, cuentas por cobrar, anulaciones, mora */
+  --danger: #d51e24; /* gastos, cuentas por cobrar, anulaciones, mora */
   --danger-soft: #fdebec;
-  --info: #3b82f6;
+  --info: #0b63f3;
   --info-soft: #eaf2fe;
 
   /* ==== Neutrales (superficies y texto) ==== */
@@ -29,7 +38,7 @@
   --border: #e5eaf0; /* bordes de cards, inputs, divisores */
   --text-strong: #1e2a3b; /* títulos, cifras */
   --text-body: #44546a;
-  --text-muted: #8a97a8; /* labels de KPI, hints, placeholders */
+  --text-muted: #647387; /* labels de KPI, hints, placeholders */
 
   /* ==== Sidebar (28/08/2026) ====
      Antes aliaseaba a --bg-surface (blanco, igual que cualquier card) — cero
@@ -48,7 +57,7 @@
   /* ==== Estados de dominio (badges) ==== */
   --status-active: var(--success); /* Vigente / disponible / activa */
   --status-arrears: var(--warning); /* En mora / borrador */
-  --status-extension: #d97706; /* Prórroga */
+  --status-extension: #ab5e05; /* Prórroga */
   --status-auctioned: var(--danger); /* Rematado / anulada / vencida */
   --status-paid: var(--info); /* Pagado / vendido */
   --status-neutral: var(--text-muted); /* invitado, inactivo, written_off */
@@ -121,7 +130,16 @@
   --brand-700: #7fe3d1; /* pressed / focos / texto sobre brand-50 */
   --brand-contrast: #06231f; /* texto sobre botones primarios: oscuro, brand-500 ya es claro */
 
-  /* ==== Semánticos ==== */
+  /* ==== Semánticos ====
+     Valores calculados contra `--bg-app` (#f5f7fa), que es el peor caso de los
+     dos fondos, para cumplir WCAG AA 4.5:1 conservando el tono — la auditoría
+     de QA (F6-02) midió 12 combinaciones por debajo en el tema claro y CERO en
+     el oscuro. El tono se mantiene: solo baja la luminosidad lo justo.
+     Cada uno cumple sobre los TRES fondos donde vive: `--bg-app`,
+     `--bg-surface` y su propio `-soft` (que es el más exigente, por compartir
+     tono con el texto).
+     El teal de marca NO se tocó: oscurecerlo cambia la identidad visual y eso
+     es una decisión de diseño, no de accesibilidad. Ver DESIGN_SYSTEM §4.10. */
   --success: #3dd68c;
   --success-soft: #0f2e21;
   --warning: #f0b955;
