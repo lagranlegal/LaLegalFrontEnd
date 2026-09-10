@@ -27,6 +27,13 @@ export const STATUS_LABELS = {
   // (hallazgo del 27/08, confirmado por la auditoría de QA en la Fase 8).
   completed: 'Completada',
   voided: 'Anulada',
+  // 00051. Un contrato AMPLIADO no es un contrato cerrado ni pagado: el
+  // cliente sigue debiendo, solo que en el contrato sucesor. La etiqueta
+  // tiene que decir eso o se lee como "terminado".
+  superseded: 'Ampliado',
+  // `ContractItemOut.status` del contrato ampliado: la prenda NO se
+  // devolvió, pasó a respaldar el contrato nuevo.
+  transferred: 'Pasó al nuevo contrato',
 } as const
 
 export type KnownStatus = keyof typeof STATUS_LABELS
@@ -53,6 +60,10 @@ const STATUS_CLASSES: Record<KnownStatus, string> = {
   // (DESIGN_SYSTEM §2, estados de dominio).
   completed: 'bg-status-paid/15 text-status-paid',
   voided: 'bg-status-auctioned/15 text-status-auctioned',
+  // Neutro a propósito: un contrato ampliado no es ni bueno ni malo, es un
+  // documento reemplazado. Pintarlo como `paid` diría que se saldó.
+  superseded: 'bg-status-neutral/15 text-status-neutral',
+  transferred: 'bg-status-neutral/15 text-status-neutral',
 }
 
 const FALLBACK_CLASSES = 'bg-status-neutral/15 text-status-neutral'

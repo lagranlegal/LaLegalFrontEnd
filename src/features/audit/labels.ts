@@ -28,6 +28,7 @@ export const AUDIT_ACTION_LABELS: Record<string, string> = {
   create_payment: 'Registró un abono',
   apply_payment_discount: 'Aplicó un descuento a un abono',
   auction_contract: 'Remató un contrato',
+  extend_loan: 'Amplió un préstamo',
   // Ventas
   create_sale: 'Registró una venta',
   apply_sale_discount: 'Aplicó un descuento a una venta',

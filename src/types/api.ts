@@ -896,6 +896,56 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/contracts/{contract_id}/extension-options": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Extension Options
+         * @description Cuánto puede retirar el cliente sobre la garantía que ya dejó.
+         *
+         *     Va con `contracts.view` y no con `contracts.extend_loan`: el cupo es
+         *     información del contrato —"a este cliente le queda cupo hasta el 7 de
+         *     octubre"— y sirve para atender aunque quien mira no pueda ejecutarlo.
+         *
+         *     Responde siempre, incluso cuando no se puede ampliar: `blocked_reason`
+         *     dice por qué, para que la pantalla pueda explicarlo en vez de esconder
+         *     la opción sin más.
+         */
+        get: operations["get_extension_options_api_v1_contracts__contract_id__extension_options_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/contracts/{contract_id}/extend-loan": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Extend Loan
+         * @description Amplía el préstamo ("recargo"). Devuelve el contrato SUCESOR, con un
+         *     número nuevo — el viejo queda `superseded` y hay que imprimir y firmar
+         *     el nuevo (docs/RECARGOS.md).
+         */
+        post: operations["extend_loan_api_v1_contracts__contract_id__extend_loan_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/contracts/{contract_id}/auction": {
         parameters: {
             query?: never;
@@ -2384,6 +2434,24 @@ export interface components {
             legacy_code?: string | null;
             /** Notes */
             notes?: string | null;
+            /** Extension Window Days */
+            extension_window_days?: number | null;
+        };
+        /**
+         * ContractExtendIn
+         * @description Lo que se entrega HOY. El capital viejo NO viaja: lo pone el backend
+         *     desde el contrato que se está ampliando.
+         */
+        ContractExtendIn: {
+            /** Amount */
+            amount: number | string;
+            /**
+             * Payment Method
+             * @enum {string}
+             */
+            payment_method: "cash" | "transfer" | "other";
+            /** Account Id */
+            account_id?: string | null;
         };
         /**
          * ContractImportIn
@@ -2558,6 +2626,14 @@ export interface components {
              * Format: date-time
              */
             created_at: string;
+            /** Extension Window Days */
+            extension_window_days: number;
+            /** Extension Interest Policy */
+            extension_interest_policy: string;
+            /** Parent Contract Id */
+            parent_contract_id: string | null;
+            /** Root Contract Id */
+            root_contract_id: string | null;
             /** Items */
             items: components["schemas"]["ContractItemOut"][];
         };
@@ -3159,6 +3235,25 @@ export interface components {
              * Format: date-time
              */
             created_at: string;
+        };
+        /**
+         * ExtensionQuoteOut
+         * @description Cuánto puede retirar el cliente sobre la garantía que ya dejó, y hasta
+         *     cuándo. Se devuelve siempre —aunque no se pueda ampliar— porque la
+         *     pantalla necesita explicar POR QUÉ no se puede: una card que desaparece
+         *     sin decir nada deja al usuario buscándola.
+         */
+        ExtensionQuoteOut: {
+            /** Ceiling */
+            ceiling: string | null;
+            /** Available */
+            available: string;
+            /** Window Ends On */
+            window_ends_on: string | null;
+            /** Is Open */
+            is_open: boolean;
+            /** Blocked Reason */
+            blocked_reason?: ("CONTRACT_CLOSED" | "EXTENSION_WINDOW_CLOSED" | "CONTRACT_WITHOUT_APPRAISAL" | "CONTRACT_INTEREST_OVERDUE" | "EXTENSION_NO_HEADROOM") | null;
         };
         /** HTTPValidationError */
         HTTPValidationError: {
@@ -6910,6 +7005,74 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["SettlementInfoOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_extension_options_api_v1_contracts__contract_id__extension_options_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                contract_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExtensionQuoteOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    extend_loan_api_v1_contracts__contract_id__extend_loan_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: string | null;
+            };
+            path: {
+                contract_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ContractExtendIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ContractOut"];
                 };
             };
             /** @description Validation Error */

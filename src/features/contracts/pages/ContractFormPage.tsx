@@ -35,6 +35,11 @@ const contractSchema = z.object({
   payment_method: z.enum(['cash', 'transfer', 'other']),
   account_id: z.string().nullable(),
   extension_months: z.number().int().min(0),
+  // Vacío = usar la política de la empresa. No se precarga con 28 a propósito:
+  // el 28 es el default del SISTEMA, y cada compraventa maneja el suyo — si
+  // acá apareciera un número, el contrato congelaría ese en vez de la
+  // política vigente.
+  extension_window_days: z.string().optional(),
   notes: z.string().optional(),
   items: z.array(contractItemSchema).min(1, 'Agrega al menos una prenda'),
 })
@@ -71,6 +76,7 @@ export function ContractFormPage() {
       payment_method: 'cash',
       account_id: null,
       extension_months: 1,
+      extension_window_days: '',
       notes: '',
       items: [emptyContractItem()],
     },
@@ -122,6 +128,9 @@ export function ContractFormPage() {
         payment_method: values.payment_method,
         account_id: values.account_id,
         extension_months: values.extension_months,
+        extension_window_days: values.extension_window_days
+          ? Number(values.extension_window_days)
+          : null,
         notes: values.notes || null,
         items: values.items.map((item) => ({
           category_id: item.category_id,
@@ -199,6 +208,25 @@ export function ContractFormPage() {
                 render={({ field }) => <MoneyInput id="appraisal_value" className="mt-1" value={field.value ?? ''} onChange={field.onChange} />}
               />
               {errors.appraisal_value && <p className="mt-1 text-sm text-danger">{errors.appraisal_value.message}</p>}
+            </div>
+            <div>
+              <label htmlFor="extension_window_days" className="text-sm font-medium text-foreground">
+                Días para ampliar (opcional)
+              </label>
+              <input
+                id="extension_window_days"
+                inputMode="numeric"
+                className={inputClass}
+                placeholder="Política de la empresa"
+                {...register('extension_window_days')}
+              />
+              {/* Se congela en el contrato al firmarlo, como la tasa: cambiar
+                  la política mañana no puede alterar lo que el cliente firmó
+                  hoy. `0` = este contrato no admite ampliaciones. */}
+              <p className="mt-1 text-xs text-muted-foreground">
+                Hasta cuántos días después puede volver a retirar sobre esta garantía. Vacío usa la
+                política de la empresa; 0 la desactiva.
+              </p>
             </div>
             <div>
               <label htmlFor="payment_method" className="text-sm font-medium text-foreground">

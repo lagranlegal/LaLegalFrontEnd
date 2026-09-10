@@ -5,6 +5,7 @@ import type { ColumnDef } from '@tanstack/react-table'
 import { toast } from 'sonner'
 import { BackLink } from '@/components/shared/BackLink'
 import { PageHeader } from '@/components/shared/PageHeader'
+import { ExtendLoanPanel } from '@/features/contracts/components/ExtendLoanPanel'
 import { StatusBadge } from '@/components/shared/StatusBadge'
 import { LegacyCodeBadge } from '@/components/shared/LegacyCodeBadge'
 import { PhotoThumbnail } from '@/components/shared/PhotoThumbnail'
@@ -205,6 +206,27 @@ export function ContractDetailPage() {
         }
       />
 
+      {contract.status === 'superseded' && (
+        <div className="rounded-input bg-muted px-4 py-2 text-sm text-muted-foreground">
+          Este contrato fue <span className="font-medium text-foreground">ampliado</span>: dejó de
+          ser la obligación vigente y se conserva con su firma. La deuda vive en el contrato que lo
+          sucede.
+        </div>
+      )}
+
+      {contract.parent_contract_id && (
+        <div className="rounded-input bg-muted px-4 py-2 text-sm text-muted-foreground">
+          Sucede a un contrato anterior, ampliado el {formatDate(contract.start_date)}.{' '}
+          <Link
+            to="/contratos/$contractId"
+            params={{ contractId: contract.parent_contract_id }}
+            className="font-medium text-primary underline-offset-4 hover:underline"
+          >
+            Ver el contrato anterior
+          </Link>
+        </div>
+      )}
+
       {contract.ltv_warning && (
         <div className="rounded-input bg-warning-soft px-4 py-2 text-sm text-warning">Este contrato supera el LTV máximo permitido para su categoría.</div>
       )}
@@ -308,6 +330,8 @@ export function ContractDetailPage() {
           contrato?" de un vistazo, mientras que la tabla de abonos es para
           consultar un movimiento puntual. Se calculan de los mismos abonos que
           la tabla, así que solo tienen sentido cuando ya cargaron. */}
+      <ExtendLoanPanel contract={contract} />
+
       {!paymentsPending && !paymentsError && (
         <div>
           <h2 className="mb-3 text-sm font-medium text-foreground">Cómo va este contrato</h2>

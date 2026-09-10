@@ -159,3 +159,57 @@ export function useAuctionContract() {
     },
   })
 }
+
+// ---- Ampliar el préstamo, el "recargo" (00051, docs/RECARGOS.md) ----------
+
+export type ExtensionQuote = components['schemas']['ExtensionQuoteOut']
+export type ContractExtendIn = components['schemas']['ContractExtendIn']
+
+/**
+ * Cuánto puede retirar el cliente sobre la garantía que ya dejó.
+ *
+ * Va con `contracts.view`, no con `extend_loan`: el cupo es información del
+ * contrato y sirve para atender aunque quien mira no pueda ejecutarlo.
+ * Responde SIEMPRE, incluso cuando no se puede ampliar — `blocked_reason`
+ * dice por qué, para que la pantalla explique en vez de esconder la opción.
+ */
+export function useExtensionOptions(contractId: string, enabled = true) {
+  return useQuery({
+    queryKey: ['contracts', contractId, 'extension-options'] as const,
+    queryFn: () =>
+      unwrap(
+        api.GET('/api/v1/contracts/{contract_id}/extension-options', {
+          params: { path: { contract_id: contractId } },
+        }),
+      ),
+    enabled,
+  })
+}
+
+/**
+ * Ampliar el préstamo. **Devuelve un contrato NUEVO**, con otro número: el
+ * viejo queda `superseded`. Por eso la pantalla navega al sucesor en vez de
+ * quedarse donde está — el documento que se está mirando dejó de ser la
+ * obligación vigente.
+ *
+ * Pasa por `useMoneyMutation`: entrega efectivo, así que un reintento de red
+ * no puede desembolsar dos veces.
+ */
+export function useExtendLoan(contractId: string) {
+  return useMoneyMutation({
+    mutationFn: (body: ContractExtendIn, idempotencyKey: string) =>
+      unwrap(
+        api.POST('/api/v1/contracts/{contract_id}/extend-loan', {
+          params: { path: { contract_id: contractId }, header: { 'Idempotency-Key': idempotencyKey } },
+          body,
+        }),
+      ),
+    invalidateKeys: [
+      ['contracts', contractId],
+      ['contracts', 'list'],
+      ['dashboard'],
+      ['cashbox', 'current'],
+      ['accounts'],
+    ],
+  })
+}
