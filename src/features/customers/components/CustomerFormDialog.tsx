@@ -25,7 +25,7 @@ const customerSchema = z.object({
   phone: z.string().min(1, 'El teléfono es obligatorio'),
   email: z.union([z.string().email('Correo inválido'), z.literal('')]).optional(),
   notes: z.string().optional(),
-  doc_photo: z.array(z.string()),
+  doc_photos: z.array(z.string()),
 })
 
 type CustomerFormValues = z.infer<typeof customerSchema>
@@ -33,7 +33,7 @@ type CustomerFormValues = z.infer<typeof customerSchema>
 const inputClass = 'mt-1 w-full rounded-input border border-border bg-background px-3 py-2 text-sm text-foreground outline-none focus:border-primary disabled:bg-muted disabled:text-muted-foreground'
 
 function emptyValues(): CustomerFormValues {
-  return { full_name: '', doc_type: 'cc', doc_number: '', doc_issue_place: '', address: '', phone: '', email: '', notes: '', doc_photo: [] }
+  return { full_name: '', doc_type: 'cc', doc_number: '', doc_issue_place: '', address: '', phone: '', email: '', notes: '', doc_photos: [] }
 }
 
 function valuesFromCustomer(customer: Customer): CustomerFormValues {
@@ -46,7 +46,7 @@ function valuesFromCustomer(customer: Customer): CustomerFormValues {
     phone: customer.phone,
     email: customer.email ?? '',
     notes: customer.notes ?? '',
-    doc_photo: customer.doc_photo_url ? [customer.doc_photo_url] : [],
+    doc_photos: customer.doc_photos ?? [],
   }
 }
 
@@ -82,14 +82,15 @@ export function CustomerFormDialog({ open, onOpenChange, customer }: { open: boo
   async function onSubmit(values: CustomerFormValues) {
     setFormError(null)
     const email = values.email || null
-    const doc_photo_url = values.doc_photo[0] ?? null
     try {
       if (mode === 'create') {
-        const { doc_photo: _docPhoto, ...rest } = values
-        await createCustomer.mutateAsync({ ...rest, email, doc_photo_url })
+        // `doc_photos` viaja tal cual: es el campo de la API. Antes había que
+        // sacarlo del payload porque el formulario guardaba un arreglo y la
+        // API pedía un solo `doc_photo_url` — esa traducción ya no existe.
+        await createCustomer.mutateAsync({ ...values, email })
       } else if (customer) {
-        const { doc_type: _docType, doc_number: _docNumber, doc_photo: _docPhoto, ...editable } = values
-        await updateCustomer.mutateAsync({ customerId: customer.id, body: { ...editable, email, doc_photo_url } })
+        const { doc_type: _docType, doc_number: _docNumber, ...editable } = values
+        await updateCustomer.mutateAsync({ customerId: customer.id, body: { ...editable, email } })
       }
       onOpenChange(false)
     } catch (error) {
@@ -201,13 +202,21 @@ export function CustomerFormDialog({ open, onOpenChange, customer }: { open: boo
         </div>
 
         <div>
-          <p className="text-sm font-medium text-foreground">Foto del documento</p>
+          <p className="text-sm font-medium text-foreground">Fotos del documento</p>
+          {/* Dos, no una: una cédula tiene frente y reverso, y hasta 00050 solo
+              cabía una. El ORDEN es la semántica —la primera es el frente— así
+              que el reordenar que `PhotoUploader` ya trae sirve para corregir
+              si se suben al revés. Por eso el texto habla de orden y no de dos
+              casillas separadas. */}
           <Controller
             control={control}
-            name="doc_photo"
+            name="doc_photos"
             render={({ field }) => (
               <div className="mt-1">
-                <PhotoUploader value={field.value} onChange={field.onChange} folder={`customers/${customer?.id ?? draftId}`} maxPhotos={1} />
+                <PhotoUploader value={field.value} onChange={field.onChange} folder={`customers/${customer?.id ?? draftId}`} maxPhotos={2} />
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Frente y reverso. La primera es el frente — si quedan al revés, se pueden reordenar.
+                </p>
               </div>
             )}
           />

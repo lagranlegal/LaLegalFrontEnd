@@ -2762,6 +2762,8 @@ export interface components {
             phone: string;
             /** Email */
             email?: string | null;
+            /** Doc Photos */
+            doc_photos?: string[] | null;
             /** Doc Photo Url */
             doc_photo_url?: string | null;
             /** Notes */
@@ -2788,6 +2790,8 @@ export interface components {
             phone: string;
             /** Email */
             email: string | null;
+            /** Doc Photos */
+            doc_photos?: string[];
             /** Doc Photo Url */
             doc_photo_url: string | null;
             /** Status */
@@ -2814,6 +2818,8 @@ export interface components {
             phone?: string | null;
             /** Email */
             email?: string | null;
+            /** Doc Photos */
+            doc_photos?: string[] | null;
             /** Doc Photo Url */
             doc_photo_url?: string | null;
             /** Notes */

@@ -94,6 +94,10 @@ export function CustomerDetailPage() {
     )
   }
 
+  // El tipo generado lo marca opcional porque tiene default en el schema del
+  // backend; en la práctica siempre viaja. Se normaliza acá y no en cada uso.
+  const docPhotos = customer.doc_photos ?? []
+
   return (
     <div className="flex flex-col gap-6">
       <BackLink to="/clientes" label="Clientes" />
@@ -149,10 +153,26 @@ export function CustomerDetailPage() {
             <p className="text-sm text-foreground">{customer.notes}</p>
           </div>
         )}
-        {customer.doc_photo_url && (
+        {docPhotos.length > 0 && (
           <div className="mt-4">
-            <p className="text-xs text-muted-foreground">Foto del documento</p>
-            <PhotoThumbnail path={customer.doc_photo_url} className="mt-1 size-24" />
+            <p className="text-xs text-muted-foreground">
+              {docPhotos.length > 1 ? 'Fotos del documento' : 'Foto del documento'}
+            </p>
+            {/* El orden ES la semántica (00050): la primera es el frente. Se
+                etiquetan solo cuando hay más de una — con una sola, decir
+                "frente" afirmaría algo que nadie declaró. */}
+            <div className="mt-1 flex flex-wrap gap-3">
+              {docPhotos.map((path, index) => (
+                <div key={path}>
+                  <PhotoThumbnail path={path} className="size-24" />
+                  {docPhotos.length > 1 && (
+                    <p className="mt-1 text-center text-xs text-muted-foreground">
+                      {index === 0 ? 'Frente' : index === 1 ? 'Reverso' : `Foto ${index + 1}`}
+                    </p>
+                  )}
+                </div>
+              ))}
+            </div>
           </div>
         )}
       </div>
