@@ -13,10 +13,19 @@ const NONE = '__none__'
 
 const supplierSchema = z.object({
   name: z.string().min(1, 'El nombre es obligatorio'),
+  // 1 a 3 letras, igual que el backend (`SupplierCodeLetter`) y que el
+  // `check (char_length between 1 and 3)` de la migración 00004.
+  //
+  // Acá el margen SÍ hacía falta: la letra de un proveedor es única por
+  // EMPRESA (`unique (company_id, code_letter)`), no entre hermanos como en
+  // categorías. Con una sola letra el techo eran 26 − 4 reservadas (R remate,
+  // P propio, T transformado, D devuelto) = 22 proveedores, y una compraventa
+  // los pasa sin esfuerzo. Con hasta 3 el techo pasa a 22 + 676 + 17.576.
   code_letter: z
     .string()
     .min(1, 'La letra es obligatoria')
-    .max(1, 'Una sola letra')
+    .max(3, 'Máximo 3 letras')
+    .regex(/^[A-Za-z]+$/, 'Solo letras de la A a la Z')
     .transform((v) => v.toUpperCase()),
   doc_type: z.string(),
   doc_number: z.string().optional(),
@@ -124,7 +133,8 @@ export function SupplierFormDialog({ open, onOpenChange, supplier }: { open: boo
             <label htmlFor="sup-code" className="text-sm font-medium text-foreground">
               Letra de código
             </label>
-            <input id="sup-code" maxLength={1} className={`${inputClass} uppercase`} {...register('code_letter')} />
+            <input id="sup-code" maxLength={3} className={`${inputClass} uppercase`} {...register('code_letter')} />
+            <p className="mt-1 text-xs text-muted-foreground">1 a 3 letras. Va al final del código del lote. R, P, T y D están reservadas.</p>
             {errors.code_letter && <p className="mt-1 text-sm text-danger">{errors.code_letter.message}</p>}
           </div>
         </div>

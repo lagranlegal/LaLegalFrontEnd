@@ -6,20 +6,30 @@ import { AppDialog } from '@/components/shared/AppDialog'
 import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { applyServerErrors } from '@/lib/forms/applyServerErrors'
+import { formatCOP, normalizeDecimalInput } from '@/lib/money'
 import { useCreateCategory, useUpdateCategory } from '@/features/catalogs/api'
 import type { Category } from '@/features/catalogs/tree'
 
 const APPLIES_TO_LABELS: Record<string, string> = { pawn: 'Empeño', store: 'Tienda', both: 'Ambos' }
+
+/** Prenda de referencia del ejemplo de LTV. Un millón redondo: la cuenta se
+ *  hace de cabeza y el porcentaje se lee solo. */
+const LTV_PRENDA_EJEMPLO = 1_000_000
 
 import { resolveInheritedParams } from '@/features/catalogs/inheritance'
 import { useCategories } from '@/lib/catalogs/categories'
 
 const categorySchema = z.object({
   name: z.string().min(1, 'El nombre es obligatorio'),
+  // 1 a 3 letras, igual que el backend (`CodeLetter` en catalogs/schemas.py) y
+  // que el `check (char_length between 1 and 3)` de la migración 00004. Este
+  // formulario lo limitaba a UNA sola por su cuenta, cerrando un margen que el
+  // modelo ya tenía abierto — ver la nota en el input de abajo.
   code_letter: z
     .string()
     .min(1, 'La letra es obligatoria')
-    .max(1, 'Una sola letra')
+    .max(3, 'Máximo 3 letras')
+    .regex(/^[A-Za-z]+$/, 'Solo letras de la A a la Z')
     .transform((v) => v.toUpperCase()),
   applies_to: z.enum(['pawn', 'store', 'both']),
   // Solo importan de verdad en categorías nivel 3 (las que se usan al armar
@@ -87,6 +97,16 @@ export function CategoryFormDialog({
   // el valor ya escrito.
   const heredado = resolveInheritedParams(allCategories ?? [], category ? (category.parent_id ?? undefined) : parentId)
   const hayHerencia = heredado.default_term_months != null || heredado.arrears_window_months != null || heredado.max_ltv_pct != null
+  // El LTV que va a REGIR: lo que se está escribiendo, o lo heredado si el
+  // campo está vacío. Mismo criterio que el placeholder de al lado.
+  const ltvEscrito = watch('max_ltv_pct')
+  const ltvVigente = ltvEscrito || heredado.max_ltv_pct
+  const ltvNumero = ltvVigente != null ? Number(normalizeDecimalInput(String(ltvVigente))) : NaN
+  const ltvEjemplo =
+    Number.isFinite(ltvNumero) && ltvNumero > 0
+      ? { pct: ltvVigente, maximo: Math.round((LTV_PRENDA_EJEMPLO * ltvNumero) / 100) }
+      : null
+
   // Falta de verdad solo si NADIE en la rama lo define y esta categoría
   // tampoco lo está definiendo ahora mismo.
   const faltaEnLaRama =
@@ -149,7 +169,14 @@ export function CategoryFormDialog({
             <label htmlFor="cat-code" className="text-sm font-medium text-foreground">
               Letra de código
             </label>
-            <input id="cat-code" maxLength={1} className={`${inputClass} uppercase`} {...register('code_letter')} />
+            {/* En categorías la letra solo tiene que ser única entre HERMANAS
+                (`unique (company_id, parent_id, code_letter)`), así que una
+                sola letra alcanza de sobra: nadie cuelga 26 subcategorías del
+                mismo padre. Se admiten hasta 3 igual, por consistencia con
+                proveedores —donde sí hacía falta— y porque el modelo ya lo
+                soportaba. */}
+            <input id="cat-code" maxLength={3} className={`${inputClass} uppercase`} {...register('code_letter')} />
+            <p className="mt-1 text-xs text-muted-foreground">1 a 3 letras. Forma el código: {'{Nivel1}{Nivel2}{Nivel3}'}0001</p>
             {errors.code_letter && <p className="mt-1 text-sm text-danger">{errors.code_letter.message}</p>}
           </div>
           <div>
@@ -217,6 +244,27 @@ export function CategoryFormDialog({
             />
           </div>
         </div>
+
+        {/* "LTV máximo (%)" no le dice nada a quien no conoce la sigla, y el
+            campo se prestaba a entenderse al revés. Un ejemplo con plata sobre
+            una prenda de un millón lo vuelve inmediato, y se recalcula con lo
+            que la persona escribe (o hereda) en vez de ser un texto fijo.
+            El caso real que lo motivó: una empresa quedó con LTV 10% en todo
+            el árbol, así que casi cualquier préstamo disparaba la alerta y la
+            alerta dejó de significar algo. */}
+        <p className="-mt-2 text-xs text-muted-foreground">
+          <span className="font-medium text-foreground">LTV</span> es cuánto se presta sobre el avalúo de la prenda.{' '}
+          {ltvEjemplo ? (
+            <>
+              Con <span className="font-medium text-foreground">{ltvEjemplo.pct}%</span>, sobre una prenda avaluada en{' '}
+              {formatCOP(LTV_PRENDA_EJEMPLO)} se presta hasta{' '}
+              <span className="font-medium text-foreground">{formatCOP(ltvEjemplo.maximo)}</span>.
+            </>
+          ) : (
+            <>Referencia habitual: oro 70%, plata 60%, tecnología 40%.</>
+          )}{' '}
+          Solo <span className="font-medium text-foreground">advierte</span> al crear el contrato — nunca lo impide.
+        </p>
 
         {/* Tres mensajes distintos según lo que de verdad pasa, en vez del
             "obligatorios para nivel 3" de antes — que era falso desde que los
