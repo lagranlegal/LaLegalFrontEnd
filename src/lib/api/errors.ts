@@ -58,6 +58,30 @@ export const API_ERROR_CODES = [
   'EMAIL_ALREADY_REGISTERED',
   'AUTH_ACCOUNT_MISSING',
   'CANNOT_DEACTIVATE_SELF',
+  // Caja: el saldo del cajón es de la CUENTA, no del turno (00048).
+  // El conteo de apertura no cuadra y no vino motivo. Mismo rigor y misma
+  // razón que el descuadre de cierre: es la misma clase de hecho. El diálogo
+  // de abrir caja lo pide ANTES de enviar, así que este código solo llega si
+  // alguien pega contra la API directo.
+  'CASH_OPENING_DIFFERENCE_UNJUSTIFIED',
+  // Se eligió una caja fuerte (`vault`) como cuenta de una operación de
+  // negocio (00049). No es un punto de cobro: entra y sale solo por
+  // traslado. El `AccountPicker` no la ofrece; esto cubre el caso de que
+  // llegue igual.
+  'ACCOUNT_NOT_OPERATIONAL',
+  // Segunda cuenta de efectivo (00049). Con un solo turno, dos cajones
+  // hacen el arqueo incuadrable. El formulario ya deja de ofrecer "Efectivo"
+  // cuando existe una; el mensaje del backend explica las dos salidas
+  // (trasladar, o crear una caja fuerte).
+  'CASH_ACCOUNT_ALREADY_EXISTS',
+  // Ampliar el préstamo (00051, ../backend-starter/docs/RECARGOS.md). Los
+  // tres los muestra el panel ANTES de dejar intentar —`GET
+  // /extension-options` los devuelve como `blocked_reason`— así que como
+  // error solo aparecen en una carrera: alguien abonó o el día cambió entre
+  // que se pintó la card y se confirmó.
+  'EXTENSION_WINDOW_CLOSED',
+  'CONTRACT_INTEREST_OVERDUE',
+  'CONTRACT_WITHOUT_APPRAISAL',
 ] as const
 
 export type ApiErrorCode = (typeof API_ERROR_CODES)[number]

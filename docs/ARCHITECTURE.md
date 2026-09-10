@@ -96,6 +96,10 @@ RBAC dinámico por empresa (roles editables), así que los permisos NO se hardco
 | `CONTRACT_LEGACY_CODE_EXISTS` (409) | Import de contratos (RECOMENDACIONES §1.6): "Este contrato ya fue migrado" — link al contrato existente si se puede resolver por búsqueda de `legacy_code`. |
 | `IMPORT_CAPITAL_EXCEEDS_PRINCIPAL` (422) | Import de contratos: `capital_balance` ≤ 0 o > `principal` — validar en vivo mientras se escribe, no esperar el submit. |
 | `IMPORT_DATES_MISALIGNED` (422) | Import de contratos: `interest_paid_until` no cae en un múltiplo entero de meses desde `start_date` — evitarlo con un selector "N meses desde el inicio" en vez de dos date pickers libres. |
+| `CASH_OPENING_DIFFERENCE_UNJUSTIFIED` (400) | Caja (00048): el conteo de apertura no cuadra y falta el motivo. El diálogo de abrir caja **ya lo pide antes de enviar**, así que llegar acá significa que alguien pegó contra la API directo. |
+| `ACCOUNT_NOT_OPERATIONAL` (400) | Se eligió una caja fuerte (`vault`) para una operación de negocio (00049). El `AccountPicker` no la ofrece; el mensaje del backend explica que solo entra y sale por traslado. |
+| `CASH_ACCOUNT_ALREADY_EXISTS` (409) | Segunda cuenta de efectivo (00049). El formulario ya deja de ofrecer "Efectivo" cuando existe una; el mensaje del backend da las dos salidas (trasladar, o crear caja fuerte). |
+| `EXTENSION_WINDOW_CLOSED` / `CONTRACT_INTEREST_OVERDUE` / `CONTRACT_WITHOUT_APPRAISAL` (409) | Ampliar el préstamo (00051). **El panel los muestra ANTES de dejar intentar** — `GET /extension-options` los devuelve como `blocked_reason`, y esa es la vía normal. Como error solo aparecen en una carrera: alguien abonó, o el día cambió entre que se pintó la card y se confirmó. Refetch del contrato y del cupo. |
 | `AUTH_ADMIN_ERROR` (502) | Identity (paso 8): fallo de Supabase Auth Admin al invitar (incluye rate limit de envío de correos) — sin modal específico, banner genérico con `error.message` (ya viene en español, verificado en pruebas reales). |
 | red / 5xx | Toast con retry; las mutaciones de dinero reintentan con la MISMA `Idempotency-Key`. |
 

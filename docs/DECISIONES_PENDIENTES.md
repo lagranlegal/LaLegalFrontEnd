@@ -76,7 +76,17 @@ Como la UI no consulta el permiso, hoy pasan dos cosas: quien **no** lo tiene se
 
 ## 3. ¿Debe el sistema impedir un desembolso sin efectivo en el cajón?
 
-**Estado: sin decidir (08/09/2026).** Reportado por la auditoría de QA de la Fase 3 (F3-01).
+**Estado: sin decidir.** Reportado por la auditoría de QA de la Fase 3 (F3-01, 08/09/2026).
+
+> **Actualización (10/09/2026) — ahora hay un precedente del propio proyecto para esta forma de pregunta.**
+>
+> El recargo enfrentó exactamente el mismo dilema con el cupo del LTV: ¿bloquear o advertir? Mateo propuso una casilla por empresa; se descartó porque nadie sabe responder eso al dar de alta una empresa y porque partía el producto en dos comportamientos. **La respuesta fue un permiso** (`contracts.override_ltv`): quien no lo tiene queda bloqueado, quien lo tiene pasa con advertencia y queda auditado como quien autorizó. La casilla sigue siendo expresable —dárselo a todos o a nadie— y encima cubre el caso que un booleano no puede: que el asesor no pueda y el dueño sí. Es el mismo molde que `sales.return_override_time_limit`.
+>
+> **Aplicado acá sería `cashbox.disburse_over_balance`**, o similar: el asesor no puede sacar del cajón más de lo que hay, el dueño sí y queda registrado. Eso responde también el argumento de "el registro no siempre es cronológico" (§ *Por qué no es obvio que deba bloquearse*): quien tiene el permiso resuelve el caso legítimo sin que la regla desaparezca para todos.
+>
+> **Y el terreno cambió:** desde `00048` el saldo de una cuenta de efectivo es continuo y derivado de sus movimientos, así que "cuánto hay en el cajón ahora" es un número confiable en cualquier momento — antes dependía de un `opening_balance` escrito a mano. Validar contra él dejó de ser validar contra una declaración.
+>
+> Sigue sin decidir porque la opción sigue siendo del negocio. Lo que ya no aplica es "no hay una forma clara de hacerlo".
 
 ### Qué pasa hoy
 
