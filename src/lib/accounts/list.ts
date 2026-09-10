@@ -12,11 +12,17 @@ export type Account = components['schemas']['AccountOut']
  * gastos, compras) — features que no pueden importar de otra feature
  * (CLAUDE.md, aislamiento).
  *
- * El saldo lo calcula el backend y se calcula distinto según el tipo
- * (docs/ARCHITECTURE.md §12): una cuenta `cash` reporta lo que debería haber
- * en el cajón AHORA (base de la sesión abierta + movimientos de esa sesión),
- * no un acumulado histórico. Por eso su saldo cambia al abrir y cerrar caja
- * — nunca se acumula nada en el cliente.
+ * El saldo lo calcula el backend, y desde la migración 00048 **los tres
+ * tipos se calculan igual**: `opening_balance` de la cuenta más sus propios
+ * movimientos (docs/ARCHITECTURE.md §12).
+ *
+ * Hasta entonces una cuenta `cash` era la excepción —su saldo salía de la
+ * sesión de caja abierta—, y por eso este comentario decía que cambiaba al
+ * abrir y cerrar el turno. Ya no: el efectivo del cajón existe con la caja
+ * cerrada, y dos cajones distintos reportan saldos distintos (antes los dos
+ * leían la misma sesión y daban el mismo número).
+ *
+ * Nunca se acumula nada en el cliente: el saldo siempre viene del servidor.
  */
 export function useAccounts(opts?: { includeInactive?: boolean }) {
   const includeInactive = opts?.includeInactive ?? false

@@ -40,13 +40,25 @@ export function useCashboxCurrent() {
   return useQuery(cashboxCurrentQueryOptions())
 }
 
+/**
+ * Abrir el turno. Desde la migración 00048 **no se manda un saldo**: el
+ * backend lo hereda del efectivo derivado de las cuentas de efectivo.
+ *
+ * Lo que se puede mandar es el CONTEO de apertura, opcional. Si no coincide
+ * con lo registrado, el backend exige motivo (`400
+ * CASH_OPENING_DIFFERENCE_UNJUSTIFIED`) y emite un ajuste — el mismo trato
+ * que el descuadre de cierre, porque es la misma clase de hecho.
+ */
 export function useOpenSession() {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: (openingBalance: string) =>
+    mutationFn: (input: { countedCash?: string; differenceReason?: string }) =>
       unwrap(
         api.POST('/api/v1/cashbox/sessions/open', {
-          body: { opening_balance: openingBalance },
+          body: {
+            counted_cash: input.countedCash ?? null,
+            difference_reason: input.differenceReason ?? null,
+          },
         }),
       ),
     onSuccess: (session) => {
@@ -56,6 +68,9 @@ export function useOpenSession() {
       queryClient.setQueryData(cashboxCurrentQueryOptions().queryKey, session)
       queryClient.invalidateQueries({ queryKey: ['cashbox', 'most-recent'] })
       queryClient.invalidateQueries({ queryKey: ['dashboard'] })
+      // El arqueo de apertura puede haber emitido un ajuste: el saldo de las
+      // cuentas cambió y el listado tiene que reflejarlo.
+      queryClient.invalidateQueries({ queryKey: ['accounts'] })
     },
   })
 }

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { accountTypeLabel, defaultAccountTypeFor } from '@/lib/accounts/types'
+import { accountTypeLabel, cashOnHand, defaultAccountTypeFor } from '@/lib/accounts/types'
 import { paymentMethodLabel } from '@/lib/paymentMethods'
 import { aggregateFinancialSummary, type ClosingsBreakdownLine } from '@/features/reports/aggregate'
 
@@ -165,5 +165,38 @@ describe('cuentas por cobrar en el flujo de caja', () => {
     )
 
     expect(summary.flujoSalidas).toBe('0.00')
+  })
+})
+
+describe('cashOnHand — el efectivo del cajón que se arquea al abrir', () => {
+  const cuenta = (type: string, balance: string) => ({ type, balance })
+
+  it('suma solo las cuentas de efectivo', () => {
+    // El banco y las cuentas por cobrar NO están en el cajón: contarlas haría
+    // que el diálogo de apertura pidiera contar plata que nadie puede tocar.
+    expect(
+      cashOnHand([
+        cuenta('cash', '292000.00'),
+        cuenta('bank', '2431000.00'),
+        cuenta('settlement', '150000.00'),
+      ]),
+    ).toBe('292000.00')
+  })
+
+  it('suma varios cajones, que desde el backend 00048 tienen saldos propios', () => {
+    // Antes las cuentas `cash` derivaban su saldo de la única sesión abierta,
+    // así que TODAS reportaban el mismo número y sumarlas habría multiplicado
+    // el efectivo. Ahora cada cajón tiene el suyo y la suma es la correcta.
+    expect(cashOnHand([cuenta('cash', '292000.00'), cuenta('cash', '50000.00')])).toBe('342000.00')
+  })
+
+  it('sin cuentas de efectivo da cero, no NaN', () => {
+    expect(cashOnHand([cuenta('bank', '2431000.00')])).toBe('0.00')
+    expect(cashOnHand([])).toBe('0.00')
+  })
+
+  it('no pasa por parseFloat: suma sobre centavos enteros', () => {
+    // Tres saldos que en punto flotante darían 0.30000000000000004.
+    expect(cashOnHand([cuenta('cash', '0.10'), cuenta('cash', '0.10'), cuenta('cash', '0.10')])).toBe('0.30')
   })
 })

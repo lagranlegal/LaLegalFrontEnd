@@ -1,3 +1,4 @@
+import { sumMoney } from '@/lib/money'
 import type { components } from '@/types/api'
 
 type AccountType = components['schemas']['AccountOut']['type']
@@ -37,4 +38,23 @@ export function accountTypeLabel(type: string): string {
  */
 export function defaultAccountTypeFor(paymentMethod: string): AccountType {
   return paymentMethod === 'cash' ? 'cash' : 'bank'
+}
+
+/**
+ * Todo el efectivo que el sistema cree que hay en cajones ahora mismo.
+ *
+ * Suma TODAS las cuentas de tipo `cash`, no solo la predeterminada, porque
+ * ese es el criterio con el que el backend arquea: lo que entra al arqueo lo
+ * decide el **tipo de cuenta**, no el medio de pago
+ * (`cashbox._expected_cash`). Si acá se sumara distinto, el descuadre que el
+ * diálogo de apertura muestra no sería el que el servidor va a calcular, y
+ * el usuario vería un número y recibiría otro.
+ *
+ * Suma sobre enteros de centavos vía `sumMoney` — nunca `parseFloat`
+ * (docs/ARCHITECTURE.md §7).
+ */
+export function cashOnHand(accounts: readonly { type: string; balance: string }[]): string {
+  return accounts
+    .filter((account) => account.type === 'cash')
+    .reduce((total, account) => sumMoney(total, account.balance), '0.00')
 }

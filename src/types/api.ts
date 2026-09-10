@@ -590,6 +590,32 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/company/document-templates/{template_id}/deactivate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Deactivate Document Template
+         * @description Vuelve al documento por defecto: el JSX de respaldo del front.
+         *
+         *     Sin esto no había camino de vuelta. Activar era irreversible salvo
+         *     activando otra: no existía «desactivar», el `PATCH` con `is_active: false`
+         *     respondía 200 ignorándolo y borrar la activa daba `409`. La red de
+         *     seguridad que `API_GUIDE` §4 bis promete —imprimir como siempre para quien
+         *     nunca toque esto— quedaba inalcanzable en cuanto alguien la tocaba una vez.
+         */
+        post: operations["deactivate_document_template_api_v1_company_document_templates__template_id__deactivate_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/customers": {
         parameters: {
             query?: never;
@@ -4217,10 +4243,26 @@ export interface components {
             /** Difference Reason */
             difference_reason?: string | null;
         };
-        /** SessionOpenIn */
+        /**
+         * SessionOpenIn
+         * @description Abrir un turno ya NO declara cuánta plata hay (00048).
+         *
+         *     El saldo del cajón se deriva de sus movimientos y se sabe solo, así que
+         *     no hay nada que digitar: abrir dice "desde ahora respondo yo".
+         *
+         *     Lo que sí se puede hacer —y conviene— es CONTAR. `counted_cash` es ese
+         *     conteo de apertura: si no coincide con lo que el sistema cree que hay,
+         *     la diferencia se registra como un ajuste con motivo, exactamente igual
+         *     que el descuadre de cierre. Ese es el punto: el faltante queda atribuido
+         *     al turno donde apareció y no al siguiente.
+         */
         SessionOpenIn: {
+            /** Counted Cash */
+            counted_cash?: number | string | null;
+            /** Difference Reason */
+            difference_reason?: string | null;
             /** Opening Balance */
-            opening_balance: number | string;
+            opening_balance?: number | string | null;
         };
         /** SessionOut */
         SessionOut: {
@@ -6057,6 +6099,35 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["DocumentTemplateOut"];
                 };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    deactivate_document_template_api_v1_company_document_templates__template_id__deactivate_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                template_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Validation Error */
             422: {
