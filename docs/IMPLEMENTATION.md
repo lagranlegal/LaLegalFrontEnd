@@ -2,6 +2,55 @@
 
 > Registro vivo de qué existe en el código, cómo está armado y por qué se tomó cada decisión — para que cualquiera (humano o Claude Code) pueda retomar el proyecto sin releer todo el historial de commits. Se actualiza en cada paso del "Orden de implementación" de `CLAUDE.md`. No repite lo que ya está en `ARCHITECTURE.md`/`DESIGN_SYSTEM.md` (el qué-debería-ser); esto es el qué-hay-hoy y las decisiones concretas tomadas al construirlo.
 
+## Ampliar el préstamo — el "recargo" (10/09/2026)
+
+El cliente vuelve a los pocos días y quiere retirar parte del cupo que su prenda todavía tiene sin usar. El backend lo resolvió en `00051`; acá queda **dónde vive en la pantalla y por qué ahí**, que se decidió con Mateo antes de escribir una línea.
+
+### El panel va junto a "Registrar abono", no en el encabezado
+
+**Abonar y ampliar son las dos direcciones de lo mismo:** el cliente trae plata o se lleva plata. Por eso viven en el mismo bloque de la pantalla.
+
+El encabezado quedó descartado por dos razones. Ahí viven las acciones sobre el **documento** (imprimir, editar, rematar), que es otra categoría. Y ya son cuatro botones: en 360 px eso fue el peor desborde de la app (F6-03, 59 px fuera del viewport), así que un quinto lo reabre.
+
+### Muestra el cupo aunque no se use
+
+*"Puede retirar hasta $400.000 · disponible hasta el 08/10/2026"* es información que el asesor quiere ver al abrir el contrato, haga o no el recargo. Hasta ahora esa plata era invisible.
+
+Debajo va la cuenta: `tope del avalúo − saldo actual`. Desarma el *"¿por qué solo 400.000?"* antes de que lo pregunten — y hace obvio el problema si alguien deja el LTV en un valor absurdo, que es exactamente lo que había pasado con el 10 %.
+
+### Cuando NO se puede, lo dice
+
+`GET /extension-options` devuelve el cupo **siempre**, incluso bloqueado, precisamente para esto. Una card que desaparece sin explicar deja al usuario buscándola, y el motivo casi siempre tiene arreglo:
+
+| `blocked_reason` | Lo que se lee |
+|---|---|
+| `EXTENSION_WINDOW_CLOSED` | Pasó el plazo para ampliar este préstamo |
+| `CONTRACT_INTEREST_OVERDUE` | Primero hay que ponerse al día con los intereses, **acá arriba** |
+| `CONTRACT_WITHOUT_APPRAISAL` | Sin avalúo no se puede calcular cuánto puede retirar. Regístralo en Editar |
+| `EXTENSION_NO_HEADROOM` | La garantía ya no da para más |
+
+La única excepción es `CONTRACT_CLOSED`: ahí la card no aparece, porque no hay nada que explicar — el documento terminó.
+
+### La confirmación es la parte crítica
+
+Sin ella, alguien amplía creyendo que es un ajuste y se encuentra con un contrato distinto. El diálogo dice el monto que se entrega, que **el contrato actual se cierra y nace uno nuevo**, el capital de antes y el de después, y que hay que imprimirlo y hacerlo firmar.
+
+Al confirmar, **navega al sucesor**. Quedarse en el viejo —que acaba de pasar a `superseded`— dejaría al usuario mirando un documento que ya no rige.
+
+### La cadena, en los dos sentidos
+
+El viejo dice que fue ampliado y que se conserva con su firma; el nuevo enlaza al anterior. Sin eso, un `superseded` parece un contrato abandonado.
+
+El badge dice **"Ampliado"** en tono neutro, no en el verde de `paid`: pintarlo como pagado afirmaría que se saldó, y el cliente sigue debiendo — solo que en otro documento. La prenda dice **"Pasó al nuevo contrato"** y no "Devuelta", por la misma razón: nunca salió de la bóveda.
+
+### El campo de la ventana nace vacío, no con 28
+
+En el formulario de creación, *"Días para ampliar"* arranca en blanco con el placeholder *"Política de la empresa"*. Es deliberado: el 28 es el default del **sistema**, y cada compraventa maneja el suyo (`company.settings.extension_window_days`). Si el campo apareciera con un número, el contrato congelaría **ese** en vez de la política vigente — y el snapshot dejaría de reflejar lo que la empresa tiene configurado.
+
+### Verificado en la app en vivo
+
+`backend-starter/scripts/qa/ui_recargo.js`, con navegador y login real sobre la cadena #28 → #29. Existe porque buscar los textos en el bundle servido prueba que **se desplegó**, no que **se ve**: el panel está detrás de un permiso, de un cupo y de un motivo de bloqueo. Cero errores de consola y cero desborde a 360 px.
+
 ## Abrir caja deja de pedir un saldo inventado (10/09/2026)
 
 Salió de que Mateo probara con el cliente y reportara *"hay un límite de 300.000 al crear una caja"*. **No había ningún límite:** 300.000 era el saldo de apertura de su turno. El saldo de una cuenta `cash` se derivaba de la **sesión de caja abierta** en vez de sus propios movimientos, y como hay una sola sesión por empresa, las tres cuentas de efectivo que había creado leían la misma y mostraban las tres el mismo número. El backend lo arregló en la migración `00048`; acá queda lo que cambió en este repo.
