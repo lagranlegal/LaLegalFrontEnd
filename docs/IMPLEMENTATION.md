@@ -2,6 +2,32 @@
 
 > Registro vivo de qué existe en el código, cómo está armado y por qué se tomó cada decisión — para que cualquiera (humano o Claude Code) pueda retomar el proyecto sin releer todo el historial de commits. Se actualiza en cada paso del "Orden de implementación" de `CLAUDE.md`. No repite lo que ya está en `ARCHITECTURE.md`/`DESIGN_SYSTEM.md` (el qué-debería-ser); esto es el qué-hay-hoy y las decisiones concretas tomadas al construirlo.
 
+## Abrir caja deja de pedir un saldo inventado (10/09/2026)
+
+Salió de que Mateo probara con el cliente y reportara *"hay un límite de 300.000 al crear una caja"*. **No había ningún límite:** 300.000 era el saldo de apertura de su turno. El saldo de una cuenta `cash` se derivaba de la **sesión de caja abierta** en vez de sus propios movimientos, y como hay una sola sesión por empresa, las tres cuentas de efectivo que había creado leían la misma y mostraban las tres el mismo número. El backend lo arregló en la migración `00048`; acá queda lo que cambió en este repo.
+
+### `OpenSessionDialog` — de un campo vacío a un arqueo
+
+Antes era un `<MoneyInput>` en blanco donde alguien escribía un número cada mañana: sin referencia, sin comparación contra el cierre de la noche anterior, y sin que nada notara un cero de más. Era el único dato de toda la aplicación que se digitaba sin documento detrás.
+
+Ahora muestra el **efectivo registrado en el cajón** —que el backend ya sabe— y ofrece **contarlo**. Si el conteo no cuadra aparece la diferencia y se exige el motivo antes de enviar. Eso último es deliberado: el backend lo rechazaría igual con `CASH_OPENING_DIFFERENCE_UNJUSTIFIED`, pero hacer viajar un error evitable es peor experiencia que pedirlo en el formulario.
+
+**Contar es opcional a propósito.** Obligarlo daría mejor atribución de faltantes —el descuadre cae en el turno donde apareció— pero frena la operación del mostrador, y el modelo funciona igual: si nadie cuenta, el saldo simplemente sigue.
+
+### `cashOnHand` sale a `lib/`, y por qué suma todas las cuentas de efectivo
+
+Vive en `lib/accounts/types.ts` como función pura con sus tests. Suma **todas** las cuentas de tipo `cash`, no solo la predeterminada, porque ese es el criterio con el que el backend arquea: lo que entra al arqueo lo decide el **tipo de cuenta**, no el medio de pago (`cashbox._expected_cash`). Si acá se sumara distinto, el usuario vería un descuadre y el servidor calcularía otro.
+
+Suma sobre centavos enteros vía `sumMoney`, con un test que lo fija — tres saldos de `0.10` que en punto flotante darían `0.30000000000000004`.
+
+### La card de Caja también avisa del turno viejo
+
+El banner global ya lo hacía desde `555271f` (hallazgo F9-01), pero la card de la propia pantalla de Caja seguía diciendo *"Caja abierta desde las 4:38 PM"* sin fecha — y es la pantalla donde se opera y se cierra, o sea donde la confusión cuesta. El caso no es hipotético: LA GRAN LEGAL tiene el turno del 03/09 todavía abierto.
+
+### Comentarios que quedaron mintiendo
+
+`lib/accounts/list.ts` explicaba que el saldo de una cuenta de efectivo "cambia al abrir y cerrar caja". Ya no: el efectivo del cajón existe con la caja cerrada, y dos cajones distintos reportan saldos distintos. Corregido, porque un comentario desactualizado sobre dinero es peor que ninguno.
+
 ## Datos con qué probar la pantalla de contratos (09/09/2026)
 
 **Sin código de front.** Queda acá porque cambia lo que se ve al abrir `/contratos` en LA GRAN LEGAL y porque explica un conteo que, leído sin contexto, parece un bug.
