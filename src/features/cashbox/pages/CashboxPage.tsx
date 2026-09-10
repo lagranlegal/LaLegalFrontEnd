@@ -13,7 +13,7 @@ import { TransferDialog } from '@/features/accounts/components/TransferDialog'
 import { DateRangePicker, type DateRangeValue } from '@/components/shared/DateRangePicker'
 import { confirm } from '@/components/shared/confirmStore'
 import { Button } from '@/components/ui/button'
-import { formatDate, formatDateTime, formatTime } from '@/lib/dates'
+import { formatDate, formatDateTime, formatTime, todayBogota } from '@/lib/dates'
 import { PAYMENT_METHOD_LABELS } from '@/lib/paymentMethods'
 import { MODULE_LABELS } from '@/lib/modules'
 import { useClosingsHistory, type ClosingHistory } from '@/lib/cashbox/closings'
@@ -76,6 +76,12 @@ export function CashboxPage() {
   // tiene sentido, y antes esto se deducía de que existiera un cierre.
   const canReopenToday = todaySession?.status === 'closed'
 
+  // Un turno que quedó abierto de un día anterior. Se compara la FECHA de la
+  // sesión contra el hoy de la empresa, no `opened_at`: una sesión abierta
+  // sigue siendo la sesión en curso, pero su acta y sus reportes van a salir
+  // con la fecha de aquel día.
+  const sessionDeOtroDia = !!session && session.session_date !== todayBogota()
+
   async function handleReopen() {
     if (!todaySession) return
     const result = await confirm({
@@ -135,7 +141,19 @@ export function CashboxPage() {
           <div className="rounded-card border border-border bg-card p-card shadow-card">
             <div className="flex flex-wrap items-center justify-between gap-4">
               <div className="min-w-0">
-                <p className="text-xs text-muted-foreground">Caja abierta desde las {formatTime(session.opened_at)}</p>
+                {/* El banner global ya avisa cuando el turno quedó abierto de
+                    otro día (F9-01), pero esta card no lo hacía — y es la
+                    pantalla donde se opera y se cierra, o sea donde la
+                    confusión cuesta. Mismo criterio y mismo dato
+                    (`session_date` contra el hoy de la empresa). */}
+                {sessionDeOtroDia ? (
+                  <p className="text-xs font-medium text-warning">
+                    Turno abierto desde el {formatDate(session.session_date)} a las {formatTime(session.opened_at)} — todo lo
+                    que registres hoy entra en ese turno
+                  </p>
+                ) : (
+                  <p className="text-xs text-muted-foreground">Caja abierta desde las {formatTime(session.opened_at)}</p>
+                )}
                 <p className="tnum text-lg font-semibold text-foreground">
                   Saldo inicial <Money value={session.opening_balance} />
                 </p>
