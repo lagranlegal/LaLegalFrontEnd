@@ -1896,7 +1896,7 @@ export interface components {
              * Type
              * @enum {string}
              */
-            type: "cash" | "bank" | "settlement";
+            type: "cash" | "bank" | "settlement" | "vault";
             /** Reference */
             reference?: string | null;
             /**
@@ -1919,6 +1919,10 @@ export interface components {
          *       · `bank`        se concilia contra el extracto, en el ritmo del banco
          *       · `settlement`  es plata que TODAVÍA NO ESTÁ (Sistecrédito, datáfono):
          *                       alguien la debe y llegará después, y menos.
+         *       · `vault`       efectivo que NO está en el cajón (caja fuerte, fondo de
+         *                       menudos). Es plata real y se cuenta a mano, pero
+         *                       ninguna operación la elige: solo entra y sale por
+         *                       traslado, y no participa del arqueo diario del cajón.
          */
         AccountOut: {
             /**
@@ -1932,7 +1936,7 @@ export interface components {
              * Type
              * @enum {string}
              */
-            type: "cash" | "bank" | "settlement";
+            type: "cash" | "bank" | "settlement" | "vault";
             /** Reference */
             reference: string | null;
             /** Is Default */
@@ -1973,7 +1977,7 @@ export interface components {
              * Type
              * @enum {string}
              */
-            type: "cash" | "bank" | "settlement";
+            type: "cash" | "bank" | "settlement" | "vault";
             /**
              * From Date
              * Format: date

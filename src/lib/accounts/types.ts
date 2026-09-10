@@ -13,6 +13,7 @@ export const ACCOUNT_TYPE_LABELS: Record<AccountType, string> = {
   cash: 'Efectivo',
   bank: 'Banco',
   settlement: 'Por cobrar',
+  vault: 'Caja fuerte',
 }
 
 /**
@@ -23,6 +24,7 @@ export const ACCOUNT_TYPE_HINTS: Record<AccountType, string> = {
   cash: 'Lo que debería haber en el cajón ahora. Se cuenta en el arqueo diario.',
   bank: 'Saldo acumulado. Se concilia contra el extracto, en el ritmo del banco.',
   settlement: 'Plata que todavía no está: alguien la debe y llegará después, y menos.',
+  vault: 'Efectivo guardado fuera del cajón. No se cobra ni se paga desde acá: entra y sale por traslado, y no se cuenta en el arqueo diario.',
 }
 
 export function accountTypeLabel(type: string): string {

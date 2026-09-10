@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { ACCOUNT_TYPE_HINTS, ACCOUNT_TYPE_LABELS } from '@/lib/accounts/types'
+import { useAccounts } from '@/lib/accounts/list'
 import { useCreateAccount, useUpdateAccount, type Account, type AccountType } from '@/features/accounts/api'
 
 const inputClass =
@@ -41,6 +42,21 @@ export function AccountFormDialog({
   const [isDefault, setIsDefault] = useState(account?.is_default ?? false)
   const [openingBalance, setOpeningBalance] = useState('')
   const [error, setError] = useState<string | null>(null)
+
+  // Solo puede haber UNA cuenta de efectivo activa: el arqueo diario cuenta
+  // un solo cajón, y dos cuentas `cash` harían que el cierre pida un número
+  // que no corresponde a ninguna de las dos. El backend lo rechaza con
+  // `CASH_ACCOUNT_ALREADY_EXISTS`; acá simplemente deja de ofrecerse, que es
+  // el patrón del proyecto — la UI oculta, el backend es la autoridad.
+  //
+  // Quien de verdad necesita más efectivo disponible lo TRASLADA; quien
+  // necesita guardar plata fuera del cajón crea una caja fuerte. Las dos
+  // salidas están en el texto de ayuda de sus tipos.
+  const { data: cuentas } = useAccounts()
+  const yaHayEfectivo = (cuentas ?? []).some((a) => a.type === 'cash')
+  const tiposDisponibles = (Object.keys(ACCOUNT_TYPE_LABELS) as AccountType[]).filter(
+    (key) => key !== 'cash' || !yaHayEfectivo,
+  )
 
   const createAccount = useCreateAccount()
   const updateAccount = useUpdateAccount()
@@ -130,7 +146,7 @@ export function AccountFormDialog({
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {(Object.keys(ACCOUNT_TYPE_LABELS) as AccountType[]).map((key) => (
+                  {tiposDisponibles.map((key) => (
                     <SelectItem key={key} value={key}>
                       {ACCOUNT_TYPE_LABELS[key]}
                     </SelectItem>
