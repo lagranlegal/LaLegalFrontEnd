@@ -2,6 +2,28 @@
 
 > Registro vivo de qué existe en el código, cómo está armado y por qué se tomó cada decisión — para que cualquiera (humano o Claude Code) pueda retomar el proyecto sin releer todo el historial de commits. Se actualiza en cada paso del "Orden de implementación" de `CLAUDE.md`. No repite lo que ya está en `ARCHITECTURE.md`/`DESIGN_SYSTEM.md` (el qué-debería-ser); esto es el qué-hay-hoy y las decisiones concretas tomadas al construirlo.
 
+## Datos con qué probar la pantalla de contratos (09/09/2026)
+
+**Sin código de front.** Queda acá porque cambia lo que se ve al abrir `/contratos` en LA GRAN LEGAL y porque explica un conteo que, leído sin contexto, parece un bug.
+
+Mateo pidió contratos en todos los estados: la empresa tenía cinco, todos `active` y del mismo día, así que el filtro por estado, la cola de remate, el badge de prórroga y el paz y salvo no se podían mirar. Se sembraron **22 contratos cubriendo los seis estados**, 3–4 de cada uno (`backend-starter/scripts/qa/seed_contratos.py`; registro completo en `backend-starter/docs/QA_AUDITORIA.md` § "Datos de prueba en LA GRAN LEGAL").
+
+**El conteo que confunde:** la lista muestra **8 `in_extension`** y la cola de remate **4**. No es una discrepancia — es lo que `CLAUDE.md` ya advierte: *«"ready_for_auction" NO es un `status` real»*. Cuatro están en prórroga vigente y cuatro con la prórroga vencida, y solo esos últimos entran a `GET /contracts/ready-for-auction`. Es exactamente la distinción que la pantalla tiene que dejar clara, y ahora hay datos para verificar que la deja.
+
+**Lo que ahora se puede probar de verdad en el front:**
+
+| Qué | Con qué |
+|---|---|
+| `StatusBadge` en sus seis variantes | los seis estados, en la misma lista |
+| Badge de `legacy_code` y el buscador `?q=` | los 22 llevan `legacy_code` (`DEMO-*`) |
+| Alerta de LTV | 17 con `ltv_warning`, 5 sin — el `max_ltv_pct` de esa empresa está en **10 %**, que es llamativamente bajo y hace que casi todo dispare la alerta |
+| Botón "Imprimir paz y salvo" | 3 contratos `paid` con su recibo (`GET /settlement` responde) |
+| Remate → borradores de inventario | 3 `auctioned` con su artículo en `draft`, sin publicar (sin código, fuera de vitrina) |
+| Abonos desde `payment-options` | los 4 en mora cotizan 1, 2, 3 y 4 meses respectivamente |
+| Interés pagado por adelantado | `DEMO-A4` tiene `interest_paid_until` en el **futuro** (2026-10-09) — el caso que nadie prueba |
+
+**Ojo con Tecnología:** su ventana de mora es 1 mes, así que un contrato de esa rama **nunca** pasa por `in_arrears` — el primer mes adeudado ya lo manda a prórroga. Los cuatro de mora son de Joyería por necesidad del modelo, no por elección.
+
 ## Lo que el front arregló de la auditoría de QA (09/09/2026)
 
 Tres commits (`555271f`, `047ee53`, `e0f1d17`) con los hallazgos de front de la auditoría de diez fases. El registro completo —qué se probó, cómo y con qué scripts— vive en `backend-starter/docs/QA_AUDITORIA.md`; acá queda **qué se tocó en este repo y por qué**.
