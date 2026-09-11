@@ -2,6 +2,48 @@
 
 > Registro vivo de qué existe en el código, cómo está armado y por qué se tomó cada decisión — para que cualquiera (humano o Claude Code) pueda retomar el proyecto sin releer todo el historial de commits. Se actualiza en cada paso del "Orden de implementación" de `CLAUDE.md`. No repite lo que ya está en `ARCHITECTURE.md`/`DESIGN_SYSTEM.md` (el qué-debería-ser); esto es el qué-hay-hoy y las decisiones concretas tomadas al construirlo.
 
+## El cupo del LTV, antes de prestar (11/09/2026)
+
+Era **lo único de "reportado y no hecho"** que seguía sin empezarse. La alerta de LTV vivía solo en el detalle del contrato ya creado — o sea, llegaba después de que la plata salió del cajón. Todo el valor de un aviso de LTV está en verlo **antes** de prestar; como estaba, era un reproche y no una advertencia.
+
+### Qué muestra
+
+Debajo del avalúo, mientras se llena el formulario:
+
+- **Dentro del cupo:** *"Puede prestar hasta $600.000 — 30 % del avalúo. Va en el 50 %."*
+- **Se pasa:** cuánto se pasa, cuál es el tope y **qué hacer**, con el texto cambiando según el permiso.
+
+Se muestra **la cuenta** (`avalúo × LTV`) y no solo el veredicto, por lo mismo que lo hace el panel del recargo: desarma el *"¿por qué solo $600.000?"* antes de que lo pregunten, y hace obvio el problema si alguien dejó el LTV en un valor absurdo — que es exactamente lo que había pasado con el 10 %.
+
+### Tres decisiones
+
+**El tope sale de la categoría de la PRIMERA prenda.** No del mínimo entre las prendas ni de un promedio ponderado: `contracts/service.py` hace `max_ltv_pct = first["max_ltv_pct"]`. Espejar otro criterio mostraría un número en pantalla y el servidor aplicaría otro — la clase de divergencia que este proyecto ya pagó con el precio del lote.
+
+**No deshabilita el botón.** Quien decide es el backend. Si esta cuenta y la suya divergieran por un redondeo, bloquear acá impediría un contrato que el servidor sí acepta. Avisar resuelve lo reportado; bloquear crearía otro problema.
+
+**Dos primitivas nuevas en `lib/money.ts`**, para que nadie improvise aritmética de dinero en una feature (regla 5):
+
+- `compareMoney` — comparar montos sin `Number(a) > Number(b)` ni trucos sobre `minMoney`, que comparan **strings** y fallan con `"1000000"` vs `"1000000.00"`.
+- `percentOfMoney` — porque `multiplyMoney(v, pct/100)` **no sirve**: multiplica centavos por un float y `centsToDecimal` hace `% 100`, así que con `0.33` imprime `"330.10.889999999999418"`. Acá la aritmética es entera, en puntos básicos.
+
+### El bug que los tests no vieron, y por qué
+
+La comprobación en navegador (`scripts/qa/ui_ltv.js`) dijo que un préstamo de 1.000.000 sobre un avalúo de 2.000.000 al 30 % se pasaba en **$40.000.000**. Debía ser $400.000: exactamente 100×.
+
+La causa: `evaluarLtv` pasaba los montos por `parseMoneyInput`, asumiendo que el formulario guarda el texto **enmascarado**. No lo guarda. El propio docstring de `MoneyInput` lo dice: *"El valor controlado (`value`/`onChange`) SIEMPRE es el string decimal canónico"*. `digitsOnly("1000000.00")` da `"100000000"` — el punto decimal se vuelve un dígito más.
+
+**Los 14 tests estaban en verde sobre ese cálculo equivocado**, porque los fixtures usaban `"1.000.000"` — lo que el campo **muestra**, no lo que **guarda**. Es la segunda vez en la misma sesión: antes había sido `max_ltv_pct` como número cuando la API lo manda como string (`"30.00"`). Las dos veces, un fixture escrito de memoria confirmó el bug en vez de encontrarlo.
+
+Corregidos los fixtures a la forma real, se comprobó que **3 de los 14 se ponen rojos** al reintroducir el bug.
+
+### Verificado en navegador, las dos ramas
+
+Con `qa.admin` (que puede autorizar) y con el Asesor **sin** el permiso — y para esto último hubo que quitárselo temporalmente en el laboratorio, porque **hoy ningún rol que pueda crear contratos carece de `contracts.override_ltv`**: `00051` se lo otorgó a todos para que nadie perdiera acceso el día del despliegue. Sin esa prueba, la rama de "bloqueado" habría quedado como una rama que nadie ha visto nunca.
+
+**Ojo con el porqué que motivaba esto:** `CONTINUAR.md` decía que *"un asesor puede llenar el formulario entero y recibir el 403 al final"*. Comprobado contra dev: en LA GRAN LEGAL **todos** los roles que crean contratos tienen `override_ltv`, así que hoy no le está pasando a nadie. El aviso sigue valiendo —el cupo era invisible antes de prestar—, pero el 403 solo aparece el día que alguien le apriete el rol al Asesor, que es justo lo que `RECARGOS.md` §8.1 dice que haga la empresa que quiera el comportamiento estricto.
+
+Cero errores de consola y cero desborde a 360 px.
+
 ## Ampliar el préstamo — el "recargo" (10/09/2026)
 
 El cliente vuelve a los pocos días y quiere retirar parte del cupo que su prenda todavía tiene sin usar. El backend lo resolvió en `00051`; acá queda **dónde vive en la pantalla y por qué ahí**, que se decidió con Mateo antes de escribir una línea.
