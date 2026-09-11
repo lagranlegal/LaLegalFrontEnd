@@ -93,9 +93,13 @@ export type AccountStatement = components['schemas']['AccountStatementOut']
  * Extracto de una cuenta: movimientos con saldo corriente, para conciliar
  * contra el extracto real del banco.
  *
- * En cuentas de efectivo viene sin saldos (`has_running_balance: false`) y no
- * es una carencia: la base del cajón se redeclara en cada apertura, así que un
- * acumulado histórico no significa nada. Ahí la verificación es el arqueo.
+ * Los cuatro tipos de cuenta llevan saldo corriente (`has_running_balance:
+ * true`) desde la migración 00048 del backend. El efectivo era la excepción
+ * mientras su base de apertura se digitaba a mano; ahora es un movimiento
+ * como cualquier otro, así que el acumulado del cajón sí significa algo.
+ *
+ * La UI igual lee `has_running_balance` en vez de asumirlo: es el backend
+ * quien decide, y este comentario ya estuvo desactualizado una vez.
  */
 export function useAccountStatement(accountId: string | undefined, range: { from: string; to: string } | null) {
   return useQuery({

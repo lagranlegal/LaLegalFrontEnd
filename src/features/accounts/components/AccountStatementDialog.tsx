@@ -89,13 +89,16 @@ export function AccountStatementDialog({
                 </div>
               </div>
             ) : (
-              // Se explica en vez de mostrar una columna vacía: la ausencia
-              // del saldo es una decisión, no un dato que falte.
+              // Rama defensiva, hoy inalcanzable: desde 00048 el backend manda
+              // `has_running_balance: true` para los cuatro tipos de cuenta.
+              // Antes acá se explicaba que el efectivo no acumulaba porque su
+              // base "se redeclaraba cada mañana" — dejó de ser cierto cuando
+              // esa base pasó a ser un movimiento, así que el texto se quitó
+              // en vez de dejarlo esperando a que alguien lo viera y lo
+              // creyera. Se sigue leyendo el flag porque quien decide es el
+              // backend, no esta pantalla.
               <p className="rounded-card bg-muted/40 px-3 py-2.5 text-xs text-muted-foreground">
-                Esta es la cuenta de <strong className="text-foreground">efectivo</strong>, y no lleva saldo corriente: la base del
-                cajón se vuelve a declarar cada mañana al abrir caja, así que acumular el histórico no daría un saldo real. El
-                efectivo se verifica <strong className="text-foreground">contando</strong>, en el cierre. Acá quedan los movimientos,
-                que sirven para ver qué pasó por el cajón.
+                Esta cuenta no reporta saldo corriente. Abajo quedan sus movimientos del período.
               </p>
             )}
 
