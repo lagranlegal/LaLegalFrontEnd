@@ -6,11 +6,14 @@ import { Money } from '@/components/shared/Money'
 import { MoneyInput } from '@/components/shared/MoneyInput'
 import { AccountPicker } from '@/components/shared/AccountPicker'
 import { Can } from '@/components/shared/Can'
+import { CashSessionRequiredDialog } from '@/components/shared/CashSessionRequiredDialog'
 import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { formatDate } from '@/lib/dates'
+import { ApiError } from '@/lib/api/client'
+import { addMonthsToDateOnly, formatDate } from '@/lib/dates'
 import { PAYMENT_METHOD_LABELS } from '@/lib/paymentMethods'
-import { subtractMoney, sumMoney } from '@/lib/money'
+import { percentOfMoney, subtractMoney, sumMoney } from '@/lib/money'
+import { useCashboxCurrent } from '@/features/cashbox/api'
 import { useExtendLoan, useExtensionOptions, type Contract } from '@/features/contracts/api'
 
 /**
@@ -45,11 +48,14 @@ const MOTIVOS: Record<string, string> = {
 export function ExtendLoanPanel({ contract }: { contract: Contract }) {
   const navigate = useNavigate()
   const { data: cupo, isPending } = useExtensionOptions(contract.id)
+  const { data: sesion, isPending: sesionPending } = useCashboxCurrent()
   const extend = useExtendLoan(contract.id)
   const [confirmOpen, setConfirmOpen] = useState(false)
   const [amount, setAmount] = useState('')
   const [method, setMethod] = useState<'cash' | 'transfer' | 'other'>('cash')
   const [accountId, setAccountId] = useState<string | null>(null)
+  const [cashDialogOpen, setCashDialogOpen] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
   // Un contrato cerrado no muestra la card: no hay nada que explicar, el
   // documento terminó. Los demás motivos SÍ se explican.
@@ -58,7 +64,33 @@ export function ExtendLoanPanel({ contract }: { contract: Contract }) {
   const nuevoCapital = amount ? sumMoney(contract.capital_balance, amount) : contract.capital_balance
   const excedeCupo = !!amount && Number(subtractMoney(amount, cupo.available)) > 0
 
+  // La sesión de caja la exige el TIPO DE CUENTA, no la operación (CLAUDE.md
+  // → Caja): con la caja cerrada el recargo en efectivo se rechaza, pero el
+  // de transferencia pasa. Decirlo ANTES evita el callejón sin salida de
+  // llenar el formulario para toparse con un 409 al confirmar.
+  const cajaCerrada = !sesionPending && sesion == null
+  const avisaCajaCerrada = cajaCerrada && method === 'cash'
+
+  // Desde 00053 el sucesor CONSERVA el ancla del interés, así que la próxima
+  // cuota vence el día de siempre — no 30 días después del recargo. Es lo que
+  // pidió el cliente, y también su filo: un recargo dos días antes del
+  // aniversario hace que se pague un mes completo sobre el capital nuevo casi
+  // de inmediato.
+  //
+  // No es anatocismo —no se capitaliza interés, es plata que se entregó— y es
+  // lo que hace la mayoría de compraventas. Pero tiene que decirse ANTES de
+  // confirmar: un cobro correcto que el cliente no vio venir se reclama igual
+  // que uno equivocado.
+  //
+  // `percentOfMoney` y no `multiplyMoney(x, pct/100)`: lo segundo multiplica
+  // centavos por un float y corrompe el monto (con 0.33 imprime
+  // "330.10.889999999999418"). Ya pasó.
+  const conservaElAncla = contract.extension_interest_policy === 'keep_anchor'
+  const proximaCuotaVence = addMonthsToDateOnly(contract.interest_paid_until, 1)
+  const proximaCuotaMonto = percentOfMoney(nuevoCapital, Number(contract.interest_rate_pct))
+
   async function confirmar() {
+    setError(null)
     try {
       const sucesor = await extend.mutateAsync({
         amount,
@@ -72,9 +104,21 @@ export function ExtendLoanPanel({ contract }: { contract: Contract }) {
       // Se navega al SUCESOR: quedarse en el viejo —que acaba de pasar a
       // `superseded`— dejaría al usuario mirando un documento que ya no rige.
       navigate({ to: '/contratos/$contractId', params: { contractId: sucesor.id } })
-    } catch {
-      // `useMoneyMutation` ya deja el error a la vista; acá solo se evita
-      // cerrar el diálogo, para no perder lo digitado.
+    } catch (err) {
+      // Hasta el 11/09/2026 este `catch` estaba VACÍO, con un comentario que
+      // afirmaba que `useMoneyMutation` dejaba el error a la vista. No lo
+      // hace: solo maneja la `Idempotency-Key`. Con la caja cerrada el 409
+      // llegaba, el diálogo quedaba abierto y no aparecía un solo carácter —
+      // el usuario volvía a pulsar "Ampliar y entregar" sin saber por qué no
+      // pasaba nada.
+      if (err instanceof ApiError && err.code === 'CASH_SESSION_NOT_OPEN') {
+        setConfirmOpen(false)
+        setCashDialogOpen(true)
+        return
+      }
+      // Cualquier otro error va inline y el diálogo NO se cierra, para no
+      // perder lo digitado. Mismo patrón que `PaymentOptionsPanel`.
+      setError(err instanceof ApiError ? err.message : 'No se pudo ampliar el préstamo. Intenta de nuevo.')
     }
   }
 
@@ -154,6 +198,13 @@ export function ExtendLoanPanel({ contract }: { contract: Contract }) {
             prestar por encima del avalúo, y el contrato queda marcado.
           </p>
         )}
+
+        {!cupo.blocked_reason && avisaCajaCerrada && (
+          <p className="mt-2 rounded-input bg-warning-soft px-3 py-2 text-xs text-warning">
+            La caja está cerrada, así que no se puede entregar efectivo. Puedes ampliar por
+            transferencia, o abrir la caja primero.
+          </p>
+        )}
       </div>
 
       {/* La confirmación es la parte crítica: sin ella alguien amplía creyendo
@@ -195,12 +246,33 @@ export function ExtendLoanPanel({ contract }: { contract: Contract }) {
               </span>
             </div>
           </div>
+          {conservaElAncla && (
+            <div className="rounded-card bg-muted px-3 py-2">
+              <p className="text-xs text-muted-foreground">
+                El contrato nuevo conserva la fecha del original, así que la fecha de cobro no se
+                mueve:
+              </p>
+              <div className="mt-2 flex items-center justify-between">
+                <span className="text-muted-foreground">Próxima cuota</span>
+                <span className="tnum">
+                  {formatDate(proximaCuotaVence)} ·{' '}
+                  <Money value={proximaCuotaMonto} className="font-semibold text-foreground" />
+                </span>
+              </div>
+            </div>
+          )}
           <p className="rounded-input bg-warning-soft px-3 py-2 text-xs text-warning">
             El contrato nuevo hay que imprimirlo y hacerlo firmar. El anterior deja de ser la
             obligación vigente, pero se conserva con su firma.
           </p>
+          {error && <p className="text-sm text-danger">{error}</p>}
         </div>
       </AppDialog>
+
+      {/* Con la caja cerrada, el modal central con CTA a abrirla — nunca un
+          toast seco (docs/ARCHITECTURE.md §6). Si el usuario no tiene
+          `cashbox.open_close`, el propio diálogo le dice a quién pedírselo. */}
+      <CashSessionRequiredDialog open={cashDialogOpen} onOpenChange={setCashDialogOpen} />
     </Can>
   )
 }

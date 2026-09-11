@@ -1159,6 +1159,153 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/capital/contributions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Create Contribution
+         * @description **Aporte de capital**: el dueño mete plata al negocio.
+         *
+         *     El caso típico es el que motivó el módulo: están bajos de capital para
+         *     prestar y el dueño inyecta dinero para seguir trabajando.
+         *
+         *     **No es un ingreso.** No se vendió nada ni se cobró un interés: es
+         *     patrimonio. Genera un `cash_movement` con concepto propio
+         *     (`owner_contribution`) y **no toca el estado de resultados** — que lee
+         *     documentos de venta, abono y gasto, y este no es ninguno de los tres.
+         *
+         *     Si la cuenta destino es de efectivo **exige caja abierta**: no se pueden
+         *     meter billetes a un cajón cerrado, y sin sesión el arqueo no cuadraría.
+         *     Por transferencia o a una cuenta de banco funciona a cualquier hora.
+         */
+        post: operations["create_contribution_api_v1_capital_contributions_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/capital/withdrawals": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Create Withdrawal
+         * @description **Retiro del dueño**: utilidades o devolución de capital.
+         *
+         *     **No es un gasto.** Registrarlo como tal falsearía la utilidad del
+         *     período por todo el monto retirado — el mismo error que este proyecto ya
+         *     pagó tres veces ("prestar no es un gasto, cobrar no es una ganancia").
+         *
+         *     **No se bloquea si no hay utilidad**, y es deliberado: el dueño puede
+         *     retirar su propio capital y está en su derecho. Lo que la app hace es
+         *     decirle qué está haciendo — consultar `GET /capital/position` antes de
+         *     confirmar y mostrarle la utilidad del período, lo ya retirado y **dónde
+         *     está realmente la plata**. Mismo criterio que el LTV y el plazo de
+         *     devolución: advertir sin estorbar.
+         *
+         *     Lo único que sí se rechaza es retirar de una cuenta más de lo que tiene:
+         *     eso no es una política de negocio, es un imposible físico.
+         *
+         *     `notes` es obligatorio. Un retiro sin motivo es la clase de línea que
+         *     nadie puede explicar seis meses después, y es plata que salió.
+         */
+        post: operations["create_withdrawal_api_v1_capital_withdrawals_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/capital/position": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Position
+         * @description **¿Cuánto se puede retirar, y dónde está la plata?**
+         *
+         *     La pregunta que el dueño no puede contestar de memoria. En una
+         *     compraventa la mayor parte del capital **no está en el cajón**: está
+         *     prestado y en vitrina. Retirar "lo que hay en caja" no es retirar
+         *     utilidad — es descapitalizar.
+         *
+         *     Devuelve la utilidad del período (misma definición que
+         *     `/reports/income-statement`, calculada por el mismo código), los aportes
+         *     y retiros ya registrados, y el capital repartido en sus tres formas:
+         *     disponible (cajón + bóveda + banco), prestado, e inventario **al costo**
+         *     — nunca al precio de venta, que sería contar la utilidad antes de
+         *     venderla.
+         *
+         *     `distributable` puede salir **negativo** a propósito: significa que lo
+         *     retirado en el período ya superó la utilidad, o sea que se está sacando
+         *     capital. Ese número es el aviso.
+         */
+        get: operations["get_position_api_v1_capital_position_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/capital/movements": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Movements
+         * @description Historial de aportes y retiros, **del más reciente al más antiguo**.
+         *
+         *     Ordenado por la fecha del DOCUMENTO, no por `created_at` ni por `id`: el
+         *     dueño puede registrar el lunes el aporte que hizo el viernes, y ese
+         *     aporte pertenece al viernes. Un histórico de plata ordenado por un UUID
+         *     aleatorio pagina bien y no se puede leer.
+         */
+        get: operations["list_movements_api_v1_capital_movements_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/capital/movements/{movement_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Movement */
+        get: operations["get_movement_api_v1_capital_movements__movement_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/inventory/entries": {
         parameters: {
             query?: never;
@@ -2124,6 +2271,86 @@ export interface components {
             /** Total */
             total: string;
         };
+        /** CapitalMovementOut */
+        CapitalMovementOut: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Number */
+            number: number;
+            /**
+             * Direction
+             * @enum {string}
+             */
+            direction: "contribution" | "withdrawal";
+            /** Kind */
+            kind: ("profit" | "capital_return") | null;
+            /**
+             * Account Id
+             * Format: uuid
+             */
+            account_id: string;
+            /** Account Name */
+            account_name: string;
+            /** Amount */
+            amount: string;
+            /**
+             * Movement Date
+             * Format: date
+             */
+            movement_date: string;
+            /** Notes */
+            notes: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Account Balance */
+            account_balance: string;
+        };
+        /**
+         * CapitalPositionOut
+         * @description Lo que el dueño necesita saber ANTES de retirar.
+         *
+         *     No bloquea nada — el proyecto ya eligió "advertir sin bloquear" en el
+         *     LTV y en la devolución fuera de plazo. Lo que hace es contestar la
+         *     pregunta que el dueño no puede responder de memoria: **en una
+         *     compraventa la plata no está en el cajón, está prestada y en vitrina.**
+         *     Retirar "lo que hay en caja" no es retirar utilidad; es descapitalizar.
+         */
+        CapitalPositionOut: {
+            /**
+             * From Date
+             * Format: date
+             */
+            from_date: string;
+            /**
+             * To Date
+             * Format: date
+             */
+            to_date: string;
+            /** Operating Profit */
+            operating_profit: string;
+            /** Contributions */
+            contributions: string;
+            /** Withdrawals */
+            withdrawals: string;
+            /** Net Capital Movement */
+            net_capital_movement: string;
+            /** Cash And Bank */
+            cash_and_bank: string;
+            /** Loan Portfolio */
+            loan_portfolio: string;
+            /** Inventory At Cost */
+            inventory_at_cost: string;
+            /** Total Capital */
+            total_capital: string;
+            /** Distributable */
+            distributable: string;
+        };
         /** CashboxKpisOut */
         CashboxKpisOut: {
             /** Session Open */
@@ -2637,6 +2864,10 @@ export interface components {
             parent_contract_id: string | null;
             /** Root Contract Id */
             root_contract_id: string | null;
+            /** Extended On */
+            extended_on: string | null;
+            /** Extension Amount */
+            extension_amount: string | null;
             /** Items */
             items: components["schemas"]["ContractItemOut"][];
         };
@@ -2648,6 +2879,27 @@ export interface components {
             notes?: string | null;
             /** Signed Photo Url */
             signed_photo_url?: string | null;
+        };
+        /**
+         * ContributionIn
+         * @description El dueño mete plata al negocio.
+         *
+         *     NO es un ingreso: no se vendió nada ni se cobró un interés. Es
+         *     patrimonio, y por eso no toca el estado de resultados — ver
+         *     `service.create_contribution`.
+         */
+        ContributionIn: {
+            /**
+             * Account Id
+             * Format: uuid
+             */
+            account_id: string;
+            /** Amount */
+            amount: number | string;
+            /** Movement Date */
+            movement_date?: string | null;
+            /** Notes */
+            notes?: string | null;
         };
         /** CreditNoteOut */
         CreditNoteOut: {
@@ -2686,6 +2938,13 @@ export interface components {
         CursorPage_AuditLogOut_: {
             /** Items */
             items: components["schemas"]["AuditLogOut"][];
+            /** Next Cursor */
+            next_cursor?: string | null;
+        };
+        /** CursorPage[CapitalMovementOut] */
+        CursorPage_CapitalMovementOut_: {
+            /** Items */
+            items: components["schemas"]["CapitalMovementOut"][];
             /** Next Cursor */
             next_cursor?: string | null;
         };
@@ -5028,6 +5287,33 @@ export interface components {
         VoidSaleIn: {
             /** Reason */
             reason: string;
+        };
+        /**
+         * WithdrawalIn
+         * @description El dueño saca plata del negocio.
+         *
+         *     NO es un gasto: registrarlo como tal falsearía la utilidad del período
+         *     por todo el monto retirado. Es el mismo error que este proyecto ya pagó
+         *     tres veces ("prestar no es un gasto, cobrar no es una ganancia").
+         */
+        WithdrawalIn: {
+            /**
+             * Account Id
+             * Format: uuid
+             */
+            account_id: string;
+            /** Amount */
+            amount: number | string;
+            /** Movement Date */
+            movement_date?: string | null;
+            /** Notes */
+            notes: string;
+            /**
+             * Kind
+             * @default profit
+             * @enum {string}
+             */
+            kind: "profit" | "capital_return";
         };
     };
     responses: never;
@@ -7463,6 +7749,172 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ExpenseOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_contribution_api_v1_capital_contributions_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ContributionIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CapitalMovementOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_withdrawal_api_v1_capital_withdrawals_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["WithdrawalIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CapitalMovementOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_position_api_v1_capital_position_get: {
+        parameters: {
+            query: {
+                from_date: string;
+                to_date: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CapitalPositionOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_movements_api_v1_capital_movements_get: {
+        parameters: {
+            query?: {
+                direction?: string | null;
+                cursor?: string | null;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CursorPage_CapitalMovementOut_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_movement_api_v1_capital_movements__movement_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                movement_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CapitalMovementOut"];
                 };
             };
             /** @description Validation Error */

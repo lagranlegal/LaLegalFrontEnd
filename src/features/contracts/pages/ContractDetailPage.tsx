@@ -214,9 +214,22 @@ export function ContractDetailPage() {
         </div>
       )}
 
+      {/* La cadena, con las DOS fechas. Hasta 00053 esta línea decía "ampliado
+          el {start_date}" — correcto entonces, porque el sucesor nacía hoy.
+          Ahora `start_date` es la fecha del contrato ORIGINAL, así que decirlo
+          así sería mentir con semanas de diferencia. `extended_on` es cuándo
+          se entregó la plata de verdad. */}
       {contract.parent_contract_id && (
         <div className="rounded-input bg-muted px-4 py-2 text-sm text-muted-foreground">
-          Sucede a un contrato anterior, ampliado el {formatDate(contract.start_date)}.{' '}
+          Sucede a un contrato anterior
+          {contract.extended_on && <> — recargo de <Money value={contract.extension_amount ?? '0'} /> entregado el {formatDate(contract.extended_on)}</>}
+          .{' '}
+          {contract.extended_on && contract.extended_on !== contract.start_date && (
+            <>
+              Conserva la fecha del contrato original ({formatDate(contract.start_date)}), así que
+              el interés se sigue cobrando el día de siempre — ahora sobre el capital ampliado.{' '}
+            </>
+          )}
           <Link
             to="/contratos/$contractId"
             params={{ contractId: contract.parent_contract_id }}
