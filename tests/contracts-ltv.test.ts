@@ -72,23 +72,29 @@ describe('resolveMaxLtvPct — el tope se hereda subiendo por el árbol', () => 
 })
 
 describe('evaluarLtv', () => {
+  // Los montos van como el string decimal CANÓNICO ("1000000.00"), que es lo
+  // que el formulario GUARDA. Una primera versión de estos tests usaba el
+  // texto enmascarado ("1.000.000") —lo que el campo MUESTRA— y por eso
+  // pasaban en verde sobre un cálculo 100× equivocado. Lo cazó la
+  // comprobación en navegador. Es la segunda vez en esta misma sesión que un
+  // fixture escrito de memoria confirma el bug en vez de encontrarlo.
   it('sin avalúo no hay nada que comparar — igual que el backend', () => {
-    expect(evaluarLtv({ principal: '1.000.000', appraisalValue: undefined, maxLtvPct: 70 })).toEqual({
+    expect(evaluarLtv({ principal: '1000000.00', appraisalValue: undefined, maxLtvPct: 70 })).toEqual({
       kind: 'sin-datos',
     })
-    expect(evaluarLtv({ principal: '1.000.000', appraisalValue: '', maxLtvPct: 70 })).toEqual({
+    expect(evaluarLtv({ principal: '1000000.00', appraisalValue: '', maxLtvPct: 70 })).toEqual({
       kind: 'sin-datos',
     })
   })
 
   it('sin LTV en ninguna categoría de la rama, tampoco', () => {
-    expect(evaluarLtv({ principal: '1.000.000', appraisalValue: '2.000.000', maxLtvPct: null })).toEqual({
+    expect(evaluarLtv({ principal: '1000000.00', appraisalValue: '2000000.00', maxLtvPct: null })).toEqual({
       kind: 'sin-datos',
     })
   })
 
   it('dentro del cupo: 1.000.000 sobre una prenda de 2.000.000 al 70 %', () => {
-    const r = evaluarLtv({ principal: '1.000.000', appraisalValue: '2.000.000', maxLtvPct: 70 })
+    const r = evaluarLtv({ principal: '1000000.00', appraisalValue: '2000000.00', maxLtvPct: 70 })
     expect(r.kind).toBe('dentro')
     if (r.kind !== 'dentro') return
     expect(r.cupo).toBe('1400000.00')
@@ -97,19 +103,19 @@ describe('evaluarLtv', () => {
 
   it('el límite exacto NO se pasa — el backend usa `<=`', () => {
     // `principal / appraisal * 100 <= max_ltv_pct` deja pasar el borde.
-    const r = evaluarLtv({ principal: '1.400.000', appraisalValue: '2.000.000', maxLtvPct: 70 })
+    const r = evaluarLtv({ principal: '1400000.00', appraisalValue: '2000000.00', maxLtvPct: 70 })
     expect(r.kind).toBe('dentro')
   })
 
   it('un peso por encima del cupo ya excede', () => {
-    const r = evaluarLtv({ principal: '1.400.001', appraisalValue: '2.000.000', maxLtvPct: 70 })
+    const r = evaluarLtv({ principal: '1400001.00', appraisalValue: '2000000.00', maxLtvPct: 70 })
     expect(r.kind).toBe('excede')
     if (r.kind !== 'excede') return
     expect(r.exceso).toBe('1.00')
   })
 
   it('excede: el caso del LTV en 10 % que hacía que casi todo saltara', () => {
-    const r = evaluarLtv({ principal: '1.000.000', appraisalValue: '2.000.000', maxLtvPct: 10 })
+    const r = evaluarLtv({ principal: '1000000.00', appraisalValue: '2000000.00', maxLtvPct: 10 })
     expect(r.kind).toBe('excede')
     if (r.kind !== 'excede') return
     expect(r.cupo).toBe('200000.00')
@@ -118,7 +124,7 @@ describe('evaluarLtv', () => {
   })
 
   it('con el monto todavía en cero no afirma nada', () => {
-    expect(evaluarLtv({ principal: '0', appraisalValue: '2.000.000', maxLtvPct: 70 })).toEqual({
+    expect(evaluarLtv({ principal: '0.00', appraisalValue: '2000000.00', maxLtvPct: 70 })).toEqual({
       kind: 'sin-datos',
     })
   })

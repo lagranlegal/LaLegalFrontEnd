@@ -1,6 +1,6 @@
 import { resolveInheritedParams } from '@/features/catalogs/inheritance'
 import type { Category } from '@/lib/catalogs/categories'
-import { compareMoney, normalizeDecimalInput, parseMoneyInput, percentOfMoney, subtractMoney } from '@/lib/money'
+import { compareMoney, normalizeDecimalInput, percentOfMoney, subtractMoney } from '@/lib/money'
 
 /**
  * El cupo del LTV, calculado MIENTRAS se llena el formulario del contrato.
@@ -61,17 +61,22 @@ export function resolveMaxLtvPct(
 }
 
 export function evaluarLtv(input: {
-  /** Tal como viene del `<MoneyInput>`: enmascarado con puntos de miles. */
+  /**
+   * El string decimal CANÓNICO (`"1000000.00"`), tal como lo guarda el
+   * formulario — `MoneyInput` enmascara solo lo que se ve y emite siempre el
+   * decimal. Pasarlo por `parseMoneyInput` acá lo multiplicaría por 100:
+   * `digitsOnly("1000000.00")` da `"100000000"`. Lo cazó la comprobación en
+   * navegador, no los tests — porque los tests se habían escrito contra el
+   * texto enmascarado, que es lo que el campo MUESTRA y no lo que GUARDA.
+   */
   principal: string
   appraisalValue: string | undefined
   maxLtvPct: number | null
 }): LtvEstado {
-  const { principal, appraisalValue, maxLtvPct } = input
-  if (maxLtvPct === null || !appraisalValue) return { kind: 'sin-datos' }
+  const { principal: monto, appraisalValue: avaluo, maxLtvPct } = input
+  if (maxLtvPct === null || !avaluo) return { kind: 'sin-datos' }
 
-  const avaluo = parseMoneyInput(appraisalValue)
-  const monto = parseMoneyInput(principal)
-  if (compareMoney(avaluo, '0.00') <= 0 || compareMoney(monto, '0.00') <= 0) {
+  if (compareMoney(avaluo, '0.00') <= 0 || compareMoney(monto || '0.00', '0.00') <= 0) {
     return { kind: 'sin-datos' }
   }
 
