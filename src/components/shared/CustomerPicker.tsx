@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { SearchInput } from '@/components/shared/SearchInput'
 import { useCustomerSearch, type Customer } from '@/lib/customers/search'
+import { MIN_SEARCH_CHARS, hasEnoughToSearch } from '@/lib/search'
 
 /**
  * Buscar-y-elegir cliente — contratos (obligatorio) y ventas (opcional,
@@ -34,8 +35,16 @@ export function CustomerPicker({ value, onChange, placeholder = 'Buscar cliente 
       <SearchInput id={id} value={q} onChange={setQ} placeholder={placeholder} />
       {q.trim() && (
         <div className="absolute z-10 mt-1 w-full overflow-hidden rounded-input border border-border bg-card shadow-card">
-          {isFetching && <p className="px-3 py-2 text-sm text-muted-foreground">Buscando…</p>}
-          {!isFetching && data?.items.length === 0 && <p className="px-3 py-2 text-sm text-muted-foreground">Sin resultados.</p>}
+          {/* "Sin resultados" con una letra se lee como "ese cliente no
+              existe", y manda a crear un duplicado de alguien que sí está.
+              Decir que falta escribir es la diferencia entre las dos. */}
+          {!hasEnoughToSearch(q) && (
+            <p className="px-3 py-2 text-sm text-muted-foreground">
+              Escribe al menos {MIN_SEARCH_CHARS} letras del nombre o del documento.
+            </p>
+          )}
+          {hasEnoughToSearch(q) && isFetching && <p className="px-3 py-2 text-sm text-muted-foreground">Buscando…</p>}
+          {hasEnoughToSearch(q) && !isFetching && data?.items.length === 0 && <p className="px-3 py-2 text-sm text-muted-foreground">Sin resultados.</p>}
           {!isFetching &&
             data?.items.map((customer) => (
               <button

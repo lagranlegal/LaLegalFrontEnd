@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
 import { api, unwrap } from '@/lib/api/client'
+import { hasEnoughToSearch } from '@/lib/search'
 import type { components } from '@/types/api'
 
 export type Customer = components['schemas']['CustomerOut']
@@ -9,12 +10,17 @@ export type Customer = components['schemas']['CustomerOut']
  * contratos y ventas la necesitan como referencia, mismo criterio que
  * `lib/catalogs/categories.ts` (CLAUDE.md regla 3). Solo primera página (8
  * resultados): es un picker, no un listado con "cargar más".
+ *
+ * Consulta desde `MIN_SEARCH_CHARS` (3) y no desde el primer carácter: con
+ * una o dos letras, ocho filas de cientos ordenadas por un id aleatorio no
+ * son un resultado — son ruido con forma de respuesta. Quien llama debe
+ * distinguir "todavía no busqué" de "no hay" con `hasEnoughToSearch`.
  */
 export function useCustomerSearch(q: string) {
   return useQuery({
     queryKey: ['customers', 'search', q] as const,
     queryFn: () => unwrap(api.GET('/api/v1/customers', { params: { query: { q, limit: 8 } } })),
-    enabled: q.trim().length > 0,
+    enabled: hasEnoughToSearch(q),
   })
 }
 
