@@ -141,3 +141,36 @@ export function multiplyMoney(unitPrice: string, quantity: number): string {
 export function minMoney(a: string, b: string): string {
   return toCents(a) <= toCents(b) ? a : b
 }
+
+/**
+ * Compara dos montos. `-1` si `a < b`, `0` si son iguales, `1` si `a > b`.
+ *
+ * Existe para no comparar dinero con `Number(a) > Number(b)` en una feature
+ * (regla 5 de `CLAUDE.md`) ni con trucos sobre `minMoney`, que obligan a
+ * comparar STRINGS y fallan en cuanto uno trae `"1000000"` y el otro
+ * `"1000000.00"` — el mismo monto escrito distinto.
+ */
+export function compareMoney(a: string, b: string): -1 | 0 | 1 {
+  const ca = toCents(a)
+  const cb = toCents(b)
+  return ca === cb ? 0 : ca < cb ? -1 : 1
+}
+
+/**
+ * Un porcentaje de un monto, en centavos enteros. `percentOfMoney(
+ * "2000000.00", 70)` → `"1400000.00"`.
+ *
+ * NO se puede hacer con `multiplyMoney(valor, pct / 100)`: ése multiplica
+ * centavos por un float y le pasa el resultado a `centsToDecimal`, que hace
+ * `% 100` — con `0.4`, que no es exacto en binario, sale un residuo como
+ * `1e-8` y el monto se imprime corrupto. Acá la aritmética es entera
+ * (puntos básicos) y el redondeo explícito.
+ *
+ * Es de PRESENTACIÓN: sirve para mostrar el cupo del LTV mientras se llena
+ * el formulario. Quien decide si un préstamo se pasa sigue siendo el
+ * backend (`contracts.service._check_ltv`).
+ */
+export function percentOfMoney(value: string, pct: number): string {
+  const basisPoints = Math.round(pct * 100)
+  return centsToDecimal(Math.round((toCents(value) * basisPoints) / 10000))
+}

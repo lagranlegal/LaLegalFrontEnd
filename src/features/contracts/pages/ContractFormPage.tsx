@@ -23,6 +23,8 @@ import type { Customer } from '@/lib/customers/search'
 import { CustomerPicker } from '@/components/shared/CustomerPicker'
 import { ContractItemsFields } from '@/features/contracts/components/ContractItemsFields'
 import { contractItemSchema, emptyContractItem } from '@/features/contracts/contractItemSchema'
+import { evaluarLtv, resolveMaxLtvPct } from '@/features/contracts/ltv'
+import { LtvHint } from '@/features/contracts/components/LtvHint'
 import { AccountPicker } from '@/components/shared/AccountPicker'
 import { PAYMENT_METHOD_LABELS } from '@/lib/paymentMethods'
 
@@ -85,6 +87,17 @@ export function ContractFormPage() {
   // `useWatch` y no `watch()` para lo nuevo: este último devuelve una función
   // que el React Compiler no puede memoizar.
   const disbursementMethod = useWatch({ control, name: 'payment_method' })
+
+  // El cupo del LTV, en vivo. El tope sale de la categoría de la PRIMERA
+  // prenda porque es lo que hace el backend (`max_ltv_pct = first[...]`) —
+  // espejar otro criterio mostraría un número y el servidor aplicaría otro.
+  const appraisalValue = useWatch({ control, name: 'appraisal_value' })
+  const primeraCategoria = useWatch({ control, name: 'items.0.category_id' })
+  const ltv = evaluarLtv({
+    principal,
+    appraisalValue,
+    maxLtvPct: resolveMaxLtvPct(categories, primeraCategoria || undefined),
+  })
 
   const blocker = useBlocker({
     shouldBlockFn: () => (isDirty || customer !== null) && !submittedRef.current,
@@ -208,6 +221,7 @@ export function ContractFormPage() {
                 render={({ field }) => <MoneyInput id="appraisal_value" className="mt-1" value={field.value ?? ''} onChange={field.onChange} />}
               />
               {errors.appraisal_value && <p className="mt-1 text-sm text-danger">{errors.appraisal_value.message}</p>}
+              <LtvHint estado={ltv} />
             </div>
             <div>
               <label htmlFor="extension_window_days" className="text-sm font-medium text-foreground">
