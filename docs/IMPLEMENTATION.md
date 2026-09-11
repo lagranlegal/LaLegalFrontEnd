@@ -23,7 +23,7 @@ La chica, y esa sí deliberada: contratos tenía un `len(q) >= 5` para la cédul
 
 Y un plan B que hacía falta: las **stopwords del español** son lexemas vacíos, así que "De la Cruz" no se encontraría tecleando "de la". Va un `ilike` en el `or`.
 
-> **Hallazgo aparte, sin arreglar:** no está instalado `unaccent`. `to_tsvector('spanish', 'José')` **no** quita la tilde, así que hoy buscar "jose" no encuentra a José ni "munoz" a Muñoz. En Colombia eso pesa más que el umbral.
+> **Hallazgo aparte, arreglado después en `00056` — y con la causa al revés de lo que anoté acá primero.** La hipótesis era que faltaban las tildes. Al medirlo: el stemmer de `spanish` **sí** normaliza las vocales acentuadas ("jose" ya encontraba a José), y lo que no toca es **la eñe** — "munoz" no encontraba a Muñoz. Sobre apellidos colombianos corrientes fallaban 8 de 11, los 8 por la eñe. Se resolvió con un envoltorio `IMMUTABLE` de `unaccent` aplicado a los dos lados de la comparación, más su índice GIN.
 
 ### 2 · El recargo movía la fecha de cobro
 
