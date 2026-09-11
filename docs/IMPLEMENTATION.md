@@ -2,6 +2,79 @@
 
 > Registro vivo de qué existe en el código, cómo está armado y por qué se tomó cada decisión — para que cualquiera (humano o Claude Code) pueda retomar el proyecto sin releer todo el historial de commits. Se actualiza en cada paso del "Orden de implementación" de `CLAUDE.md`. No repite lo que ya está en `ARCHITECTURE.md`/`DESIGN_SYSTEM.md` (el qué-debería-ser); esto es el qué-hay-hoy y las decisiones concretas tomadas al construirlo.
 
+## Cinco hallazgos de la prueba con el cliente (11/09/2026)
+
+Mateo probó la app con el cliente y trajo cinco cosas. Tres eran arreglos y dos eran preguntas de negocio que no tenían respuesta en el producto.
+
+### 1 · Los buscadores "solo filtraban desde la quinta letra"
+
+Eran **dos** causas y ninguna era un umbral de cinco.
+
+La grande: `plainto_tsquery` compara **lexemas enteros**. "Mateo" encontraba a Mateo, "Mate" no encontraba nada. Como los nombres de pila suelen tener cinco o seis letras, desde el mostrador se veía exactamente como un umbral — pero el mismo buscador tampoco encontraba "Jaramillo" con "Jaramill". Pasaba igual en clientes, contratos, artículos y productos.
+
+La chica, y esa sí deliberada: contratos tenía un `len(q) >= 5` para la cédula, puesto porque teclear "5" hacía match por prefijo contra el documento de cualquier cliente que empezara por 5 y un contrato ajeno aparecía como si fuera el buscado.
+
+**El arreglo:** prefijo real (`to_tsquery` con `:*`, que usa el índice GIN que ya existía) con piso de tres caracteres — y **el piso va por CLÁUSULA, no sobre la consulta**. El número de contrato se sigue encontrando desde la primera tecla; un piso global habría roto el buscador que funcionaba bien.
+
+**Dos cosas que encontró el test de integración y no yo:**
+
+- La primera versión abría con `:*` **solo la última palabra**, razonando que las anteriores el usuario ya las terminó. Es falso en un buscador que filtra mientras se escribe: quien teclea "jara mat" tiene las dos a medias, y "jara mateo" no encontraba a Mateo Jaramillo porque "jara" tenía que coincidir exacto contra el lexema "jaramill". Ahora **todas** las palabras van abiertas.
+- `to_tsquery` **es sintaxis**, a diferencia de `plainto_tsquery`. Un `&` o un `(` sueltos son un `SyntaxError` de Postgres, o sea un **500 en un buscador** — riesgo nuevo del cambio. Los signos se descartan como separadores y hay un test parametrizado que lo fija.
+
+Y un plan B que hacía falta: las **stopwords del español** son lexemas vacíos, así que "De la Cruz" no se encontraría tecleando "de la". Va un `ilike` en el `or`.
+
+> **Hallazgo aparte, sin arreglar:** no está instalado `unaccent`. `to_tsvector('spanish', 'José')` **no** quita la tilde, así que hoy buscar "jose" no encuentra a José ni "munoz" a Muñoz. En Colombia eso pesa más que el umbral.
+
+### 2 · El recargo movía la fecha de cobro
+
+Presta 1.000.000 el día 1, el cliente recarga 500.000 el día 25, y el sucesor nacía con `start_date = interest_paid_until = hoy`: la próxima cuota se cobraba el **25 de octubre**. El cliente tenía una fecha de pago que se le movía sola cada vez que volvía por plata.
+
+Lo que pidió Mateo **no es una cuarta política: es la que no necesita política.** El sucesor hereda el ancla (`start_date` de la raíz de la cadena, `interest_paid_until` y `due_date` del padre) y el dilema de `RECARGOS.md` §5 —perdonar, cobrar o prorratear el mes en curso— **se disuelve**: el mes se cobra entero al capital nuevo cuando venza.
+
+La palanca ya estaba puesta: `extension_interest_policy` existía desde `00051` con dos valores y nada la exponía. Se le agregó `keep_anchor` como default.
+
+**La parte que casi se me pasa, y es la más importante:** antedatar `start_date` rompe dos cosas.
+
+- El detalle decía *"Sucede a un contrato anterior, **ampliado el {start_date}**"* — pasaría a mentir con semanas de diferencia.
+- `ContractPrintView` imprime `Fecha: {start_date}`. **El papel que el cliente firma el 25 saldría fechado el 1, sin nada más: un documento antedatado, que es peor que el problema que se resolvió.**
+
+Por eso `00053` agrega `extended_on` y `extension_amount`, y por eso el impreso lleva ahora un recuadro con **las dos fechas** y el monto del recargo. No es pulido de UI: es la condición para que el cambio sea legítimo.
+
+Y antes de confirmar, el panel dice *"Próxima cuota: 1 de octubre · $75.000"*. El filo del cambio es que un recargo dos días antes del aniversario hace pagar un mes completo casi de inmediato — es lo que hacen las compraventas y no es anatocismo, pero **un cobro correcto que el cliente no vio venir se reclama igual que uno equivocado**.
+
+### 3 y 4 · El dinero del dueño: no existía
+
+Dos preguntas que resultaron ser la misma operación en dos sentidos: *"el dueño va a inyectar capital"* y *"el dueño quiere retirar utilidades"*.
+
+No había dónde registrarlo, y las tres salidas que quedaban estaban mal: un `adjustment` de arqueo (que **miente** — el sistema sí cuadraba), un traslado (que solo sirve si la plata ya está en una cuenta de la empresa) o nada, que deja plata en el cajón sin documento. Y el retiro como **gasto** falsearía la utilidad por todo el monto retirado.
+
+**Lo esencial de la contabilidad de esto cabe en una frase: ni un aporte es un ingreso, ni un retiro es un gasto.** Los dos mueven el patrimonio.
+
+**Y la app no necesitó partida doble para cumplirlo:** el estado de resultados lee **documentos** (`sale`, `contract_payment`, `expense`) y un `capital_movement` no es ninguno de los tres, así que queda fuera **por construcción**. El modelo ya protegía esto antes de que el caso existiera.
+
+Módulo `capital` completo (`00054`): una tabla para los dos sentidos, conceptos propios de caja, tres permisos solo de Admin, auditoría, documento inmutable. Diseño en [`CAPITAL_DEL_DUENO.md`](../../backend-starter/docs/CAPITAL_DEL_DUENO.md).
+
+**Lo que le da valor a la pantalla no es el formulario, es el aviso.** `GET /capital/position` contesta lo que un dueño de compraventa no puede calcular de memoria:
+
+```
+Disponible      $ 4.200.000   ← cajón + bóveda + bancos
+Prestado        $32.500.000   ← capital de los contratos vivos
+Inventario      $14.240.000   ← AL COSTO, nunca al precio de venta
+Capital total   $50.940.000
+```
+
+**Retirar "lo que hay en caja" no es retirar utilidad: es descapitalizar.** No bloquea —el dueño puede sacar lo suyo— pero `distributable` sale negativo y la pantalla lo dice.
+
+### 5 · El recargo con la caja cerrada fallaba en silencio
+
+`ExtendLoanPanel` tenía el `catch` **vacío**, con un comentario que afirmaba que `useMoneyMutation` dejaba el error a la vista. No lo hace: solo maneja la `Idempotency-Key`. El 409 llegaba, el diálogo quedaba abierto, el botón se rehabilitaba y no aparecía un solo carácter.
+
+Otra vez *"un comentario del código puede estar mintiendo"* — y las otras once pantallas de dinero lo hacían bien.
+
+Ahora atrapa `CASH_SESSION_NOT_OPEN` → `CashSessionRequiredDialog` (con CTA a abrir la caja, o a quién pedírselo), y cualquier otro error va inline sin cerrar el diálogo. **Y el aviso preventivo**, que es la mejor versión del arreglo: la sesión la exige el **tipo de cuenta**, no la operación, así que el recargo por transferencia funciona con la caja cerrada. El panel lo dice antes — un callejón sin salida convertido en un camino.
+
+---
+
 ## El cupo del LTV, antes de prestar (11/09/2026)
 
 Era **lo único de "reportado y no hecho"** que seguía sin empezarse. La alerta de LTV vivía solo en el detalle del contrato ya creado — o sea, llegaba después de que la plata salió del cajón. Todo el valor de un aviso de LTV está en verlo **antes** de prestar; como estaba, era un reproche y no una advertencia.

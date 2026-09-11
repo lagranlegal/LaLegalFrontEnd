@@ -34,6 +34,7 @@ import { IdentityPage } from '@/features/identity/pages/IdentityPage'
 import { AuditPage } from '@/features/audit/pages/AuditPage'
 import { ReportesPage } from '@/features/reports/pages/ReportesPage'
 import { AccountsPage } from '@/features/accounts/pages/AccountsPage'
+import { CapitalPage } from '@/features/capital/pages/CapitalPage'
 import { SettingsPage } from '@/features/settings/pages/SettingsPage'
 import { DocumentTemplatesPage } from '@/features/settings/documentTemplates/pages/DocumentTemplatesPage'
 import { ProfilePage } from '@/features/settings/pages/ProfilePage'
@@ -447,6 +448,22 @@ const accountsRoute = createRoute({
   },
 })
 
+// Capital del dueño (00054). El guard usa el permiso de LECTURA; aportar y
+// retirar se gatean por botón dentro de la pantalla, que es el patrón de toda
+// la app. Los tres permisos son de Admin de fábrica: cuánto puso el dueño y
+// cuánto se ha llevado no es dato de mostrador.
+const capitalRoute = createRoute({
+  getParentRoute: () => appLayoutRoute,
+  path: '/capital',
+  component: CapitalPage,
+  beforeLoad: ({ context }) => {
+    const me = context.queryClient.getQueryData(meQueryOptions().queryKey)
+    if (me && !me.permissions.includes('capital.view')) {
+      throw redirect({ to: '/' })
+    }
+  },
+})
+
 // `GET /reports/closings` (docs/ARCHITECTURE.md §5) — mismo patrón que `auditRoute`.
 const reportesRoute = createRoute({
   getParentRoute: () => appLayoutRoute,
@@ -514,6 +531,7 @@ const routeTree = rootRoute.addChildren([
     reportesRoute,
     auditRoute,
     accountsRoute,
+    capitalRoute,
     settingsRoute,
     documentTemplatesRoute,
     profileRoute,
