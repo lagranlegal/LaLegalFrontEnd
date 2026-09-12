@@ -112,7 +112,17 @@ export function DashboardPage() {
                   <span className="font-medium text-foreground">
                     Contrato <RecordNumber value={contract.number} />
                   </span>
-                  <span className="text-muted-foreground">Vencido el {formatDate(contract.due_date)}</span>
+                  {/* `extension_ends_at`, NO `due_date`. Lo que pone a un
+                      contrato en esta lista es que se le venció la PRÓRROGA
+                      (`list_ready_for_auction` filtra por
+                      `extension_ends_at < hoy`), y las dos fechas no tienen
+                      relación: un cliente que pagó interés un año tiene el
+                      vencimiento del papel pasado hace meses y la prórroga
+                      vencida la semana pasada. La card mostraba la fecha
+                      equivocada como si fuera la causa. */}
+                  <span className="text-muted-foreground">
+                    Prórroga vencida el {contract.extension_ends_at ? formatDate(contract.extension_ends_at) : '—'}
+                  </span>
                   <Money value={contract.capital_balance} />
                 </Link>
               ))}
