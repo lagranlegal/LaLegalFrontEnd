@@ -212,7 +212,7 @@ export function PaymentOptionsPanel({ contractId }: { contractId: string }) {
               onClick={() => selectOption(option)}
               className={cn(
                 'rounded-input border px-3 py-2 text-sm font-medium transition-colors',
-                selected?.months === option.months ? 'border-primary bg-brand-50 text-primary' : 'border-border bg-background hover:bg-accent',
+                selected?.months === option.months ? 'border-brand bg-brand-50 text-brand' : 'border-border bg-background hover:bg-accent',
               )}
             >
               {option.months} {option.months === 1 ? 'mes' : 'meses'} · <Money value={option.interest_amount} />

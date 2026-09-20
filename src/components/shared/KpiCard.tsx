@@ -5,7 +5,7 @@ const TONE_CLASSES = {
   default: 'text-foreground',
   danger: 'text-danger',
   success: 'text-success',
-  brand: 'text-primary',
+  brand: 'text-brand',
 } as const
 
 /** `pct: null` = sin base de comparación (período anterior en 0) — se muestra "—". `favorable` decide el color, no el signo (bajar gastos también es verde). */

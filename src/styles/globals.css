@@ -34,7 +34,17 @@
   --color-destructive-foreground: var(--brand-contrast);
   --color-border: var(--border);
   --color-input: var(--border);
-  --color-ring: var(--brand-500);
+  --color-ring: var(--brand-700);
+
+  /* La marca COMO TEXTO (utilidades `text-brand`, `border-brand`).
+     `--color-primary` es el RELLENO del botón: en la paleta de oro es claro a
+     propósito (#c99a3d con texto carbón encima, 6.24:1). Ese mismo oro usado
+     como color de texto sobre fondo claro da 2.42:1 — el bug exacto que este
+     rebranding vino a cerrar, un nivel más abajo.
+     `--brand-700` es el token que el sistema ya reserva para "marca sobre el
+     fondo del tema", y se invierte solo en oscuro, así que sirve en los dos.
+     Regla: `bg-primary` para rellenos, `text-brand` para texto y bordes. */
+  --color-brand: var(--brand-700);
 
   /* Semánticos propios del dominio (§2) — utilidades bg-success, text-danger… */
   --color-success: var(--success);
@@ -126,7 +136,7 @@
    que sin este contorno no había forma de saber que el campo quedó
    seleccionado — y por lo tanto tampoco que Supr/Backspace lo borra. */
 .ProseMirror-selectednode {
-  outline: 2px solid var(--brand-500);
+  outline: 2px solid var(--brand-700);
   outline-offset: 2px;
   border-radius: var(--radius-input);
 }

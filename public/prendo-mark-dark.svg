@@ -1,0 +1,4 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64" role="img" aria-label="Prendo">
+  <rect width="64" height="64" rx="16" fill="#24211c"/>
+  <path fill-rule="evenodd" fill="#e5c56b" d="M36.95,15.74 L48.26,27.05 A7,7 0 0 1 48.26,36.95 L36.95,48.26 A7,7 0 0 1 27.05,48.26 L15.74,36.95 A7,7 0 0 1 15.74,27.05 L27.05,15.74 A7,7 0 0 1 36.95,15.74 Z M28.0,27.19 a4,4 0 1 0 8,0 a4,4 0 1 0 -8,0 Z"/>
+</svg>

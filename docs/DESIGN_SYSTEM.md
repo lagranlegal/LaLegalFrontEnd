@@ -4,86 +4,106 @@
 
 ## 1. Referencia visual (capturas aprobadas por el cliente)
 
-El cliente aprobó como referencia de UI/UX las capturas de un software administrativo comercial (dashboard, POS, modales, mobile). **La marca propia aún no existe** (decidido 15/08/2026): la paleta teal de §2 es un placeholder derivado de esa referencia y muy probablemente el resultado final será similar — pero TODO el color vive en tokens para que el rebranding, cuando la marca se defina, sea editar un archivo.
+El cliente aprobó como referencia de UI/UX las capturas de un software administrativo comercial (dashboard, POS, modales, mobile). El teal original nació como placeholder derivado de esa referencia (15/08/2026), con todo el color en tokens para que el rebranding fuera editar un archivo. Ese rebranding ocurrió: la marca es la paleta de oro de §1-bis.
+
+### 1-bis. La marca — **Prendo** (nombre 12/09/2026 · paleta de oro y logo 20/09/2026 · **APLICADA al código**)
+
+Plan completo de las fases que siguen (kit, guía, dominio, correo): **`PLAN_MARCA.md`**.
+Kit con logo, mockups y ratios: **`../../marca/IDENTIDAD.html`** (en la raíz del proyecto, fuera de este
+repo — ver `../../marca/README.md`), publicado en
+<https://claude.ai/code/artifact/bdce6752-e078-41bd-b582-44fab3d2cd4e>.
+**Los SVG están en `../../marca/logo/`**, y las copias servidas en `public/`.
+
+| | |
+|---|---|
+| Nombre | **Prendo** — *prenda* en forma de verbo. Sin tilde ni eñe (a propósito: ver `00056`) |
+| Dominio | `prendo.com.co`, comprado el 20/09/2026. Verificar siempre contra `whois -h whois.registry.co`, que es el único que responde de verdad (el `whois` del sistema cae a IANA y devuelve el TLD) |
+| Logo | **Etiqueta**: rombo de esquinas redondeadas con perforación — un solo `path` con `fill-rule: evenodd`, sobre tile de radio 16/64. Es el objeto que la app imprime para cada lote, y en segunda lectura una gema. Reemplaza el monograma P del 12/09, que no distinguía |
+| Tipografía de marca | **Archivo** SemiBold, tracking −0.035em. **La interfaz sigue en Inter** — eso no cambia |
+
+**Paleta "Oro Moderno".** Los valores viven en `tokens.css`; acá está solo lo que hay que saber para no
+romperlos.
+
+```
+:root                          [data-theme='dark']
+--brand-50:  #fbf4e4           --brand-50:  #2a2318
+--brand-100: #f2e3be           --brand-100: #3d3221
+--brand-500: #c99a3d           --brand-500: #d3ac5f
+--brand-600: #b08531           --brand-600: #e5c56b
+--brand-700: #7a5a1c           --brand-700: #f2d27a
+--brand-contrast: #24211c      --brand-contrast: #24211c
+```
+
+> **La decisión no obvia: el texto sobre el oro es CARBÓN, no blanco.**
+> Blanco sobre `#c99a3d` da **2.57:1** — peor que el teal 2.70 que esta app abandonó por no cumplir AA.
+> Carbón sobre el mismo oro da **6.24:1** y conserva el hex de la paleta exacto. Es además como se resuelve
+> el oro en las marcas premium: blanco sobre dorado siempre se ve lavado.
+> Por eso `--brand-contrast` **no se invierte** entre temas: el carbón funciona sobre el oro en los dos.
+
+> **La segunda trampa, un nivel más abajo: `bg-primary` ≠ `text-primary`.**
+> Tailwind deriva las dos utilidades del mismo `--color-primary`. Con un primario claro eso rompe: el oro
+> como **texto** sobre fondo claro da **2.42:1**, y ahí viven los enlaces y las cifras de dinero del
+> `KpiCard` — justo lo que la paleta recomendaba pintar de dorado.
+> Por eso existe `--color-brand: var(--brand-700)` en `globals.css`.
+> **Regla: `bg-primary` para rellenos, `text-brand` / `border-brand` para texto y bordes.**
+> Un `text-primary` nuevo en una feature es un bug de revisión.
+
+**A diferencia del rebranding anterior, este no fueron 6 líneas.** La paleta de oro trae su propio mundo
+cálido, así que también cambiaron los neutrales (`--bg-app` marfil, `--bg-muted` beige, `--text-strong`
+carbón, `--text-muted` gris cálido, `--border` beige grisáceo) y el sidebar (`#24211c`). Sobre un fondo frío
+el oro se ensucia y tira a mostaza. `--platform` **no se tocó**: sigue siendo navy frío a propósito, y ahora
+que la app es cálida contrasta todavía más.
+
+> **Medido, y al revés que con el esmeralda:** sobre el sidebar carbón `#24211c` el oro de marca da **6.24**,
+> así que acá **sí** se puede usar el `--brand-500` directo como acento. El esmeralda daba 3.01 sobre el
+> sidebar viejo y obligaba a una variante clara.
+
+**Dónde vive cada marca.** Hay dos marcas conviviendo y el tenant no es Prendo:
+
+| Superficie | Marca |
+|---|---|
+| Sidebar, topbar, contrato impreso, paz y salvo | **El tenant** (`me.company.name` + su `logo_url`); Prendo solo al pie del impreso, en gris |
+| Login, `/auth/callback`, favicon, `<title>`, `AppFooter`, panel de super-admin, correos | **Prendo** |
+
+Por eso el respaldo de `AppShell`/`AppFooter` cuando no hay empresa es **`'Mi empresa'`**, no `'Prendo'`:
+poner la marca de la plataforma ahí diría que el inquilino se llama Prendo.
+
+**`tests/token-contrast.test.ts` ya mide el relleno del botón primario** (`--brand-contrast` sobre
+`--brand-500` y `--brand-600`, en los dos temas). Antes solo medía tokens de texto: por eso el 2.70 del teal
+vivió meses sin que nada fallara. Verificado a la inversa el 20/09 — con `--brand-contrast: #ffffff` el test
+falla con 2.57, que es para lo que existe.
 
 Lo que define el look y hay que replicar:
 
-- **Shell:** sidebar **teal muy oscuro** fija a la izquierda (28/08/2026 — antes blanca, ver nota de contraste en §2; ítem activo con fondo sólido + barra de acento a la izquierda), topbar blanca con buscador global centrado, ayuda/notificaciones/apps y avatar del usuario a la derecha. Fondo general gris muy claro (`#F5F7FA` aprox), contenido en **cards blancas** con borde sutil y radio generoso. Pie de página de una línea, mismo fondo que las cards — ver `AppFooter` en §3 (30/08/2026: la primera versión, un bloque oscuro de 3 columnas, se sintió invasiva en el uso real).
-- **Dashboard:** fila superior de **KPIs** separados por divisores (etiqueta pequeña gris + cifra grande — cifras en color según semántica: rojo cuentas por cobrar, teal ventas), debajo cards de gráficas: área/línea de ingresos vs gastos con toggle de pestañas ("Causado/Pagado" → nuestro equivalente: Empeño/Tienda), barras apiladas, dona de mejores clientes con leyenda.
-- **Formularios y POS:** panel "Factura de venta" — selects arriba (lista de precio, numeración), cliente con botón "+ Nuevo" al lado, líneas con stepper − 1 +, resumen Subtotal/Descuento/IVA, **CTA grande de ancho completo teal con el total dentro del botón** ("Vender $419.170").
-- **Modales:** centrados, blanco, radio grande (~24px), X arriba a la derecha, título grande centrado, subtítulo gris, campos con label arriba y bordes redondeados suaves, **botón primario tipo pastilla (pill) teal centrado**. TODOS los modales de la app siguen exactamente este patrón (requisito explícito).
-- **Vacíos/onboarding:** cards con ilustración/ícono suave, texto "Aún no tienes…", CTA teal directo. Checklists de bienvenida con pasos.
+- **Shell:** sidebar **carbón** fija a la izquierda (28/08/2026 — antes blanca, ver nota de contraste en §2; ítem activo con fondo sólido + barra de acento a la izquierda), topbar blanca con buscador global centrado, ayuda/notificaciones/apps y avatar del usuario a la derecha. Fondo general marfil (`--bg-app`), contenido en **cards blancas** con borde sutil y radio generoso. Pie de página de una línea, mismo fondo que las cards — ver `AppFooter` en §3 (30/08/2026: la primera versión, un bloque oscuro de 3 columnas, se sintió invasiva en el uso real).
+- **Dashboard:** fila superior de **KPIs** separados por divisores (etiqueta pequeña gris + cifra grande — cifras en color según semántica: rojo cuentas por cobrar, oro ventas — con `text-brand`, no `text-primary`, ver §1-bis), debajo cards de gráficas: área/línea de ingresos vs gastos con toggle de pestañas ("Causado/Pagado" → nuestro equivalente: Empeño/Tienda), barras apiladas, dona de mejores clientes con leyenda.
+- **Formularios y POS:** panel "Factura de venta" — selects arriba (lista de precio, numeración), cliente con botón "+ Nuevo" al lado, líneas con stepper − 1 +, resumen Subtotal/Descuento/IVA, **CTA grande de ancho completo en oro, con texto carbón y el total dentro del botón** ("Vender $419.170").
+- **Modales:** centrados, blanco, radio grande (~24px), X arriba a la derecha, título grande centrado, subtítulo gris, campos con label arriba y bordes redondeados suaves, **botón primario tipo pastilla (pill) en oro, centrado**. TODOS los modales de la app siguen exactamente este patrón (requisito explícito).
+- **Vacíos/onboarding:** cards con ilustración/ícono suave, texto "Aún no tienes…", CTA en oro directo. Checklists de bienvenida con pasos.
 - **Mobile:** sidebar → drawer; KPIs apilados; tablas → cards; CTAs de ancho completo.
 
 ## 2. Tokens (`src/styles/tokens.css`) — única fuente de verdad
 
 CSS variables consumidas por Tailwind (`@theme` en Tailwind v4). Las features usan clases semánticas (`bg-primary`, `text-danger`, `rounded-card`) — nunca el hex.
 
-```css
-:root {
-  /* ==== Marca (cambiar estas 6 líneas re-marca toda la app) ==== */
-  --brand-50:  #E6F7F5;   /* fondos suaves, item activo de sidebar, chips */
-  --brand-100: #C2EDE7;
-  --brand-500: #00B19E;   /* primario: botones, links, item activo, series "ingresos" */
-  --brand-600: #009C8B;   /* hover del primario */
-  --brand-700: #00806F;   /* pressed / focos */
-  --brand-contrast: #FFFFFF;
+> **Los valores viven en `src/styles/tokens.css`, y este documento ya no los copia.**
+> Hasta el 20/09/2026 acá había un duplicado del bloque completo. Se borró porque **había derivado**: decía
+> `--success: #22A06B` cuando el archivo real tenía `#1b7e54`, y un sistema de diseño con dos verdades es
+> peor que uno con una sola en otro archivo. Lo que sigue es el mapa de **roles** — para qué existe cada
+> token. Para el valor, abrir `tokens.css`, que está comentado línea por línea.
 
-  /* ==== Semánticos ==== */
-  --success: #22A06B;  --success-soft: #E6F6EF;
-  --warning: #E8A23D;  --warning-soft: #FCF3E3;
-  --danger:  #E5484D;  --danger-soft:  #FDEBEC;   /* gastos, cuentas por cobrar, anulaciones, mora */
-  --info:    #3B82F6;  --info-soft:    #EAF2FE;
-
-  /* ==== Neutrales (superficies y texto) ==== */
-  --bg-app: #F5F7FA;          /* fondo general */
-  --bg-surface: #FFFFFF;      /* cards, topbar, modales */
-  --bg-muted: #EBEEF3;        /* hover de botones/filas, skeletons — distinto de bg-app a propósito (28/08/2026): antes eran el mismo color y un botón "outline" desaparecía sobre el fondo de página */
-  --border: #E5EAF0;          /* bordes de cards, inputs, divisores */
-  --text-strong: #1E2A3B;     /* títulos, cifras */
-  --text-body: #44546A;
-  --text-muted: #8A97A8;      /* labels de KPI, hints, placeholders */
-
-  /* ==== Sidebar (28/08/2026) — superficie propia, NO --bg-surface ====
-     Teal muy oscuro, distinto del navy de --platform (ese es exclusivo del
-     panel super-admin). Antes el sidebar era el mismo blanco que cualquier
-     card — cero contraste con el resto del shell. */
-  --sidebar-bg: #0A2622;
-  --sidebar-bg-hover: #123830;
-  --sidebar-active-bg: #15453B;
-  --sidebar-fg: #BCDAD3;
-  --sidebar-fg-strong: #FFFFFF;
-  --sidebar-border: #123830;
-
-  /* ==== Estados de dominio (badges) ==== */
-  --status-active: var(--success);        /* Vigente / disponible / activa */
-  --status-arrears: var(--warning);       /* En mora / borrador */
-  --status-extension: #D97706;            /* Prórroga */
-  --status-auctioned: var(--danger);      /* Rematado / anulada / vencida */
-  --status-paid: var(--info);             /* Pagado / vendido */
-  --status-neutral: var(--text-muted);    /* invitado, inactivo, written_off */
-
-  /* ==== Gráficas (Recharts lee de aquí, ver §5) ==== */
-  --chart-1: var(--brand-500);  /* serie principal / ingresos */
-  --chart-2: var(--danger);     /* gastos / egresos */
-  --chart-3: #0E7490; --chart-4: #67C7BC; --chart-5: #A7B3C2; /* series secundarias, dona */
-
-  /* ==== Forma ==== */
-  --radius-input: 10px;  --radius-card: 14px;  --radius-modal: 24px;  --radius-pill: 9999px;
-  --shadow-card: 0 1px 3px rgb(30 42 59 / .06);
-  --shadow-modal: 0 20px 50px rgb(30 42 59 / .18);
-
-  /* ==== Movimiento ==== */
-  --ease-out: cubic-bezier(.16, 1, .3, 1);   /* salida rápida, entrada suave */
-  --duration-fast: 120ms;   /* hover, focus, press — debe sentirse instantáneo */
-  --duration-base: 200ms;   /* aparición de cards, tabs, chips */
-  --duration-slow: 320ms;   /* modales, drawers, lo que ocupa la pantalla */
-
-  /* ==== Tipografía y espaciado ==== */
-  --font-sans: "Inter", system-ui, sans-serif;   /* cifras de KPI con font-feature "tnum" */
-  --space-page: 24px;  --space-card: 20px;
-}
-```
+| Grupo | Tokens | Para qué |
+|---|---|---|
+| Marca | `--brand-50` `-100` `-500` `-600` `-700` `--brand-contrast` | `500` es el **relleno** del primario y `--brand-contrast` el texto encima; `700` es la marca **como texto** sobre el fondo del tema (utilidad `text-brand`); `50`/`100` son fondos suaves, chips y bordes |
+| Semánticos | `--success` `--warning` `--danger` `--info` + su `-soft` | Estado de una operación. Cada uno cumple AA sobre `--bg-app`, `--bg-surface` **y su propio `-soft`**, que es el caso más exigente por compartir tono con el texto |
+| Neutrales | `--bg-app` `--bg-surface` `--bg-muted` `--border` `--text-strong` `--text-body` `--text-muted` | Superficies y texto. `--bg-muted` es distinto de `--bg-app` a propósito (28/08/2026): antes eran el mismo color y un botón "outline" desaparecía sobre el fondo de página |
+| Sidebar | `--sidebar-bg` `-hover` `-active-bg` `-fg` `-fg-strong` `-border` | Superficie propia, **no** `--bg-surface`: antes el sidebar era el mismo blanco que cualquier card y no contrastaba con el shell |
+| Estados de dominio | `--status-active` `-arrears` `-extension` `-auctioned` `-paid` `-neutral` | Badges. Casi todos son alias de un semántico; la prórroga tiene color propio |
+| Gráficas | `--chart-1` … `--chart-5` | Recharts lee de acá (ver §5). `1` es la serie principal, `2` los egresos |
+| Plataforma | `--platform` `--platform-foreground` | Banda del panel super-admin. Navy frío **a propósito**: ningún tenant lo ve nunca, y su razón de existir es que no se confunda con la marca |
+| Forma | `--radius-input` `-card` `-modal` `-pill` `--shadow-card` `--shadow-modal` | |
+| Movimiento | `--ease-out` `--duration-fast` `-base` `-slow` | |
+| Tipografía y espacio | `--font-sans` `--space-page` `--space-card` | Inter con `font-feature: tnum` en las cifras |
 
 **El movimiento también es un token.** Sin estas cuatro líneas cada pantalla inventaba su propia duración y la app se sentía hecha por manos distintas. Tres duraciones y una sola curva — si algo pide una cuarta, casi siempre es que está animando de más.
 
@@ -103,7 +123,7 @@ Construidos UNA vez sobre shadcn/ui + tokens; las features solo los componen. Si
 
 | Componente | Qué es / reglas |
 |---|---|
-| `AppShell` | Sidebar (teal oscuro — `--sidebar-*`, no `--bg-surface`, ver §2 —, colapsable a íconos; en mobile drawer con overlay y animación de entrada) + topbar (buscador global — hoy `disabled`, es un placeholder visual de la referencia, ninguna búsqueda unificada real todavía, ver RECOMENDACIONES §3; avatar con menú: hoy solo "Cerrar sesión" — "perfil"/"cambiar contraseña" siguen pendientes de `PATCH /me`, ver PENDIENTES_BACKEND_INFRA.md punto 15) + `CashSessionBanner` + contenido con `--space-page` + `AppFooter`. Orden real del menú (`AppShell.tsx`): Inicio, Contratos, Ventas, Inventario, Clientes, Caja, Catálogos, Identidad (usuarios + roles en una sola pantalla, filtrada por `identity.manage_users`/`identity.manage_roles`), Reportes, Auditoría, Configuración. **Solo "Configuración" se muestra sin `to:` (deshabilitado a propósito)** — bloqueado del lado del backend (RECOMENDACIONES §1 punto 5), visible para no esconder que existe pero sin ruta real todavía; "Reportes" sí tiene ruta (`/reportes`, construido — ver §5 y `docs/IMPLEMENTATION.md`). El resto de ítems se filtra por permiso. |
+| `AppShell` | Sidebar (carbón — `--sidebar-*`, no `--bg-surface`, ver §2 —, colapsable a íconos; en mobile drawer con overlay y animación de entrada) + topbar (buscador global — hoy `disabled`, es un placeholder visual de la referencia, ninguna búsqueda unificada real todavía, ver RECOMENDACIONES §3; avatar con menú: hoy solo "Cerrar sesión" — "perfil"/"cambiar contraseña" siguen pendientes de `PATCH /me`, ver PENDIENTES_BACKEND_INFRA.md punto 15) + `CashSessionBanner` + contenido con `--space-page` + `AppFooter`. Orden real del menú (`AppShell.tsx`): Inicio, Contratos, Ventas, Inventario, Clientes, Caja, Catálogos, Identidad (usuarios + roles en una sola pantalla, filtrada por `identity.manage_users`/`identity.manage_roles`), Reportes, Auditoría, Configuración. **Solo "Configuración" se muestra sin `to:` (deshabilitado a propósito)** — bloqueado del lado del backend (RECOMENDACIONES §1 punto 5), visible para no esconder que existe pero sin ruta real todavía; "Reportes" sí tiene ruta (`/reportes`, construido — ver §5 y `docs/IMPLEMENTATION.md`). El resto de ítems se filtra por permiso. |
 | `AppFooter` | Pie de página de una sola línea (`components/shared/AppFooter.tsx`; extraído de `AppShell.tsx` el 28/08, rediseñado el 30/08 tras sentirse invasivo como bloque oscuro de 3 columnas). `bg-card`, borde superior — copyright + nombre legal (+ NIT si existe) a la izquierda, teléfono de contacto o el tagline genérico a la derecha. Datos de `me.company` solo si existen, nada inventado. Sin links institucionales inventados (Términos, Ayuda) — no existen esas páginas todavía. |
 | `RecordNumber` | El número de un documento (`#123`) con tratamiento tipográfico real — `#` en `text-muted-foreground`, número en `tnum font-semibold` (28/08/2026, antes texto plano `` `#${x}` `` repetido en ~15 lugares). Usado en listas/detalles de contratos, ventas, clientes, inventario. |
 | `PageHeader` | Título + breadcrumb + acciones a la derecha (botón primario único). Toda página lo usa — consistencia de jerarquía. |
@@ -125,7 +145,7 @@ Construidos UNA vez sobre shadcn/ui + tokens; las features solo los componen. Si
 
 ## 4. Protocolos de UX (aplicar siempre)
 
-1. **Jerarquía de acción:** UNA acción primaria (teal, pill o bloque) por pantalla/modal; el resto secundarias (outline) o terciarias (ghost). El CTA de dinero muestra el monto dentro del botón ("Vender $419.170", "Registrar abono $50.000").
+1. **Jerarquía de acción:** UNA acción primaria (oro, pill o bloque) por pantalla/modal; el resto secundarias (outline) o terciarias (ghost). El CTA de dinero muestra el monto dentro del botón ("Vender $419.170", "Registrar abono $50.000").
 2. **Dinero guiado, nunca libre:** abonos = botones generados desde `payment-options` (1 mes $X · 2 meses $Y · Al día + capital); el único campo libre es capital extra cuando `allows_capital`. Cierre de caja: `expected_cash` visible, `counted_cash` se digita, la diferencia se calcula y muestra al instante; si ≠ 0, el campo justificación aparece y bloquea el submit hasta llenarse.
 3. **Feedback inmediato:** toda mutación → botón en loading (spinner + disabled) → toast de éxito con acción contextual ("Abono registrado — Ver recibo") o error mapeado (§6 de ARCHITECTURE). Nunca doble submit posible.
 4. **Destructivo = fricción:** anular, rematar, reabrir, desactivar → `ConfirmDialog` con consecuencia explícita ("El cliente pierde las prendas; se crearán artículos de inventario") y motivo obligatorio cuando el backend lo audita.
@@ -134,7 +154,7 @@ Construidos UNA vez sobre shadcn/ui + tokens; las features solo los componen. Si
 7. **Tablas operativas:** fila entera clickeable al detalle, acciones en menú `⋯`, filtros como chips encima (estado, fechas con presets), búsqueda a la izquierda, botón primario a la derecha del `PageHeader`.
 8. **Un 403 no es una falla — nunca decir "no se pudo cargar" cuando falta un permiso.** Un permiso faltante es una respuesta CORRECTA del backend. Tratarlo como error produce mensajes que afirman cosas falsas y mandan al usuario a buscar un problema inexistente: pasó de verdad con un rol sin permisos, que veía *"Caja cerrada"* con la caja abierta y *"no se pudieron cargar los productos"* con el inventario sano, más un botón de **Reintentar** que no podía funcionar nunca. Reglas: usar `lib/api/isPermissionError`; si la pantalla **afirma un estado** (el banner de caja) y no se puede saber, **no mostrar nada** en vez de afirmar lo contrario; si es una lista, decir qué falta y a quién pedírselo, **sin botón de reintentar**; y si el elemento es opcional para la operación (el `AccountPicker`), ocultarlo y dejar que la operación siga.
 9. **Idioma y formatos:** todo en español; números SIEMPRE `es-CO` (puntos de miles, coma decimal); fechas `dd/MM/yyyy` en Bogotá; sin jerga técnica en errores (traducir `CONFLICT` a "Ya existe un cliente con ese documento").
-10. **Accesibilidad (WCAG 2.1 AA):** contraste ≥4.5:1 (verificar teal sobre blanco en textos — usar `--brand-600`+ para texto sobre claro), navegable 100% por teclado (Radix ayuda), `aria-label` en íconos solos, tamaños táctiles ≥44px en mobile.
+10. **Accesibilidad (WCAG 2.1 AA):** contraste ≥4.5:1 — para **texto** en color de marca sobre fondo claro va `text-brand` (`--brand-700`), nunca `text-primary`: el oro del relleno da 2.42:1 como texto (ver §1-bis). `tests/token-contrast.test.ts` mide los dos casos, navegable 100% por teclado (Radix ayuda), `aria-label` en íconos solos, tamaños táctiles ≥44px en mobile.
 
     **Medido y corregido (09/09/2026, auditoría de QA — F6-02).** Un barrido de 12 pantallas × 2 temas encontró **12 combinaciones por debajo de AA en el tema claro y ninguna en el oscuro**: la regla estaba escrita acá desde el día 1 y nadie la medía. Los seis tokens semánticos de texto (`--text-muted`, `--success`, `--warning`, `--danger`, `--info`, `--status-extension`) se recalcularon **contra los tres fondos donde viven de verdad** —`--bg-app`, `--bg-surface` y su propio `-soft`, que es el caso más exigente por compartir tono— conservando el matiz. El tema oscuro no se tocó.
 

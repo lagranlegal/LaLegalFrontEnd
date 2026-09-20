@@ -70,7 +70,7 @@ function categoryName(categories: { id: string; name: string }[] | undefined, ca
  */
 function AuctionedItemLink({ inventoryItem }: { inventoryItem: Item | undefined }) {
   return (
-    <Link to="/inventario" className="text-xs text-primary hover:underline">
+    <Link to="/inventario" className="text-xs text-brand hover:underline">
       Convertido en {inventoryItem?.code ?? inventoryItem?.name ?? 'un artículo de inventario'}
     </Link>
   )
@@ -233,7 +233,7 @@ export function ContractDetailPage() {
           <Link
             to="/contratos/$contractId"
             params={{ contractId: contract.parent_contract_id }}
-            className="font-medium text-primary underline-offset-4 hover:underline"
+            className="font-medium text-brand underline-offset-4 hover:underline"
           >
             Ver el contrato anterior
           </Link>

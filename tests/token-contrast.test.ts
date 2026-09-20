@@ -47,6 +47,7 @@ function ratio(a: string, b: string) {
 }
 
 const claro = bloque(':root')
+const oscuro = bloque("[data-theme='dark']")
 
 describe('contraste de los tokens (WCAG AA, 4.5:1 para texto normal)', () => {
   it('el token de marca para TEXTO sobre fondo claro cumple AA', () => {
@@ -83,6 +84,24 @@ describe('contraste de los tokens (WCAG AA, 4.5:1 para texto normal)', () => {
       .filter(([, r]) => r < 4.5)
       .map(([fg, r]) => `${fg} sobre su soft: ${r.toFixed(2)}`)
     expect(malos, `por debajo de AA:\n  ${malos.join('\n  ')}`).toEqual([])
+  })
+
+  // El agujero que costó meses: este test medía los tokens de TEXTO y nunca el
+  // relleno del botón primario, que es el control más pulsado de toda la app.
+  // Por eso el teal en 2.70 vivió sin que nada fallara, y por eso el oro
+  // #c99a3d —que con texto blanco da 2.57, todavía peor— habría entrado igual.
+  // Se mide en los DOS temas: `--brand-contrast` es el color del texto que va
+  // encima del primario, así que el par correcto es contrast↔500, no 500↔fondo.
+  it('el RELLENO del botón primario es legible, en los dos temas', () => {
+    for (const [tema, vars] of [
+      ['claro', claro],
+      ['oscuro', oscuro],
+    ] as const) {
+      for (const relleno of ['--brand-500', '--brand-600']) {
+        const r = ratio(vars['--brand-contrast'], vars[relleno])
+        expect(r, `${tema}: --brand-contrast sobre ${relleno} da ${r.toFixed(2)}`).toBeGreaterThanOrEqual(4.5)
+      }
+    }
   })
 
   it('el texto de cuerpo y el fuerte cumplen de sobra', () => {

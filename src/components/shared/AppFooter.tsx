@@ -15,7 +15,7 @@ export function AppFooter() {
   const { data: me } = useMe()
   const company = me?.company
   const year = new Date().getFullYear()
-  const name = company?.legal_name ?? company?.name ?? 'Compraventa'
+  const name = company?.legal_name ?? company?.name ?? 'Mi empresa'
 
   return (
     <footer className="border-t border-border bg-card px-4 py-3 text-xs text-muted-foreground print:hidden">
@@ -24,13 +24,17 @@ export function AppFooter() {
           © {year} {name}
           {company?.tax_id && <span className="hidden sm:inline"> · NIT {company.tax_id}</span>}
         </span>
-        {company?.contact_phone ? (
-          <a href={`tel:${company.contact_phone}`} className="transition-colors hover:text-foreground">
-            {company.contact_phone}
-          </a>
-        ) : (
-          <span>Sistema de gestión para compraventas</span>
-        )}
+        <span className="flex items-center gap-3">
+          {company?.contact_phone && (
+            <a href={`tel:${company.contact_phone}`} className="transition-colors hover:text-foreground">
+              {company.contact_phone}
+            </a>
+          )}
+          {/* La firma de la plataforma. Va acá y no en el sidebar: el sidebar es
+              del inquilino (DESIGN_SYSTEM §1-bis, "dos marcas en la misma
+              pantalla"). Discreta, sin logo — una línea. */}
+          <span>Hecho con Prendo</span>
+        </span>
       </div>
     </footer>
   )

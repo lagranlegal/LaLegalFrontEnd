@@ -23,7 +23,7 @@ export function CustomerPicker({ value, onChange, placeholder = 'Buscar cliente 
             {value.doc_type.toUpperCase()} {value.doc_number}
           </p>
         </div>
-        <button type="button" className="text-sm font-medium text-primary hover:underline" onClick={() => onChange(null)}>
+        <button type="button" className="text-sm font-medium text-brand hover:underline" onClick={() => onChange(null)}>
           Cambiar
         </button>
       </div>

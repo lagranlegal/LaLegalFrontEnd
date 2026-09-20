@@ -93,7 +93,7 @@ export function OpenSessionDialog({ open, onOpenChange }: { open: boolean; onOpe
           <button
             type="button"
             onClick={() => setContar(true)}
-            className="self-start text-sm font-medium text-primary underline-offset-4 hover:underline"
+            className="self-start text-sm font-medium text-brand underline-offset-4 hover:underline"
           >
             Contar el efectivo ahora
           </button>

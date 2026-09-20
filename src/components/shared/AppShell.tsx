@@ -137,9 +137,9 @@ export function AppShell() {
           {!sidebarCollapsed && (
             <div className="flex min-w-0 items-center gap-2">
               <span className="flex size-7 shrink-0 items-center justify-center rounded-input bg-sidebar-primary text-sm font-bold text-primary-foreground">
-                {(me?.company.name ?? 'C').charAt(0).toUpperCase()}
+                {(me?.company.name ?? 'Mi empresa').charAt(0).toUpperCase()}
               </span>
-              <span className="truncate text-sm font-semibold text-sidebar-foreground">{me?.company.name ?? 'Compraventa'}</span>
+              <span className="truncate text-sm font-semibold text-sidebar-foreground">{me?.company.name ?? 'Mi empresa'}</span>
             </div>
           )}
           <Button
@@ -168,9 +168,9 @@ export function AppShell() {
             <div className="flex h-14 items-center justify-between border-b border-sidebar-border px-3">
               <div className="flex min-w-0 items-center gap-2">
                 <span className="flex size-7 shrink-0 items-center justify-center rounded-input bg-sidebar-primary text-sm font-bold text-primary-foreground">
-                  {(me?.company.name ?? 'C').charAt(0).toUpperCase()}
+                  {(me?.company.name ?? 'Mi empresa').charAt(0).toUpperCase()}
                 </span>
-                <span className="truncate text-sm font-semibold text-sidebar-foreground">{me?.company.name ?? 'Compraventa'}</span>
+                <span className="truncate text-sm font-semibold text-sidebar-foreground">{me?.company.name ?? 'Mi empresa'}</span>
               </div>
               <Button
                 variant="ghost"

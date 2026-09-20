@@ -86,7 +86,7 @@ function PayablesCard() {
                   {/* Enlaza a la ficha: el siguiente paso natural después de
                       ver que se le debe es mirar qué se le compró. */}
                   {s.supplier_id ? (
-                    <Link to="/proveedores/$supplierId" params={{ supplierId: s.supplier_id }} className="text-primary hover:underline">
+                    <Link to="/proveedores/$supplierId" params={{ supplierId: s.supplier_id }} className="text-brand hover:underline">
                       {s.supplier_name}
                     </Link>
                   ) : (

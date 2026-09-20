@@ -129,7 +129,35 @@ Pero entonces el traslado tampoco debería validar. **La inconsistencia es el ha
 
 ---
 
-## 4. El teal de la marca no cumple contraste en el botón primario
+## 4. ~~El teal de la marca no cumple contraste en el botón primario~~ — CERRADO (20/09/2026)
+
+> **Se resolvió por una vía que esta sección no contemplaba: una opción D.** El planteamiento de abajo daba por fijo el teal y preguntaba qué sacrificar. Pero el teal **nunca fue la marca** — era un placeholder (`DESIGN_SYSTEM.md` §1, 15/08/2026) y la marca propia no existía. Al definirla, la restricción desapareció: se eligió un color que cumple, en vez de ajustar uno que no.
+>
+> **Opción D — cambiar el tono de marca a esmeralda `#0f7a5a`.** Blanco sobre el relleno pasa de **2.70 a 5.31**. Las 10 combinaciones de la paleta, claro y oscuro, cumplen AA. Sin excepciones por nombre en el test, sin botón oscurecido, sin romper la convención del botón primario.
+>
+> **Aplicado al código el 20/09/2026 — pero con oro, no con esmeralda, y por la opción C de la tabla de abajo.**
+> El esmeralda nunca llegó a `tokens.css`: entre medio, Mateo definió una paleta propia (**Oro Moderno**).
+> El oro `#c99a3d` con texto **blanco** da **2.57:1** — todavía peor que el teal. Con texto **carbón** da
+> **6.24:1**.
+>
+> Así que lo que se aplicó fue la **opción C**, la que esta tabla descartaba por "romper la convención de
+> botón primario oscuro con texto claro". Resultó que esa convención no es universal: en una marca dorada,
+> texto oscuro sobre el relleno claro es precisamente como se hace, y blanco sobre dorado siempre se ve
+> lavado. La opción se descartó por una regla general que no aplicaba a este color.
+>
+> Salió además un segundo incumplimiento que ninguna de las opciones contemplaba: `bg-primary` y
+> `text-primary` son la misma variable de Tailwind, y el oro **como texto** sobre fondo claro da 2.42:1 —
+> ahí viven los enlaces y las cifras de dinero. Se separó `text-brand` (`--brand-700`).
+>
+> Valores, mediciones y la regla de las dos marcas: `DESIGN_SYSTEM.md` §1-bis.
+>
+> **Y una corrección al método, no solo al color:** este incumplimiento vivió meses porque
+> `tests/token-contrast.test.ts` medía los tokens de **texto** y nunca el **relleno** del botón.
+> **Ya lo mide** (20/09), en los dos temas, y se verificó a la inversa: con `--brand-contrast: #ffffff`
+> el test falla con 2.57. Sin ese test, la paleta de oro habría entrado con el mismo agujero que el teal —
+> que es exactamente lo que estuvo a punto de pasar.
+
+<details><summary>Planteamiento original (superado)</summary>
 
 **Qué hay hoy.** Tras la corrección de tokens del 09/09 (F6-02), las 12 combinaciones que incumplían WCAG AA se redujeron a **3**, y las tres son la misma: **texto blanco sobre `--brand-500` relleno**, el botón primario de toda la app.
 
@@ -150,3 +178,5 @@ Para **texto** teal sobre fondo claro el problema ya está resuelto: `DESIGN_SYS
 | **C. Mantener el tono y subir el texto** | Texto en un teal muy oscuro o negro sobre el relleno claro, en vez de blanco. | Cumple sin cambiar el color de marca, pero rompe la convención de botón primario oscuro con texto claro |
 
 **Esto no es una decisión de QA.** Cambiar el color que identifica a la marca es de producto. Lo que sí corresponde decir es el dato: es el control más usado de la aplicación, y hoy es lo único que separa a la app del cumplimiento AA completo.
+
+</details>

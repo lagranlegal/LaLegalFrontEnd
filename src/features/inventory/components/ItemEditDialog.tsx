@@ -24,7 +24,7 @@ function AuctionOriginInfo({ contractId }: { contractId: string }) {
   return (
     <p className="text-xs text-muted-foreground">
       Viene del remate del{' '}
-      <Link to="/contratos/$contractId" params={{ contractId }} className="text-primary hover:underline">
+      <Link to="/contratos/$contractId" params={{ contractId }} className="text-brand hover:underline">
         contrato {contract ? `#${contract.number}` : '…'}
       </Link>
     </p>
@@ -53,7 +53,7 @@ function TransformationOriginInfo({ transformationId }: { transformationId: stri
     <>
       <p className="text-xs text-muted-foreground">
         Producido en la{' '}
-        <button type="button" className="text-primary hover:underline" onClick={() => setAbierto(true)}>
+        <button type="button" className="text-brand hover:underline" onClick={() => setAbierto(true)}>
           transformación {transformacion ? `#${transformacion.number}` : '…'}
         </button>
       </p>

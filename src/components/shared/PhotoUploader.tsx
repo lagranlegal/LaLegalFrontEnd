@@ -150,7 +150,7 @@ export function PhotoUploader({
             onClick={() => inputRef.current?.click()}
             className={cn(
               'flex aspect-square flex-col items-center justify-center gap-1 rounded-input border border-dashed border-border bg-background text-muted-foreground transition-colors',
-              'hover:border-primary hover:text-primary disabled:pointer-events-none disabled:opacity-50',
+              'hover:border-brand hover:text-brand disabled:pointer-events-none disabled:opacity-50',
             )}
           >
             {uploading ? <Loader2 className="size-5 animate-spin" /> : <ImagePlus className="size-5" />}

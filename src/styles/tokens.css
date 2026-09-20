@@ -2,62 +2,80 @@
  * Única fuente de verdad del diseño. Ver docs/DESIGN_SYSTEM.md §2.
  * Cambiar la marca completa = editar las 6 líneas de "Marca" abajo.
  * Prohibido: hex/rgb sueltos en features o components/shared — todo pasa por aquí.
+ *
+ * Paleta "Oro Moderno" (20/09/2026). Ver docs/PLAN_MARCA.md §2.
+ * A diferencia del rebranding anterior, este NO son 6 líneas: la paleta de oro
+ * trae su propio mundo cálido (marfil, beige, carbón, gris cálido), así que
+ * también cambian los neutrales y el sidebar. El navy de --platform no se toca.
  */
 :root {
-  /* ==== Marca (cambiar estas 6 líneas re-marca toda la app) ==== */
-  --brand-50: #e6f7f5; /* fondos suaves, item activo de sidebar, chips */
-  --brand-100: #c2ede7;
-  --brand-500: #00b19e; /* primario: botones, links, item activo, series "ingresos" */
-  --brand-600: #009c8b; /* hover del primario */
-  --brand-700: #00806f; /* pressed / focos */
-  --brand-contrast: #ffffff;
+  /* ==== Marca (cambiar estas 6 líneas re-marca toda la app) ====
+     El texto sobre el oro es CARBÓN, no blanco, y eso no es un gusto: blanco
+     sobre #C99A3D da 2.57:1 — peor que el teal 2.70 que esta app abandonó por
+     no cumplir AA. Carbón sobre el mismo oro da 6.24:1 y conserva el hex de la
+     paleta exacto. Además es como se resuelve el oro en las marcas premium:
+     blanco sobre dorado siempre se ve lavado.
+     El oro como TEXTO sobre fondo claro es el 700 (#C99A3D da 2.42:1 ahí, y la
+     paleta lo recomendaba justo para las cifras de dinero). */
+  --brand-50: #fbf4e4; /* fondos suaves, item activo de sidebar, chips */
+  --brand-100: #f2e3be;
+  --brand-500: #c99a3d; /* primario: botones, links, item activo, series "ingresos" */
+  --brand-600: #b08531; /* hover del primario */
+  --brand-700: #7a5a1c; /* pressed / focos / TEXTO dorado sobre claro */
+  --brand-contrast: #24211c; /* carbón sobre el oro — 6.24:1 */
 
   /* ==== Semánticos ====
-     Valores calculados contra `--bg-app` (#f5f7fa), que es el peor caso de los
-     dos fondos, para cumplir WCAG AA 4.5:1 conservando el tono — la auditoría
-     de QA (F6-02) midió 12 combinaciones por debajo en el tema claro y CERO en
-     el oscuro. El tono se mantiene: solo baja la luminosidad lo justo.
+     Valores calculados contra `--bg-app` (#faf8f2), que es el peor caso de los
+     dos fondos, para cumplir WCAG AA 4.5:1 conservando el tono de la paleta —
+     la auditoría de QA (F6-02) midió 12 combinaciones por debajo en el tema
+     claro y CERO en el oscuro.
      Cada uno cumple sobre los TRES fondos donde vive: `--bg-app`,
      `--bg-surface` y su propio `-soft` (que es el más exigente, por compartir
      tono con el texto).
-     El teal de marca NO se tocó: oscurecerlo cambia la identidad visual y eso
-     es una decisión de diseño, no de accesibilidad. Ver DESIGN_SYSTEM §4.10. */
-  --success: #1b7e54;
-  --success-soft: #e6f6ef;
-  --warning: #9b6312;
-  --warning-soft: #fcf3e3;
-  --danger: #d51e24; /* gastos, cuentas por cobrar, anulaciones, mora */
-  --danger-soft: #fdebec;
-  --info: #0b63f3;
-  --info-soft: #eaf2fe;
+     Los de la paleta van más oscuros de lo entregado, y por la misma razón de
+     siempre: el ámbar #d99028 como texto sobre marfil da 2.48:1 y el verde
+     #3f8065 da 4.41. El tono se mantiene: solo baja la luminosidad lo justo. */
+  --success: #2f6b50;
+  --success-soft: #e6f1ea;
+  --warning: #8a5b14;
+  --warning-soft: #fbf0dc;
+  --danger: #a33c36; /* gastos, cuentas por cobrar, anulaciones, mora */
+  --danger-soft: #faeae8;
+  --info: #1a5fa8;
+  --info-soft: #e7f0f9;
 
-  /* ==== Neutrales (superficies y texto) ==== */
-  --bg-app: #f5f7fa; /* fondo general */
+  /* ==== Neutrales (superficies y texto) ====
+     Cálidos, no los grises azulados de antes: sobre un fondo frío el oro se
+     ensucia y tira a mostaza. El marfil es lo que lo sostiene. */
+  --bg-app: #faf8f2; /* fondo general — Marfil */
   --bg-surface: #ffffff; /* cards, topbar, modales */
-  --bg-muted: #ebeef3; /* hover de botones/filas, skeletons — un paso más oscuro que bg-app: tiene que notarse tanto sobre el fondo gris como sobre una card blanca */
-  --border: #e5eaf0; /* bordes de cards, inputs, divisores */
-  --text-strong: #1e2a3b; /* títulos, cifras */
-  --text-body: #44546a;
-  --text-muted: #647387; /* labels de KPI, hints, placeholders */
+  --bg-muted: #f1ebdd; /* hover de botones/filas, skeletons — Beige cálido; tiene que notarse tanto sobre el marfil como sobre una card blanca */
+  --border: #ddd7c9; /* bordes de cards, inputs, divisores */
+  --text-strong: #24211c; /* títulos, cifras — Carbón */
+  --text-body: #4b463d;
+  --text-muted: #716c63; /* labels de KPI, hints, placeholders — Gris cálido */
 
-  /* ==== Sidebar (28/08/2026) ====
+  /* ==== Sidebar (28/08/2026, recoloreado 20/09/2026) ====
      Antes aliaseaba a --bg-surface (blanco, igual que cualquier card) — cero
-     contraste con el resto del shell. Teal muy oscuro, no gris genérico:
-     ata la identidad de marca al costado fijo de toda la app en vez de un
-     navy neutro (que además ya está reservado para --platform — el super-
-     admin necesita un tono que NINGÚN tenant vea nunca, así que el sidebar
-     normal no puede compartirlo). */
-  --sidebar-bg: #0a2622;
-  --sidebar-bg-hover: #123830; /* ítem inactivo al pasar el mouse */
-  --sidebar-active-bg: #15453b; /* ítem activo — sólido, no el brand-50 casi blanco que se usa sobre fondo claro */
-  --sidebar-fg: #bcdad3; /* texto/ícono de ítems inactivos */
+     contraste con el resto del shell. Ahora es el carbón de la paleta, no un
+     gris genérico: ata la identidad de marca al costado fijo de toda la app en
+     vez de un navy neutro (que además ya está reservado para --platform — el
+     super-admin necesita un tono que NINGÚN tenant vea nunca, así que el
+     sidebar normal no puede compartirlo).
+     El oro de marca SÍ funciona como acento acá: #c99a3d sobre el carbón da
+     6.24:1. Es el caso contrario al esmeralda, que sobre el sidebar viejo
+     daba 3.01 y obligaba a usar una variante clara. */
+  --sidebar-bg: #24211c;
+  --sidebar-bg-hover: #332f27; /* ítem inactivo al pasar el mouse */
+  --sidebar-active-bg: #443e32; /* ítem activo — sólido, no el brand-50 casi blanco que se usa sobre fondo claro */
+  --sidebar-fg: #c4bcac; /* texto/ícono de ítems inactivos */
   --sidebar-fg-strong: #ffffff; /* nombre de la empresa, ítem activo */
-  --sidebar-border: #123830;
+  --sidebar-border: #332f27;
 
   /* ==== Estados de dominio (badges) ==== */
   --status-active: var(--success); /* Vigente / disponible / activa */
   --status-arrears: var(--warning); /* En mora / borrador */
-  --status-extension: #ab5e05; /* Prórroga */
+  --status-extension: #9c671c; /* Prórroga */
   --status-auctioned: var(--danger); /* Rematado / anulada / vencida */
   --status-paid: var(--info); /* Pagado / vendido */
   --status-neutral: var(--text-muted); /* invitado, inactivo, written_off */
@@ -65,14 +83,15 @@
   /* ==== Gráficas (Recharts lee de aquí) ==== */
   --chart-1: var(--brand-500); /* serie principal / ingresos */
   --chart-2: var(--danger); /* gastos / egresos */
-  --chart-3: #0e7490;
-  --chart-4: #67c7bc;
-  --chart-5: #a7b3c2; /* series secundarias, dona */
+  --chart-3: #6b7f8c;
+  --chart-4: #d9b978;
+  --chart-5: #b3ab9b; /* series secundarias, dona */
 
   /* ==== Panel de plataforma (super-admin) ====
      Banda superior deliberadamente distinta de la marca (docs/ARCHITECTURE.md
      §4: "para que un super-admin nunca confunda contexto") — un tenant normal
-     nunca ve esto. */
+     nunca ve esto. Sigue siendo navy frío A PROPÓSITO: ahora que la app es
+     cálida, el contraste de contexto es todavía más fuerte que antes. */
   --platform: #0f172a;
   --platform-foreground: #ffffff;
 
@@ -81,8 +100,8 @@
   --radius-card: 14px;
   --radius-modal: 24px;
   --radius-pill: 9999px;
-  --shadow-card: 0 1px 3px rgb(30 42 59 / 0.06);
-  --shadow-modal: 0 20px 50px rgb(30 42 59 / 0.18);
+  --shadow-card: 0 1px 3px rgb(36 33 28 / 0.07);
+  --shadow-modal: 0 20px 50px rgb(36 33 28 / 0.18);
 
   /* ==== Movimiento ====
      El movimiento es diseño y también sale de acá (regla 4): sin estos
@@ -103,74 +122,71 @@
   --space-card: 20px;
 }
 
-/* Dark mode (27/08/2026). Mismas variables que :root, redefinidas — nada
-   nuevo se agrega a `@theme inline`, así que todo lo que ya usa
-   `bg-background`/`text-muted-foreground`/etc. se adapta solo, sin tocar
+/* Dark mode (27/08/2026, recoloreado 20/09/2026). Mismas variables que :root,
+   redefinidas — nada nuevo se agrega a `@theme inline`, así que todo lo que ya
+   usa `bg-background`/`text-muted-foreground`/etc. se adapta solo, sin tocar
    componentes. Reglas al elegir los valores:
 
    - Superficies: `--bg-app` más oscuro que `--bg-surface` se invierte
      mentalmente distinto en dark — acá `--bg-surface` (cards/sidebar/topbar)
      queda un punto MÁS CLARO que `--bg-app` (fondo general), el patrón
      estándar de "superficie elevada" que da profundidad sin sombra.
+   - Los oscuros también son cálidos: un gris neutro debajo del oro lo apaga.
+     Son marrones muy desaturados, no negros.
    - Los pares "soft + fuerte" (`--brand-50`+`--brand-700`, `--success`+
      `--success-soft`, etc.) invierten roles: en claro, el "soft" es casi
      blanco y el "fuerte" es el texto encima; en oscuro, el "soft" pasa a ser
      un tinte oscuro del color y el texto encima se aclara — mismo contraste
      relativo, no los mismos números.
+   - `--brand-contrast` NO se invierte en esta paleta: el carbón funciona sobre
+     el oro en los dos temas (6.24 en claro, 7.51 en oscuro). Es la ventaja de
+     un primario que ya es claro de por sí.
    - `--platform` (banda del panel super-admin) se mantiene MÁS OSCURA que
      `--bg-app` normal, no igual — la razón de existir de ese color es que
      nunca se confunda con el resto de la app, y en oscuro eso solo se
      sostiene si sigue siendo distinguible. */
 [data-theme='dark'] {
   /* ==== Marca ==== */
-  --brand-50: #0d2e2a; /* fondos suaves, item activo de sidebar, chips */
-  --brand-100: #124038;
-  --brand-500: #22c7b0; /* primario — un poco más claro que en luz para leerse sobre fondo oscuro */
-  --brand-600: #3ad4bd; /* hover del primario: más claro, no más oscuro (invertido vs. luz) */
-  --brand-700: #7fe3d1; /* pressed / focos / texto sobre brand-50 */
-  --brand-contrast: #06231f; /* texto sobre botones primarios: oscuro, brand-500 ya es claro */
+  --brand-50: #2a2318; /* fondos suaves, item activo de sidebar, chips */
+  --brand-100: #3d3221;
+  --brand-500: #d3ac5f; /* primario — un poco más claro que en luz para leerse sobre fondo oscuro */
+  --brand-600: #e5c56b; /* hover del primario: más claro, no más oscuro (invertido vs. luz) */
+  --brand-700: #f2d27a; /* pressed / focos / texto sobre brand-50 */
+  --brand-contrast: #24211c; /* texto sobre botones primarios: carbón, igual que en claro */
 
   /* ==== Semánticos ====
-     Valores calculados contra `--bg-app` (#f5f7fa), que es el peor caso de los
-     dos fondos, para cumplir WCAG AA 4.5:1 conservando el tono — la auditoría
-     de QA (F6-02) midió 12 combinaciones por debajo en el tema claro y CERO en
-     el oscuro. El tono se mantiene: solo baja la luminosidad lo justo.
-     Cada uno cumple sobre los TRES fondos donde vive: `--bg-app`,
-     `--bg-surface` y su propio `-soft` (que es el más exigente, por compartir
-     tono con el texto).
-     El teal de marca NO se tocó: oscurecerlo cambia la identidad visual y eso
-     es una decisión de diseño, no de accesibilidad. Ver DESIGN_SYSTEM §4.10. */
-  --success: #3dd68c;
-  --success-soft: #0f2e21;
-  --warning: #f0b955;
-  --warning-soft: #362508;
-  --danger: #f36b70;
-  --danger-soft: #3a1416;
-  --info: #6ea8fb;
-  --info-soft: #16233d;
+     Mismo criterio que en claro, contra `--bg-app` y contra su propio `-soft`. */
+  --success: #4fc98c;
+  --success-soft: #12301f;
+  --warning: #e5b45c;
+  --warning-soft: #35260c;
+  --danger: #e8736c;
+  --danger-soft: #3a1a17;
+  --info: #78aee8;
+  --info-soft: #16243a;
 
   /* ==== Neutrales (superficies y texto) ==== */
-  --bg-app: #0f1520;
-  --bg-surface: #171f2e; /* cards, topbar, modales — un punto más claro que bg-app */
-  --bg-muted: #202a3d; /* un paso más claro que bg-surface, se nota como hover sobre una card oscura */
-  --border: #2a3446;
-  --text-strong: #f1f5f9;
-  --text-body: #cbd5e1;
-  --text-muted: #8595ab;
+  --bg-app: #14120e;
+  --bg-surface: #1e1b15; /* cards, topbar, modales — un punto más claro que bg-app */
+  --bg-muted: #2a261e; /* un paso más claro que bg-surface, se nota como hover sobre una card oscura */
+  --border: #3a3529;
+  --text-strong: #f7f4ec;
+  --text-body: #d9d3c5;
+  --text-muted: #a79f8e;
 
   /* ==== Sidebar ====
      Sigue siendo la superficie MÁS oscura de la app incluso en dark mode —
      si quedara igual a --bg-surface volvería a perder el contraste que
-     tiene en claro. Mismo tinte teal que en luz, más profundo. */
-  --sidebar-bg: #071a17;
-  --sidebar-bg-hover: #0e2a24;
-  --sidebar-active-bg: #12362f;
-  --sidebar-fg: #9dc2ba;
+     tiene en claro. Mismo tinte cálido que en luz, más profundo. */
+  --sidebar-bg: #0e0d0a;
+  --sidebar-bg-hover: #1c1a14;
+  --sidebar-active-bg: #2a261c;
+  --sidebar-fg: #bdb4a2;
   --sidebar-fg-strong: #ffffff;
-  --sidebar-border: #0e2a24;
+  --sidebar-border: #1c1a14;
 
   /* ==== Gráficas ==== */
-  --chart-3: #22b8cf; /* el #0e7490 de luz es casi ilegible sobre fondo oscuro */
+  --chart-3: #8fa3b0; /* el #6b7f8c de luz es muy apagado sobre fondo oscuro */
 
   /* ==== Panel de plataforma ==== */
   --platform: #04070d; /* más oscura que --bg-app a propósito: sigue siendo "otro lugar" */
