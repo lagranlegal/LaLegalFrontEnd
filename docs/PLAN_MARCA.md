@@ -26,7 +26,7 @@ Esa tanda nunca se hizo. Hoy, 20/09:
 |---|---|
 | Nombre **Prendo** | ✅ Decidido, con alternativas evaluadas y descartadas por escrito |
 | Kit de marca (`marca/IDENTIDAD.html`) | ✅ Publicado |
-| Guía de usuario (`marca/GUIA_USUARIO.html`) | 🟡 ~30% — faltan las partes 3 a 8 |
+| Guía de usuario (`marca/GUIA_USUARIO.html`) | 🟡 ~30% — faltan las partes 3 a 8 *(al 21/09: falta solo la 6)* |
 | Logo | 🔁 **Se rehace** — ver §1 |
 | Paleta | 🔁 **Cambia de esmeralda a oro** — ver §2 |
 | Marca aplicada al código | ❌ **Cero.** `grep -ri prendo` en `frontend-starter/src` y en `backend-starter/app` da **0 resultados** |
@@ -198,7 +198,7 @@ Depende de la fase 1 para poder capturar pantallas reales.
 
 ## Fase 3 · Terminar la guía de usuario
 
-Falta el ~70%. Es la fase más larga y la que más fácil sale mal.
+**Al 21/09 falta solo la parte 6.** Fue la fase más larga y la que más fácil salía mal: tres tandas de QA contra el código encontraron unas 30 afirmaciones falsas, y cuatro de ellas ya venían escritas desde el 12/09.
 
 | Parte | Contenido |
 |---|---|
