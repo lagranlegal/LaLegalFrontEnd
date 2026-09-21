@@ -9,9 +9,9 @@
 >
 > Abierto el 20/09/2026.
 >
-> **Estado al 20/09/2026, fin del día:** ✅ **Fase 1** (marca al código) y ✅ **Fase 2** (kit rehecho y
-> republicado). 🟡 **Fase 3 a medias (21/09)**: la guía quedó re-marcada en oro y la **parte 4 está
-> completa — las 14 pantallas**. Faltan las partes 3, 5, 6, 7 y 8.
+> **Estado al 21/09/2026:** ✅ **Fase 1** (marca al código) y ✅ **Fase 2** (kit rehecho y republicado).
+> 🟡 **Fase 3 casi cerrada**: la guía quedó re-marcada en oro y están escritas **las partes 1 a 5, la 7 y
+> la 8**, todas verificadas contra el código por un QA aparte. **Falta solo la parte 6.**
 > Abiertas: **Fase 4** (dominio) y **Fase 5** (correo).
 > La tabla de §0 describe el punto de partida, no el estado de hoy.
 
