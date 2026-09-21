@@ -236,6 +236,10 @@ Fuera de la guía del cliente: el panel de super-admin (`/platform`).
 `prendo.com.co` ya está comprado. Lo que el dominio desbloquea de verdad es **el correo** y **la cara del
 producto** — no desbloquea el ambiente de producción, que funciona igual sobre `.fly.dev` y la URL de Vercel.
 
+> **`prendo.co` no se compra (decidido 21/09/2026).** Quedó libre en el drop, pero el precio se sale del
+> presupuesto. **Toda la marca vive en `prendo.com.co`.** No es un plan B: era el plan desde el principio,
+> y por eso se compró primero — para que la marca no quedara de rehén de un dominio.
+
 1. **Decidir el mapa de nombres** antes de tocar DNS. Propuesta:
    `app.prendo.com.co` → el producto (Vercel) · `api.prendo.com.co` → el backend (Fly) ·
    `prendo.com.co` → por ahora, redirección a `app`.
