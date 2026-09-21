@@ -10,7 +10,9 @@
 > Abierto el 20/09/2026.
 >
 > **Estado al 20/09/2026, fin del día:** ✅ **Fase 1** (marca al código) y ✅ **Fase 2** (kit rehecho y
-> republicado) están hechas. Abiertas: **Fase 3** (guía), **Fase 4** (dominio) y **Fase 5** (correo).
+> republicado). 🟡 **Fase 3 empezada**: la guía quedó re-marcada en oro y se escribieron **Caja** y
+> **Ventas**; faltan 10 pantallas y las partes 3, 5, 6, 7 y 8.
+> Abiertas: **Fase 4** (dominio) y **Fase 5** (correo).
 > La tabla de §0 describe el punto de partida, no el estado de hoy.
 
 ---
@@ -201,7 +203,7 @@ Falta el ~70%. Es la fase más larga y la que más fácil sale mal.
 | Parte | Contenido |
 |---|---|
 | 3 · El día a día | 14 tareas, del abrir caja al cerrar caja |
-| 4 · Pantalla por pantalla | Las 13 restantes (hoy solo está Contratos, como muestra) |
+| 4 · Pantalla por pantalla | ✅ Contratos, Caja y Ventas. Faltan 10: Inicio · Inventario · Clientes · Cuentas · Capital · Catálogos · Identidad · Reportes · Auditoría · Configuración · Mi perfil |
 | 5 · Administración | Usuarios, roles, matriz de permisos, cuentas, capital, plantillas, auditoría |
 | 6 · Reportes y cierre | Qué significa cada indicador **y qué deja por fuera** |
 | 7 · Problemas frecuentes | 12 casos con causa y salida |
