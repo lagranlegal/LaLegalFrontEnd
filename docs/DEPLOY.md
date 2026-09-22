@@ -271,6 +271,37 @@ curl -X PATCH "https://api.supabase.com/v1/projects/driyubkodnsqxbtxcmaz/config/
 
 Verificar después comparando el antes y el después: los únicos campos que deben haber cambiado son esos dos.
 
+
+## HSTS — por qué `includeSubDomains` sí y `preload` no (22/09/2026)
+
+Hasta el 21/09 el header lo ponía **Vercel solo**, y para el dominio propio salía sin `includeSubDomains`:
+
+```
+dev.prendo.com.co              max-age=63072000
+la-legal-front-end.vercel.app  max-age=63072000; includeSubDomains; preload
+```
+
+O sea que la URL vieja de Vercel estaba **más protegida** que el dominio propio. Ahora el header se declara
+explícito en `vercel.json` con `max-age=63072000; includeSubDomains`.
+
+**Por qué `includeSubDomains`.** Sin él, `dev.`, `api-dev.` y cualquier subdominio futuro quedan fuera: un
+atacante en la red puede interceptar la primera visita a un subdominio por HTTP. Hoy los tres sirven TLS
+válido (Vercel y Fly emiten y renuevan solos), así que el compromiso no cuesta nada. **Lo que sí implica:
+cualquier subdominio nuevo de `prendo.com.co` tiene que servir HTTPS válido**, durante los dos años que el
+navegador recuerda la directiva. Si alguna vez se apunta un subdominio a un servicio de terceros sin TLS,
+va a fallar para quien ya visitó el dominio — y va a parecer un problema de DNS.
+
+🔴 **Por qué `preload` NO, y por qué no es una omisión.** `preload` no hace nada por sí solo: es una señal de
+intención, y para que sirva hay que **enviar el dominio a mano** a <https://hstspreload.org>. Lo que lo
+vuelve una decisión aparte es que **salir de esa lista tarda meses** y mientras tanto el dominio entero,
+con todos sus subdominios, es inalcanzable por HTTP para cualquier navegador moderno. Eso es correcto para
+un dominio maduro y prematuro para uno de dos días, con el ambiente de producción **todavía sin montar**.
+
+**Cuándo hacerlo:** después de que producción exista y lleve un tiempo estable, y **nunca** antes de estar
+seguro de que ningún subdominio va a necesitar HTTP. Es un paso de un minuto el día que se decida; deshacerlo
+no lo es.
+
+
 ## Cuando exista producción
 
 1. Crear el proyecto Supabase de producción y aplicarle las migraciones (`supabase db push`) y el seed.
