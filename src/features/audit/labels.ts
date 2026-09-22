@@ -29,6 +29,9 @@ export const AUDIT_ACTION_LABELS: Record<string, string> = {
   apply_payment_discount: 'Aplicó un descuento a un abono',
   auction_contract: 'Remató un contrato',
   extend_loan: 'Amplió un préstamo',
+  // Corrección de datos (no la escribe ningún servicio: ver `scripts/qa/reparar_f21_10.sql`
+  // en el backend). `user_id` va NULL porque no la hizo un usuario de la empresa.
+  correct_contract_status: 'Corrigió el estado de un contrato',
   // Ventas
   create_sale: 'Registró una venta',
   apply_sale_discount: 'Aplicó un descuento a una venta',
