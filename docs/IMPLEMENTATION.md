@@ -2,6 +2,40 @@
 
 > Registro vivo de qué existe en el código, cómo está armado y por qué se tomó cada decisión — para que cualquiera (humano o Claude Code) pueda retomar el proyecto sin releer todo el historial de commits. Se actualiza en cada paso del "Orden de implementación" de `CLAUDE.md`. No repite lo que ya está en `ARCHITECTURE.md`/`DESIGN_SYSTEM.md` (el qué-debería-ser); esto es el qué-hay-hoy y las decisiones concretas tomadas al construirlo.
 
+## `CONTRACT_SUPERSEDED`: un abono sobre un contrato ya ampliado, y por qué es un código nuevo (21/09/2026)
+
+Cambio de **backend** (hallazgo F21-11 de `../backend-starter/docs/QA_AUDITORIA.md`), anotado acá porque
+toca el contrato de errores que este repo consume y porque deja una mejora de UI pendiente.
+
+**El defecto.** Al ampliar un préstamo el contrato viejo pasa a `superseded` y nace un sucesor que carga la
+deuda real (capital viejo + recargo). La puerta de los abonos del backend rechazaba con una lista escrita a
+mano —`status in ("paid", "auctioned")`— **sin `superseded`**, así que el contrato viejo seguía admitiendo
+abonos: la plata entraba a la caja con su recibo, el sucesor seguía debiendo todo y quedaba un abono que no
+bajaba ninguna deuda viva. Y el caso no es raro: el papel que el cliente trae en la mano es **el viejo**, con
+el número viejo. Ahora la puerta deriva de `rules.TERMINAL_STATUSES`, la misma constante que el job nocturno
+(la decisión de reusarla en vez de abrir una paralela está razonada en el hallazgo).
+
+**Lo que cambia para este repo: un código de error nuevo, `CONTRACT_SUPERSEDED` (409)**, ya agregado a
+`src/lib/api/errors.ts`. No se reusó `CONTRACT_CLOSED` a propósito: sobre un `superseded` *«el contrato ya
+está cerrado»* es engañoso —no hay nada terminado, la deuda se mudó de documento— y manda a quien atiende a
+buscar un pago que no existe. El mensaje nuevo nombra el contrato sucesor:
+
+> «Este contrato fue reemplazado por una ampliación. El abono va sobre el contrato Nº 41, que es el que carga
+> la deuda.»
+
+y trae `details: {successor_contract_id, successor_number}`.
+
+**Hoy cae al banner genérico**, que ya es correcto: el `message` del backend trae el texto accionable, igual
+que los otros códigos del recargo. **La mejora pendiente, y la razón de que `details` exista:** con
+`successor_contract_id` a mano, ese banner puede llevar un enlace «Ir al contrato Nº 41» en vez de obligar a
+buscarlo. Es un botón, no un rediseño — y es justo lo que convierte un *«no puedes»* en un camino.
+
+**Lo que NO cambió, a propósito.** El `blocked_reason` de `GET /contracts/{id}/extension-options` sigue
+devolviendo `CONTRACT_CLOSED` también para un contrato `superseded`, así que `ExtendLoanPanel.tsx:62` sigue
+ocultando la tarjeta igual y **no hace falta regenerar `src/types/api.ts`**: el `enum` del OpenAPI no se
+movió. Ampliar el sucesor es su propia decisión, con su propio cupo y su propia ventana; no hay un sucesor
+"sobre el que ampliar" que nombrar ahí.
+
 ## El dominio: un hostname por ambiente, y tres afirmaciones falsas que se cayeron al medir (21/09/2026)
 
 Fase 4 de `PLAN_MARCA.md`. Es configuración, no código — queda acá porque la **decisión** y lo que se

@@ -82,6 +82,13 @@ export const API_ERROR_CODES = [
   'EXTENSION_WINDOW_CLOSED',
   'CONTRACT_INTEREST_OVERDUE',
   'CONTRACT_WITHOUT_APPRAISAL',
+  // Se intentó abonar sobre un contrato que ya fue REEMPLAZADO por una
+  // ampliación (`superseded`). Aparte de `CONTRACT_CLOSED` a propósito: ahí
+  // el documento terminó y no hay nada que hacer, acá la deuda solo se mudó
+  // de documento. Cae al banner genérico porque el mensaje del backend ya
+  // nombra el contrato sucesor, y `details` lo trae para enlazarlo:
+  // `{successor_contract_id, successor_number}`.
+  'CONTRACT_SUPERSEDED',
 ] as const
 
 export type ApiErrorCode = (typeof API_ERROR_CODES)[number]
