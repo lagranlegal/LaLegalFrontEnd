@@ -12,8 +12,11 @@
 > **Estado al 21/09/2026:** ✅ **Fase 1** (marca al código) y ✅ **Fase 2** (kit rehecho y republicado).
 > 🟡 **Fase 3 casi cerrada**: la guía quedó re-marcada en oro y están escritas **las partes 1 a 5, la 7 y
 > la 8**, todas verificadas contra el código por un QA aparte. **Falta solo la parte 6.**
-> Abiertas: **Fase 4** (dominio) y **Fase 5** (correo).
-> La tabla de §0 describe el punto de partida, no el estado de hoy.
+> ✅ **Fase 4 — CERRADA (21/09)**: los **cuatro** hostnames de dev vivos con TLS válido — el front en
+> `dev.prendo.com.co`, **el backend en `api-dev.prendo.com.co`**, el apex y `www` redirigiendo 308. DNS,
+> certificados, CORS, `FRONTEND_URL`, CSP y las Redirect URLs de Supabase resueltos y verificados contra lo
+> servido y en un navegador real. **Queda un pendiente menor, no bloqueante:** el HSTS sin
+> `includeSubDomains; preload` (§4.7). Detalle en §Fase 4.
 
 ---
 
@@ -173,6 +176,8 @@ Un solo deploy. Todo el color sale de un archivo, así que el riesgo es bajo; lo
 
 **No se tocan** los nombres de paquete (`compraventa-frontend`, `compraventa-backend`), las apps de Fly ni la
 carpeta raíz: renombrarlos rompe deploys y secrets a cambio de nada que alguien vea.
+*(Confirmado el 21/09 con el dato duro: **Fly ni siquiera tiene comando de rename** — ver §4.3. Lo que sí
+cambió es la **dirección** del backend, que es lo único que alguien ve.)*
 
 **Verificación.** `npm run lint && npm run typecheck && npm run test && npm run build`, y después medir sobre
 **lo servido**, no sobre el push: un `git push` verde no dice que el bundle tenga el cambio.
@@ -231,7 +236,15 @@ Fuera de la guía del cliente: el panel de super-admin (`/platform`).
 
 ---
 
-## Fase 4 · El dominio
+## Fase 4 · El dominio — ✅ CERRADA (21/09/2026)
+
+> **Cerrada el 21/09/2026, verificada contra lo servido y en un navegador real (Chrome vía Playwright).**
+> Los cuatro hostnames de dev están vivos con TLS válido: el front en `dev.prendo.com.co`, **el backend en
+> `api-dev.prendo.com.co`** (esto es lo nuevo del cierre), y el apex y `www` redirigiendo **308**.
+> Las cuatro puntas que tenían que coincidir —CORS, `FRONTEND_URL`, el `connect-src` del CSP y las Redirect
+> URLs de Supabase— coinciden, y se leyeron **del ambiente**, no de un commit.
+>
+> **Queda un pendiente menor, no bloqueante:** endurecer el HSTS del dominio nuevo (§4.7).
 
 `prendo.com.co` ya está comprado. Lo que el dominio desbloquea de verdad es **el correo** y **la cara del
 producto** — no desbloquea el ambiente de producción, que funciona igual sobre `.fly.dev` y la URL de Vercel.
@@ -240,27 +253,192 @@ producto** — no desbloquea el ambiente de producción, que funciona igual sobr
 > presupuesto. **Toda la marca vive en `prendo.com.co`.** No es un plan B: era el plan desde el principio,
 > y por eso se compró primero — para que la marca no quedara de rehén de un dominio.
 
-1. **Decidir el mapa de nombres** antes de tocar DNS. Propuesta:
-   `app.prendo.com.co` → el producto (Vercel) · `api.prendo.com.co` → el backend (Fly) ·
-   `prendo.com.co` → por ahora, redirección a `app`.
-2. **Vercel:** agregar el dominio al proyecto y crear los registros en el registrador. Vercel emite el
-   certificado solo.
-3. **Fly:** `fly certs add api.prendo.com.co` + el `CNAME`/`A` que pida.
-4. **Sincronizar las tres puntas, que tienen que coincidir exacto:**
-   - `FRONTEND_URL` en los secrets de Fly (es de donde cuelga el enlace de invitación).
-   - `VITE_API_URL` en Vercel.
-   - `CORS_ALLOW_ORIGINS` en el backend.
-   - **Site URL y Redirect URLs** en Supabase Auth. Si `{FRONTEND_URL}/auth/callback` no está en la lista,
-     **Supabase no falla: la reemplaza por la Site URL en silencio** y el usuario entra con sesión activa sin
-     que nadie le pida contraseña. Ese bug ya pasó.
-5. **Nunca `supabase config push`**: pisa producción con el config local — reabre `enable_signup`, pone la
-   Site URL en `127.0.0.1:3000` y baja el límite de correos a 2 por hora.
+### 4.1 · El mapa de nombres: un subdominio por ambiente, el apex reservado para prod
 
-**Pendiente de higiene que sale acá:** `FRONTEND_URL` **no está en `.env.example`** ni en los comentarios de
-`fly secrets set` de `fly.dev.toml` ni de `fly.prod.toml`. Es la variable de la que cuelga todo el flujo de
-invitación y la más fácil de olvidar al montar producción. Arreglo de una línea en tres archivos.
+**Decisión del 21/09/2026.** Se descartó apuntar el apex a dev y mudarlo a producción más adelante.
+Este mapa es el contrato entre todos los documentos del proyecto; si cambia, cambia acá primero.
 
----
+| Hostname | Qué sirve hoy | Cuando exista prod |
+|---|---|---|
+| `dev.prendo.com.co` | el front (Vercel, build de la rama `dev`) | **dev, intacto — no se mueve** |
+| `api-dev.prendo.com.co` | el backend (Fly, app `compraventa-backend-dev`) | **dev, intacto — no se mueve** |
+| `prendo.com.co` (apex) | redirect **308** → `dev.prendo.com.co` | **prod** (deja de redirigir) |
+| `www.prendo.com.co` | redirect **308** → `dev.prendo.com.co` | redirect → apex |
+
+Cuando exista producción se suman dos nombres nuevos —el apex para el front y `api.prendo.com.co` para el
+backend— y **no se toca ninguno de los dos de dev**. Esa es la propiedad entera del mapa.
+
+**Por qué, que es lo que hay que entender antes de tocar nada.** Una URL de app no vive solo en la barra del
+navegador: queda **embebida** en las Redirect URLs de Supabase, en los enlaces de invitación y recuperación
+**ya enviados**, en el CORS del backend, en el `connect-src` del CSP y en los marcadores que el cliente
+guardó. Si el apex apuntara hoy a dev, todo eso quedaría clavado al apex; el día que el apex pasara a
+producción, esos enlaces y esos marcadores caerían **en otra base, con datos reales de clientes**, y
+**nada avisaría**: no hay error, no hay 404, no hay log. El usuario entra, ve una app que funciona y son
+otros datos.
+
+Este proyecto ya tuvo un incidente **de esa forma exacta**: una URL faltante en la lista de Supabase hizo
+que descartara el `redirect_to` **en silencio** y diera acceso sin pedir contraseña. La lección no era «hay
+que acordarse de la lista»: era que este tipo de error **no falla ruidosamente**, así que la defensa tiene
+que ser estructural.
+
+La propiedad que compra este mapa, en una línea: **el día del corte a prod no se mueve nada de dev, y
+ningún enlace viejo cambia de base.** Lo único que cambia es que el apex deja de redirigir.
+
+> **Esto reemplaza la propuesta anterior de esta fase**, que era `app.prendo.com.co` → producto,
+> `api.prendo.com.co` → backend, apex → redirect a `app`. Se descartó por la mudanza: `app.` serviría dev
+> hoy y prod mañana, o sea **el mismo hostname cambiando de base de datos**, que es exactamente el riesgo
+> silencioso de arriba. La idea de un nombre por pieza no estaba mal; lo que faltaba era un nombre **por
+> ambiente**. De ahí sale `api-dev.` y no `api.`.
+
+### 4.2 · Lo que quedó hecho en Vercel (21/09)
+
+Proyecto `la-legal-front-end` (id `prj_oPo2pjek9Hujoy4KHWQo53v6CQJI`, team `mateos-projects-85710491`).
+
+1. Los **tres hostnames** agregados al proyecto: `dev.prendo.com.co`, `prendo.com.co` y `www.prendo.com.co`.
+2. El apex y `www` configurados con **redirect 308 a `dev.prendo.com.co`** vía la API de Vercel
+   (`PATCH /v9/projects/{id}/domains/{domain}`). **El CLI de Vercel no soporta redirects** — por eso va por
+   API y no por `vercel domains`. Los dos volvieron `verified: true`.
+3. Confirmado que la **Production Branch es `dev`** (todos los deployments recientes salen como *Production*
+   desde esa rama), así que los dominios agregados sirven **el build de dev**, que es lo que se quería.
+   Ojo con la contracara, que está anotada en `DEPLOY.md`: el día que la Production Branch pase a `main`,
+   estos dominios **se mudan solos de build, sin avisar**.
+4. `VITE_API_URL` (scope Production) pasó de `https://compraventa-backend-dev.fly.dev` a
+   `https://api-dev.prendo.com.co`, **y se redesplegó**. El redeploy no es opcional y la trampa de la
+   visibilidad *sensitive* está en `DEPLOY.md` §«Reemplazar una variable `VITE_*`» — las dos fallan en
+   silencio y las dos muerden una sola vez.
+
+### 4.3 · El backend pasó a tener dominio propio (21/09) — y por qué la app de Fly NO se renombró
+
+Mateo pidió que «todo deje de decir compraventa». Ahí hay **dos cosas distintas** que conviene no mezclar:
+
+| | Quién lo ve | Qué se hizo |
+|---|---|---|
+| El **nombre de la app de Fly** (`compraventa-backend-dev`) | solo quien corre `flyctl` | **No se renombró** |
+| La **dirección del backend** (la que sale en el bundle y en el CSP) | el navegador de cualquiera | **Cambió** a `api-dev.prendo.com.co` |
+
+**Fly no tiene comando de rename.** Existen `create`, `destroy` y `move` (entre organizaciones), y nada más:
+«renombrar» significa crear una app nueva, migrar los secrets, recrear las Machines —incluida la
+`nightly-job`, que no pertenece al process group y hay que recrear a mano contra el tag real de la imagen— y
+perseguir todas las referencias. Todo eso a cambio de un nombre que **nadie que use el producto va a ver**.
+Es la misma decisión que ya traía la Fase 1 («renombrarlos rompe deploys y secrets a cambio de nada que
+alguien vea»), ahora con el dato duro al lado.
+
+Lo ejecutado, que sí se ve:
+
+```bash
+flyctl certs add api-dev.prendo.com.co -a compraventa-backend-dev
+```
+
+y en GoDaddy: `A api-dev → 66.241.124.156` y **`AAAA api-dev → 2a09:8280:1::16e:d34e:0`**.
+
+**El `AAAA` no era opcional.** La app tiene IPv4 **compartida** e IPv6 **dedicada**: sin el `AAAA`, Fly no
+puede probar la propiedad del nombre por la IP dedicada y pide además un registro `TXT` de verificación. Con
+los dos registros puestos, no hace falta nada más.
+
+> **El certificado tardó, y esa espera se parece a un error.** Estuvo **seis chequeos en `Issuing...`**
+> antes de pasar a `Issued`, con el DNS correcto desde el primer momento. Es el tipo de espera que manda a
+> «arreglar» un DNS que ya estaba bien: se toca lo que funcionaba y se pierde media hora. Si los registros
+> resuelven, la respuesta es esperar.
+
+`https://compraventa-backend-dev.fly.dev` **sigue vivo**: no se apagó nada. Pero desde la app ya no se
+alcanza, porque el CSP no lo permite — ver §4.5.
+
+> **Nota para cuando se monte producción, y es lo único que hay que recordar de todo esto:** la app de Fly
+> de prod se crea directamente como **`prendo-api-prod`**, no como `compraventa-backend-prod`.
+> Nombrarla bien **antes de que exista** cuesta cero; heredar el nombre viejo en el único ambiente que un
+> cliente va a ver, no. Está anotado también en `DEPLOY.md` §«Cuando exista producción» y en
+> `../../backend-starter/docs/ARCHITECTURE.md` §8.
+
+### 4.4 · Lo que hay que sincronizar, y que tiene que coincidir exacto
+
+Las cuatro puntas, con su valor de hoy. Todas verificadas leyendo **el ambiente**:
+
+| Punta | Valor en dev | Cómo se lee |
+|---|---|---|
+| `FRONTEND_URL` (secret de Fly) | `https://dev.prendo.com.co` | `flyctl ssh console -C "printenv FRONTEND_URL"` |
+| `CORS_ALLOW_ORIGINS` (secret de Fly) | los tres orígenes, con el viejo de Vercel adentro | `flyctl ssh console -C "printenv CORS_ALLOW_ORIGINS"` |
+| `VITE_API_URL` (Vercel, Production) | `https://api-dev.prendo.com.co` | `vercel env pull`, y después **el bundle servido** |
+| Site URL y Redirect URLs (Supabase Auth) | `…/auth/callback` del dominio nuevo, agregado por Mateo | Management API, **nunca** `supabase config push` |
+
+`flyctl secrets list` **no sirve** para esto: muestra el nombre y un digest, no el valor. Y un secret
+seteado no prueba que el proceso lo tenga — `fly secrets set` hace un rolling update que puede dejar
+máquinas atrás (es lo que pasó con `nightly-job`, que no tiene process group).
+
+El `connect-src` del CSP no es una quinta punta: **se genera desde `VITE_API_URL` en el build**. Por eso el
+redeploy de §4.2 es obligatorio, y por eso una variable cambiada sin rebuild no rompe nada visible — el
+bundle viejo sigue hablándole al backend viejo, sin un solo error.
+
+### 4.5 · Cómo se verificó (medido el 21/09, no supuesto)
+
+La verificación fue **un login real de punta a punta en Chrome**, no un `curl` al home: un home que carga con
+el CORS roto se ve idéntico a uno sano.
+
+| Qué | Resultado |
+|---|---|
+| Backend por su dominio | `{"status":"ok"}`, TLS válido, `openapi.json` con `title: Prendo API` y **96 endpoints** |
+| El bundle servido (`index-D6iWM2_q.js`) | **contiene** `api-dev.prendo.com.co`, **ya no contiene** `compraventa-backend-dev.fly.dev` |
+| El CSP servido | `connect-src 'self' https://api-dev.prendo.com.co https://driyubkodnsqxbtxcmaz.supabase.co` — regenerado solo desde la variable |
+| Entrada por el apex | `308 prendo.com.co` → `200 dev.prendo.com.co/auth/login`, con **0 mensajes de consola, 0 `pageerror`, 0 `requestfailed`** |
+| CORS real (no preflight simulado) | `fetch` desde la página: `GET /api/v1/health` → **200** `type:"cors"` con cuerpo legible |
+| CORS con preflight | `GET /api/v1/me` con un `Authorization: Bearer` inventado → **401** `type:"cors"` con `{"code":"UNAUTHORIZED"}` **legible**. El header fuerza el `OPTIONS` previo, y pasó |
+| El backend viejo desde la app | `TypeError: Failed to fetch` + evento `securitypolicyviolation` con `violatedDirective: "connect-src"` |
+| Supabase Auth | login con credenciales inventadas → **400** y la UI pinta «Correo o contraseña incorrectos»: el origen nuevo está aceptado |
+| Tema oscuro | persiste entre recargas **sin violación de `script-src`** |
+
+Dos de esas filas dicen más de lo que parece:
+
+- **El CSP está en `enforce`, no en report-only.** Que el host viejo siga vivo en Fly es irrelevante para el
+  producto: el navegador ya no lo alcanza desde la app. Es la diferencia entre «migramos» y «migramos y
+  además cerramos la puerta de atrás».
+- **El tema oscuro es el canario del hash.** El script anti-parpadeo es inline y el CSP lo permite por un
+  **hash SHA-256**; si el hash no coincidiera, el script no corre y **no deja error de JS** — solo un
+  parpadeo blanco al recargar, que cualquiera lee como «así es». Que el tema persista bajo el origen nuevo
+  prueba que el hash sobrevivió al rebuild.
+
+### 4.6 · El DNS de hoy, como registro
+
+| Nombre | Tipo | Valor |
+|---|---|---|
+| `@` (apex) | `A` | `216.198.79.1` y `64.29.17.1` (Vercel — reemplazaron el parking de GoDaddy) |
+| `dev` | `CNAME` | `4cf851dda4aeceb9.vercel-dns-017.com.` |
+| `www` | `CNAME` | `4cf851dda4aeceb9.vercel-dns-017.com.` |
+| `api-dev` | `A` | `66.241.124.156` (Fly, IPv4 compartida) |
+| `api-dev` | `AAAA` | `2a09:8280:1::16e:d34e:0` (Fly, IPv6 dedicada) |
+
+`prendo.com.co` tiene NS de GoDaddy (`ns45.domaincontrol.com` / `ns46.domaincontrol.com`). **No hay SPF ni
+MX**, y el `DMARC` que GoDaddy auto-provisionó es:
+
+```
+v=DMARC1; p=quarantine; adkim=r; aspf=r; rua=mailto:dmarc_rua@onsecureserver.net
+```
+
+**La trampa sigue en pie para la Fase 5:** al montar Resend hay que **reemplazar** ese `DMARC`, no agregarle
+SPF y DKIM encima. Un `p=quarantine` heredado, con los reportes yendo a un buzón ajeno, manda el correo
+propio a spam sin decir por qué.
+
+### 4.7 · Lo que queda abierto de la fase (menor, no bloqueante)
+
+**El HSTS de `dev.prendo.com.co` va sin `includeSubDomains; preload`**, mientras que el dominio viejo de
+Vercel sí los tiene. No rompe nada hoy, pero deja la ventana clásica: un subdominio futuro servido por HTTP
+en el primer request. Se endurece agregando `Strict-Transport-Security` a los `headers` de
+`frontend-starter/vercel.json`.
+
+**Conviene hacerlo antes de que haya datos reales de clientes**, no después: `preload` es una lista de la
+que cuesta salir, así que el momento barato para entrar es ahora, con dev y sin usuarios.
+
+### 4.8 · Las dos «compraventa» que quedan, y que no hay que corregir
+
+El barrido de lo visible (bundle + `index.html`) dejó exactamente dos, y **ninguna es el nombre viejo del
+proyecto**:
+
+1. `index.html`, `<meta name="description">`: *«Prendo — la plataforma para compraventas: contratos,
+   inventario, caja y reportes en un solo lugar.»*
+2. El hint del campo «Nota de encabezado» (configuración de empresa):
+   *«Casa de empeño y compraventa · Vigilado Supersociedades»*.
+
+Las dos son **la palabra común en español** — el tipo de negocio al que le vendemos, que es justamente lo
+que esas dos frases tienen que decir. Se dejan como están. Queda anotado para que nadie las «corrija» en un
+grep futuro creyendo que se escapó la marca vieja.
 
 ## Fase 5 · El correo
 
@@ -321,7 +499,9 @@ El proyecto ya tiene una cultura de verificación escrita; esto la aplica, no la
 | 2 | Legibilidad del logo | Renderizado a 16/24/32/48 px, mirado |
 | 3 | Que la guía diga lo que el código hace | Cada regla contra su `rules.py` / schema de Zod |
 | 3 | Habeas Data en las capturas | Empresa espejo sembrada, nunca la dev remota |
-| 4 | Que las tres puntas coincidan | Login real de punta a punta sobre el dominio nuevo |
+| 4 | Que el backend acepte el origen nuevo | ✅ `fetch` real desde la página (no un preflight simulado): 200 `type:"cors"`, y 401 con cuerpo legible |
+| 4 | Que las cuatro puntas coincidan | ✅ Login real de punta a punta sobre el dominio nuevo, en Chrome |
+| 4 | Que el bundle hable con el backend nuevo | ✅ `grep` sobre el JS **servido**: aparece `api-dev.`, desapareció `.fly.dev` |
 | 5 | Que el enlace **sobreviva a los crawlers** | 4 GET simulados y después abrirlo en un navegador real |
 | 5 | Que el correo no caiga en spam | Envío a Gmail, Outlook y un corporativo |
 
@@ -340,8 +520,8 @@ Fase 1 (marca al código)
    ├── Fase 2 (kit rehecho)      ← necesita la app ya en oro para capturar
    └── Fase 3 (guía)             ← necesita la app ya en oro para capturar
 
-Fase 4 (dominio)                  ← independiente, se puede hacer en paralelo
-   └── Fase 5a (SMTP)             ← necesita el dominio verificado
+Fase 4 (dominio) ✅ cerrada       ← era independiente, se hizo en paralelo
+   └── Fase 5a (SMTP)             ← ya desbloqueada: el dominio está verificado
 
 Fase 5b (notificaciones)          ← fuera de alcance, necesita decisión de diseño propia
 ```

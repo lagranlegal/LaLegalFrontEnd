@@ -2,6 +2,166 @@
 
 > Registro vivo de qué existe en el código, cómo está armado y por qué se tomó cada decisión — para que cualquiera (humano o Claude Code) pueda retomar el proyecto sin releer todo el historial de commits. Se actualiza en cada paso del "Orden de implementación" de `CLAUDE.md`. No repite lo que ya está en `ARCHITECTURE.md`/`DESIGN_SYSTEM.md` (el qué-debería-ser); esto es el qué-hay-hoy y las decisiones concretas tomadas al construirlo.
 
+## El dominio: un hostname por ambiente, y tres afirmaciones falsas que se cayeron al medir (21/09/2026)
+
+Fase 4 de `PLAN_MARCA.md`. Es configuración, no código — queda acá porque la **decisión** y lo que se
+midió no viven en ningún diff.
+
+### El backend también salió del nombre viejo (`api-dev.prendo.com.co`)
+
+El pedido fue "que todo deje de decir compraventa". Hay que separar dos cosas que se confunden:
+
+- **El nombre interno de la app de Fly** (`compraventa-backend-dev`) lo ve solo quien corre `flyctl`. No
+  aparece en la API, ni en el navegador, ni en nada que toque un cliente. **No se renombró.**
+- **La dirección visible** (`compraventa-backend-dev.fly.dev`) sí se veía: estaba en el bundle del front y
+  en el `connect-src` del CSP, o sea legible por cualquiera que abra las herramientas de desarrollo.
+
+**Dato duro: Fly no tiene comando de rename.** `flyctl apps` ofrece `create`, `destroy` y `move` (entre
+organizaciones), nada más. "Renombrar" significa crear una app nueva y migrar los 7 secrets, recrear la
+Machine del job nocturno con su `schedule` —justo donde nació F21-10— y actualizar `fly.*.toml`,
+`.env.example`, `gen-api.mjs`, el CI y 13 scripts de QA. El plan ya tenía esa decisión tomada: *"renombrarlos
+rompe deploys y secrets a cambio de nada que alguien vea"*.
+
+Así que se resolvió **lo visible** con un dominio propio, que es donde estaba el problema real:
+`flyctl certs add api-dev.prendo.com.co` + `A`/`AAAA` en GoDaddy, y `VITE_API_URL` apuntando ahí.
+
+**Dos cosas que costaron y conviene no re-descubrir:**
+
+1. **El certificado de Fly tardó**: seis chequeos en `Issuing...` antes de `Issued`, con el DNS correcto
+   desde el primer momento. Esa espera **se parece a un DNS mal puesto** y manda a tocar lo que ya estaba
+   bien. El `AAAA` no era opcional: la app tiene IPv4 **compartida** e IPv6 **dedicada**, y sin el `AAAA`
+   Fly habría pedido además un TXT de propiedad.
+2. **`vercel env add` rechaza las `VITE_*` con visibilidad *sensitive* en Production** (`invalid_visibility`).
+   Como el `rm` ya se había ejecutado, la variable quedó unos segundos ausente. Se restauró con
+   `--no-sensitive`. La regla quedó en `DEPLOY.md`: al reemplazar una `VITE_*`, `--no-sensitive`, y
+   verificar con `vercel env pull` **antes** de redesplegar.
+
+**Y el redeploy no es opcional:** las `VITE_*` se hornean en el bundle. Cambiar la variable sin rebuild no
+hace nada **y falla en silencio** — la app sigue hablando con el backend viejo, sin un solo error.
+
+**Verificado en navegador real** (Chrome vía Playwright), que es lo que `curl` no puede probar: carga inicial
+con 0 mensajes de consola, `GET /api/v1/me` con `Authorization` inventado devolviendo **401** con
+`{"code":"UNAUTHORIZED"}` legible y `type: "cors"` —o sea que el **preflight `OPTIONS` pasó**—, y el tema
+persistiendo entre recargas, que es la prueba de que el hash SHA-256 del script anti-parpadeo sigue
+coincidiendo bajo el origen nuevo (su fallo no deja error de JS).
+
+**El endurecimiento quedó bien, medido:** un `fetch` al host viejo desde la app da `TypeError: Failed to
+fetch` y el evento `securitypolicyviolation` lo registra contra `connect-src` en modo `enforce`. Aunque
+`compraventa-backend-dev.fly.dev` siga vivo en Fly, **el navegador ya no lo alcanza desde la app**.
+
+**Quedan dos menciones de "compraventa" en lo visible, y se dejan a propósito:** el `<meta name="description">`
+(«la plataforma para compraventas») y el hint del campo "Nota de encabezado" («Casa de empeño y compraventa ·
+Vigilado Supersociedades»). Las dos son **la palabra común en español** —el tipo de negocio— y no el nombre
+viejo del proyecto. Anotado para que nadie las "corrija".
+
+**Para cuando exista producción:** la app de Fly se crea directamente como **`prendo-api-prod`**. Nombrarla
+bien desde el principio cuesta cero; heredar el nombre viejo al ambiente que sí verá un cliente, no.
+
+### La decisión: el apex se reserva para producción
+
+Se descartó la opción cómoda (apuntar `prendo.com.co` a dev ahora y mudarlo a prod más adelante) y quedó
+**un hostname por ambiente**: `dev.prendo.com.co` sirve dev para siempre, el apex y `www` redirigen ahí con
+**308** hasta que exista prod, y ese día el apex deja de redirigir. **Nada de dev se mueve.**
+
+El porqué es la única parte que importa: la URL de la app no vive solo en la barra del navegador. Queda
+**embebida** en las Redirect URLs de Supabase, en los enlaces de invitación y recuperación **ya enviados**,
+en el CORS del backend, en el `connect-src` del CSP y en los marcadores del cliente. Un hostname que cambia
+de ambiente hace que todo eso apunte, un día cualquiera, **a otra base con datos reales de clientes** — sin
+un error, sin un 404, sin una línea de log. El proyecto ya tuvo un incidente de esa forma exacta: una URL
+faltante en la lista de Supabase hizo que descartara el `redirect_to` **en silencio** y diera acceso sin
+pedir contraseña.
+
+Esto **reemplaza** la propuesta que traía `PLAN_MARCA.md` (`app.` → producto, `api.` → backend, apex →
+redirect a `app`). No estaba mal por el nombre sino por el eje: separaba **por pieza** cuando el riesgo está
+en **el ambiente**. `api.prendo.com.co` no se tocó todavía —el backend sigue en
+`compraventa-backend-dev.fly.dev`— y cuando se haga sigue la misma regla.
+
+### Lo ejecutado
+
+Los tres hostnames quedaron en el proyecto `la-legal-front-end`, y el apex y `www` con **redirect 308** a
+`dev.prendo.com.co`. El redirect se configuró con `PATCH /v9/projects/{id}/domains/{domain}` de la API de
+Vercel porque **el CLI no soporta redirects** — dato que cuesta media hora descubrir. Los dos volvieron
+`verified: true`. La Production Branch es `dev`, así que estos dominios sirven el build de dev.
+
+### Las tres afirmaciones que se cayeron al medir
+
+Las tres tenían la misma forma: **nadie mintió, nadie tocó nada — el ambiente cambió y el documento no.** Un
+hallazgo de infraestructura no deja diff, así que el texto y la realidad se separan en silencio.
+
+| Documento | Decía | Es |
+|---|---|---|
+| `backend/docs/QA_AUDITORIA.md` §F9-02 | El fix de `FRONTEND_URL` «no se aplicó: es infraestructura» | **Aplicado.** `printenv FRONTEND_URL` en la máquina de Fly → `https://la-legal-front-end.vercel.app` |
+| `docs/DEPLOY.md` | Production Branch = `main`, `dev` «nunca» despliega a producción, variables solo en *Preview* | Production Branch = **`dev`**, las tres `VITE_*` en scope **Production**. Cambió el 23/08; `README.md:93` y `ESTADO.md:24` ya lo decían |
+| `CONTINUAR.md` · `ESTADO.md` | Fase 4 sin empezar | A medias: Vercel hecho, DNS y CORS pendientes |
+
+La regla que dejan: **el estado de algo que vive en un ambiente se lee del ambiente.** `flyctl ssh console
+-C "printenv …"`, la API del proyecto, un preflight real. No el historial de commits, que para esto no sabe
+nada.
+
+### El bloqueante silencioso: CORS
+
+Medido contra el backend desplegado: un preflight con `Origin: https://dev.prendo.com.co` devuelve **400**;
+con `Origin: https://la-legal-front-end.vercel.app`, **200**. La causa es que **`CORS_ALLOW_ORIGINS` no
+existe como secret** en `compraventa-backend-dev` (`flyctl secrets list`: solo `DATABASE_URL`,
+`JWT_AUDIENCE`, `SUPABASE_JWKS_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_URL` y `FRONTEND_URL`). Hoy el
+front funciona **solo** por la regex de `*.vercel.app` que `app/common/cors.py` aplica con `ENVIRONMENT=dev`,
+y `dev.prendo.com.co` no matchea.
+
+Lo que lo hace peligroso es el **síntoma**: con el DNS perfecto y el certificado emitido, la app **carga** y
+ninguna pantalla trae datos. Parece el backend caído, parece la sesión, parece cualquier cosa menos lo que
+es. El comando quedó preparado y **sin ejecutar** (lo ejecuta Mateo, con la URL vieja de Vercel en la lista
+para no cortar nada durante la transición) — está en `PLAN_MARCA.md` §4.3, junto con los registros DNS que
+faltan en GoDaddy y la Redirect URL de Supabase.
+
+## El filtro del job nocturno ahora sale de la constante, no de una lista a mano (21/09/2026)
+
+Cierre del **hallazgo de diseño** que dejó abierto F21-10 (`backend/docs/QA_AUDITORIA.md`). Es backend puro,
+pero es la misma clase de error que ya costó once noches de datos, así que queda registrado acá.
+
+### Qué estaba mal
+
+`rules._TERMINAL_STATUSES` (los estados de los que un contrato no vuelve a salir) y la consulta que alimenta
+el job nocturno decían lo mismo **en dos lugares distintos**:
+
+```python
+_TERMINAL_STATUSES = {"paid", "auctioned", "superseded"}   # rules.py
+where status not in ('paid', 'auctioned')                  # repository.py
+```
+
+`superseded` entró a la constante el 10/09 (ampliar préstamo, `00051`) y nadie tocó el SQL. El job tomó once
+noches seguidas los contratos ya reemplazados y los recalculó como si estuvieran vivos. Lo único que los
+protegía era la guarda de `compute_status` — y la Machine programada corría una imagen que no la tenía.
+
+### Cómo quedó
+
+La constante es **pública** (`rules.TERMINAL_STATUSES`, un `frozenset`) porque dejó de ser un detalle interno
+de `compute_status`: es el criterio que comparten la guarda y la consulta. El repositorio la pasa como
+parámetro expandido —`where status not in :terminal_statuses` con `bindparam(..., expanding=True)`, el patrón
+que ya usaban `identity.set_role_permissions` e `inventory.list_items`— y la lee **en cada llamada**, no una
+copia al importar.
+
+El criterio de diseño, textual: **agregar un estado terminal a la constante tiene que alcanzar.** No queda un
+segundo lugar donde acordarse.
+
+### El test, y por qué no repite la lista
+
+`tests/unit/test_contract_recompute_query.py` corre la consulta contra una sesión espía (sin Postgres — así
+no se salta en una máquina sin Docker, que es justo donde este bug pasaría desapercibido) y saca del SQL el
+conjunto que el `not in` deja afuera. La lista de estados **no se escribe en el test**: se deriva de la
+constante, porque repetirla ahí reintroduce exactamente el acoplamiento que se está arreglando.
+
+El test central **inventa un cuarto estado terminal** con `monkeypatch` y exige que la consulta lo excluya
+sin que nadie haya tocado el SQL. Visto fallar antes de darlo por bueno:
+
+- con la consulta vieja → **3 failed** (`{'auctioned','paid'} != {'auctioned','paid','superseded'}`);
+- con una lista a mano pero **hoy completa** → **2 failed**, el estado inventado se cuela igual;
+- con la consulta arreglada → 3 passed.
+
+El caso del medio es el que justifica el diseño del test: una lista correcta *hoy* sigue fallando, porque lo
+que se prueba es el invariante, no los tres valores de este mes.
+
+Suite backend completa con Docker arriba: **425 passed** (422 + 3). `ruff` y `mypy` limpios.
+
 ## Cinco hallazgos de la prueba con el cliente (11/09/2026)
 
 Mateo probó la app con el cliente y trajo cinco cosas. Tres eran arreglos y dos eran preguntas de negocio que no tenían respuesta en el producto.

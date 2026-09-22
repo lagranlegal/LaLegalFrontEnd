@@ -1,17 +1,27 @@
 # Despliegue en Vercel — ambientes dev y producción
 
-> Estado al 20/08/2026: **solo existe el ambiente dev**. No hay backend ni proyecto Supabase de producción todavía (`compraventa-backend-prod` no está creada en Fly y solo hay un proyecto Supabase). La configuración de este documento deja producción lista para activarse llenando variables, sin tocar código.
+> Estado al 21/09/2026: **solo existe el ambiente dev**. No hay backend ni proyecto Supabase de producción todavía (`compraventa-backend-prod` no está creada en Fly y solo hay un proyecto Supabase). La configuración de este documento deja producción lista para activarse llenando variables, sin tocar código.
 
 ## Cómo Vercel decide el ambiente
+
+> **Corregido el 21/09/2026.** Este documento afirmaba que la Production Branch era `main`, que `dev`
+> «nunca» desplegaba a producción y que las variables de dev vivían solo en scope *Preview*. **Las tres
+> cosas dejaron de ser ciertas el 23/08/2026** y el documento no se actualizó; `README.md:93` y
+> `ESTADO.md:24` ya decían lo correcto, así que el repo se contradecía a sí mismo. Abajo está el estado
+> real, medido en el proyecto.
 
 Vercel no tiene "ambientes" que uno cree a mano: los deduce de la rama.
 
 | Rama | Ambiente de Vercel | URL |
 |---|---|---|
-| La configurada como **Production Branch** (`main`) | Production | el dominio de producción |
-| Cualquier otra rama con deploy habilitado (`dev`) | Preview | URL estable por rama, tipo `<proyecto>-git-dev-<equipo>.vercel.app` |
+| La configurada como **Production Branch** — hoy **`dev`** | Production | `la-legal-front-end.vercel.app` y los dominios propios |
+| Cualquier otra rama con deploy habilitado | Preview | URL estable por rama, tipo `<proyecto>-git-<rama>-<equipo>.vercel.app` |
 
-**La URL de rama es estable**: no cambia con cada commit (eso son las URLs por deployment, que también existen pero son otras). Así que `…-git-dev-….vercel.app` sirve perfectamente como "el ambiente dev" y se le puede asignar un dominio propio si se quiere.
+**Por qué `dev` es la rama de producción.** Hasta el 23/08 la Production Branch era `main` y las variables
+vivían solo en *Preview*: como `main` no se desplegaba nunca, `la-legal-front-end.vercel.app` servía un
+build congelado de días atrás y **cada push generaba una dirección nueva**. El síntoma se leía como «la
+función no está desplegada» cuando en realidad estaba en otra URL. Con `dev` como Production Branch, cada
+push actualiza **la misma** dirección, que es la que se le pasa a un cliente.
 
 `vercel.json` restringe qué ramas despliegan:
 
@@ -21,35 +31,112 @@ Vercel no tiene "ambientes" que uno cree a mano: los deduce de la rama.
 
 Cualquier otra rama que se empuje **no** genera deployment. Sin esto, cada rama de trabajo crearía previews consumiendo builds.
 
-## Configuración en el dashboard (una sola vez)
+## Configuración en el dashboard
 
 ### 1. Production Branch
 
-**Settings → Git → Production Branch** → `main`.
+**Settings → Git → Production Branch** → **`dev`** (estado real al 21/09/2026).
 
-Es lo que garantiza lo que pediste: que `dev` **nunca** despliegue a producción. Si quedara en `dev`, cada push a `dev` publicaría en el dominio de producción.
+> 🔴 **Cuando exista producción hay que cambiarla a `main`. Y ese cambio no es inocente: en ese instante
+> los dominios propios se mudan solos de build, sin avisar.** Vercel no pregunta, no emite un error y no
+> deja rastro visible: `prendo.com.co` (y cualquier otro dominio asignado a Production) empieza a servir el
+> build de `main` desde el siguiente deploy. Si `main` todavía no tiene sus variables en scope *Production*,
+> lo que se publica es un build roto o viejo.
+>
+> Por eso el mapa de dominios reserva un **hostname por ambiente** (ver abajo): `dev.prendo.com.co` se
+> queda con dev pase lo que pase, y no hay un hostname que cambie de base de datos en silencio.
 
 ### 2. Variables de entorno
 
 **Settings → Environment Variables.** Las tres son necesarias; **el build falla a propósito** si falta `VITE_API_URL` o `VITE_SUPABASE_URL` (ver "El CSP" abajo).
 
-Al crear cada variable, Vercel pide en qué ambientes aplica. Marcar **solo** el que corresponde:
+Estado real al 21/09/2026: las tres `VITE_*` están en scope **Production** (más una copia en *Preview*),
+porque la rama de producción es `dev`.
 
-**Ambiente dev** — marcar únicamente `Preview`:
+| Variable | Valor (dev) | Scope |
+|---|---|---|
+| `VITE_API_URL` | `https://api-dev.prendo.com.co` *(hasta el 21/09 era `https://compraventa-backend-dev.fly.dev`)* | Production + Preview |
+| `VITE_SUPABASE_URL` | la URL del proyecto Supabase de dev | Production + Preview |
+| `VITE_SUPABASE_ANON_KEY` | la key **anon/publishable** de ese proyecto | Production + Preview |
 
-| Variable | Valor |
-|---|---|
-| `VITE_API_URL` | `https://compraventa-backend-dev.fly.dev` |
-| `VITE_SUPABASE_URL` | la URL del proyecto Supabase de dev |
-| `VITE_SUPABASE_ANON_KEY` | la key **anon/publishable** de ese proyecto |
+**Cuando exista producción**, esos valores de *Production* dejan de ser los de dev: hay que reemplazarlos
+por los del backend y el Supabase de prod **antes** de mover la Production Branch a `main`, no después.
+El orden importa, porque el cambio de rama publica de inmediato.
 
-**Ambiente producción** — marcar únicamente `Production`. Se llenan cuando exista el backend de producción; hasta entonces, `main` no debería desplegarse (el build fallaría con el mensaje del CSP, que es el comportamiento deseado: mejor un build rojo que una app publicada sin poder hablar con su backend).
+### Reemplazar una variable `VITE_*` — dos trampas, las dos silenciosas (21/09/2026)
+
+Cambiar `VITE_API_URL` al dominio nuevo del backend costó más de lo que debía. Las dos cosas que muerden:
+
+**1 · El redeploy no es opcional.** Las `VITE_*` se **hornean en el bundle** durante el build: no las lee el
+navegador en runtime, las lee `vite build`. Cambiar la variable en el dashboard y no reconstruir **no hace
+absolutamente nada**, y el síntoma es el peor posible — ninguno. La app sigue funcionando, hablándole al
+backend viejo, y el dashboard de Vercel muestra el valor nuevo tan tranquilo. Lo mismo vale para el CSP,
+que se compila desde esa misma variable.
+
+```bash
+vercel redeploy <url-del-deployment-de-production>
+```
+
+**2 · `vercel env add` rechaza las `VITE_*` marcadas como *sensitive* en Production.** Devuelve
+`invalid_visibility`, y la trampa está en el orden: para reemplazar una variable hay que hacer `rm` y
+después `add`, así que cuando el `add` falla **la variable ya no existe**. Quedó ausente unos segundos. Un
+build disparado en esa ventana falla ruidosamente (el build aborta a propósito si falta `VITE_API_URL`), que
+es lo único bueno del asunto.
+
+**La regla, entonces:** al reemplazar una `VITE_*` se usa **`--no-sensitive`**, y antes de redesplegar se
+verifica con **`vercel env pull`** que **las tres** siguen ahí. No alcanza con mirar la que se tocó: lo que
+se quiere comprobar es que el `rm`/`add` no dejó un hueco.
+
+```bash
+vercel env rm VITE_API_URL production
+printf 'https://api-dev.prendo.com.co' | vercel env add VITE_API_URL production --no-sensitive
+vercel env pull /tmp/.env.check           # las tres tienen que estar
+vercel redeploy <url-del-deployment>      # recién ahora
+```
+
+Y la verificación final no es el dashboard: es **el bundle servido** (ver "Verificar un deploy").
 
 > **Nunca** poner acá la `service_role` key de Supabase. Todo lo que va en una variable `VITE_*` queda **embebido en el JavaScript público** y es visible para cualquiera que abra el navegador. La única key que puede vivir en este repo es la anon/publishable, que está diseñada para ser pública y depende de RLS para la seguridad.
 
-### 3. Opcional: dominio propio para dev
+## Los dominios propios (21/09/2026)
 
-**Settings → Domains** → agregar (por ejemplo) `dev.tudominio.com` y asignarlo a la rama `dev`. Solo cosmético; la URL `-git-dev-` ya funciona.
+Proyecto `la-legal-front-end` (id `prj_oPo2pjek9Hujoy4KHWQo53v6CQJI`, team `mateos-projects-85710491`).
+El plan completo, con el porqué de cada decisión, vive en `PLAN_MARCA.md` §Fase 4.
+
+**✅ Cerrado el 21/09.** Los cuatro hostnames de dev están vivos con TLS válido. Este es el mapa completo
+—front y backend juntos—, porque es el contrato que comparten Vercel, Fly, el CSP y Supabase Auth:
+
+| Hostname | Qué sirve hoy | Quién lo sirve | Cuando exista prod |
+|---|---|---|---|
+| `dev.prendo.com.co` | el front | Vercel (build de la rama `dev`) | **dev, intacto — no se mueve** |
+| `api-dev.prendo.com.co` | el backend | Fly (app `compraventa-backend-dev`) | **dev, intacto — no se mueve** |
+| `prendo.com.co` (apex) | redirect **308** → `dev.prendo.com.co` | Vercel | **prod** (deja de redirigir) |
+| `www.prendo.com.co` | redirect **308** → `dev.prendo.com.co` | Vercel | redirect → apex |
+
+Prod suma dos nombres nuevos (el apex para el front, `api.prendo.com.co` para el backend) y **no toca
+ninguno de los dos de dev**. Esa es la propiedad entera del mapa.
+
+**Un nombre por ambiente, no por pieza.** Se descartó apuntar el apex a dev y mudarlo después: la URL de la
+app queda embebida en las Redirect URLs de Supabase, en los enlaces de invitación ya enviados, en CORS, en
+el CSP y en los marcadores del cliente. Un hostname que cambia de ambiente hace que todo eso apunte, un día
+cualquiera, **a otra base con datos reales** — y sin un solo error visible. Por la misma razón el backend
+quedó en `api-dev.` y no en `api.`.
+
+**Hecho en Vercel:** los tres hostnames del front agregados; el apex y `www` con redirect 308 configurado
+vía `PATCH /v9/projects/{id}/domains/{domain}` de la API (**el CLI no soporta redirects**), los dos
+`verified: true`. `VITE_API_URL` apuntada al backend nuevo **y redesplegada** (ver la sección anterior).
+
+**Hecho fuera de Vercel:** los registros DNS en GoDaddy (apex A `216.198.79.1` + `64.29.17.1`; `dev` y `www`
+CNAME `4cf851dda4aeceb9.vercel-dns-017.com.`; `api-dev` **A `66.241.124.156` y AAAA
+`2a09:8280:1::16e:d34e:0`** — el `AAAA` no es opcional, la app de Fly tiene IPv4 compartida e IPv6
+dedicada), el certificado de Fly (`flyctl certs add api-dev.prendo.com.co`), el secret `CORS_ALLOW_ORIGINS`
+y la Redirect URL de Supabase. Detalle en `PLAN_MARCA.md` §Fase 4.
+
+**Lo único abierto: el HSTS.** `dev.prendo.com.co` responde con `Strict-Transport-Security` **sin**
+`includeSubDomains; preload`, mientras que el dominio viejo de Vercel sí los trae. Se endurece agregando el
+header a los `headers` de `vercel.json`, junto a los otros cuatro. **Conviene hacerlo antes de que haya
+datos reales de clientes**: `preload` es una lista de la que cuesta salir, así que el momento barato para
+entrar es ahora.
 
 ## El CSP: por qué no está en `vercel.json`
 
@@ -77,8 +164,16 @@ Si faltan las variables, el build **falla** con un mensaje explícito en vez de 
 curl -s <url-del-deploy> | grep -o '<meta http-equiv="Content-Security-Policy"[^>]*>'
 
 # 2. Los headers estáticos están puestos
-curl -sI <url-del-deploy> | grep -iE "content-security-policy|x-content-type|referrer-policy"
+curl -sI <url-del-deploy> | grep -iE "content-security-policy|x-content-type|referrer-policy|strict-transport"
+
+# 3. El bundle SERVIDO habla con el backend que corresponde (no el dashboard: el JS)
+BUNDLE=$(curl -s <url-del-deploy> | grep -o '/assets/index-[^"]*\.js')
+curl -s "<url-del-deploy>$BUNDLE" | grep -c 'api-dev\.prendo\.com\.co'   # > 0
+curl -s "<url-del-deploy>$BUNDLE" | grep -c 'compraventa-backend-dev'      # 0
 ```
+
+El chequeo 3 es el que importa después de tocar una `VITE_*`: es el único que distingue «cambié la
+variable» de «reconstruí con la variable nueva». Los dos primeros pasan igual con un bundle viejo.
 
 En el navegador: abrir la consola y confirmar que no hay errores de CSP al iniciar sesión (ahí es donde se ve si `connect-src` quedó mal — el login habla con Supabase y `GET /me` con el backend).
 
@@ -120,7 +215,14 @@ y el front lo canjea con `verifyOtp` (POST). Como no hay redirect de GoTrue de p
 | `https://la-legal-front-end.vercel.app/auth/callback` | `https://la-legal-front-end-git-dev-….vercel.app` — **sin `/auth/callback`** |
 | `https://la-legal-front-end-git-dev-….vercel.app/auth/callback` | igual, correcto |
 
-Por eso `FRONTEND_URL` en Fly **debe** seguir apuntando a la URL de preview de `dev`.
+Por eso `FRONTEND_URL` en Fly **debía** seguir apuntando a la URL de preview de `dev`.
+
+> **Ya no. Corregido el 21/09/2026.** El valor real en Fly, leído del ambiente y no de un commit
+> (`flyctl ssh console -a compraventa-backend-dev -C "printenv FRONTEND_URL"`), es
+> **`https://la-legal-front-end.vercel.app`** — la URL que usa el cliente. El párrafo de arriba y su tabla
+> quedan como registro de por qué estuvo apuntando al preview; la razón caducó cuando el canje pasó a
+> `token_hash` (POST) y dejó de depender del redirect de GoTrue. Detalle en
+> `../../backend-starter/docs/QA_AUDITORIA.md` §F9-02.
 
 ### El `action_link` de GoTrue es un GET de un solo uso — y media internet lo abre sola
 
@@ -174,8 +276,10 @@ Verificar después comparando el antes y el después: los únicos campos que deb
 1. Crear el proyecto Supabase de producción y aplicarle las migraciones (`supabase db push`) y el seed.
 2. Configurar el Custom Access Token Hook (los claims `company_id`/`role_id` del JWT dependen de él).
 3. `fly apps create compraventa-backend-prod`, cargar los secretos y `fly deploy -c fly.prod.toml`.
-4. Llenar las tres variables en scope **Production** en Vercel.
+4. Reemplazar las tres variables de scope **Production** en Vercel por las de prod (hoy tienen los valores de dev).
 5. Configurar **Site URL y Redirect URLs** del proyecto Supabase de producción con el dominio definitivo (sección anterior) — y `FRONTEND_URL` del backend de prod con ese mismo dominio. En prod el Site URL debe ser el dominio real, **nunca** un preview de Vercel.
-6. Push a `main`.
+6. Cargar `CORS_ALLOW_ORIGINS` en el backend de prod con el dominio definitivo. En prod **no hay red de seguridad**: la regex de `*.vercel.app` de `app/common/cors.py` solo aplica con `ENVIRONMENT=dev`.
+7. **Recién entonces** mover la Production Branch a `main` (Settings → Git). Ese es el instante en que el apex deja de redirigir a dev y empieza a servir prod — y en que `dev.prendo.com.co` se queda, a propósito, con el ambiente de dev y su base.
+8. Push a `main`.
 
 No hace falta tocar código en ningún paso: el CSP y las URLs salen de las variables.
