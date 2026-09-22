@@ -9,12 +9,38 @@
       Activa tu cuenta para empezar a trabajar
 
   VARIABLES DISPONIBLES
-    {{ .ConfirmationURL }}  el link de activación (obligatorio, no quitarlo)
+    {{ .TokenHash }}        el token del enlace. **Es el que hay que usar**, no
+                            `{{ .ConfirmationURL }}` — ver abajo.
     {{ .Data.full_name }}   el nombre de la persona invitada — llega porque el
                             backend lo manda en el payload de la invitación
                             (`identity/auth_admin.py`)
     {{ .Email }}            el correo del invitado
     {{ .SiteURL }}          la Site URL del proyecto Supabase
+
+  ⚠️ POR QUÉ **NO** SE USA `{{ .ConfirmationURL }}`  (esto ya costó un incidente)
+  Ese enlace apunta a GoTrue y se canjea con un **GET de un solo uso**: basta con
+  *pedir* la URL para quemarla. Y media internet abre los enlaces antes que el
+  destinatario — las vistas previas de WhatsApp, Telegram y Slack, y los
+  escáneres de correo. El 03/09/2026 pasó exactamente eso: el admin pegaba el
+  enlace en un chat, el crawler lo quemaba al instante para armar la tarjetita,
+  y la persona llegaba **sin sesión**, veía el formulario igual y al guardar
+  recibía un error genérico que la mandaba a reintentar algo imposible.
+
+  La salida es apuntar a la app y canjear con `verifyOtp`, que es un **POST**:
+  un crawler que haga GET solo se baja el HTML de la SPA. El patrón, verificado
+  contra `src/features/auth/pages/AuthCallbackPage.tsx:73-82` y contra el que
+  arma el backend en `identity/auth_admin.py:140`, es:
+
+      {{ .SiteURL }}/auth/callback?token_hash={{ .TokenHash }}&type=invite
+
+  `type` vale `invite` acá y `recovery` en la plantilla de recuperación.
+
+  ⚠️ **Esto exige que la Site URL del proyecto Supabase sea el dominio de la
+  app.** Cada ambiente tiene su PROPIO proyecto Supabase, así que la Site URL es
+  por ambiente y no hay conflicto: en dev va `https://dev.prendo.com.co`; el día
+  que exista prod, ese proyecto tendrá la suya. Si la Site URL quedara apuntando
+  a otra parte, el enlace del correo llevaría al ambiente equivocado **sin dar
+  ningún error**.
 
   POR QUÉ ESTÁ ESCRITO ASÍ
   - Tablas y estilos EN LÍNEA: los clientes de correo (Outlook, Gmail) ignoran
@@ -29,23 +55,35 @@
   - Sin imágenes externas: se bloquean por defecto en la mayoría de clientes,
     y un correo que depende de ellas llega roto.
 
-  QUÉ PERSONALIZAR
-  Reemplazar "Compraventa" por el nombre real del negocio en el encabezado y
-  en el pie. Si se quiere el logo, tiene que ser una URL pública permanente
-  (no el bucket privado de Storage, que exige firma y expira).
+  QUÉ PERSONALIZAR — Y POR QUÉ DICE "PRENDO" Y NO EL NOMBRE DEL NEGOCIO
+  Una versión anterior de este archivo decía que había que reemplazar
+  "Compraventa" por el nombre real del negocio. **Eso no se puede, y además no
+  corresponde.** No se puede porque la plantilla de correo es **una sola por
+  proyecto de Supabase** y no sabe qué empresa invitó: es multi-tenant, y el
+  mismo correo lo manda cualquiera de las empresas. Y no corresponde porque
+  quien manda la invitación es **la plataforma**, no el inquilino — es la misma
+  razón por la que el respaldo del nombre en `AppShell` es `'Mi empresa'` y no
+  `'Prendo'`: ese texto es el nombre del INQUILINO, y este de acá es el de la
+  PLATAFORMA. Son dos marcas distintas y no se mezclan.
+
+  El nombre del negocio sí aparece, pero **adentro de la app**, cuando la
+  persona entra. En el correo no hay forma de saberlo.
+
+  Si se quiere el logo, tiene que ser una URL pública permanente (no el bucket
+  privado de Storage, que exige firma y expira).
 -->
 
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#f5f7fa;margin:0;padding:32px 12px;font-family:-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#f1ebdd;margin:0;padding:32px 12px;font-family:-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
   <tr>
     <td align="center">
 
-      <table role="presentation" width="560" cellpadding="0" cellspacing="0" style="width:560px;max-width:100%;background-color:#ffffff;border-radius:14px;border:1px solid #e5eaf0;overflow:hidden;">
+      <table role="presentation" width="560" cellpadding="0" cellspacing="0" style="width:560px;max-width:100%;background-color:#ffffff;border-radius:14px;border:1px solid #ddd7c9;overflow:hidden;">
 
         <!-- Encabezado -->
         <tr>
           <td style="padding:28px 32px 0 32px;">
-            <p style="margin:0;font-size:13px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;color:#00806f;">
-              Compraventa
+            <p style="margin:0;font-size:13px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;color:#7a5a1c;">
+              Prendo
             </p>
           </td>
         </tr>
@@ -53,17 +91,17 @@
         <!-- Mensaje -->
         <tr>
           <td style="padding:20px 32px 0 32px;">
-            <h1 style="margin:0 0 16px 0;font-size:26px;line-height:1.25;color:#1e2a3b;font-weight:600;">
+            <h1 style="margin:0 0 16px 0;font-size:26px;line-height:1.25;color:#24211c;font-weight:600;">
               Hola {{ .Data.full_name }}, te damos la bienvenida
             </h1>
 
-            <p style="margin:0 0 16px 0;font-size:16px;line-height:1.6;color:#44546a;">
-              Te crearon una cuenta para trabajar en el sistema de gestión de la compraventa. Desde ahí vas a
+            <p style="margin:0 0 16px 0;font-size:16px;line-height:1.6;color:#4b463d;">
+              Te crearon una cuenta para trabajar en Prendo, el sistema con el que tu equipo maneja la compraventa. Desde ahí vas a
               atender clientes, registrar contratos de empeño, vender en la tienda y manejar la caja del día,
               según el rol que te asignaron.
             </p>
 
-            <p style="margin:0 0 24px 0;font-size:16px;line-height:1.6;color:#44546a;">
+            <p style="margin:0 0 24px 0;font-size:16px;line-height:1.6;color:#4b463d;">
               Para empezar solo falta que crees tu contraseña.
             </p>
           </td>
@@ -74,9 +112,9 @@
           <td style="padding:0 32px;">
             <table role="presentation" cellpadding="0" cellspacing="0">
               <tr>
-                <td style="background-color:#00b19e;border-radius:9999px;">
-                  <a href="{{ .ConfirmationURL }}"
-                     style="display:inline-block;padding:14px 32px;font-size:16px;font-weight:600;color:#ffffff;text-decoration:none;">
+                <td style="background-color:#c99a3d;border-radius:9999px;">
+                  <a href="{{ .SiteURL }}/auth/callback?token_hash={{ .TokenHash }}&type=invite"
+                     style="display:inline-block;padding:14px 32px;font-size:16px;font-weight:600;color:#24211c;text-decoration:none;">
                     Crear mi contraseña
                   </a>
                 </td>
@@ -88,11 +126,11 @@
         <!-- Respaldo del link -->
         <tr>
           <td style="padding:24px 32px 0 32px;">
-            <p style="margin:0 0 6px 0;font-size:13px;line-height:1.5;color:#8a97a8;">
+            <p style="margin:0 0 6px 0;font-size:13px;line-height:1.5;color:#716c63;">
               Si el botón no funciona, copia y pega esta dirección en tu navegador:
             </p>
             <p style="margin:0;font-size:13px;line-height:1.5;word-break:break-all;">
-              <a href="{{ .ConfirmationURL }}" style="color:#00806f;">{{ .ConfirmationURL }}</a>
+              <a href="{{ .SiteURL }}/auth/callback?token_hash={{ .TokenHash }}&type=invite" style="color:#7a5a1c;">{{ .SiteURL }}/auth/callback?token_hash={{ .TokenHash }}&type=invite</a>
             </p>
           </td>
         </tr>
@@ -100,11 +138,11 @@
         <!-- Aviso de seguridad -->
         <tr>
           <td style="padding:24px 32px 0 32px;">
-            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#f5f7fa;border-radius:10px;">
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#f1ebdd;border-radius:10px;">
               <tr>
                 <td style="padding:14px 16px;">
-                  <p style="margin:0;font-size:13px;line-height:1.6;color:#44546a;">
-                    <strong style="color:#1e2a3b;">Este enlace es personal y temporal.</strong>
+                  <p style="margin:0;font-size:13px;line-height:1.6;color:#4b463d;">
+                    <strong style="color:#24211c;">Este enlace es personal y temporal.</strong>
                     No lo compartas con nadie. Si vence antes de que puedas usarlo, pídele a tu
                     administrador que te reenvíe la invitación.
                   </p>
@@ -117,7 +155,7 @@
         <!-- Pie -->
         <tr>
           <td style="padding:24px 32px 28px 32px;">
-            <p style="margin:0;border-top:1px solid #e5eaf0;padding-top:16px;font-size:12px;line-height:1.6;color:#8a97a8;">
+            <p style="margin:0;border-top:1px solid #ddd7c9;padding-top:16px;font-size:12px;line-height:1.6;color:#716c63;">
               Recibiste este correo porque alguien de tu equipo creó una cuenta a nombre de
               {{ .Email }}. Si no esperabas esta invitación, puedes ignorar este mensaje: la cuenta
               no se activa hasta que crees tu contraseña.
@@ -127,8 +165,8 @@
 
       </table>
 
-      <p style="margin:16px 0 0 0;font-size:12px;color:#8a97a8;">
-        Sistema de gestión para compraventas
+      <p style="margin:16px 0 0 0;font-size:12px;color:#4b463d;">
+        Prendo — el sistema de gestión para compraventas
       </p>
 
     </td>

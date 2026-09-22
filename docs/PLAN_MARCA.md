@@ -442,6 +442,45 @@ grep futuro creyendo que se escapó la marca vieja.
 
 ## Fase 5 · El correo
 
+> **✅ La plantilla ya está lista (21/09/2026).** `docs/correo-invitacion.html` quedó corregida y con la marca
+> nueva; antes tenía tres problemas que la hacían inaplicable. **El resto de la fase es configuración, y
+> depende de cuentas que no tenemos: Resend, el DNS y el panel de Supabase.**
+>
+> **Lo que se arregló en la plantilla, y por qué cada cosa importaba:**
+>
+> 1. **Usaba `{{ .ConfirmationURL }}`, que es el bug de los crawlers.** Ese enlace se canjea con un **GET de
+>    un solo uso**: basta con *pedirlo* para quemarlo, y las vistas previas de WhatsApp, Telegram y Slack lo
+>    piden antes que el destinatario. Es el incidente del 03/09. Ahora apunta a la app —
+>    `{{ .SiteURL }}/auth/callback?token_hash={{ .TokenHash }}&type=invite` — que se canjea con `verifyOtp`,
+>    un **POST**: un crawler que haga GET solo se baja el HTML de la SPA. El patrón se verificó contra
+>    `src/features/auth/pages/AuthCallbackPage.tsx:73-82` y contra `identity/auth_admin.py:140`.
+> 2. **El botón era teal `#00b19e` con texto blanco.** Blanco sobre el oro da **2.57:1** — *peor* que el teal
+>    2.70 que este proyecto abandonó justamente por no cumplir AA. Quedó relleno `#c99a3d` con texto
+>    **carbón `#24211c`**: **6.24:1**, medido. Los seis pares de la plantilla cumplen AA, y el del pie se
+>    bajó a `#4b463d` porque en `#716c63` daba 4.39:1 y no llegaba.
+> 3. **Los neutrales eran grises azulados.** El propio `tokens.css` lo advierte: *"sobre un fondo frío el oro
+>    se ensucia y tira a mostaza"*. Migrados a los cálidos de la paleta (beige, carbón, gris cálido).
+>
+> **Y una corrección de fondo, no de estilo:** el archivo decía que había que reemplazar "Compraventa" por el
+> nombre real del negocio. **No se puede y no corresponde.** No se puede porque la plantilla es **una sola
+> por proyecto de Supabase** y no sabe qué empresa invitó — es multi-tenant. Y no corresponde porque quien
+> manda la invitación es **la plataforma**, no el inquilino: es la misma razón por la que el respaldo del
+> nombre en `AppShell` es `'Mi empresa'` y no `'Prendo'`. Ese texto es el nombre del INQUILINO; este es el de
+> la PLATAFORMA. El nombre del negocio aparece adentro de la app, cuando la persona entra.
+>
+> ⚠️ **Dependencia nueva que la plantilla introduce:** usa `{{ .SiteURL }}`, así que **la Site URL del
+> proyecto Supabase de dev tiene que ser `https://dev.prendo.com.co`**. Hoy apunta a la URL vieja de preview.
+> Esto **no** choca con la decisión de "reservar el apex para prod": cada ambiente tiene su **propio**
+> proyecto Supabase, así que la Site URL es por ambiente. Si queda mal, el enlace del correo lleva al
+> ambiente equivocado **sin dar ningún error** — es el mismo modo de falla silencioso de siempre.
+> Se cambia por `PATCH` a la Management API, **nunca** `supabase config push`.
+>
+> 🔴 **Pendiente de verificar antes de dar la fase por hecha:** el 04/09 se midió que **las plantillas de
+> correo no se podían editar en el plan actual del proyecto Supabase**. Si eso sigue así, la plantilla
+> corregida no se puede aplicar por esa vía y hay que montar el SMTP de Resend primero (5a), que es lo que
+> devuelve el control de las plantillas. **Verificarlo antes de tocar nada más.**
+
+
 **Punto de partida honesto: el backend no tiene ningún módulo de correo.** Cero dependencias, cero plantillas,
 cero cola. Todo el correo que sale hoy lo manda Supabase Auth con su SMTP compartido, que limita a unos pocos
 envíos por hora y responde `INVITE_RATE_LIMITED` (429) al pasarse.
