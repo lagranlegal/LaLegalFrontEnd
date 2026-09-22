@@ -7,6 +7,7 @@ export interface MonthlyTrendDatum {
   month: string
   interest_revenue: string
   sales_revenue: string
+  sales_returns: string
   expenses: string
 }
 
@@ -26,7 +27,12 @@ export function MonthlyTrendChart({ data }: { data: MonthlyTrendDatum[] }) {
   const prefersReducedMotion = usePrefersReducedMotion()
   const chartData = data.map((d) => ({
     month: d.month,
-    Ventas: Number(d.sales_revenue),
+    // NETAS de devoluciones (F21-12): una tendencia tiene que coincidir con
+    // el resultado del período, y el estado de resultados resta las
+    // devoluciones. La serie se llama «Ventas netas» y no «Ventas»
+    // justamente para que el número más bajo tenga nombre — el desglose
+    // línea por línea está en el estado de resultados de arriba.
+    'Ventas netas': Number(d.sales_revenue) - Number(d.sales_returns),
     Intereses: Number(d.interest_revenue),
     Gastos: Number(d.expenses),
   }))
@@ -58,7 +64,7 @@ export function MonthlyTrendChart({ data }: { data: MonthlyTrendDatum[] }) {
             labelFormatter={(label) => formatMonth(String(label))}
           />
           <Legend wrapperStyle={{ fontSize: 12 }} />
-          <Area type="monotone" dataKey="Ventas" stroke="var(--chart-1)" strokeWidth={2} fill="url(#serieVentasFill)" dot={false} activeDot={{ r: 4 }} isAnimationActive={!prefersReducedMotion} />
+          <Area type="monotone" dataKey="Ventas netas" stroke="var(--chart-1)" strokeWidth={2} fill="url(#serieVentasFill)" dot={false} activeDot={{ r: 4 }} isAnimationActive={!prefersReducedMotion} />
           <Area type="monotone" dataKey="Intereses" stroke="var(--chart-3)" strokeWidth={2} fill="url(#serieInteresesFill)" dot={false} activeDot={{ r: 4 }} isAnimationActive={!prefersReducedMotion} />
           <Area type="monotone" dataKey="Gastos" stroke="var(--chart-2)" strokeWidth={2} fill="url(#serieGastosFill)" dot={false} activeDot={{ r: 4 }} isAnimationActive={!prefersReducedMotion} />
         </AreaChart>

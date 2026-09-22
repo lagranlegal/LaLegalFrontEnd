@@ -3557,6 +3557,8 @@ export interface components {
             to_date: string;
             /** Sales Revenue */
             sales_revenue: string;
+            /** Sales Returns */
+            sales_returns: string;
             /** Interest Revenue */
             interest_revenue: string;
             /** Total Revenue */
@@ -4009,6 +4011,8 @@ export interface components {
             interest_revenue: string;
             /** Sales Revenue */
             sales_revenue: string;
+            /** Sales Returns */
+            sales_returns: string;
             /** Expenses */
             expenses: string;
         };
@@ -4336,10 +4340,16 @@ export interface components {
             gross_revenue: string;
             /** Discounts */
             discounts: string;
+            /** Sales Returns */
+            sales_returns: string;
+            /** Return Count */
+            return_count: number;
             /** Net Revenue */
             net_revenue: string;
             /** Cost Of Goods Sold */
             cost_of_goods_sold: string;
+            /** Returns Cost */
+            returns_cost: string;
             /** Gross Profit */
             gross_profit: string;
             /** Margin Pct */

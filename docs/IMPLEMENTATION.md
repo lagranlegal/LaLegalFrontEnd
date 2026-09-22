@@ -2,6 +2,61 @@
 
 > Registro vivo de qué existe en el código, cómo está armado y por qué se tomó cada decisión — para que cualquiera (humano o Claude Code) pueda retomar el proyecto sin releer todo el historial de commits. Se actualiza en cada paso del "Orden de implementación" de `CLAUDE.md`. No repite lo que ya está en `ARCHITECTURE.md`/`DESIGN_SYSTEM.md` (el qué-debería-ser); esto es el qué-hay-hoy y las decisiones concretas tomadas al construirlo.
 
+## «Devoluciones», la línea que faltaba en el Estado de resultados (22/09/2026)
+
+Cambio de **backend** (hallazgo **F21-12** de `../backend-starter/docs/QA_AUDITORIA.md`, ALTO y de dinero),
+con su mitad de pantalla acá.
+
+**El defecto.** `profit_summary` filtraba ventas `completed`, y **una devolución nunca cambia el `status`**
+(el único `update sale set status` del backend es a `'voided'`). Después de una devolución con reingreso el
+ingreso seguía contado, su costo seguía dentro del costo de ventas, y la mercancía volvía a `available` y
+**volvía a sumar** en la valorización: ingresos y utilidad sobreestimados, y el mismo activo contado dos
+veces. Medido en local con una venta de 500.000 (costo 300.000) devuelta entera el mismo día: el reporte
+seguía mostrando **200.000 de utilidad** y **300.000 de inventario** al mismo tiempo. Después del arreglo:
+utilidad **0** y los mismos 300.000 de inventario, que ahora sí es el único lugar donde está esa plata.
+
+**La decisión.** Una devolución es **contra-ingreso** (*devoluciones en ventas*), registrado en el período
+de la **DEVOLUCIÓN** (`sale_return.return_date`), **no** una borradura de la venta original. No se toca
+`sale.status`: hacerlo sacaría la venta ENTERA del resultado por una devolución **parcial**, y reescribiría
+un mes ya cerrado. El razonamiento completo está en el hallazgo.
+
+**Lo que cambia en el contrato del API — hay que regenerar los tipos.** Tres respuestas crecieron, y
+`npm run gen:api` lee el `/openapi.json` **en vivo**: **primero se despliega el backend, después se
+regenera**. (Los tipos de este repo ya están regenerados contra el spec local del backend de esta tanda;
+si el backend se despliega con cambios encima, hay que volver a correrlo.)
+
+| Endpoint | Campos nuevos |
+|---|---|
+| `GET /reports/profit` | `sales_returns`, `returns_cost`, `return_count`. `net_revenue` ahora resta `sales_returns` y `cost_of_goods_sold` viene **neto** de `returns_cost`. |
+| `GET /reports/income-statement` | `sales_returns`. `total_revenue = sales_revenue − sales_returns + interest_revenue`. |
+| `GET /reports/series` | `sales_returns` en cada punto. |
+
+`sales_revenue` **no cambió de significado** en ninguno de los tres (venta bruta de devoluciones, neta de
+descuento): el netear ocurre en `net_revenue`/`total_revenue`. Un mismo nombre no puede significar dos
+cosas en dos endpoints — es justo lo que el backend evitó al no crear "una tercera definición de ingreso".
+
+**Lo que cambió en pantalla (`ReportesPage.tsx`):**
+
+- **«Devoluciones» es una fila propia** del Estado de resultados, entre «Ventas» e «Intereses cobrados»,
+  con su `−` y el hint *«Devueltas en el período, no en el de la venta»*. **No** se restó en silencio de
+  «Ventas»: un número que baja sin explicación es lo que hace que nadie confíe en un reporte — si
+  «Ventas» cayera sola, el dueño pensaría que el sistema perdió la venta. Con la fila aparte se ven los dos
+  hechos y el total cuadra. Los subtotales «Ingresos totales» y «Utilidad bruta» corrieron un índice.
+- La fila **también va al Excel** (hoja *Resumen*), en negativo, para que la exportación cuadre con la
+  pantalla.
+- **Utilidad bruta de tienda**: el pie de la tarjeta ahora nombra las devoluciones (`· 1 devolución por
+  $X`) cuando `return_count > 0`, y el rótulo dice *«Ventas netas de descuentos y devoluciones»*. El KPI
+  ya venía neto; lo que faltaba era decirlo.
+
+**`MonthlyTrendChart`**: la serie se pinta **neta** (`sales_revenue − sales_returns`) y por eso se llama
+**«Ventas netas»**, no «Ventas». Una tendencia tiene que coincidir con el resultado del período; una cuarta
+área por un monto que suele ser chico sería ruido. El nombre es lo que evita el número sin explicación — el
+desglose línea por línea vive en el Estado de resultados, arriba en la misma pantalla.
+
+**Lo que NO se tocó.** Los KPI de Ventas del dashboard siguen **brutos** de devoluciones y anulaciones: eso
+es **F21-13**, es del front y sigue abierto. Y el Excel de Ventas sigue sin columna de devoluciones
+(**F21-17**), que tras esta decisión es exactamente lo que falta ahí: una columna, no un cambio de estado.
+
 ## `CONTRACT_SUPERSEDED`: un abono sobre un contrato ya ampliado, y por qué es un código nuevo (21/09/2026)
 
 Cambio de **backend** (hallazgo F21-11 de `../backend-starter/docs/QA_AUDITORIA.md`), anotado acá porque

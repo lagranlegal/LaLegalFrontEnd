@@ -97,7 +97,7 @@ function ProfitCard({ range }: { range: DateRangeValue | null }) {
       <div className="mb-3 flex flex-wrap items-center justify-between gap-x-4 gap-y-1">
         <h2 className="text-sm font-medium text-foreground">Utilidad bruta de tienda</h2>
         <span className="text-xs text-muted-foreground">
-          Ventas menos el costo de la mercancía vendida. No descuenta gastos operativos.
+          Ventas netas de descuentos y devoluciones, menos el costo de la mercancía vendida. No descuenta gastos operativos.
         </span>
       </div>
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
@@ -120,6 +120,15 @@ function ProfitCard({ range }: { range: DateRangeValue | null }) {
             <>
               {' '}
               · descuentos aplicados <Money value={profit.discounts} />
+            </>
+          )}
+          {/* El ingreso ya viene NETO de devoluciones: si no se nombran, la
+              cifra baja sin explicación (F21-12). */}
+          {profit.return_count > 0 && (
+            <>
+              {' '}
+              · {profit.return_count} {profit.return_count === 1 ? 'devolución' : 'devoluciones'} por{' '}
+              <Money value={profit.sales_returns} />
             </>
           )}
         </p>
@@ -224,6 +233,16 @@ function IncomeStatementCard({ range }: { range: DateRangeValue | null }) {
   const perdida = Number(data.operating_profit) < 0
   const filas: { label: string; value: string; tone?: 'out'; sub?: boolean; hint?: string }[] = [
     { label: 'Ventas', value: data.sales_revenue },
+    // F21-12: la devolución es CONTRA-INGRESO y tiene LÍNEA PROPIA, no se
+    // resta en silencio de «Ventas». Un número que baja sin explicación es
+    // lo que hace que nadie confíe en el reporte: si «Ventas» cayera sola,
+    // el dueño creería que el sistema perdió la venta. Acá se ven los dos
+    // hechos —hubo venta y hubo devolución— y el total cuadra.
+    // Se muestra TAMBIÉN en cero (el caso normal) y no se esconde: un estado
+    // de resultados que cambia de forma según el mes no se puede comparar
+    // contra el mes anterior, y ver la línea en cero es la única manera de
+    // saber que el concepto existe y que el sistema lo está mirando.
+    { label: 'Devoluciones', value: data.sales_returns, tone: 'out' as const, hint: 'Devueltas en el período, no en el de la venta' },
     { label: 'Intereses cobrados', value: data.interest_revenue },
     { label: 'Costo de la mercancía vendida', value: data.cost_of_goods_sold, tone: 'out', hint: 'Lo que costó lo que se vendió — solo tienda' },
     { label: 'Gastos operativos', value: data.operating_expenses, tone: 'out', hint: `${data.expense_count} gasto(s)` },
@@ -249,13 +268,13 @@ function IncomeStatementCard({ range }: { range: DateRangeValue | null }) {
             </div>
             {/* Los subtotales van DONDE corresponden, no al final: ver que la
                 utilidad bruta sale de restar el costo es media explicación. */}
-            {i === 1 && (
+            {i === 2 && (
               <div className="flex items-center justify-between gap-3 border-t border-border py-1.5">
                 <span className="font-medium text-foreground">Ingresos totales</span>
                 <Money value={data.total_revenue} className="tnum font-medium text-foreground" />
               </div>
             )}
-            {i === 2 && (
+            {i === 3 && (
               <div className="flex items-center justify-between gap-3 border-t border-border py-1.5">
                 <span className="font-medium text-foreground">Utilidad bruta</span>
                 <Money value={data.gross_profit} className="tnum font-medium text-foreground" />
@@ -397,6 +416,7 @@ export function ReportesPage() {
       const resumen = incomeStatement
         ? [
             { Concepto: 'Ventas', Monto: Number(incomeStatement.sales_revenue) },
+            { Concepto: 'Devoluciones', Monto: -Number(incomeStatement.sales_returns) },
             { Concepto: 'Intereses cobrados', Monto: Number(incomeStatement.interest_revenue) },
             { Concepto: 'Ingresos totales', Monto: Number(incomeStatement.total_revenue) },
             { Concepto: 'Costo de la mercancía vendida', Monto: Number(incomeStatement.cost_of_goods_sold) },
