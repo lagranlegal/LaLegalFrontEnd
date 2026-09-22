@@ -1,0 +1,277 @@
+<!--
+  PLANTILLA DEL CORREO DE RECUPERACIÓN DE CONTRASEÑA
+  ==================================================
+
+  Hermana de `correo-invitacion.html`: mismo molde, mismos colores, mismas
+  decisiones. Lo único que cambia es el `type` del enlace y el texto — y el
+  texto cambia porque el caso es otro (ver "QUÉ CAMBIA" abajo).
+
+  Dónde se pega: Supabase → Authentication → Email Templates → "Reset Password".
+  Se reemplaza TODO el contenido del campo "Message body" por esto.
+
+  Asunto sugerido (campo "Subject heading"):
+      Cambia tu contraseña de Prendo
+
+  (Sin "urgente", sin signos de admiración y sin mayúsculas sostenidas: son
+  las señales que los filtros de spam puntúan peor, y este correo es el único
+  camino de vuelta que tiene un usuario bloqueado — no puede caer en spam.)
+
+  POR QUÉ ESTE CORREO IMPORTA MÁS QUE EL DE INVITACIÓN
+  El producto está diseñado a propósito para NO depender del correo: los
+  cuatro caminos de alta y rescate de usuarios funcionan con "Generar enlace"
+  pasado por WhatsApp (`identity/auth_admin.py::invite_user`, `send_email=False`).
+  **El único camino que sí necesita correo es "¿Olvidaste tu contraseña?"**
+  del login (`src/features/auth/pages/LoginPage.tsx:133` →
+  `useRequestPasswordReset` en `src/features/auth/api.ts:140`). No hay
+  endpoint para que un admin le cambie la contraseña a alguien: si este
+  correo no llega, la persona queda fuera de su propia cuenta.
+
+  VARIABLES DISPONIBLES
+    {{ .TokenHash }}   el token del enlace. **Es el que hay que usar**, no
+                       `{{ .ConfirmationURL }}` — ver abajo.
+    {{ .Email }}       el correo al que se pidió el cambio
+    {{ .SiteURL }}     la Site URL del proyecto Supabase
+    {{ .Token }}       el código de 6 dígitos (existe, pero acá NO se usa: la
+                       app no tiene pantalla donde escribirlo a mano)
+    {{ .RedirectTo }}  el `redirectTo` que mandó el cliente — tampoco se usa,
+                       ver "POR QUÉ `.SiteURL` Y NO `.RedirectTo`".
+
+  ⚠️ POR QUÉ **NO** SE USA `{{ .ConfirmationURL }}`  (esto ya costó un incidente)
+  Ese enlace apunta a GoTrue y se canjea con un **GET de un solo uso**: basta
+  con *pedir* la URL para quemarla. Y media internet abre los enlaces antes
+  que el destinatario — las vistas previas de WhatsApp, Telegram y Slack, y
+  los escáneres de correo (Gmail, Outlook Safe Links, antivirus corporativos).
+  El 03/09/2026 pasó exactamente eso con el camino del enlace copiado: el
+  crawler quemaba el token al instante para armar la tarjetita de la previa, y
+  la persona llegaba **sin sesión**, veía el formulario igual y al guardar
+  recibía un error genérico que la mandaba a reintentar algo imposible.
+  Diagnóstico completo en `../../RUNBOOK_USUARIOS.md` §1.
+
+  La salida es apuntar a la app y canjear con `verifyOtp`, que es un **POST**:
+  un crawler que haga GET solo se baja el HTML de la SPA. El patrón, verificado
+  contra `src/features/auth/pages/AuthCallbackPage.tsx:81-82` (acepta
+  `type === 'invite' || type === 'recovery'`) y contra el que arma el backend
+  en `identity/auth_admin.py:140` (`_app_link`), es:
+
+      {{ .SiteURL }}/auth/callback?token_hash={{ .TokenHash }}&type=recovery
+
+  **Acá `type` vale `recovery`**, no `invite`. Si se copia `invite` de la otra
+  plantilla, `verifyOtp` rechaza el token y la persona cae en la pantalla
+  "Este enlace ya se usó" — un mensaje que describe otra cosa y manda a pedir
+  un enlace nuevo que va a fallar igual.
+
+  ⚠️ **Esto exige que la Site URL del proyecto Supabase sea el dominio de la
+  app.** Cada ambiente tiene su PROPIO proyecto Supabase, así que la Site URL
+  es por ambiente y no hay conflicto: en dev va `https://dev.prendo.com.co`; el
+  día que exista prod, ese proyecto tendrá la suya. Si la Site URL quedara
+  apuntando a otra parte, el enlace del correo llevaría al ambiente equivocado
+  **sin dar ningún error**. Se cambia con un `PATCH` a la Management API,
+  **nunca** con `supabase config push` (ver `DEPLOY.md`).
+
+  POR QUÉ `{{ .SiteURL }}` Y NO `{{ .RedirectTo }}`
+  `resetPasswordForEmail` manda `redirectTo: ${window.location.origin}/auth/callback`
+  (`src/features/auth/api.ts:143-144`), así que `{{ .RedirectTo }}` traería el
+  origen desde el que la persona pidió el cambio. Se descarta por dos razones:
+  ese origen puede ser un preview de Vercel (el enlace llevaría a un ambiente
+  que mañana no existe), y si la URL no está en la lista de Redirect URLs
+  permitidas, Supabase **la reemplaza en silencio por la Site URL**. Entre un
+  valor que a veces es otro y uno que siempre es el mismo, se elige el fijo:
+  es una decisión de este proyecto, no una recomendación de Supabase.
+
+  QUÉ CAMBIA RESPECTO A LA INVITACIÓN — Y POR QUÉ
+  1. **`type=recovery`** en los dos enlaces (botón y respaldo en texto).
+  2. **No dice "te crearon una cuenta" sino "pediste cambiar tu contraseña".**
+     Quien recibe esto ya tiene cuenta y ya trabaja en la app; darle la
+     bienvenida lo haría dudar de si el correo es legítimo.
+  3. **No saluda por nombre.** La invitación usa `{{ .Data.full_name }}` porque
+     el backend lo manda en el payload (`auth_admin.py`), pero en recuperación
+     el metadato depende de cómo se creó cada usuario: uno creado por otra vía
+     dejaría un "Hola , " en el saludo. Un correo de seguridad con un hueco
+     tipográfico parece falso, y parecer falso es el único defecto que este
+     correo no puede tener.
+  4. **Tiene un bloque "¿No pediste este cambio?".** Es lo que convierte un
+     correo de seguridad en algo útil: cualquiera puede escribir un correo
+     ajeno en "¿Olvidaste tu contraseña?" —la pantalla nunca revela si la
+     cuenta existe, a propósito (`api.ts`, `useRequestPasswordReset`)—, así que
+     este mensaje le llega a gente que no lo pidió. Sin ese bloque, el
+     destinatario solo puede elegir entre asustarse y tocar el botón; con él
+     sabe que ignorarlo es seguro (la contraseña no cambia sola) y qué hacer si
+     se repite: cambiarla desde "Mi perfil → Cambiar contraseña"
+     (`src/features/settings/pages/ProfilePage.tsx:169`) y avisarle al
+     administrador.
+  5. **Dice que el enlace sirve una sola vez y que no se reenvíe.** En la
+     invitación el reenvío lo hace el admin; acá lo haría la propia persona
+     pidiendo ayuda por WhatsApp, y la vista previa del chat se lo quemaría.
+     Es el incidente del 03/09 visto desde el otro lado.
+
+  CONTRASTES — MEDIDOS, NO ESTIMADOS (WCAG 2.1, mínimo AA 4.5:1)
+    #24211c sobre #c99a3d (botón)              6.24:1
+    #24211c sobre #ffffff (títulos)           16.04:1
+    #4b463d sobre #ffffff (cuerpo)             9.36:1
+    #716c63 sobre #ffffff (secundario)         5.21:1
+    #7a5a1c sobre #ffffff (enlaces, "Prendo")  6.35:1
+    #24211c sobre #f1ebdd (títulos en avisos) 13.49:1
+    #4b463d sobre #f1ebdd (avisos y pie)       7.88:1
+    #7a5a1c sobre #f1ebdd                      5.34:1
+
+  Los dos pares que se descartaron, y por qué:
+    · **blanco sobre el oro `#c99a3d`: 2.57:1** — *peor* que el teal `#00b19e`
+      con blanco (2.70:1) que este proyecto abandonó justamente por no cumplir
+      AA. De ahí el texto carbón en el botón.
+    · **`#716c63` sobre el beige `#f1ebdd`: 4.39:1** — no llega a 4.5, así que
+      todo el texto que va sobre beige usa `#4b463d`. Sobre blanco sí pasa
+      (5.21:1) y ahí se mantiene.
+
+  POR QUÉ NEUTRALES CÁLIDOS Y NO GRISES AZULADOS
+  Lo advierte `src/styles/tokens.css`: *"sobre un fondo frío el oro se ensucia
+  y tira a mostaza"*. Fondo `#f1ebdd`, bordes `#ddd7c9`, títulos `#24211c`,
+  cuerpo `#4b463d`, secundario `#716c63`, enlaces `#7a5a1c`.
+
+  POR QUÉ ESTÁ ESCRITO ASÍ
+  - Tablas y estilos EN LÍNEA: los clientes de correo (Outlook, Gmail) ignoran
+    hojas de estilo y muchos rompen con flex/grid. Es feo de escribir pero es
+    lo único que se ve igual en todas partes.
+  - Ancho fijo de 560px y una sola columna: se lee bien en móvil sin media
+    queries, que varios clientes tampoco soportan.
+  - El botón es una tabla con fondo, no un <button>: los clientes de correo no
+    ejecutan nada y un <button> se vería como texto plano.
+  - Se repite el link como texto abajo: si el botón no renderiza (modo texto,
+    imágenes bloqueadas), la persona igual puede entrar.
+  - Sin imágenes externas: se bloquean por defecto en la mayoría de clientes,
+    y un correo que depende de ellas llega roto. También evita el pixel de
+    apertura, que es una de las cosas que hay que desactivar en Resend.
+
+  POR QUÉ DICE "PRENDO" Y NO EL NOMBRE DEL NEGOCIO
+  Mismo criterio que la invitación, y es de gobierno, no de estilo: la
+  plantilla es **una sola por proyecto de Supabase** y no sabe a qué empresa
+  pertenece la cuenta — es multi-tenant. Y quien manda el correo es **la
+  plataforma**, no el inquilino: es la misma razón por la que el respaldo del
+  nombre en `AppShell` es `'Mi empresa'` y no `'Prendo'`. Ese texto es el
+  nombre del INQUILINO, y este de acá el de la PLATAFORMA; son dos marcas
+  distintas y no se mezclan. El nombre del negocio aparece adentro de la app,
+  cuando la persona entra.
+
+  Si se quiere el logo, tiene que ser una URL pública permanente (no el bucket
+  privado de Storage, que exige firma y expira).
+-->
+
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#f1ebdd;margin:0;padding:32px 12px;font-family:-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
+  <tr>
+    <td align="center">
+
+      <table role="presentation" width="560" cellpadding="0" cellspacing="0" style="width:560px;max-width:100%;background-color:#ffffff;border-radius:14px;border:1px solid #ddd7c9;overflow:hidden;">
+
+        <!-- Encabezado -->
+        <tr>
+          <td style="padding:28px 32px 0 32px;">
+            <p style="margin:0;font-size:13px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;color:#7a5a1c;">
+              Prendo
+            </p>
+          </td>
+        </tr>
+
+        <!-- Mensaje -->
+        <tr>
+          <td style="padding:20px 32px 0 32px;">
+            <h1 style="margin:0 0 16px 0;font-size:26px;line-height:1.25;color:#24211c;font-weight:600;">
+              Cambia tu contraseña
+            </h1>
+
+            <p style="margin:0 0 16px 0;font-size:16px;line-height:1.6;color:#4b463d;">
+              Pediste cambiar la contraseña de la cuenta <strong style="color:#24211c;">{{ .Email }}</strong> en Prendo,
+              el sistema con el que tu equipo maneja la compraventa.
+            </p>
+
+            <p style="margin:0 0 24px 0;font-size:16px;line-height:1.6;color:#4b463d;">
+              Abre el botón y escribe una nueva. Con esa vas a entrar de ahora en adelante.
+            </p>
+          </td>
+        </tr>
+
+        <!-- Botón -->
+        <tr>
+          <td style="padding:0 32px;">
+            <table role="presentation" cellpadding="0" cellspacing="0">
+              <tr>
+                <td style="background-color:#c99a3d;border-radius:9999px;">
+                  <a href="{{ .SiteURL }}/auth/callback?token_hash={{ .TokenHash }}&type=recovery"
+                     style="display:inline-block;padding:14px 32px;font-size:16px;font-weight:600;color:#24211c;text-decoration:none;">
+                    Cambiar mi contraseña
+                  </a>
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+
+        <!-- Respaldo del link -->
+        <tr>
+          <td style="padding:24px 32px 0 32px;">
+            <p style="margin:0 0 6px 0;font-size:13px;line-height:1.5;color:#716c63;">
+              Si el botón no funciona, copia y pega esta dirección en tu navegador:
+            </p>
+            <p style="margin:0;font-size:13px;line-height:1.5;word-break:break-all;">
+              <a href="{{ .SiteURL }}/auth/callback?token_hash={{ .TokenHash }}&type=recovery" style="color:#7a5a1c;">{{ .SiteURL }}/auth/callback?token_hash={{ .TokenHash }}&type=recovery</a>
+            </p>
+          </td>
+        </tr>
+
+        <!-- Aviso de seguridad -->
+        <tr>
+          <td style="padding:24px 32px 0 32px;">
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#f1ebdd;border-radius:10px;">
+              <tr>
+                <td style="padding:14px 16px;">
+                  <p style="margin:0;font-size:13px;line-height:1.6;color:#4b463d;">
+                    <strong style="color:#24211c;">Este enlace es personal y sirve una sola vez.</strong>
+                    No lo reenvíes por chat ni se lo pases a nadie: al pegarlo, la vista previa del chat lo abre
+                    sola y lo gasta antes de que puedas usarlo. Si ya se usó o se venció, vuelve a la pantalla de
+                    ingreso y pide otro en “¿Olvidaste tu contraseña?”.
+                  </p>
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+
+        <!-- ¿No fuiste tú? -->
+        <tr>
+          <td style="padding:16px 32px 0 32px;">
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#f1ebdd;border-radius:10px;">
+              <tr>
+                <td style="padding:14px 16px;">
+                  <p style="margin:0 0 8px 0;font-size:13px;line-height:1.6;color:#4b463d;">
+                    <strong style="color:#24211c;">¿No pediste este cambio?</strong>
+                    Puedes ignorar este correo sin hacer nada: tu contraseña sigue siendo la misma y no cambia
+                    hasta que alguien abra este enlace y escriba una nueva.
+                  </p>
+                  <p style="margin:0;font-size:13px;line-height:1.6;color:#4b463d;">
+                    Si te llegan varios de estos sin que los pidas, entra a Prendo con tu contraseña de siempre,
+                    cámbiala en <strong style="color:#24211c;">Mi perfil → Cambiar contraseña</strong> y avísale al
+                    administrador de tu empresa.
+                  </p>
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+
+        <!-- Pie -->
+        <tr>
+          <td style="padding:24px 32px 28px 32px;">
+            <p style="margin:0;border-top:1px solid #ddd7c9;padding-top:16px;font-size:12px;line-height:1.6;color:#716c63;">
+              Recibiste este correo porque alguien escribió {{ .Email }} en “¿Olvidaste tu contraseña?” de Prendo.
+              Si no fuiste tú, ignóralo: sin abrir el enlace, nada cambia en tu cuenta.
+            </p>
+          </td>
+        </tr>
+
+      </table>
+
+      <p style="margin:16px 0 0 0;font-size:12px;color:#4b463d;">
+        Prendo — el sistema de gestión para compraventas
+      </p>
+
+    </td>
+  </tr>
+</table>

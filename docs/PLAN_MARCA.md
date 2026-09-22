@@ -442,9 +442,11 @@ grep futuro creyendo que se escapó la marca vieja.
 
 ## Fase 5 · El correo
 
-> **✅ La plantilla ya está lista (21/09/2026).** `docs/correo-invitacion.html` quedó corregida y con la marca
-> nueva; antes tenía tres problemas que la hacían inaplicable. **El resto de la fase es configuración, y
-> depende de cuentas que no tenemos: Resend, el DNS y el panel de Supabase.**
+> **✅ Las dos plantillas ya están listas (21/09/2026).** `docs/correo-invitacion.html` quedó corregida y con
+> la marca nueva; antes tenía tres problemas que la hacían inaplicable. Y `docs/correo-recuperacion.html`
+> **se escribió el mismo día**: no existía, y es la del único camino del producto que de verdad necesita
+> correo. **El resto de la fase es configuración, y depende de cuentas que no tenemos: Resend, el DNS y el
+> panel de Supabase — el runbook paso a paso está en §5a.**
 >
 > **Lo que se arregló en la plantilla, y por qué cada cosa importaba:**
 >
@@ -491,28 +493,361 @@ rescate funcionan con "Generar enlace" entregado a mano. El único camino que s�
 
 Por eso esta fase tiene dos mitades muy distintas, y conviene no confundirlas:
 
-### 5a · SMTP propio — configuración, no código
+### 5a · SMTP propio — runbook de migración a Resend
 
-1. Verificar `prendo.com.co` en **Resend** (3.000 correos/mes gratis): registros `SPF`, `DKIM` y `DMARC` en
-   el DNS.
-2. Cargar las credenciales en Supabase → Authentication → Emails → SMTP Settings.
-   Remitente: `no-responder@prendo.com.co`, nombre "Prendo".
-3. **Arreglar la plantilla de invitación**, que hoy está escrita y sin aplicar en
-   `docs/correo-invitacion.html` y trae tres problemas a la vez:
-   - dice **"Compraventa"** (marca vieja),
-   - usa el **teal viejo** `#00b19e` / `#00806f`,
-   - usa `{{ .ConfirmationURL }}` en vez de `{{ .TokenHash }}`.
+**Decisión tomada (21/09/2026): se deja de usar el SMTP incluido de Supabase y se migra a Resend**, ahora que
+el dominio está verificado y sirviendo. Esto no desbloquea nada urgente —el producto se diseñó para no
+depender del correo— pero quita el techo de envíos que va a doler cuando existan notificaciones de negocio
+(5b), y saca los correos de un remitente compartido que cae en spam con facilidad.
 
-   El tercero es el que importa: `{{ .ConfirmationURL }}` es un **GET de un solo uso**, y los generadores de
-   vista previa de WhatsApp/Telegram/Slack y los escáneres de Gmail/Outlook lo **queman antes de que llegue
-   el destinatario**. El camino del enlace copiado ya se arregló en marzo pasando el canje a POST; el camino
-   del correo conserva el bug. Queda:
-   ```html
-   <a href="{{ .SiteURL }}/auth/callback?token_hash={{ .TokenHash }}&type=invite">Crear mi contraseña</a>
-   ```
-   Ojo: el 04/09 las plantillas **no se podían editar en el plan del proyecto**. Verificar si eso sigue así
-   antes de dar la fase por cerrada.
-4. Misma pasada para la plantilla de recuperación.
+**Lo que ya está hecho y no hay que rehacer:** las dos plantillas, escritas y con los contrastes medidos.
+
+| Plantilla | Archivo | Dónde se pega | Asunto sugerido |
+|---|---|---|---|
+| Invitación | `docs/correo-invitacion.html` | Authentication → Email Templates → **Invite user** | Activa tu cuenta para empezar a trabajar |
+| Recuperación | `docs/correo-recuperacion.html` | Authentication → Email Templates → **Reset Password** | Cambia tu contraseña de Prendo |
+
+**Todo lo que sigue es configuración en cuentas que no están en esta máquina** (Resend, GoDaddy, el panel de
+Supabase): lo ejecuta Mateo, en este orden, verificando cada paso antes de pasar al siguiente.
+
+> **Cómo leer las fuentes en este runbook.** 📚 = sale de la documentación del proveedor, con enlace.
+> 🧠 = criterio de este proyecto, decidido acá y explicado. Los valores concretos que el panel de Resend
+> genera (la clave DKIM, la región del MX) **no están escritos acá a propósito**: se copian del panel, no de
+> un documento. Un valor DKIM transcrito de memoria es exactamente el error que deja el dominio sin verificar
+> durante tres días.
+
+#### Paso 1 · Verificar si las plantillas se pueden editar — esto define el orden de todo lo demás
+
+El 04/09/2026 se midió que **las plantillas de correo no se podían editar en el plan del proyecto**. Hay que
+volver a mirarlo antes de tocar nada, porque de eso depende si el paso 6 existe o si hay que hacerlo al final.
+
+1. Entrar al proyecto que usa la app — el que sale de `SUPABASE_URL`, **`driyubkodnsqxbtxcmaz`**
+   (*lagranlegal's Dev*), no el que muestre `supabase projects list` (hay dos cuentas en juego, ver
+   `DEPLOY.md`).
+2. Authentication → Emails → **Templates** → "Reset password".
+
+**Qué verificar:** que el campo *Message body* acepte texto y que **Save** no esté bloqueado con un aviso de
+plan.
+
+- **Si se puede editar** → el orden natural sigue: SMTP primero igual (paso 2 al 5) y las plantillas después,
+  para no gastar el cupo del remitente compartido probando.
+- **Si NO se puede editar** → queda confirmado que el único camino es **montar el SMTP de Resend primero**,
+  que es justamente lo que devuelve el control de las plantillas. En ese caso el paso 6 se hace después del 5
+  y **la fase no se puede cerrar antes**: con el SMTP propio pero la plantilla por defecto, los correos salen
+  usando `{{ .ConfirmationURL }}` y el bug de los crawlers del 03/09 vuelve por el camino del correo.
+
+📚 La documentación de Supabase **no menciona** ninguna restricción de plan para editar plantillas
+([auth-email-templates](https://supabase.com/docs/guides/auth/auth-email-templates)), así que lo que manda es
+lo que muestre el panel, no lo que diga la doc. 🧠 Anotar el resultado con fecha en este mismo archivo: es un
+dato que ya se midió dos veces y se volvió a perder.
+
+#### Paso 2 · Crear la cuenta de Resend y verificar el dominio
+
+**Qué dominio se verifica, y por qué el apex.** 🧠 Se verifica **`prendo.com.co`** (el apex) y el remitente
+queda **`no-responder@prendo.com.co`**, nombre "Prendo". Tres razones:
+
+- El remitente y los enlaces del cuerpo quedan en el mismo dominio, que 📚 Resend lista como factor de entrega
+  para correos de autenticación ([deliverability para Supabase
+  Auth](https://resend.com/docs/knowledge-base/how-do-i-maximize-deliverability-for-supabase-auth-emails)).
+- 📚 Resend **no pone su MX en la raíz**: el MX de Return-Path y el SPF los pide en un subdominio `send.`, y
+  "los MX solo afectan al subdominio al que están asociados"
+  ([conflictos de MX](https://resend.com/docs/knowledge-base/how-do-i-avoid-conflicting-with-my-mx-records)).
+  Es decir: verificar el apex **no bloquea** poner un Google Workspace en `prendo.com.co` más adelante — y ese
+  buzón hace falta para los reportes DMARC del paso 3.
+- Un solo dominio verificado, un solo `_dmarc`, alineación estricta posible.
+
+**El costo de esa decisión, dicho en voz alta:** 📚 Resend *recomienda fuerte* enviar desde un subdominio
+(`notificaciones.example.com`) en vez de la raíz, para no arriesgar la reputación del dominio principal
+([add-a-domain](https://resend.com/docs/add-a-domain)). 🧠 Se acepta el riesgo porque hoy el volumen es
+"algunos correos de recuperación de contraseña": el correo que **tiene que llegar**. El día que 5b mande
+avisos de vencimiento a clientes —volumen, y gente que va a marcar spam— eso va en su propio subdominio
+verificado aparte, y el apex se queda con los correos de autenticación.
+
+**Los registros que pide Resend.** 📚 Al agregar el dominio, el panel genera DKIM y SPF (`TXT` y `MX`, o
+`CNAME` en dominios nuevos) y hay que copiarlos **tal cual del panel**; la región del MX
+(`us-east-1`, `eu-west-1`, `sa-east-1`, `ap-northeast-1`) queda embebida en su valor
+([troubleshooting de verificación](https://resend.com/docs/knowledge-base/what-if-my-domain-is-not-verifying)).
+La forma habitual es:
+
+| Nombre (en GoDaddy, relativo al dominio) | Tipo | Valor | Notas |
+|---|---|---|---|
+| `resend._domainkey` | `TXT` | la clave pública que muestra el panel | se pega completa, sin cortar ni reacomodar saltos de línea |
+| `send` | `TXT` | `v=spf1 include:amazonses.com ~all` | SPF del subdominio de envío, no del apex |
+| `send` | `MX` | `feedback-smtp.<región>.amazonses.com` | prioridad **la que muestre el panel**; es el Return-Path |
+
+🧠 La región: da igual para la entrega, pero **cambiarla después cambia el MX y obliga a re-verificar**. Se
+elige una vez y se anota acá.
+
+**Cómo conviven con lo que ya está pegado: no se toca nada de lo que hay.** Los registros nuevos viven en
+nombres que hoy no existen (`resend._domainkey`, `send`) y el DMARC del paso 3 en `_dmarc`. Los A/AAAA/CNAME
+de Vercel y Fly (`@`, `dev`, `www`, `api-dev` — tabla en §4.6) **no se modifican ni se borran**: son nombres
+distintos y tipos distintos. El único registro que se **reemplaza** es el `_dmarc` que GoDaddy
+auto-provisionó, y eso es el paso 3.
+
+**Trampas de GoDaddy** 🧠: su formulario espera el nombre **relativo a la zona** (`send`, no
+`send.prendo.com.co`) y si se escribe completo queda `send.prendo.com.co.prendo.com.co`, que no falla: solo no
+verifica nunca. TTL bajo (600s) mientras se prueba, y volver a 1 h al terminar.
+
+**Qué verificar después del paso 2** (desde la terminal, no desde el panel de GoDaddy — el panel muestra lo
+que se guardó, no lo que el mundo resuelve):
+
+```bash
+dig +short TXT resend._domainkey.prendo.com.co
+dig +short TXT send.prendo.com.co          # → v=spf1 include:amazonses.com ~all
+dig +short MX  send.prendo.com.co          # → feedback-smtp.<región>.amazonses.com
+# Y que lo de antes siga en pie:
+dig +short A   prendo.com.co               # → 216.198.79.1 / 64.29.17.1 (Vercel)
+dig +short A   api-dev.prendo.com.co       # → 66.241.124.156 (Fly)
+curl -sI https://dev.prendo.com.co | head -1
+```
+
+Y en Resend, el dominio en **Verified**. 📚 Suele tardar menos de 15 minutos y puede llegar a 72 horas;
+después de 72 h se usa "Restart verification" ([add-a-domain](https://resend.com/docs/add-a-domain)).
+
+🧠 Antes de salir del panel de Resend, en la configuración del dominio: **apagar open tracking y click
+tracking**. No es cosmético — 📚 Resend advierte que el click tracking "causa problemas con los enlaces de
+verificación de un solo uso de Supabase" porque reescribe la URL del cuerpo
+([deliverability para Supabase Auth](https://resend.com/docs/knowledge-base/how-do-i-maximize-deliverability-for-supabase-auth-emails)).
+Es la misma familia de bug del 03/09: alguien que no es la persona pidiendo el enlace.
+
+#### Paso 3 · 🔴 Reemplazar el DMARC de GoDaddy (no agregarle SPF y DKIM encima)
+
+Lo que hay hoy en `_dmarc.prendo.com.co`, medido el 21/09 y puesto ahí por GoDaddy sin que nadie lo pidiera:
+
+```
+v=DMARC1; p=quarantine; adkim=r; aspf=r; rua=mailto:dmarc_rua@onsecureserver.net
+```
+
+**Qué pasa concretamente si solo se agregan SPF y DKIM y se deja ese registro.** No es que el correo se caiga
+de una: es que se queda `p=quarantine` —"lo que falle, a spam"— con **el diagnóstico apuntando a un buzón de
+GoDaddy**. Y todo lo que puede fallar en el paso 2 falla en silencio: una clave DKIM pegada a medias, el MX
+con la región equivocada, un correo saliendo del apex sin SPF alineado. El resultado es "a Mateo le llega
+bien, al cliente le cae en spam" y **el único informe que diría por qué —el reporte agregado XML— llega a
+`dmarc_rua@onsecureserver.net`, que no es nuestro**. Se estaría eligiendo la política más severa justo en el
+momento de menos visibilidad, que es al revés de como se monta esto.
+
+**Qué poner en su lugar** — 📚 Resend recomienda arrancar en `p=none` con un `rua` que sea "una dirección
+válida capaz de recibir correo", y endurecer a `quarantine` y después a `reject` cuando todas las fuentes
+legítimas pasen ([DMARC en Resend](https://resend.com/docs/dashboard/domains/dmarc)):
+
+```
+v=DMARC1; p=none; rua=mailto:dmarc@prendo.com.co; fo=1
+```
+
+🧠 **Sí, eso es aflojar** respecto al `p=quarantine` de hoy, y es a propósito: una política severa sin
+reportes no protege nada —nadie la está mirando— y sí manda correo propio a spam sin dejar rastro. Primero se
+ve, después se aprieta. La alineación se deja en el default relajado (no se escribe `adkim`/`aspf`) para no
+romper el primer envío; se pasa a estricta cuando los reportes muestren que solo sale correo de Resend.
+
+⚠️ **La trampa del `rua`, que es la que hace que este paso se haga mal.** 📚 Si la dirección de reportes está
+en **otro dominio** que el del registro DMARC, el dominio que recibe tiene que publicar una autorización —
+`prendo.com.co._report._dmarc.<dominio-receptor>  TXT  "v=DMARC1"`
+([DMARC FAQ, external destination verification](https://dmarc.org/wiki/FAQ)). En `gmail.com` eso no se puede
+publicar, así que **un `rua` apuntando al Gmail personal de Mateo hace que muchos receptores simplemente no
+manden los reportes**, y no hay forma de notarlo: se ven cero reportes y parece que no hay problemas.
+
+Además **`prendo.com.co` hoy no tiene MX** (§4.6): `rua=mailto:dmarc@prendo.com.co` escrito hoy no llega a
+ninguna parte. Así que el paso 3 tiene una precondición, y hay que elegir una de estas:
+
+| Opción | Qué implica | 🧠 |
+|---|---|---|
+| **a. Buzón propio en el dominio** — Google Workspace o Zoho en `prendo.com.co`, alias `dmarc@` | MX en el apex (no choca con Resend, su MX va en `send.`), y el `rua` queda en el mismo dominio: cero autorizaciones | **Recomendada.** Es la que hay que hacer igual el día que exista `hola@prendo.com.co` |
+| **b. Servicio de reportes** (el que sea) que da una dirección en *su* dominio y publica él la autorización | Funciona hoy sin montar correo; los reportes los lee su panel | Aceptable como puente |
+| **c. Gmail personal** | Los reportes **no llegan** por lo de arriba | No |
+
+📚 Resend además tiene un analizador de reportes DMARC ([dmarc-analyzer](https://resend.com/docs/dmarc-analyzer))
+para leer los XML, que son ilegibles a mano. 🧠 Si de ese panel sale una dirección de recepción, entra como
+opción (b); eso se confirma ahí, no acá.
+
+**Qué verificar después del paso 3:**
+
+```bash
+dig +short TXT _dmarc.prendo.com.co
+```
+
+- Que devuelva **exactamente un registro**, y que sea el nuestro. 🧠 **Dos registros DMARC equivalen a
+  ninguno**: los receptores los ignoran por completo. Es el resultado típico de "agregar" en vez de
+  "reemplazar" en el panel de GoDaddy, y es 100% silencioso.
+- Que ya no aparezca `onsecureserver.net` por ningún lado.
+- 🧠 **Volver a mirar este registro a las 24 h y a la semana.** Lo puso GoDaddy solo una vez; que no lo
+  vuelva a poner es una suposición, no un hecho medido.
+- A las 48–72 h de tráfico real: que **lleguen** reportes al buzón del `rua`. Cero reportes no es "todo bien",
+  es "el `rua` está mal".
+
+#### Paso 4 · Cargar el SMTP de Resend en Supabase
+
+📚 Los valores son ([SMTP de Resend](https://resend.com/docs/send-with-smtp) ·
+[Supabase + Resend](https://resend.com/docs/send-with-supabase-smtp)):
+
+| Campo | Valor |
+|---|---|
+| Host | `smtp.resend.com` |
+| Port | `465` (SMTPS, TLS desde el primer byte; también acepta 25, 587, 2465, 2587) |
+| Username | `resend` (literal, no un correo) |
+| Password | la **API key** de Resend |
+| Sender email | `no-responder@prendo.com.co` |
+| Sender name | `Prendo` |
+
+Se carga en Authentication → Emails → **SMTP Settings** del proyecto `driyubkodnsqxbtxcmaz`.
+
+🧠 La API key se crea con permiso de **solo envío** (y acotada al dominio si el panel lo permite), se guarda en
+el gestor de contraseñas y **no entra al repo ni a `config.toml`**: es una credencial que manda correo *como la
+plataforma*. Si se filtra, el ataque no es "leer datos", es phishing con nuestro remitente autenticado.
+
+⚠️ **Y falta un paso que no está en ningún panel de SMTP:** 📚 el servicio incluido limita a **2 mensajes por
+hora**, y al configurar SMTP propio Supabase impone un límite inicial de **30 por hora** que hay que subir a
+mano en Authentication → **Rate Limits** ([auth-smtp](https://supabase.com/docs/guides/auth/auth-smtp)).
+**Montar Resend no levanta el techo por sí solo** — si nadie toca ese número, el síntoma que motivó la
+migración sigue igual y parece que Resend no sirvió.
+
+🧠 Al subirlo, tener presente el cupo del plan gratuito de Resend: 3.000 correos al mes **con tope diario de
+100** — dato de resúmenes de terceros ([StackScored](https://www.stackscored.com/pricing/transactional-email/resend/) ·
+[Nuntly](https://nuntly.com/resend-pricing)), **no confirmado contra la doc de Resend**: verificarlo en el
+panel de la cuenta antes de fijar el número. 30/hora × 24 h pasa de 100/día, así que el límite de Supabase no
+es el techo real.
+
+**Qué verificar después del paso 4:** mandar un correo de prueba (el botón "Send test email" si está, o pedir
+una recuperación con una cuenta de prueba) y que aparezca en **Resend → Emails** como *Delivered*. Si Resend
+no lo registra, no salió por ahí: el SMTP quedó mal y Supabase está usando otra cosa o fallando.
+
+#### Paso 5 · Cambiar la Site URL a `https://dev.prendo.com.co` por `PATCH` a la Management API
+
+Las dos plantillas usan `{{ .SiteURL }}`, así que **este paso no es opcional**: si la Site URL sigue en la URL
+vieja de preview, el correo llega perfecto y el enlace lleva al ambiente equivocado, donde el token se canjea
+contra otro proyecto y muere. Sin error, sin log, sin nada.
+
+⚠️ **Nunca `supabase config push`.** Empuja el `config.toml` completo, que es el de desarrollo local: trae
+`enable_signup = true` —**reabriría los registros públicos** que el proyecto tiene cerrados a propósito—,
+`site_url = "http://127.0.0.1:3000"` y el límite de correos en 2/hora. Es decir: desharía el paso 4 y abriría
+el alta pública, en un solo comando. Detalle en `DEPLOY.md` §"NUNCA usar `supabase config push`".
+
+La vía correcta es un `PATCH` quirúrgico con solo los campos necesarios, con un PAT que se revoca al terminar
+(`supabase.com/dashboard/account/tokens`), **guardando el antes para poder comparar**:
+
+```bash
+REF=driyubkodnsqxbtxcmaz   # el que sale de SUPABASE_URL, no el del CLI
+
+curl -s "https://api.supabase.com/v1/projects/$REF/config/auth" \
+  -H "Authorization: Bearer $SUPABASE_PAT" > /tmp/auth-antes.json
+
+curl -s -X PATCH "https://api.supabase.com/v1/projects/$REF/config/auth" \
+  -H "Authorization: Bearer $SUPABASE_PAT" -H "Content-Type: application/json" \
+  -d '{"site_url":"https://dev.prendo.com.co"}'
+
+curl -s "https://api.supabase.com/v1/projects/$REF/config/auth" \
+  -H "Authorization: Bearer $SUPABASE_PAT" > /tmp/auth-despues.json
+diff <(jq -S . /tmp/auth-antes.json) <(jq -S . /tmp/auth-despues.json)
+```
+
+**Qué verificar:** que el `diff` muestre **un solo campo cambiado**, `site_url`. Cualquier otra línea es un
+efecto que nadie pidió.
+
+🧠 De paso, revisar en `/tmp/auth-antes.json` si `uri_allow_list` incluye `https://dev.prendo.com.co/**`. No
+afecta a las plantillas (los enlaces van directo a la app, sin redirect de GoTrue), pero sí al `redirectTo`
+que manda `resetPasswordForEmail` (`src/features/auth/api.ts:143-144`): si no está, Supabase lo reemplaza en
+silencio por la Site URL. Si falta, agregarlo **en el mismo `PATCH`** y volver a comparar.
+
+Y al terminar: **revocar el PAT**.
+
+#### Paso 6 · Pegar las dos plantillas
+
+Authentication → Email Templates. En cada una se reemplaza **todo** el *Message body* —no se mezcla con lo que
+había— y se pone también el *Subject heading* de la tabla del principio:
+
+- **Invite user** ← `docs/correo-invitacion.html` (todo el archivo; el bloque de comentarios `<!-- -->` puede
+  ir o no: los clientes de correo lo ignoran, y dejarlo no rompe nada).
+- **Reset password** ← `docs/correo-recuperacion.html`.
+
+**Qué verificar, y es el error de copiar y pegar más probable de toda la fase:** que el `type` del enlace
+coincida con la plantilla — `type=invite` en la de invitación y **`type=recovery`** en la de recuperación. Se
+verifica **leyendo el enlace del correo que llega**, no el campo del panel: la URL del botón tiene que
+terminar en `&type=recovery` en la de recuperación y en `&type=invite` en la de invitación.
+
+Si quedan cruzados, `verifyOtp` rechaza el token y la persona cae en **"Este enlace ya se usó"**
+(`AuthCallbackPage.tsx:121-131`) — un mensaje que describe otra causa y la manda a pedir un enlace nuevo que va
+a fallar igual. Verificado contra `AuthCallbackPage.tsx:81-82`, que solo acepta `invite` y `recovery`.
+
+#### Paso 7 · Cómo se verifica que quedó bien — las dos pruebas que manda el plan
+
+Las dos se hacen **con una cuenta de prueba**, no con la de Mateo, y **una a la vez**: cada intento consume
+cupo (paso 4) y cada enlace sirve una sola vez.
+
+**7.1 · Que el enlace sobreviva a los crawlers (4 GET simulados y después un navegador real)**
+
+Este es el que prueba que el bug del 03/09 no volvió por el camino del correo. Pedir una recuperación desde
+"¿Olvidaste tu contraseña?" (`LoginPage.tsx:133`), abrir el correo y copiar el enlace **exacto** del botón
+—con su `token_hash`—, y sin abrirlo en el navegador todavía:
+
+```bash
+LINK='https://dev.prendo.com.co/auth/callback?token_hash=PEGAR_EL_REAL&type=recovery'
+
+for UA in "WhatsApp/2.23" \
+          "TelegramBot (like TwitterBot)" \
+          "facebookexternalhit/1.1 (+http://www.facebook.com/externalhit_uatext.php)" \
+          "Slackbot-LinkExpanding 1.0 (+https://api.slack.com/robots)"; do
+  printf '%-45s → %s\n' "${UA%% *}" "$(curl -s -o /dev/null -w '%{http_code} %{redirect_url}' -A "$UA" "$LINK")"
+done
+
+# Y que lo que se bajaron sea el cascarón de la SPA, no un redirect con token:
+curl -s -A "WhatsApp/2.23" "$LINK" | grep -c 'id="root"'   # → 1
+```
+
+**Qué tiene que pasar:** los cuatro devuelven **200** y **sin `redirect_url`**, y el cuerpo es el HTML de la
+app. **Y recién entonces**, abrir el mismo enlace en Chrome: tiene que mostrar el formulario de contraseña y
+dejar guardar. Si guarda, el enlace **sobrevivió a cuatro crawlers** — que es la prueba, no el 200.
+
+**Cómo se lee una falla:** un `302` con `#access_token=…` significa que el token se quemó ahí mismo → la
+plantilla está usando `{{ .ConfirmationURL }}` (o quedó la plantilla por defecto de Supabase, paso 1). Un
+`302` con `#error_code=otp_expired` significa que ya estaba quemado antes de la prueba. Y si el enlace del
+correo apunta a un dominio que no es el nuestro, es el **click tracking de Resend** reescribiéndolo (paso 2).
+
+**7.2 · Que el correo no caiga en spam (Gmail, Outlook y un corporativo)**
+
+Tres destinatarios, porque filtran distinto: **Gmail**, **Outlook/Hotmail** y **una cuenta corporativa** (un
+dominio con Workspace/Microsoft 365 propio y, con suerte, antivirus de correo — es el caso que más se parece
+al de un cliente real).
+
+En cada uno, y esto se anota:
+
+| Qué se mira | Dónde | Qué tiene que decir |
+|---|---|---|
+| Bandeja de entrada vs. spam | a ojo | Entrada |
+| `Authentication-Results` | Gmail: "Mostrar original" · Outlook: "Ver origen del mensaje" | `spf=pass`, `dkim=pass`, `dmarc=pass` |
+| Remitente | encabezado `From` | `Prendo <no-responder@prendo.com.co>` |
+| El enlace del botón | copiar del cuerpo | empieza con `https://dev.prendo.com.co/auth/callback?` — **no** un dominio de tracking |
+| Que el correo se vea | a ojo, en móvil y en escritorio | una columna, botón dorado con texto oscuro, nada roto |
+
+🧠 Si alguno cae en spam **con las tres autenticaciones en `pass`**, no es configuración: es reputación de
+dominio nuevo, y se cura con volumen bajo y constante, no cambiando registros. Antes de tocar el DNS otra vez,
+mirar los reportes del `rua` (paso 3) — para eso se pusieron.
+
+#### Paso 8 · Qué se rompe si esto queda a medias
+
+La distinción que importa no es "grave / leve": es **si alguien se va a enterar**.
+
+**Ruidoso — falla de una y alguien lo reporta el mismo día:**
+
+| Qué quedó mal | Cómo se manifiesta |
+|---|---|
+| API key equivocada o SMTP incompleto | Supabase no logra enviar; la pantalla de recuperación muestra error; **Resend → Emails vacío** |
+| Dominio no verificado todavía y remitente `@prendo.com.co` | Resend rechaza el envío; mismo síntoma que arriba |
+| No se subió el límite de Rate Limits (paso 4) | Sigue el `429` → el backend responde `INVITE_RATE_LIMITED` con "espera unos minutos". Ruidoso **porque existe un código de error para eso** |
+
+**Silencioso — el correo llega, se ve bien, y algo está roto:**
+
+| Qué quedó mal | Por qué nadie se entera |
+|---|---|
+| **Site URL sin cambiar** (paso 5) | El enlace lleva al ambiente viejo y el token se canjea contra otro proyecto: "Este enlace ya se usó", indistinguible de un enlace vencido. Ningún log dice "URL equivocada" |
+| **`type=invite` en la plantilla de recuperación** (paso 6) | Misma pantalla, misma conclusión equivocada: la persona pide otro enlace y vuelve a fallar |
+| **Plantilla sin aplicar pero SMTP montado** (paso 1) | Los correos salen lindos por Resend con la plantilla por defecto, que usa `{{ .ConfirmationURL }}`: **el bug del 03/09 vivo otra vez**, y solo se cae cuando el enlace pasa por un chat o un escáner corporativo — o sea, con clientes reales y no en las pruebas |
+| **Click tracking encendido** (paso 2) | El enlace funciona (nuestro canje es POST), así que nada se rompe hoy; lo que se degrada es la entrega, y se paga en spam meses después |
+| **SPF/DKIM agregados sobre el `p=quarantine` de GoDaddy** (paso 3) | El correo puede irse a cuarentena y el informe que lo explicaría llega a un buzón de GoDaddy. La falla y su diagnóstico van a lugares distintos |
+| **Dos registros `_dmarc`** (paso 3) | Los receptores ignoran DMARC por completo. Nada falla, y la protección que se cree tener no existe |
+| **`rua` sin MX o en un dominio ajeno sin `_report._dmarc`** (paso 3) | Cero reportes, leído como "cero problemas" |
+
+🧠 Regla de cierre: **la fase no se da por cerrada con "quedó configurado"**, se cierra con el 7.1 pasando y
+las tres autenticaciones en `pass` del 7.2, anotados con fecha acá. Todo lo silencioso de esta tabla solo se
+descubre haciendo esas dos pruebas; ninguna alerta las va a hacer por nosotros.
 
 ### 5b · Notificaciones de negocio — esto sí es construir
 
@@ -541,8 +876,8 @@ El proyecto ya tiene una cultura de verificación escrita; esto la aplica, no la
 | 4 | Que el backend acepte el origen nuevo | ✅ `fetch` real desde la página (no un preflight simulado): 200 `type:"cors"`, y 401 con cuerpo legible |
 | 4 | Que las cuatro puntas coincidan | ✅ Login real de punta a punta sobre el dominio nuevo, en Chrome |
 | 4 | Que el bundle hable con el backend nuevo | ✅ `grep` sobre el JS **servido**: aparece `api-dev.`, desapareció `.fly.dev` |
-| 5 | Que el enlace **sobreviva a los crawlers** | 4 GET simulados y después abrirlo en un navegador real |
-| 5 | Que el correo no caiga en spam | Envío a Gmail, Outlook y un corporativo |
+| 5 | Que el enlace **sobreviva a los crawlers** | 4 GET simulados y después abrirlo en un navegador real — comandos en §5a paso 7.1 |
+| 5 | Que el correo no caiga en spam | Envío a Gmail, Outlook y un corporativo, leyendo `Authentication-Results` — §5a paso 7.2 |
 
 **Tres trampas del proyecto que aplican acá:**
 
