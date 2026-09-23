@@ -2,6 +2,45 @@
 
 > Registro vivo de qué existe en el código, cómo está armado y por qué se tomó cada decisión — para que cualquiera (humano o Claude Code) pueda retomar el proyecto sin releer todo el historial de commits. Se actualiza en cada paso del "Orden de implementación" de `CLAUDE.md`. No repite lo que ya está en `ARCHITECTURE.md`/`DESIGN_SYSTEM.md` (el qué-debería-ser); esto es el qué-hay-hoy y las decisiones concretas tomadas al construirlo.
 
+## «Costo detenido» ya dice la verdad, y el correo del cliente se valida en el backend (23/09/2026)
+
+Cambios de **backend** (hallazgos **F21-25**, **F21-29** y **F21-19** de
+`../backend-starter/docs/QA_AUDITORIA.md`). Se anotan acá porque los dos primeros cambian un número que el
+front ya muestra. **Ningún cambio de contrato: `npm run gen:api` no hace falta, y no hay nada que tocar en
+el front para que siga funcionando.**
+
+**F21-25 — los totales de `/reports/stale-inventory` eran los de la PÁGINA.** `product_count` y
+`total_cost_value` se sumaban sobre los `items` devueltos, y `reports/api.ts` pide esa tarjeta con
+`limit: 20`. Con más de 20 productos dormidos, *«N productos con $X en costo detenido»* daba las **dos
+cifras por debajo** — y corto es la dirección peligrosa: ese número es el que el dueño mira para decidir si
+remata mercancía parada, y "no es tanto" es justo la conclusión equivocada. Ahora los dos salen del
+universo completo (ventana sobre el mismo CTE del ranking, así el umbral se escribe una sola vez).
+
+**Qué se ve distinto en pantalla:** el mismo campo, con el número **verdadero**, que en una empresa con más
+de 20 productos dormidos será **más alto** que el de ayer. La lista sigue topada en 20 a propósito: es un
+ranking de los más antiguos, no el inventario entero.
+
+**Pendiente cosmético, para quien toque `StaleCard`:** ahora la tarjeta **cuenta todo pero lista 20**, así
+que vale decirlo — algo como *«mostrando los 20 más antiguos»* debajo de la tabla cuando
+`product_count > items.length`. No es un defecto: sin esa línea el número ya es correcto, que es lo que
+estaba mal.
+
+**F21-29 — el rótulo del umbral.** El `having` del backend es `>=` y **se queda así**: el producto que
+acaba de cumplir los 90 días es justamente el que hay que ver el primer día. O sea que el lado equivocado
+era el rótulo, y el front ya lo corrigió en la tanda de abajo (*«días o más»*). Del lado del backend quedó
+documentado como intencional y **clavado por un test**, que falla si alguien lo cambia a `>`.
+
+**F21-19 — `email` del cliente ahora se valida en el backend.** Hasta hoy el formato lo cuidaba **solo** el
+`zod` de `CustomerFormDialog`: cualquier otro consumidor de la API escribía basura sin resistencia. Ahora
+`POST`/`PATCH /customers` responden `422` con `code: "VALIDATION_ERROR"` y `email` en
+`details.errors[].loc` — el formato que `applyServerErrors` ya sabe pintar campo por campo.
+
+**No cambia nada para el formulario:** su `zod` rechaza lo mismo antes de salir, y ya manda `null` (no
+cadena vacía) cuando el campo queda en blanco. El único delta en el `openapi.json` es `"format": "email"`
+en el campo de entrada, que `openapi-typescript` sigue mapeando a `string`. **La respuesta
+(`CustomerOut.email`) quedó sin validar a propósito**, para que una fila vieja mal escrita no convierta la
+lectura de una ficha en un 500.
+
 ## Cuatro defectos menores de front: dos textos que mentían y dos comentarios (23/09/2026)
 
 Tanda chica de cierre sobre hallazgos ya diagnosticados en `../backend-starter/docs/QA_AUDITORIA.md`
