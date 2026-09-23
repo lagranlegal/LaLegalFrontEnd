@@ -49,6 +49,14 @@ export const API_ERROR_CODES = [
   'SALE_ACCOUNT_NOT_SETTLED',
   'RETURN_TIME_LIMIT_EXCEEDED',
   'CREDIT_NOTE_INSUFFICIENT_BALANCE',
+  // Anular una venta que YA tiene devoluciones (F21-31). No es "ya está
+  // anulada": la venta sigue viva y lo devuelto ya se liquidó con el
+  // cliente, así que anular pagaría dos veces y repondría dos veces el
+  // stock. Cae al toast con el mensaje del backend, que nombra la salida
+  // (registrar una devolución por lo que falta); `details` trae
+  // `{return_count, return_numbers, return_ids}` para poder decir «esta
+  // venta tiene la devolución Nº 4».
+  'SALE_HAS_RETURNS',
   // Identidad (04/09/2026). Los tres reemplazan errores que se leían como
   // fallas del sistema —un 500 en texto plano y dos 502 "no se pudo invitar en
   // Supabase Auth"— cuando en realidad el admin tenía que hacer otra cosa.

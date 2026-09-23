@@ -2,6 +2,44 @@
 
 > Registro vivo de qué existe en el código, cómo está armado y por qué se tomó cada decisión — para que cualquiera (humano o Claude Code) pueda retomar el proyecto sin releer todo el historial de commits. Se actualiza en cada paso del "Orden de implementación" de `CLAUDE.md`. No repite lo que ya está en `ARCHITECTURE.md`/`DESIGN_SYSTEM.md` (el qué-debería-ser); esto es el qué-hay-hoy y las decisiones concretas tomadas al construirlo.
 
+## Anular una venta ya devuelta: se rechaza, con código propio (23/09/2026)
+
+Cambio de **backend** (hallazgo **F21-31** de `../backend-starter/docs/QA_AUDITORIA.md`), con dos líneas de
+front. Es la deuda que el cierre de F21-12 dejó anotada el día anterior.
+
+**El defecto, medido en local.** `sales.void_sale` no miraba las devoluciones: reponía **todas** las líneas
+de la venta y sacaba de caja el `total` **entero**. Con un lote de 5 unidades, una venta de 2 y una
+devolución de 1 reingresada, anular dejaba el stock en **6** (una unidad inventada sobre un stock que nunca
+pasó de 5) y **1.500.000** pagados por una venta de 1.000.000.
+
+**La decisión: rechazar, no anular "solo el remanente".** Anular significa *«esta venta nunca debió
+existir»*; una devolución es un hecho que **ya ocurrió y ya se liquidó** con el cliente, en efectivo o con
+una nota crédito que puede estar redimida en otra venta. Además, el remanente en plata no tiene un número
+bien definido en el módulo: la devolución se calcula sobre el **bruto** y `sale.total` es **neto** del
+descuento de cabecera, así que anular parcialmente exigiría una **cuarta** definición del prorrateo que
+F21-12 mantuvo a propósito en tres lugares. Y el criterio de la casa: *cerrado de más se nota; abierto de
+más no*. La salida legítima ya existe y es parcial: **registrar otra devolución** por las líneas que faltan.
+
+**El contrato nuevo: `SALE_HAS_RETURNS` (409).** Código propio y no el `CONFLICT` de «ya está anulada», por
+la misma razón que `CONTRACT_SUPERSEDED` no es `CONTRACT_CLOSED`: la venta sigue viva y el mensaje tiene
+que mandar a **otra** acción. Está en `src/lib/api/errors.ts` y en `API_GUIDE.md` §15. `details` trae
+`{return_count, return_numbers, return_ids}`, así que la UI puede nombrar la devolución (*«esta venta tiene
+la devolución Nº 4»*) y llevar a ella — hoy solo se muestra el mensaje; el enlace queda como mejora obvia
+con los datos ya en la mano.
+
+**Lo que cambió en pantalla:**
+
+- `SaleReceiptDialog.tsx` — el `catch` de anular mostraba **siempre** *«No se pudo anular la venta. Intenta
+  de nuevo.»*, tragándose el mensaje del backend. Sobre un rechazo que nunca va a cambiar, «intenta de
+  nuevo» es el callejón sin salida que este proyecto tiene escrito como regla, y habría vuelto invisible
+  todo el punto del código de error. Ahora muestra `error.message` cuando es un `ApiError`.
+- `lib/sales/void.ts` — el docstring decía que *«anular no mueve caja de nuevo; solo cambia el estado»*.
+  Es falso: anular emite un contra-movimiento `out` por el total y por eso exige caja abierta. Corregido
+  (misma familia que F21-26, «un comentario que dice lo contrario del código»).
+
+**No hay que regenerar tipos**: no cambió ningún schema del `openapi.json`, solo un código de error nuevo en
+una respuesta 409 y el catálogo del front, que es una lista escrita a mano.
+
 ## «Devoluciones», la línea que faltaba en el Estado de resultados (22/09/2026)
 
 Cambio de **backend** (hallazgo **F21-12** de `../backend-starter/docs/QA_AUDITORIA.md`, ALTO y de dinero),

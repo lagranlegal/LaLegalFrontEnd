@@ -14,6 +14,7 @@ import { PAYMENT_METHOD_LABELS } from '@/lib/paymentMethods'
 import { useCustomer } from '@/lib/customers/search'
 import { useItemsByIds, type Item } from '@/lib/inventory/items'
 import { formatQuantity } from '@/lib/inventory/units'
+import { ApiError } from '@/lib/api/errors'
 import { useVoidSale, type Sale } from '@/lib/sales/void'
 import { useSaleReturns, RETURN_REASON_LABELS, RETURN_SETTLEMENT_LABELS } from '@/lib/sales/returns'
 import type { components } from '@/types/api'
@@ -70,8 +71,12 @@ export function SaleReceiptDialog({ open, onOpenChange, sale }: { open: boolean;
     try {
       await voidSale.mutateAsync({ saleId: sale.id, reason: result.reason })
       toast.success('Venta anulada')
-    } catch {
-      toast.error('No se pudo anular la venta. Intenta de nuevo.')
+    } catch (error) {
+      // El mensaje del backend, no uno genérico: `SALE_HAS_RETURNS` (F21-31)
+      // explica que la venta tiene devoluciones y qué hacer en su lugar.
+      // «Intenta de nuevo» sobre un rechazo que nunca va a cambiar es un
+      // callejón sin salida.
+      toast.error(error instanceof ApiError ? error.message : 'No se pudo anular la venta. Intenta de nuevo.')
     }
   }
 
