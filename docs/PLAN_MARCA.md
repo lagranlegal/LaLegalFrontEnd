@@ -582,6 +582,32 @@ verificado aparte, y el apex se queda con los correos de autenticación.
 ([troubleshooting de verificación](https://resend.com/docs/knowledge-base/what-if-my-domain-is-not-verifying)).
 La forma habitual es:
 
+> **✅ LO QUE RESEND PIDIÓ DE VERDAD — medido el 23/09/2026, ya verificado.** La forma de abajo era la
+> documentada y **no fue la que tocó**. Lo real, leído de los NS autoritativos:
+>
+> | Nombre | Tipo | Valor |
+> |---|---|---|
+> | `resend._domainkey` | `TXT` | `p=MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQDBwd1H2stfeGCEDUIhpoo4…` |
+> | `send` | **`CNAME`** | `send.forge.rmta.net.` |
+>
+> **Dos registros, no tres, y el del medio es un CNAME.** El SPF y el MX de Return-Path viven **al final de
+> ese CNAME**, en infraestructura de Resend: `v=spf1 ip4:52.3.252.119 ip4:44.222.39.36
+> ip4:199.249.231.0/24 ~all` y `10 feedback.forge.rmta.net`.
+>
+> **Es mejor que lo documentado, y conviene entender por qué:** con un CNAME, **Resend puede rotar sus IPs
+> de envío sin que nosotros toquemos el DNS**. Con el SPF pegado a mano, cada cambio de su lado nos habría
+> dejado un SPF viejo apuntando a IPs que ya no envían — y eso no falla ruidosamente: el correo empieza a
+> caer en spam sin ninguna señal.
+>
+> **Y Resend ya no usa Amazon SES**, al menos para este dominio: es `rmta.net`, infraestructura propia. La
+> forma de abajo —`include:amazonses.com`, `feedback-smtp.<región>.amazonses.com`— quedó obsoleta.
+>
+> **Verificado que no rompió nada de lo que ya estaba:** apex, `dev`, `www` y `api-dev` intactos. Y **el
+> apex quedó sin SPF y sin MX propios**, que era exactamente el punto de verificar el apex: montar un
+> Google Workspace en `prendo.com.co` más adelante sigue sin conflicto.
+
+**La forma que este runbook documentaba (obsoleta, se deja como registro):**
+
 | Nombre (en GoDaddy, relativo al dominio) | Tipo | Valor | Notas |
 |---|---|---|---|
 | `resend._domainkey` | `TXT` | la clave pública que muestra el panel | se pega completa, sin cortar ni reacomodar saltos de línea |
