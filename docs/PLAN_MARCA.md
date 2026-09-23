@@ -405,16 +405,29 @@ Dos de esas filas dicen más de lo que parece:
 | `api-dev` | `A` | `66.241.124.156` (Fly, IPv4 compartida) |
 | `api-dev` | `AAAA` | `2a09:8280:1::16e:d34e:0` (Fly, IPv6 dedicada) |
 
-`prendo.com.co` tiene NS de GoDaddy (`ns45.domaincontrol.com` / `ns46.domaincontrol.com`). **No hay SPF ni
-MX**, y el `DMARC` que GoDaddy auto-provisionó es:
+`prendo.com.co` tiene NS de GoDaddy (`ns45.domaincontrol.com` / `ns46.domaincontrol.com`).
 
-```
-v=DMARC1; p=quarantine; adkim=r; aspf=r; rua=mailto:dmarc_rua@onsecureserver.net
-```
-
-**La trampa sigue en pie para la Fase 5:** al montar Resend hay que **reemplazar** ese `DMARC`, no agregarle
-SPF y DKIM encima. Un `p=quarantine` heredado, con los reportes yendo a un buzón ajeno, manda el correo
-propio a spam sin decir por qué.
+> **✅ La trampa del DMARC SE DISOLVIÓ — medido el 22/09/2026.** Este documento (y `CONTINUAR.md`, y
+> `ESTADO.md`) venía advirtiendo dos veces que GoDaddy había auto-provisionado
+> `v=DMARC1; p=quarantine; adkim=r; aspf=r; rua=mailto:dmarc_rua@onsecureserver.net` —con los reportes
+> yendo a **un buzón de ellos**— y que al montar Resend había que **reemplazarlo**, no sumarle SPF y DKIM
+> encima.
+>
+> **Ese registro ya no existe.** Desapareció al reemplazar los registros del parking el 21/09. Verificado
+> contra los **dos** NS autoritativos y contra dos resolvers públicos (8.8.8.8 y 1.1.1.1), con el dominio
+> respondiendo normal — o sea que es una ausencia real, no un fallo de consulta.
+>
+> **Estado del DNS de correo hoy: completamente limpio.** Sin `MX`, sin `SPF`, sin `DMARC`, sin
+> `resend._domainkey`, sin `send.`. No hay nada que reemplazar ni con qué chocar: lo que pida Resend se
+> agrega tal cual.
+>
+> **Lo que esto NO significa:** que no haya que poner DMARC. Un dominio sin DMARC no está protegido — sigue
+> conviniendo publicar uno propio **después** de que SPF y DKIM estén verificados y mandando bien, con los
+> reportes a un buzón nuestro. Se empieza en `p=none` (solo observar) y se endurece cuando los reportes
+> muestren que todo el correo legítimo pasa. Endurecerlo antes manda a spam el correo propio.
+>
+> **La lección, que es la de siempre:** una trampa anotada hace dos días puede haber dejado de existir. Se
+> mide antes de trabajar sobre ella — no porque el documento mintiera, sino porque el mundo se movió.
 
 ### 4.7 · Lo que queda abierto de la fase (menor, no bloqueante)
 
@@ -768,6 +781,25 @@ Si quedan cruzados, `verifyOtp` rechaza el token y la persona cae en **"Este enl
 a fallar igual. Verificado contra `AuthCallbackPage.tsx:81-82`, que solo acepta `invite` y `recovery`.
 
 #### Paso 7 · Cómo se verifica que quedó bien — las dos pruebas que manda el plan
+
+> **✅ La 7.1 ya está automatizada: `backend-starter/scripts/qa/verificar_enlace_correo.sh`.**
+> Se le pasa el enlace del correo entre comillas y prueba los cuatro crawlers, que el cuerpo sea el
+> cascarón de la SPA y que no venga ningún token en la respuesta. Sale con **1** si algo falla, y el
+> encabezado del archivo explica cómo se lee cada falla. Sin argumento prueba solo la **ruta** con un token
+> falso — útil para verificar dominio y enrutamiento, pero **no** el canje.
+>
+> **Probado el 22/09/2026, antes de tener nada de Resend:** la ruta `/auth/callback` en
+> `dev.prendo.com.co` devuelve **200 sin redirect** a los cuatro crawlers, el cuerpo es el cascarón de la
+> SPA y el token **no aparece** en la respuesta. La precondición de toda la fase está cumplida y no depende
+> del proveedor de correo.
+>
+> 🔴 **Y salió un requisito que no estaba escrito: el enlace tiene que apuntar a `dev.prendo.com.co`
+> DIRECTO, nunca al apex.** Ejercido contra `prendo.com.co/auth/callback`: los cuatro crawlers reciben
+> **308** y el cuerpo no es la app. Un enlace de un solo uso que pasa por un redirect es justo el tipo de
+> cosa que falla de forma rara y difícil de diagnosticar. **Por eso la Site URL del proyecto Supabase va en
+> `https://dev.prendo.com.co` y no en el apex** — que es además como quedó decidido en el paso 5, ahora con
+> una razón medida detrás.
+
 
 Las dos se hacen **con una cuenta de prueba**, no con la de Mateo, y **una a la vez**: cada intento consume
 cupo (paso 4) y cada enlace sirve una sola vez.
