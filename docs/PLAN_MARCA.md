@@ -594,8 +594,13 @@ elige una vez y se anota acá.
 **Cómo conviven con lo que ya está pegado: no se toca nada de lo que hay.** Los registros nuevos viven en
 nombres que hoy no existen (`resend._domainkey`, `send`) y el DMARC del paso 3 en `_dmarc`. Los A/AAAA/CNAME
 de Vercel y Fly (`@`, `dev`, `www`, `api-dev` — tabla en §4.6) **no se modifican ni se borran**: son nombres
-distintos y tipos distintos. El único registro que se **reemplaza** es el `_dmarc` que GoDaddy
-auto-provisionó, y eso es el paso 3.
+distintos y tipos distintos.
+
+> **Corregido el 22/09/2026:** este párrafo decía que había que **reemplazar** el `_dmarc` que GoDaddy
+> auto-provisionó. **Ese registro ya no existe** — desapareció al reemplazar los registros del parking, y se
+> verificó contra los dos NS autoritativos y dos resolvers públicos (ver §4.6). Así que **no se reemplaza
+> nada: todo lo de correo se agrega sobre un DNS limpio.** El paso 3 deja de ser «reemplazar» y pasa a ser
+> «publicar el primero», que es más simple y menos riesgoso.
 
 **Trampas de GoDaddy** 🧠: su formulario espera el nombre **relativo a la zona** (`send`, no
 `send.prendo.com.co`) y si se escribe completo queda `send.prendo.com.co.prendo.com.co`, que no falla: solo no
@@ -623,7 +628,21 @@ verificación de un solo uso de Supabase" porque reescribe la URL del cuerpo
 ([deliverability para Supabase Auth](https://resend.com/docs/knowledge-base/how-do-i-maximize-deliverability-for-supabase-auth-emails)).
 Es la misma familia de bug del 03/09: alguien que no es la persona pidiendo el enlace.
 
-#### Paso 3 · 🔴 Reemplazar el DMARC de GoDaddy (no agregarle SPF y DKIM encima)
+#### Paso 3 · Publicar el DMARC (ya no hay ninguno que reemplazar)
+
+> **Cambió el 22/09/2026.** Este paso se llamaba «🔴 Reemplazar el DMARC de GoDaddy» y era el más delicado
+> de la fase. **El registro de GoDaddy ya no existe** (medido contra los dos NS autoritativos y dos
+> resolvers públicos, §4.6), así que no hay nada que reemplazar: se **publica el primero**, sobre un
+> `_dmarc` vacío. Más simple y sin el riesgo de dejar dos registros conviviendo.
+>
+> **Lo que NO cambia:** sigue habiendo que publicarlo. Un dominio sin DMARC no está protegido. Y sigue
+> valiendo el orden — **primero `p=none`**, que solo observa, y recién se endurece cuando los reportes
+> muestren que todo el correo legítimo pasa. Endurecer antes de tener esa evidencia manda a spam el correo
+> propio, que es exactamente el daño que el paso original quería evitar.
+>
+> **Y el `rua` va a un buzón nuestro.** El registro viejo mandaba los reportes a `onsecureserver.net`, de
+> GoDaddy — o sea que los reportes existían y no los leía nadie de este proyecto. Al publicar el nuestro,
+> ese buzón tiene que ser uno que alguien abra.
 
 Lo que hay hoy en `_dmarc.prendo.com.co`, medido el 21/09 y puesto ahí por GoDaddy sin que nadie lo pidiera:
 
