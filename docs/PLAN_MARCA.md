@@ -809,6 +809,24 @@ Y al terminar: **revocar el PAT**.
 
 #### Paso 6 · Pegar las dos plantillas
 
+> **🔴 Guardar no es aplicar: Supabase cachea las plantillas unos minutos.** Medido el 23/09/2026 y costó
+> un diagnóstico entero. Se guardaron las dos plantillas, se pidió un correo de recuperación y **llegó con
+> el enlace viejo** (`/auth/v1/verify`, o sea `{{ .ConfirmationURL }}`). El editor mostraba el cuerpo nuevo
+> y la plantilla era la correcta. Minutos después, el mismo flujo ya salía con `token_hash`.
+>
+> **Después de guardar, esperar unos minutos antes de probar** — y si el correo sale con la forma vieja, la
+> primera hipótesis es el caché, no un error de configuración.
+>
+> **Y una trampa de método que también costó:** el `iat` del JWT que aparece cuando un enlace se quema es
+> **cuándo se canjeó**, no cuándo se envió el correo. Un enlace de recuperación vive hasta una hora, así que
+> un `iat` reciente **no prueba** que el correo sea reciente. Es fácil medir un correo viejo de la bandeja y
+> concluir que la plantilla falla. **Borrar los correos viejos antes de probar** — es *"un fixture inventado
+> no falla, bendice"* con otra ropa: acá el fixture es un correo que quedó dando vueltas.
+>
+> Es la misma familia que el resto del proyecto: **`git push` no es desplegar**, **republicar no es mover el
+> pin**, y ahora **guardar no es aplicar**.
+
+
 Authentication → Email Templates. En cada una se reemplaza **todo** el *Message body* —no se mezcla con lo que
 había— y se pone también el *Subject heading* de la tabla del principio:
 
