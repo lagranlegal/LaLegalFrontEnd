@@ -21,8 +21,13 @@ function SectionSkeleton() {
  * sumaba: había que abrir los ingresos uno por uno para saber cuánto se debe.
  *
  * La antigüedad va en tramos porque una deuda de hace tres meses y una de
- * ayer no son el mismo problema, aunque sumen igual. El proveedor con la
- * deuda más vieja aparece primero en la lectura, no el que más debe.
+ * ayer no son el mismo problema, aunque sumen igual.
+ *
+ * La tabla llega ordenada por MONTO, de mayor a menor (`order by
+ * sum(e.total_cost) desc` en `reports/repository.py::payables_by_supplier`):
+ * arriba queda el proveedor al que más se le debe, no el de la deuda más
+ * vieja. La antigüedad no se lee por la posición en la lista sino por las
+ * columnas «Más antigua» y «+60 días».
  */
 function PayablesCard() {
   const { data, isPending, isError, refetch } = usePayables()
@@ -202,20 +207,26 @@ function StaleCard() {
   return (
     <div className="flex flex-col gap-3">
       <div className="flex flex-wrap items-center gap-2">
-        <span className="text-xs text-muted-foreground">Sin venderse hace más de</span>
+        {/* El umbral es inclusivo: el SQL filtra con `having … >= :threshold`
+            (`reports/repository.py::stale_inventory`), así que con 90 marcado
+            un producto de exactamente 90 días SÍ aparece. Decía "hace más de"
+            y dejaba afuera, en el rótulo, una fila que la tabla sí muestra. */}
+        <span className="text-xs text-muted-foreground">Sin venderse hace</span>
         {STALE_THRESHOLDS.map((dias) => (
           <button
             key={dias}
             type="button"
             onClick={() => setThreshold(dias)}
+            aria-label={`${dias} días o más`}
             className={cn(
               'rounded-pill px-3 py-1 text-sm font-medium transition-colors',
               threshold === dias ? 'bg-primary text-primary-foreground' : 'bg-background text-muted-foreground hover:bg-accent',
             )}
           >
-            {dias} días
+            {dias}
           </button>
         ))}
+        <span className="text-xs text-muted-foreground">días o más</span>
       </div>
 
       {isPending && <SectionSkeleton />}
@@ -232,7 +243,7 @@ function StaleCard() {
       {data && data.items.length === 0 && (
         <div className="rounded-card border border-border bg-card shadow-card">
           <EmptyState
-            title={`Nada lleva más de ${threshold} días sin venderse`}
+            title={`Nada lleva ${threshold} días o más sin venderse`}
             description="Todo el inventario disponible tiene rotación reciente."
           />
         </div>

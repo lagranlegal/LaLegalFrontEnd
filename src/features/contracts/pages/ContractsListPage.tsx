@@ -123,9 +123,19 @@ export function ContractsListPage() {
 
       <SearchInput value={q} onChange={setQ} placeholder="Buscar por número o código anterior…" className="max-w-sm" />
 
-      {!isSearching && (
-        <div className="flex flex-wrap items-center gap-2">
-          {STATUS_TABS.map((tab) => (
+      {/* Las pestañas se ocultan al buscar porque el buscador cruza TODOS los
+          estados: dejarlas visibles sugeriría que el resultado está acotado a
+          la pestaña marcada, y no lo está. El botón de exportar, en cambio, se
+          queda en pantalla siempre — desaparecía junto con las pestañas y
+          parecía que la función se había ido (F21-16). Mientras se busca va
+          deshabilitado y con el motivo al lado: lo que exporta es la pestaña
+          de estado completa, y durante la búsqueda no hay pestaña. Exportar el
+          resultado del buscador sería otra cosa —un tope de 20 filas, ver
+          `useContractSearch`— y entregar un Excel recortado en silencio es
+          peor que no entregarlo. */}
+      <div className="flex flex-wrap items-center gap-2">
+        {!isSearching &&
+          STATUS_TABS.map((tab) => (
             <button
               key={tab.value}
               type="button"
@@ -139,14 +149,16 @@ export function ContractsListPage() {
             </button>
           ))}
 
+        <div className="ml-auto flex flex-wrap items-center justify-end gap-2">
+          {isSearching && <span className="text-xs text-muted-foreground">Para exportar, limpia la búsqueda y elige un estado.</span>}
           {/* Exporta la pestaña de estado activa completa, no solo la
               página ya cargada — mismo criterio que Inventario. */}
-          <Button variant="outline" size="sm" className="ml-auto" disabled={isExporting} onClick={handleExport}>
+          <Button variant="outline" size="sm" disabled={isExporting || isSearching} onClick={handleExport}>
             <Download className="size-4" />
             {isExporting ? 'Exportando…' : 'Exportar a Excel'}
           </Button>
         </div>
-      )}
+      </div>
 
       <DataTable
         columns={columns}

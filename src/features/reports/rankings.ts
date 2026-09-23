@@ -20,11 +20,12 @@ export interface CategoryRanking {
 
 /**
  * "Prendas más vendidas" / "categorías más movidas" — pedido explícito del
- * cliente, sobre TODO el histórico (no el rango elegido arriba): `GET /sales`
- * no tiene filtro de fecha, así que acotar esto a un rango exigiría traer
- * todas las ventas igual y filtrar en el navegador — se prefirió ser
- * honestos y mostrarlo como "histórico completo" en vez de fingir que está
- * filtrado quedándose corto (decisión confirmada explícitamente).
+ * cliente, ACOTADO al rango elegido arriba: desde el 02/09/2026 `GET /sales`
+ * acepta `?from_date`/`?to_date` y `useItemSales` los manda (ver
+ * `features/reports/api.ts`), así que `sales` ya llega filtrado por fecha y
+ * acá solo se agrega. Hasta esa fecha era el histórico completo, porque el
+ * endpoint no tenía filtro y se prefirió rotularlo como tal antes que fingir
+ * un rango quedándose corto; la UI y la guía ya dicen "del rango".
  *
  * `items` es el catálogo completo (`GET /inventory/items` sin filtro de
  * status) — se usa para resolver nombre/categoría de cada línea de venta SIN

@@ -2,6 +2,70 @@
 
 > Registro vivo de qué existe en el código, cómo está armado y por qué se tomó cada decisión — para que cualquiera (humano o Claude Code) pueda retomar el proyecto sin releer todo el historial de commits. Se actualiza en cada paso del "Orden de implementación" de `CLAUDE.md`. No repite lo que ya está en `ARCHITECTURE.md`/`DESIGN_SYSTEM.md` (el qué-debería-ser); esto es el qué-hay-hoy y las decisiones concretas tomadas al construirlo.
 
+## Cuatro defectos menores de front: dos textos que mentían y dos comentarios (23/09/2026)
+
+Tanda chica de cierre sobre hallazgos ya diagnosticados en `../backend-starter/docs/QA_AUDITORIA.md`
+(**F21-01**, **F21-16**, **F21-26**, **F21-27** y, de paso, **F21-29**). Ningún cambio de contrato, ningún
+tipo regenerado, cero backend.
+
+**F21-01 — «(Enter agrega)» en el buscador del carrito (`SaleFormPage.tsx`).** El buscador vive **dentro
+del `<form>`**, así que Enter dispara el submit, o sea **registrar la venta**. Verificado en el navegador
+antes de tocar nada: con el carrito vacío, Enter en el buscador deja el error *«Agrega al menos un artículo
+al carrito»* — es el submit corriendo, no un "agregar" que no pasa nada.
+
+Se corrigió el **texto**, no el comportamiento: ahora dice **«(agrega con clic)»**. Hacer que Enter sí
+agregara era la opción mejor como producto —un punto de venta se maneja con teclado— pero **no es
+contenida**: `ItemPicker` es compartido (carrito, egresos de inventario y transformaciones), no tiene
+noción de "resultado resaltado" (hoy cada resultado es un `<button>` con su `onClick` y nada más), y
+`SearchInput` no expone `onKeyDown`. Y hay una trampa peor: `SearchInput` **debouncea 300 ms**, así que
+entre lo tipeado y `data` hay un desfase — un cajero que escribe el código y remata con Enter agregaría lo
+que había en la lista **antes** de su última tecla. Un "Enter agrega" que agrega el artículo equivocado es
+peor que el que no existe. Queda propuesto como **tanda propia** (resaltado + flechas + `preventDefault` +
+resolver el desfase del debounce), no como un parche de una línea.
+
+*Nota de mobile*: a 360 px el `placeholder` se corta antes del paréntesis (le pasaba igual al texto viejo).
+La pista de que se agrega con clic sobrevive en la descripción del `PageHeader`; la mentira, que era lo
+grave, ya no está en ningún ancho.
+
+**F21-16 — «Exportar a Excel» desaparecía al buscar (`ContractsListPage.tsx`).** El botón estaba dentro
+del mismo `{!isSearching && …}` que las **pestañas de estado**, y al escribir en el buscador se iba con
+ellas: parecía que la función se había ido del producto.
+
+Las pestañas **se siguen ocultando**, y está bien que así sea: el buscador cruza **todos** los estados, y
+dejar una pestaña marcada sugeriría que el resultado está acotado a ella. El botón, en cambio, ahora se
+queda **siempre en pantalla**; mientras se busca va **deshabilitado y con el motivo al lado** (*«Para
+exportar, limpia la búsqueda y elige un estado»*). No se eligió exportar el resultado del buscador porque
+sería **otra** exportación: `useContractSearch` pide `GET /contracts?q=…&limit=20`, un tope de 20 filas sin
+cursor, mientras que el botón de hoy baja la **pestaña completa** vía `fetchAllContracts`. Entregar un
+Excel recortado en silencio es peor que no entregarlo — mismo criterio con el que el módulo ya rotula el
+buscador como parche client-side. Lo que no podía quedar era la desaparición muda.
+
+**F21-26 — el docstring de `PayablesCard` decía lo contrario del SQL (`ContablesSection.tsx`).** Afirmaba
+que *«el proveedor con la deuda más vieja aparece primero, no el que más debe»*. `payables_by_supplier`
+cierra con `order by sum(e.total_cost) desc`: es **exactamente al revés**. Reescrito sobre lo que hace el
+SQL, y diciendo dónde **sí** se lee la antigüedad (las columnas «Más antigua» y «+60 días»). Misma familia
+que el docstring de `lib/sales/void.ts` de la tanda anterior: un comentario puede estar mintiendo.
+
+**F21-27 — el ranking ya no es «todo el histórico» (`rankings.ts`).** El docstring justificaba mostrar el
+histórico completo *«porque `GET /sales` no tiene filtro de fecha»*. Desde el **02/09/2026 sí lo tiene** y
+`useItemSales` manda `from_date`/`to_date` (`reports/api.ts`), así que `sales` **llega filtrado** y la
+función solo agrega. La UI y la guía ya decían «del rango»: el comentario era el único que había quedado
+atrás.
+
+**F21-29 (de yapa) — «Sin venderse hace más de N días» (`StaleCard`).** El filtro del backend es
+`having … >= :threshold`, o sea **inclusivo**: con 90 marcado, un producto de exactamente 90 días **sí**
+aparece en la tabla, y el rótulo lo dejaba afuera. Ahora se lee **«Sin venderse hace ` 60 · 90 · 180 · 365 `
+días o más»** — el sufijo se sacó de cada pastilla y quedó una sola vez al final, con `aria-label` completo
+en cada botón para el lector de pantalla. El estado vacío acompaña: *«Nada lleva 90 días o más sin
+venderse»*.
+
+**Verificado en el navegador** (Chrome vía Playwright, `npm run dev` contra el backend dev, usuario
+`qa.admin`): el placeholder nuevo y el submit que dispara Enter, el botón de exportar visible-pero-
+deshabilitado con su aviso mientras se busca y habilitado al limpiar, las pestañas que siguen ocultándose,
+el rótulo nuevo de «sin rotación» y su estado vacío. Sin desbordes a 360 px en ninguna de las tres
+pantallas y sin errores de consola. La tabla de cuentas por pagar **no** se pudo ver con datos (el
+laboratorio no tiene compras impagas), pero ese hallazgo era solo un comentario.
+
 ## Anular una venta ya devuelta: se rechaza, con código propio (23/09/2026)
 
 Cambio de **backend** (hallazgo **F21-31** de `../backend-starter/docs/QA_AUDITORIA.md`), con dos líneas de

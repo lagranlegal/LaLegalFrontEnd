@@ -148,7 +148,11 @@ export function SaleFormPage() {
       <form onSubmit={handleSubmit} className="grid grid-cols-1 gap-6 lg:grid-cols-[2fr_1fr]" noValidate>
         <div className="flex flex-col gap-4">
           <div className="rounded-card border border-border bg-card p-card shadow-card">
-            <ItemPicker onSelect={addToCart} placeholder="Buscar artículo por código o nombre… (Enter agrega)" />
+            {/* El buscador vive DENTRO del <form>, así que Enter dispara el
+                submit (registrar la venta), no un "agregar". El placeholder
+                decía "(Enter agrega)" y le pedía al cajero justo lo que no
+                debe hacer — se rotula la interacción real: agregar con clic. */}
+            <ItemPicker onSelect={addToCart} placeholder="Buscar artículo por código o nombre… (agrega con clic)" />
           </div>
 
           <div className="overflow-hidden rounded-card border border-border bg-card shadow-card">
