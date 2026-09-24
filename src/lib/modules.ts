@@ -36,13 +36,23 @@ export const CONCEPT_LABELS: Record<string, string> = {
   // acta de cierre, en inglés y entre conceptos traducidos — en un documento
   // que se imprime, se firma y se archiva (auditoría de QA, F9-03).
   sale_return: 'Devolución a cliente',
+  // 00054. Mismo caso que `sale_return`, encontrado verificando F21-08: el
+  // aporte y el retiro del dueño mueven el cajón con conceptos PROPIOS (no
+  // `adjustment` ni `expense`, a propósito — ver `capital/service.py`), y sin
+  // estas dos líneas salían `owner_contribution`/`owner_withdrawal` en el
+  // acta de cierre. Se nombran desde el punto de vista del cajón, igual que
+  // los traslados.
+  owner_contribution: 'Aporte del dueño',
+  owner_withdrawal: 'Retiro del dueño',
   other: 'Otro',
 }
 
 /**
- * Los 13 valores del enum `cash_concept` están cubiertos arriba. Si el backend
- * agrega uno nuevo, `CONCEPT_LABELS` lo muestra tal cual —fallback seguro— pero
- * queda en inglés en el acta: al crear un concepto, agregarle aquí su frase.
+ * Los 15 valores del enum `cash_concept` están cubiertos arriba (`opening_balance`
+ * no es del enum: es la línea sintética del saldo inicial del desglose). Si el
+ * backend agrega uno nuevo, `CONCEPT_LABELS` lo muestra tal cual —fallback
+ * seguro— pero queda en inglés en el acta: al crear un concepto, agregarle aquí
+ * su frase. `tests/label-catalogs.test.ts` hace fallar el build si se olvida.
  */
 
 export function conceptLabel(concept: string): string {

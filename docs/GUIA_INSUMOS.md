@@ -47,7 +47,7 @@ Rutas base que uso abreviadas abajo, pero **siempre cito ruta absoluta completa*
 | `FE/features/catalogs/components/CategoryFormDialog.tsx` | 22 |
 | `FE/features/catalogs/components/SupplierFormDialog.tsx` | 14 |
 
-**(c) Hay un desajuste real de códigos de error entre front y back** (detalle en §7 al final): el catálogo del front tiene `ALREADY_CLOSED_TODAY` (`FE/lib/api/errors.ts:19`) pero el backend emite `CASH_SESSION_ALREADY_CLOSED_TODAY` (`BE/app/modules/cashbox/service.py:119`). No coinciden → cae a `UNKNOWN`. Igual pasa con `IDEMPOTENCY_IN_PROGRESS` y `MULTIPLE_REGISTERS_NOT_SUPPORTED`, que el backend emite y el catálogo del front no lista.
+**(c) ~~Hay un desajuste real de códigos de error entre front y back~~ — RESUELTO el 23/09/2026** (F20-01, F20-02, F20-03). El catálogo del front tenía `ALREADY_CLOSED_TODAY` mientras el backend emite `CASH_SESSION_ALREADY_CLOSED_TODAY`, y le faltaban `IDEMPOTENCY_IN_PROGRESS` y `MULTIPLE_REGISTERS_NOT_SUPPORTED`. Los tres corregidos, con `tests/error-codes-contract.test.ts` vigilándolo. Se deja anotado porque el detalle de §7 al final describía el estado viejo.
 
 ---
 
@@ -645,12 +645,24 @@ Fuente: `/Users/mateojaramillo/projects/compraventa_app/frontend-starter/src/lib
 | `IDEMPOTENCY_KEY_REQUIRED` | 24 | *"Falta el header Idempotency-Key, obligatorio en operaciones de dinero."* (`BE/app/common/idempotency.py:15-17`). **Puramente técnico** — el front siempre la manda; si aparece, es un bug. |
 | `AUTH_ADMIN_ERROR` | 35 | 502 envolviendo fallos de Supabase Auth Admin. *"No se pudo invitar al usuario en Supabase Auth."* / *"No se pudo generar el enlace de recuperación en Supabase Auth."* Solo un admin lo ve. |
 | `AUTH_ACCOUNT_MISSING` | 59 | *"Este usuario ya no tiene cuenta de acceso: aparece en la lista de la empresa pero fue eliminado del sistema de autenticación…"* — dato descuadrado, de admin. |
-| `ALREADY_CLOSED_TODAY` | 19 | **⚠️ CÓDIGO MUERTO — ver abajo.** |
+| `CASH_SESSION_ALREADY_CLOSED_TODAY` | 27 | Era `ALREADY_CLOSED_TODAY`, un **código muerto** que nunca coincidió con nada. Corregido el 23/09/2026 (F20-01) — ver abajo. |
 | `CONTRACT_LEGACY_CODE_EXISTS` | 28 | *"Ya existe un contrato con ese legacy_code en esta empresa."* (`BE/.../contracts/service.py:356-358`). Solo en la **importación de contratos del sistema anterior**, que es Admin-only (`contracts.import`). Migración, no mostrador. |
 | `IMPORT_CAPITAL_EXCEEDS_PRINCIPAL` | 29 | Idem — solo en la importación (`BE/.../contracts/service.py:371`). |
 | `IMPORT_DATES_MISALIGNED` | 30 | Idem (`BE/.../contracts/service.py:377`). |
 
 ## C · Tres desajustes reales entre el catálogo del front y lo que emite el backend
+
+> ### ✅ Los tres corregidos el 23/09/2026 (F20-01, F20-02, F20-03)
+>
+> Se deja el diagnóstico original abajo porque explica **cómo** se encontraron y **por qué** ninguno se veía
+> roto en pantalla, que es lo que los mantuvo vivos tanto tiempo. Pero el estado que describe **ya no es el
+> actual**: `errors.ts` cataloga hoy `CASH_SESSION_ALREADY_CLOSED_TODAY`, `IDEMPOTENCY_IN_PROGRESS` y
+> `MULTIPLE_REGISTERS_NOT_SUPPORTED`, y `tests/error-codes-contract.test.ts` falla si alguno vuelve a
+> desalinearse. El punto 1 resultó tapar además a **F21-03**: con el código sin tipar, cualquier rama de UI
+> que preguntara por «la caja de hoy ya se cerró» era **inalcanzable**.
+>
+> *Un documento de diagnóstico envejece igual que un comentario: lo que afirma del código de hoy hay que
+> fecharlo.*
 
 Esto lo encontré comparando ambos lados; conviene que lo sepas aunque no vaya en la guía de usuario.
 

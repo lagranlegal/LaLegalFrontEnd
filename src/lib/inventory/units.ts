@@ -43,6 +43,23 @@ export function allowsFractions(unit: string): boolean {
 }
 
 /**
+ * Acota una cantidad pedida a lo que hay y al mínimo vendible de la unidad.
+ *
+ * Vive acá —y no en la pantalla— porque la usan DOS lugares: el carrito de la
+ * venta y el input de la línea. Cuando cada uno acotaba por su cuenta la línea
+ * mostraba 50 g de un artículo del que hay 3 mientras el total cobraba 3 (QA
+ * F21-04).
+ *
+ * El mínimo NO es 1: desde 00036 un producto medido en gramos puede venderse
+ * en 0,5 — poner el piso en 1 impediría vender medio gramo de oro, que es
+ * justo el caso que la unidad de medida vino a habilitar.
+ */
+export function clampQuantity(unit: string, disponible: number, pedida: number): number {
+  const minimo = allowsFractions(unit) ? 0.001 : 1
+  return Math.max(minimo, Math.min(pedida, disponible))
+}
+
+/**
  * Cantidad como la lee una persona: sin ceros de relleno.
  *
  * El backend manda `numeric(14,3)`, o sea "12.500" y "2.000". Mostrar "2,000

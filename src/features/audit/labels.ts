@@ -68,6 +68,14 @@ export const AUDIT_ACTION_LABELS: Record<string, string> = {
   activate_document_template: 'Activó una plantilla de documento',
   delete_document_template: 'Eliminó una plantilla de documento',
   deactivate_document_template: 'Volvió al documento por defecto',
+  // Capital. ÚNICO caso en que la acción no es un literal en el backend:
+  // `capital/service.py` escribe `action=direction`, o sea el valor crudo
+  // `contribution`/`withdrawal` — el mismo camino escribe el aporte y el
+  // retiro. Por eso ni el regex de `tests/unit/test_audit_actions.py` del
+  // backend (que busca `action="..."`) ni este mapa los tenían, y un aporte
+  // del dueño se leía literalmente `contribution · capital` (QA F21-08).
+  contribution: 'Registró un aporte del dueño',
+  withdrawal: 'Registró un retiro del dueño',
   // Cuentas
   create_account: 'Creó una cuenta',
   update_account: 'Editó una cuenta',
@@ -102,6 +110,10 @@ export const AUDIT_ENTITY_TYPE_LABELS: Record<string, string> = {
   subscription: 'Suscripción',
   account: 'Cuenta',
   account_transfer: 'Traslado entre cuentas',
+  // Faltaba junto con las acciones de capital: la fila de un aporte mostraba
+  // `capital_movement` en la columna "Entidad" y el filtro de entidades no
+  // ofrecía la opción (el desplegable se arma con las claves de este mapa).
+  capital_movement: 'Movimiento de capital',
   category: 'Categoría',
   expense_category: 'Categoría de gasto',
   inventory_item: 'Artículo',

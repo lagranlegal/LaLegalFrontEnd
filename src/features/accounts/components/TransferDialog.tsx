@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { toast } from 'sonner'
 import { ArrowRight } from 'lucide-react'
 import { AppDialog } from '@/components/shared/AppDialog'
+import { CashSessionRequiredDialog } from '@/components/shared/CashSessionRequiredDialog'
 import { Money } from '@/components/shared/Money'
 import { MoneyInput } from '@/components/shared/MoneyInput'
 import { Button } from '@/components/ui/button'
@@ -84,6 +85,7 @@ export function TransferDialog({
   const [amount, setAmount] = useState('')
   const [notes, setNotes] = useState('')
   const [error, setError] = useState<string | null>(null)
+  const [cashDialogOpen, setCashDialogOpen] = useState(false)
   const createTransfer = useCreateTransfer()
 
   // Una `settlement` es plata que TE DEBEN: ni puede financiar una salida ni
@@ -127,11 +129,22 @@ export function TransferDialog({
           onOpenChange(false)
         },
         onError: (err: Error) => {
-          // `CASH_SESSION_NOT_OPEN` acá tiene una causa muy concreta y vale la
-          // pena decirla: si ya se cerró la caja, el traslado no puede
-          // registrarse en ese turno porque un cierre firmado es inmutable.
+          // `CASH_SESSION_NOT_OPEN` → el MISMO modal que las otras diez
+          // operaciones de dinero (`CashSessionRequiredDialog`, con su CTA
+          // "Abrir caja"). Hasta el 23/09/2026 este era el único aviso distinto de
+          // la app: un texto rojo al pie del diálogo, sin salida — quien ya
+          // conocía el recuadro lo buscaba y no aparecía (QA F21-07). El
+          // "por qué" que decía ese texto no se pierde: el aviso de que el
+          // efectivo esperado del cierre baja ya está abajo, en el cuerpo del
+          // formulario, y se lee ANTES de intentar.
+          //
+          // No se cierra este diálogo antes de abrir el otro (que es lo que
+          // hace `CapitalMovementDialog`): `AccountsPage`/`CashboxPage` montan
+          // el traslado condicionalmente (`{transferOpen && <TransferDialog/>}`),
+          // así que cerrarlo lo DESMONTA y se llevaría por delante el modal de
+          // caja. Se apilan, igual que en `ExpenseFormDialog` y `ReturnFormDialog`.
           if (err instanceof ApiError && err.code === 'CASH_SESSION_NOT_OPEN') {
-            setError('La caja no está abierta. Consigna el efectivo antes de cerrarla: un cierre ya firmado no se puede modificar.')
+            setCashDialogOpen(true)
             return
           }
           setError(err.message)
@@ -141,88 +154,92 @@ export function TransferDialog({
   }
 
   return (
-    <AppDialog
-      open={open}
-      onOpenChange={onOpenChange}
-      title="Trasladar plata"
-      description="Mueve dinero entre tus cuentas — por ejemplo, consignar en el banco el efectivo del día."
-      footer={
-        <div className="flex w-full gap-2">
-          <Button variant="outline" className="flex-1" onClick={() => onOpenChange(false)} disabled={createTransfer.isPending}>
-            Cancelar
-          </Button>
-          <Button className="flex-1" onClick={submit} disabled={createTransfer.isPending}>
-            {createTransfer.isPending ? 'Registrando…' : 'Trasladar'}
-          </Button>
-        </div>
-      }
-    >
-      <div className="flex flex-col gap-4">
-        <div className="grid grid-cols-1 items-end gap-3 sm:grid-cols-[1fr_auto_1fr]">
+    <>
+      <AppDialog
+        open={open}
+        onOpenChange={onOpenChange}
+        title="Trasladar plata"
+        description="Mueve dinero entre tus cuentas — por ejemplo, consignar en el banco el efectivo del día."
+        footer={
+          <div className="flex w-full gap-2">
+            <Button variant="outline" className="flex-1" onClick={() => onOpenChange(false)} disabled={createTransfer.isPending}>
+              Cancelar
+            </Button>
+            <Button className="flex-1" onClick={submit} disabled={createTransfer.isPending}>
+              {createTransfer.isPending ? 'Registrando…' : 'Trasladar'}
+            </Button>
+          </div>
+        }
+      >
+        <div className="flex flex-col gap-4">
+          <div className="grid grid-cols-1 items-end gap-3 sm:grid-cols-[1fr_auto_1fr]">
+            <div>
+              <label htmlFor="transfer-from" className="text-sm font-medium text-foreground">
+                Sale de
+              </label>
+              <AccountSelect
+                id="transfer-from"
+                value={fromId}
+                onChange={(id) => {
+                  setFromId(id)
+                  if (id === toId) setToId(null)
+                }}
+                options={movibles}
+                placeholder="Elegir cuenta…"
+              />
+            </div>
+            <ArrowRight className="mx-auto hidden size-4 shrink-0 text-muted-foreground sm:block" aria-hidden />
+            <div>
+              <label htmlFor="transfer-to" className="text-sm font-medium text-foreground">
+                Entra a
+              </label>
+              <AccountSelect id="transfer-to" value={toId} onChange={setToId} options={destinos} placeholder="Elegir cuenta…" />
+            </div>
+          </div>
+
+          {origen && (
+            <div className="flex items-center justify-between rounded-card bg-muted px-3 py-2 text-sm">
+              <span className="text-muted-foreground">Disponible en {origen.name}</span>
+              <Money value={origen.balance} className="font-medium text-foreground" />
+            </div>
+          )}
+
           <div>
-            <label htmlFor="transfer-from" className="text-sm font-medium text-foreground">
-              Sale de
+            <label htmlFor="transfer-amount" className="text-sm font-medium text-foreground">
+              Cuánto
             </label>
-            <AccountSelect
-              id="transfer-from"
-              value={fromId}
-              onChange={(id) => {
-                setFromId(id)
-                if (id === toId) setToId(null)
-              }}
-              options={movibles}
-              placeholder="Elegir cuenta…"
+            <MoneyInput id="transfer-amount" value={amount} onChange={setAmount} autoFocus />
+            {excede && <p className="mt-1 text-sm text-danger">Es más de lo que hay disponible.</p>}
+          </div>
+
+          <div>
+            <label htmlFor="transfer-notes" className="text-sm font-medium text-foreground">
+              Notas <span className="text-muted-foreground">(opcional)</span>
+            </label>
+            <input
+              id="transfer-notes"
+              className={inputClass}
+              value={notes}
+              onChange={(event) => setNotes(event.target.value)}
+              placeholder="Consignación del día"
             />
           </div>
-          <ArrowRight className="mx-auto hidden size-4 shrink-0 text-muted-foreground sm:block" aria-hidden />
-          <div>
-            <label htmlFor="transfer-to" className="text-sm font-medium text-foreground">
-              Entra a
-            </label>
-            <AccountSelect id="transfer-to" value={toId} onChange={setToId} options={destinos} placeholder="Elegir cuenta…" />
-          </div>
+
+          {/* El efecto en el arqueo es el punto entero de la operación, así que
+              se dice antes de confirmar y no después: quien cierra la caja tiene
+              que saber que el esperado va a bajar. */}
+          {origen?.type === 'cash' && (
+            <p className="rounded-card border border-border px-3 py-2 text-xs text-muted-foreground">
+              Este traslado sale del cajón, así que el efectivo esperado del cierre de hoy bajará por el mismo monto. Hazlo{' '}
+              <strong className="text-foreground">antes</strong> de cerrar la caja.
+            </p>
+          )}
+
+          {error && <p className="text-sm text-danger">{error}</p>}
         </div>
+      </AppDialog>
 
-        {origen && (
-          <div className="flex items-center justify-between rounded-card bg-muted px-3 py-2 text-sm">
-            <span className="text-muted-foreground">Disponible en {origen.name}</span>
-            <Money value={origen.balance} className="font-medium text-foreground" />
-          </div>
-        )}
-
-        <div>
-          <label htmlFor="transfer-amount" className="text-sm font-medium text-foreground">
-            Cuánto
-          </label>
-          <MoneyInput id="transfer-amount" value={amount} onChange={setAmount} autoFocus />
-          {excede && <p className="mt-1 text-sm text-danger">Es más de lo que hay disponible.</p>}
-        </div>
-
-        <div>
-          <label htmlFor="transfer-notes" className="text-sm font-medium text-foreground">
-            Notas <span className="text-muted-foreground">(opcional)</span>
-          </label>
-          <input
-            id="transfer-notes"
-            className={inputClass}
-            value={notes}
-            onChange={(event) => setNotes(event.target.value)}
-            placeholder="Consignación del día"
-          />
-        </div>
-
-        {/* El efecto en el arqueo es el punto entero de la operación, así que
-            se dice antes de confirmar y no después: quien cierra la caja tiene
-            que saber que el esperado va a bajar. */}
-        {origen?.type === 'cash' && (
-          <p className="rounded-card border border-border px-3 py-2 text-xs text-muted-foreground">
-            Este traslado sale del cajón, así que el efectivo esperado del cierre de hoy bajará por el mismo monto. Hazlo{' '}
-            <strong className="text-foreground">antes</strong> de cerrar la caja.
-          </p>
-        )}
-
-        {error && <p className="text-sm text-danger">{error}</p>}
-      </div>
-    </AppDialog>
+      <CashSessionRequiredDialog open={cashDialogOpen} onOpenChange={setCashDialogOpen} />
+    </>
   )
 }

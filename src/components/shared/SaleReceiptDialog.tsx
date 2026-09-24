@@ -6,6 +6,7 @@ import { Money } from '@/components/shared/Money'
 import { RecordNumber } from '@/components/shared/RecordNumber'
 import { StatusBadge } from '@/components/shared/StatusBadge'
 import { Can } from '@/components/shared/Can'
+import { CashSessionRequiredDialog } from '@/components/shared/CashSessionRequiredDialog'
 import { ReturnFormDialog } from '@/components/shared/ReturnFormDialog'
 import { Button } from '@/components/ui/button'
 import { confirm } from '@/components/shared/confirmStore'
@@ -14,7 +15,7 @@ import { PAYMENT_METHOD_LABELS } from '@/lib/paymentMethods'
 import { useCustomer } from '@/lib/customers/search'
 import { useItemsByIds, type Item } from '@/lib/inventory/items'
 import { formatQuantity } from '@/lib/inventory/units'
-import { ApiError } from '@/lib/api/errors'
+import { ApiError, userMessage } from '@/lib/api/errors'
 import { useVoidSale, type Sale } from '@/lib/sales/void'
 import { useSaleReturns, RETURN_REASON_LABELS, RETURN_SETTLEMENT_LABELS } from '@/lib/sales/returns'
 import type { components } from '@/types/api'
@@ -55,6 +56,7 @@ export function SaleReceiptDialog({ open, onOpenChange, sale }: { open: boolean;
   const { data: itemsById } = useItemsByIds(sale.lines.map((line) => line.item_id))
   const voidSale = useVoidSale()
   const [returnDialogOpen, setReturnDialogOpen] = useState(false)
+  const [cashDialogOpen, setCashDialogOpen] = useState(false)
   const isVoided = sale.status === 'voided'
   const hasDiscount = Number(sale.discount_amount) > 0
 
@@ -72,11 +74,23 @@ export function SaleReceiptDialog({ open, onOpenChange, sale }: { open: boolean;
       await voidSale.mutateAsync({ saleId: sale.id, reason: result.reason })
       toast.success('Venta anulada')
     } catch (error) {
-      // El mensaje del backend, no uno genérico: `SALE_HAS_RETURNS` (F21-31)
-      // explica que la venta tiene devoluciones y qué hacer en su lugar.
-      // «Intenta de nuevo» sobre un rechazo que nunca va a cambiar es un
-      // callejón sin salida.
-      toast.error(error instanceof ApiError ? error.message : 'No se pudo anular la venta. Intenta de nuevo.')
+      // Anular MUEVE CAJA (contra-movimiento `out` por el total, ver
+      // `lib/sales/void.ts`), así que el backend exige sesión abierta y lo
+      // comprueba antes de tocar nada — sin importar el medio de pago
+      // (`sales/service.py::void_sale`). Un toast con el texto del backend
+      // deja a la persona leyendo "no hay caja abierta" sin un botón para
+      // abrirla: el mismo modal que usan las otras diez operaciones de
+      // dinero sí la nombra, y además distingue a quien no tiene el permiso
+      // (le dice a quién pedírselo). F21-02.
+      if (error instanceof ApiError && error.code === 'CASH_SESSION_NOT_OPEN') {
+        setCashDialogOpen(true)
+        return
+      }
+      // El resto: el mensaje del backend, no uno genérico. `SALE_HAS_RETURNS`
+      // (F21-31) explica que la venta tiene devoluciones y qué hacer en su
+      // lugar; «Intenta de nuevo» sobre un rechazo que nunca va a cambiar es
+      // un callejón sin salida.
+      toast.error(error instanceof ApiError ? userMessage(error) : 'No se pudo anular la venta. Intenta de nuevo.')
     }
   }
 
@@ -170,6 +184,8 @@ export function SaleReceiptDialog({ open, onOpenChange, sale }: { open: boolean;
       </AppDialog>
 
       <ReturnFormDialog open={returnDialogOpen} onOpenChange={setReturnDialogOpen} sale={sale} />
+
+      <CashSessionRequiredDialog open={cashDialogOpen} onOpenChange={setCashDialogOpen} />
 
       <PrintLayout title={`Venta #${sale.number}`}>
         <p className="mb-1 text-sm">{customer ? `${customer.full_name} — ${customer.doc_type.toUpperCase()} ${customer.doc_number}` : 'Consumidor final'}</p>

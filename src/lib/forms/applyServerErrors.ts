@@ -1,5 +1,5 @@
 import type { FieldValues, Path, UseFormSetError } from 'react-hook-form'
-import { ApiError, type ValidationIssue } from '@/lib/api/errors'
+import { ApiError, userMessage, type ValidationIssue } from '@/lib/api/errors'
 
 /**
  * Traduce un `msg` de Pydantic a algo que pueda leer quien está usando la app.
@@ -110,5 +110,8 @@ export function applyServerErrors<T extends FieldValues>(
     return message
   }
 
-  return error.message
+  // `userMessage` y no `error.message`: para casi todos los códigos son lo
+  // mismo, pero los de `FRONT_MESSAGES` (hoy `INVITE_RATE_LIMITED`) no se
+  // pueden pintar crudos — nombran infraestructura que el usuario no conoce.
+  return userMessage(error)
 }

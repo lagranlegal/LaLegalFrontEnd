@@ -16,12 +16,33 @@ export const API_ERROR_CODES = [
   'VALIDATION_ERROR',
   'CASH_SESSION_NOT_OPEN',
   'CASH_SESSION_ALREADY_OPEN',
-  'ALREADY_CLOSED_TODAY',
+  // OJO CON EL NOMBRE: hasta el 23/09/2026 acá decía `ALREADY_CLOSED_TODAY`,
+  // que el backend NO emite nunca — el suyo es
+  // `CASH_SESSION_ALREADY_CLOSED_TODAY` (`cashbox/service.py::open_session`).
+  // Como `parseApiError` solo tipa lo que está en `KNOWN_CODES`, el caso real
+  // caía a `UNKNOWN` y ninguna rama de UI podía reaccionar (F20-01). Es el
+  // mismo bug que dejó once días sin operar a una empresa con
+  // `CASH_SESSION_NOT_OPEN`: un código es un contrato entre dos capas y nadie
+  // lo compila.
+  'CASH_SESSION_ALREADY_CLOSED_TODAY',
   'PAYMENT_PARTIAL_INTEREST_REJECTED',
   'CONTRACT_CLOSED',
   'CONTRACT_NOT_READY_FOR_AUCTION',
   'LAST_ADMIN_SAFEGUARD',
   'IDEMPOTENCY_KEY_REQUIRED',
+  // El reintento llegó con la MISMA `Idempotency-Key` mientras la petición
+  // original seguía en vuelo (409, `app/core/errors.py::handle_integrity_error`).
+  // Es el doble clic en "Vender", no una falla: la primera va a terminar
+  // bien. El mensaje del backend ya está escrito para mostrador ("No la
+  // repitas: consulta el resultado en unos segundos"), así que cae al banner
+  // genérico con `error.message` — lo que faltaba era tiparlo (F20-02).
+  'IDEMPOTENCY_IN_PROGRESS',
+  // La empresa tiene más de una caja registradora activa y multi-caja no
+  // existe todavía (409). Hoy no se llega acá por la API —ningún endpoint
+  // crea registradoras—, pero si aparece, el mensaje del backend nombra el
+  // problema y el banner genérico lo muestra en vez de "error inesperado"
+  // (F20-03).
+  'MULTIPLE_REGISTERS_NOT_SUPPORTED',
   'CONFLICT',
   'BAD_REQUEST',
   // Import de contratos preexistentes (paso 5b, docs/RECOMENDACIONES.md §1.6)
@@ -33,9 +54,12 @@ export const API_ERROR_CODES = [
   // al banner genérico con `error.message` (ya trae el mensaje real en
   // español).
   'AUTH_ADMIN_ERROR',
-  // Caso aparte de AUTH_ADMIN_ERROR y no un 502: Supabase limitó el envío de
+  // Caso aparte de AUTH_ADMIN_ERROR y no un 502 (429): se agotó la cuota de
   // correos. No hay nada roto, hay que esperar — decirle "no se pudo
-  // invitar" al admin lo manda a buscar un problema que no existe.
+  // invitar" al admin lo manda a buscar un problema que no existe. Único
+  // código con mensaje propio del front (ver `FRONT_MESSAGES`): el del
+  // backend nombra a Supabase, y quien administra una compraventa no tiene
+  // por qué saber qué es eso (F21-06).
   'INVITE_RATE_LIMITED',
   // Se intentó pagar (compra, gasto, desembolso) desde una cuenta POR COBRAR
   // —Sistecrédito, datáfono—, que es plata que todavía te deben y no un saldo
@@ -172,6 +196,36 @@ function isErrorEnvelope(body: unknown): body is { code: string; message: string
     typeof (body as Record<string, unknown>).code === 'string' &&
     typeof (body as Record<string, unknown>).message === 'string'
   )
+}
+
+/**
+ * Los poquísimos códigos cuyo `message` del backend NO se puede pintar tal
+ * cual. La regla del proyecto sigue siendo mostrar el texto del backend —lo
+ * escribe quien conoce la regla de negocio y nombra la salida—; esto es la
+ * excepción, no una capa de traducción paralela. Agregar una entrada acá
+ * exige una razón: hoy la única es que el mensaje filtra un detalle de
+ * infraestructura.
+ *
+ * Y el reemplazo tiene que nombrar la acción que queda, no solo tapar la
+ * palabra: "espera unos minutos" **o** "genera el enlace", que es el camino
+ * que existe en el mismo diálogo y no consume cuota de correos.
+ */
+const FRONT_MESSAGES: Partial<Record<ApiErrorCode, string>> = {
+  INVITE_RATE_LIMITED:
+    'Se agotó por ahora la cuota de correos de invitación. Espera unos minutos y envíala de nuevo, o usa «Generar enlace» y pásaselo tú por un medio privado: ese camino no manda correo.',
+}
+
+/**
+ * El texto que se le muestra a la persona para un error del backend.
+ *
+ * Por defecto es `error.message` —la regla 9 de CLAUDE.md al pie de la
+ * letra—, salvo los códigos de `FRONT_MESSAGES`. Todo banner/toast que hoy
+ * hace `error.message` debería pasar por acá; así el día que otro mensaje
+ * haya que reescribirlo se hace en un solo lugar y no en catorce diálogos.
+ */
+export function userMessage(error: ApiError): string {
+  if (error.code === 'UNKNOWN') return error.message
+  return FRONT_MESSAGES[error.code] ?? error.message
 }
 
 export function parseApiError(status: number, body: unknown): ApiError {

@@ -1,0 +1,158 @@
+import { describe, expect, it } from 'vitest'
+import { API_ERROR_CODES, parseApiError, userMessage } from '@/lib/api/errors'
+import { openSessionErrorMessage } from '@/features/cashbox/api'
+import { applyServerErrors } from '@/lib/forms/applyServerErrors'
+
+/**
+ * Un código de error es un contrato entre dos capas y **nadie lo compila**:
+ * el backend escribe un string, el front escucha otro, y nada falla hasta que
+ * alguien en un mostrador se queda mirando "ocurrió un error inesperado". Ya
+ * costó once días de operación (`CASH_SESSION_NOT_OPEN` vs `NOT_FOUND`), y
+ * F20-01 era exactamente el mismo bug esperando turno.
+ *
+ * Por eso estos tests miran el **código**, no el status: un test que afirma
+ * "responde 409" no cubre nada de lo que aquí se puede romper.
+ *
+ * LOS SOBRES SON REALES. Cada uno está copiado literal de la línea del
+ * backend que lo emite (`_error_response(status, code, message, details)` en
+ * `app/core/errors.py`), no escrito de memoria — un fixture inventado
+ * confirma el bug en vez de encontrarlo. La cita va junto a cada uno.
+ */
+
+/** `app/modules/cashbox/service.py::open_session` (ConflictError → 409). */
+const YA_CERRADA_HOY = {
+  status: 409,
+  body: {
+    code: 'CASH_SESSION_ALREADY_CLOSED_TODAY',
+    message: 'La caja de hoy ya se cerró; no se puede abrir otra el mismo día.',
+    details: {},
+  },
+}
+
+/** `app/modules/cashbox/service.py::open_session` (ConflictError → 409). */
+const YA_ABIERTA = {
+  status: 409,
+  body: { code: 'CASH_SESSION_ALREADY_OPEN', message: 'Ya hay una sesión de caja abierta.', details: {} },
+}
+
+/** `app/core/errors.py::handle_integrity_error`, rama `idempotency_key`. */
+const IDEMPOTENCIA_EN_VUELO = {
+  status: 409,
+  body: {
+    code: 'IDEMPOTENCY_IN_PROGRESS',
+    message: 'Esta misma operación ya se está registrando. No la repitas: consulta el resultado en unos segundos.',
+    details: {},
+  },
+}
+
+/** `app/modules/cashbox/service.py::_resolve_active_register`. */
+const VARIAS_CAJAS = {
+  status: 409,
+  body: {
+    code: 'MULTIPLE_REGISTERS_NOT_SUPPORTED',
+    message:
+      'La empresa tiene más de una caja registradora activa y todavía no se puede operar con varias. Deja una sola activa.',
+    details: { active_registers: 2 },
+  },
+}
+
+/** `app/modules/sales/service.py::void_sale` (CashSessionNotOpenError → 409). */
+const ANULAR_SIN_CAJA = {
+  status: 409,
+  body: {
+    code: 'CASH_SESSION_NOT_OPEN',
+    message: 'No hay una sesión de caja abierta para anular la venta.',
+    details: {},
+  },
+}
+
+/** `app/modules/identity/auth_admin.py::invite_user`, rama `status_code == 429`. */
+const CUOTA_DE_CORREOS = {
+  status: 429,
+  body: {
+    code: 'INVITE_RATE_LIMITED',
+    message: 'Supabase limitó el envío de correos. Espera unos minutos e invita de nuevo.',
+    details: { body: '{"code":429,"error_code":"over_email_send_rate_limit","msg":"email rate limit exceeded"}' },
+  },
+}
+
+describe('el catálogo de códigos coincide con lo que el backend emite', () => {
+  it('F20-01: `CASH_SESSION_ALREADY_CLOSED_TODAY` se tipa en vez de caer a UNKNOWN', () => {
+    const error = parseApiError(YA_CERRADA_HOY.status, YA_CERRADA_HOY.body)
+    expect(error.code).toBe('CASH_SESSION_ALREADY_CLOSED_TODAY')
+    expect(error.code).not.toBe('UNKNOWN')
+  })
+
+  it('F20-01: `ALREADY_CLOSED_TODAY` ya no está — es un nombre que el backend nunca emitió', () => {
+    // El catálogo no es una lista de deseos: cada entrada tiene que existir
+    // del otro lado. Una que no existe es peor que faltar, porque se ve como
+    // cobertura.
+    expect(API_ERROR_CODES).not.toContain('ALREADY_CLOSED_TODAY')
+  })
+
+  it('F20-02: `IDEMPOTENCY_IN_PROGRESS` (doble clic en Vender) se tipa y conserva el texto de mostrador', () => {
+    const error = parseApiError(IDEMPOTENCIA_EN_VUELO.status, IDEMPOTENCIA_EN_VUELO.body)
+    expect(error.code).toBe('IDEMPOTENCY_IN_PROGRESS')
+    expect(userMessage(error)).toContain('No la repitas')
+  })
+
+  it('F20-03: `MULTIPLE_REGISTERS_NOT_SUPPORTED` se tipa y su `details` sobrevive', () => {
+    const error = parseApiError(VARIAS_CAJAS.status, VARIAS_CAJAS.body)
+    expect(error.code).toBe('MULTIPLE_REGISTERS_NOT_SUPPORTED')
+    expect(error.details?.active_registers).toBe(2)
+  })
+
+  it('un código que de verdad no conocemos sigue cayendo a UNKNOWN con su mensaje', () => {
+    const error = parseApiError(409, { code: 'ALGO_QUE_NO_EXISTE', message: 'texto del backend' })
+    expect(error.code).toBe('UNKNOWN')
+    expect(error.message).toBe('texto del backend')
+  })
+})
+
+describe('F21-03: abrir caja no reintenta lo imposible', () => {
+  it('«ya hay una abierta» conserva el texto del backend y dice que puede seguir operando', () => {
+    const msg = openSessionErrorMessage(parseApiError(YA_ABIERTA.status, YA_ABIERTA.body))
+    expect(msg).toContain('Ya hay una sesión de caja abierta.')
+    expect(msg).toContain('sigue')
+    expect(msg).not.toContain('Intenta de nuevo')
+  })
+
+  it('«la de hoy ya se cerró» nombra dónde está la acción que queda (reabrir) y a quién pedírsela', () => {
+    const msg = openSessionErrorMessage(parseApiError(YA_CERRADA_HOY.status, YA_CERRADA_HOY.body))
+    expect(msg).toContain('La caja de hoy ya se cerró')
+    expect(msg).toContain('Reabrir caja')
+    expect(msg).toContain('responsable')
+    expect(msg).not.toContain('Intenta de nuevo')
+  })
+
+  it('lo que no es de negocio sí puede reintentarse', () => {
+    expect(openSessionErrorMessage(new Error('sin conexión'))).toBe('No se pudo abrir la caja. Intenta de nuevo.')
+  })
+})
+
+describe('F21-06: el nombre del proveedor no sale a pantalla', () => {
+  it('`INVITE_RATE_LIMITED` no menciona Supabase y nombra la salida que existe en el mismo diálogo', () => {
+    const error = parseApiError(CUOTA_DE_CORREOS.status, CUOTA_DE_CORREOS.body)
+    const msg = userMessage(error)
+    expect(msg).not.toMatch(/supabase/i)
+    expect(msg).toContain('Generar enlace')
+    expect(msg).toMatch(/minutos/)
+  })
+
+  it('el banner del formulario de invitación tampoco lo filtra', () => {
+    // `InviteUserDialog` pinta lo que devuelve `applyServerErrors`.
+    const banner = applyServerErrors(parseApiError(CUOTA_DE_CORREOS.status, CUOTA_DE_CORREOS.body), () => {})
+    expect(banner).not.toMatch(/supabase/i)
+    expect(banner).toContain('Generar enlace')
+  })
+
+  it('los demás códigos siguen mostrando el mensaje del backend TAL CUAL', () => {
+    // La regla del proyecto no cambia: el texto lo escribe quien conoce la
+    // regla de negocio. `FRONT_MESSAGES` es la excepción, no una capa de
+    // traducción paralela.
+    const sinCaja = parseApiError(ANULAR_SIN_CAJA.status, ANULAR_SIN_CAJA.body)
+    expect(userMessage(sinCaja)).toBe('No hay una sesión de caja abierta para anular la venta.')
+    const variasCajas = parseApiError(VARIAS_CAJAS.status, VARIAS_CAJAS.body)
+    expect(applyServerErrors(variasCajas, () => {})).toBe(VARIAS_CAJAS.body.message)
+  })
+})

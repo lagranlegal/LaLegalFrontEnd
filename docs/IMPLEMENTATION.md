@@ -2,6 +2,118 @@
 
 > Registro vivo de qué existe en el código, cómo está armado y por qué se tomó cada decisión — para que cualquiera (humano o Claude Code) pueda retomar el proyecto sin releer todo el historial de commits. Se actualiza en cada paso del "Orden de implementación" de `CLAUDE.md`. No repite lo que ya está en `ARCHITECTURE.md`/`DESIGN_SYSTEM.md` (el qué-debería-ser); esto es el qué-hay-hoy y las decisiones concretas tomadas al construirlo.
 
+## Once defectos abiertos, cerrados — y uno nuevo de plata que salió midiendo (23/09/2026, tarde)
+
+Se atacó la serie F20-xx / F21-xx que quedaba abierta, en tres frentes paralelos: **códigos de error**,
+**etiquetas y consistencia de UX**, y una **medición en solo lectura** de los cinco defectos de reportes.
+Registro completo, con los números, en `../backend-starter/docs/QA_AUDITORIA.md`.
+
+**Tres de los hallazgos estaban mal descritos**, y las tres correcciones valen más que los arreglos. El
+método que las produjo es el mismo de siempre: *verificar contra el código, no contra el informe.*
+
+### Lo que se encontró midiendo, y no estaba en ninguna lista
+
+**🔴 F21-32 — reabrir una caja y volver a cerrarla descuadraba el cajón.** Es de backend, pero se anota acá
+porque cambia un número que el front muestra en `/caja` y en `/cuentas`. `reopen_session` limpiaba el acta
+pero dejaba vivo el `adjustment` que el cierre había emitido; como ese ajuste va con `session_id = NULL`, el
+recálculo del segundo cierre no lo veía y emitía otro encima. **Medido:** un acta de −20.000 sobre un cajón
+desviado **+$2.700.100**, sin un solo movimiento de por medio. Cerrado con tres tests vistos fallar.
+**Falta desplegar.**
+
+**🟠 El cajón de LA GRAN LEGAL reporta −$1.108.000.** No lo causa F21-32: su `opening_balance` es 0 y se
+desembolsaron $1.600.000 en préstamos. Nunca se registró el efectivo con el que se abrió el cajón. No es
+defecto de código — es el punto 28 de `ESTADO.md` visto desde el otro lado — pero **la pantalla de caja de
+un cliente real muestra hoy un número imposible**, y eso se le reporta a él.
+
+### Los códigos de error (F20-01, F20-02, F20-03, F21-02, F21-03, F21-06)
+
+`errors.ts` catalogaba `ALREADY_CLOSED_TODAY` —una **entrada muerta desde que se escribió**— donde el
+backend emite `CASH_SESSION_ALREADY_CLOSED_TODAY`, y le faltaban `IDEMPOTENCY_IN_PROGRESS` (el doble clic en
+«Vender») y `MULTIPLE_REGISTERS_NOT_SUPPORTED`.
+
+**F20-01 y F21-03 eran el mismo bug.** Con el código sin tipar en `KNOWN_CODES`, cualquier rama de UI que
+preguntara por «la caja de hoy ya se cerró» era **inalcanzable**. El test nuevo falla por las dos razones a
+la vez con el código viejo.
+
+**Corrección a F21-02, y es la mitad que importa.** El hallazgo decía que el front muestra «No se pudo
+anular la venta. Intenta de nuevo.» **Ya no era cierto**: desde el arreglo de F21-31,
+`SaleReceiptDialog.tsx:79` muestra el texto del backend. El defecto sobrevivía igual, pero era otro: **es un
+toast** — se desvanece solo, no dice *dónde* está la acción que falta, y no distingue a quien puede abrir la
+caja de quien tiene que pedírsela. Se arregló con `CashSessionRequiredDialog`, el patrón de las otras diez
+operaciones, no cambiando el texto.
+
+**F21-06:** `INVITE_RATE_LIMITED` ya no le muestra al usuario el nombre del proveedor de infraestructura. Un
+admin de una compraventa no tiene por qué saber qué es Supabase. Se agregó `userMessage(error)` con
+`FRONT_MESSAGES`: por defecto devuelve `error.message` (la regla 9 intacta) y la única excepción es este
+código, que ahora nombra las dos salidas.
+
+**Dos cosas que aparecieron de paso:** el `mutateAsync` de `OpenSessionDialog` estaba pelado, así que cada
+fallo dejaba una promesa rechazada sin dueño; y `useOpenSession` no invalidaba `['cashbox']` al fallar.
+
+### Etiquetas y consistencia (F21-04, F21-07, F21-08)
+
+**F21-08 era más grande, y el efecto que importa no estaba escrito: una etiqueta que falta esconde el
+filtro.** Los filtros de `AuditPage` se arman con las **claves** de esos mapas, así que no se podía filtrar
+la auditoría por capital ni por cuentas — el bloque entero era invisible, no solo estaba en inglés. Además
+de `contribution`/`withdrawal` y `accounts`/`capital`, faltaban `capital_movement` en
+`AUDIT_ENTITY_TYPE_LABELS` y **`owner_contribution`/`owner_withdrawal` en `CONCEPT_LABELS`** (`lib/modules.ts`),
+que salían en inglés **en el acta de cierre de caja** — el mismo defecto que F9-03 con `sale_return`.
+
+**Por qué se escapó al guardián del backend:** `test_audit_actions.py` busca `action="..."` con un regex de
+literales, y `capital/service.py:193` escribe `action=direction` — **el único caso dinámico de todo el
+backend**, invisible para él por construcción. El test nuevo cubre el otro lado del contrato y canta si
+aparece **otra** acción dinámica.
+
+**F21-07 era más grande.** Al unificar el traslado con `CashSessionRequiredDialog` apareció que **una de
+«las otras diez» tampoco funcionaba**: `CapitalMovementDialog` abría el modal compartido pero antes hacía
+`onOpenChange(false)`, y `CapitalPage` lo monta con `key={dialog ?? 'cerrado'}` — ese cierre cambia la key,
+**remonta** el componente y el estado se pierde en el mismo render, así que «Abrir caja» **no aparecía
+nunca**. *Una rama de UI que nunca se ha visto no está escrita, está pendiente* — tercera vez.
+
+**F21-04** (la cantidad de una línea de venta era un input no controlado) trajo un caso que un `value=`
+ingenuo no cubre: seguir tecleando sobre un valor ya acotado (50→3, después 503→3) **no cambia** la cantidad
+del carrito, así que una sincronización por props no se entera y la línea vuelve a mentir. El nuevo
+`QuantityInput` acota localmente con la misma función que el carrito (`clampQuantity`, movida a
+`lib/inventory/units.ts`).
+
+### F21-05 estaba al revés: la etiqueta no sobra, falta el botón
+
+El hallazgo sospechaba que `deactivate_document_template` era una etiqueta huérfana. **Es al revés:** el
+backend la emite por un camino real (`company/router.py:115`, existe desde F8-02 porque sin él no había
+vuelta al documento de fábrica) y el endpoint está hasta en `types/api.ts`. Lo que falta es
+`useDeactivateDocumentTemplate` y su botón en `DocumentTemplatesPage`. **Queda abierto como feature.**
+
+### Lo que se midió y NO se arregló, con el número que lo sostiene
+
+- **F21-13 → el arreglo propuesto era imposible.** Una devolución pagada con **nota crédito no emite ningún
+  `cash_movement`**: son **2 de 5 devoluciones y el 51,8 % del valor devuelto**. Netear en `aggregate.ts` es
+  estructuralmente incapaz de dar el número correcto — sería una **cuarta definición de ingreso**, justo lo
+  que F21-12 evitó. Y `ReportesPage` ya muestra el neto **dos veces**, a pocos píxeles del bruto, sin que
+  nada diga que son definiciones distintas. La propuesta pasó a ser **renombrar y separar**, no netear.
+- **F21-14 sale casi gratis:** el endpoint ya devuelve `difference` y `difference_reason` y
+  `ReportesPage.tsx:340` **ya los tiene en memoria** — solo los usa para contar sesiones. Un `grep` de
+  `difference` sobre `features/reports/` no devuelve nada: el número llega y se descarta.
+- **F21-15 → cero casos** en toda la base. Y el nudo no es el filtro SQL: no existe una definición de «mes
+  cerrado». Decisión de negocio.
+- **F21-18 → no es defecto.** Agrupar por `paid_at` daría un número **peor**, porque el backend guarda
+  `paid_at = now()` y no la fecha real del pago: sería F21-15 creado a propósito.
+- **Bug de paso:** la columna «Nota crédito redimida» del Excel de Ventas está **siempre vacía** —
+  `list_sales` llama a `_row_to_sale(row, lines)` sin ese parámetro, que tiene default `None`.
+
+### Tests
+
+**225 tests** (28 archivos), `typecheck` limpio, `lint` 0 errores, `build` ok. Cuatro archivos nuevos, todos
+**vistos fallar con el código viejo**: `error-codes-contract.test.ts` (11 casos que miran el **código**,
+nunca el status, con los sobres copiados literal de la línea del backend que los emite — 7 de 11 rojos),
+`void-sale-cash-session.test.tsx`, `label-catalogs.test.ts` (el molde de `test_audit_actions.py` **del otro
+lado del contrato**; en CI del front no existe `../backend-starter`, así que el congelado corre siempre y lo
+que re-deriva del backend va con `describe.runIf`) y `sale-quantity-input.test.tsx`.
+
+`cash-session-dialog.test.ts` merece una nota: **su primera versión pasaba de más** porque un comentario
+mencionaba el componente. Ahora busca el uso en JSX. *Un test que busca texto encuentra texto.*
+
+---
+
 ## «Costo detenido» ya dice la verdad, y el correo del cliente se valida en el backend (23/09/2026)
 
 Cambios de **backend** (hallazgos **F21-25**, **F21-29** y **F21-19** de

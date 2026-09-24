@@ -115,7 +115,13 @@ export function CapitalMovementDialog({
       onOpenChange(false)
     } catch (err) {
       if (err instanceof ApiError && err.code === 'CASH_SESSION_NOT_OPEN') {
-        onOpenChange(false)
+        // NO se cierra este diálogo antes de abrir el de caja, aunque parezca
+        // más prolijo: `CapitalPage` monta este componente con
+        // `key={dialog ?? 'cerrado'}`, así que `onOpenChange(false)` cambia la
+        // key y lo REMONTA — el `cashDialogOpen` que se acaba de poner en true
+        // se pierde en el mismo render y el modal "Abrir caja" no aparecía
+        // nunca. Encontrado verificando F21-07: el traslado no era el único
+        // que se quedaba sin salida. Se apilan, como en `ExpenseFormDialog`.
         setCashDialogOpen(true)
         return
       }

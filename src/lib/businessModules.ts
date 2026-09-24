@@ -12,9 +12,18 @@
  * — el módulo de negocio de gastos/cierre de caja) — mismo nombre de
  * concepto, dos catálogos del backend sin relación, mapas separados a
  * propósito (ver `docs/IMPLEMENTATION.md` paso 8).
+ *
+ * `accounts` (00029) y `capital` (00054) llegaron después y nadie los agregó
+ * acá: la matriz de permisos titulaba dos bloques `accounts` y `capital`, y
+ * en Auditoría la columna "Módulo" salía en inglés **y el filtro ni siquiera
+ * ofrecía esos módulos** — el desplegable de `AuditPage` se arma con las
+ * claves de este mapa, así que una etiqueta que falta también esconde el
+ * filtro (QA F21-08). `tests/label-catalogs.test.ts` ahora lo vigila.
  */
 export const BUSINESS_MODULE_LABELS: Record<string, string> = {
+  accounts: 'Cuentas',
   audit: 'Auditoría',
+  capital: 'Capital',
   cashbox: 'Caja',
   catalogs: 'Catálogos',
   company: 'Empresa',

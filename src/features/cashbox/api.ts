@@ -1,5 +1,6 @@
 import { queryOptions, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api, ApiError, unwrap } from '@/lib/api/client'
+import { userMessage } from '@/lib/api/errors'
 import { useCursorInfiniteQuery } from '@/lib/api/pagination'
 import { todayBogota } from '@/lib/dates'
 import type { components } from '@/types/api'
@@ -49,6 +50,32 @@ export function useCashboxCurrent() {
  * CASH_OPENING_DIFFERENCE_UNJUSTIFIED`) y emite un ajuste — el mismo trato
  * que el descuadre de cierre, porque es la misma clase de hecho.
  */
+/**
+ * Qué se le muestra a quien intentó abrir la caja y el backend dijo que no.
+ *
+ * Existía un solo texto para todo: **«No se pudo abrir la caja. Intenta de
+ * nuevo.»** (F21-03). Los dos rechazos reales de este endpoint no se
+ * arreglan reintentando —ya hay una abierta, o la de hoy ya se cerró— así
+ * que ese mensaje mandaba a repetir la única acción que no podía funcionar,
+ * y además tapaba el texto del backend, que sí dice qué pasó.
+ *
+ * Acá se le agrega lo que al backend no le toca saber: **dónde** está la
+ * acción que queda (la pantalla de Caja, el botón "Reabrir caja") y a quién
+ * pedírsela si no se tiene el permiso.
+ *
+ * Función aparte y exportada para poder probarla sin montar el diálogo.
+ */
+export function openSessionErrorMessage(error: unknown): string {
+  if (!(error instanceof ApiError)) return 'No se pudo abrir la caja. Intenta de nuevo.'
+  if (error.code === 'CASH_SESSION_ALREADY_OPEN') {
+    return `${error.message} Ya puedes registrar ventas, abonos y gastos: cierra este aviso y sigue.`
+  }
+  if (error.code === 'CASH_SESSION_ALREADY_CLOSED_TODAY') {
+    return `${error.message} Si todavía falta registrar movimientos de hoy, reábrela desde Caja con "Reabrir caja", o pídeselo a un responsable.`
+  }
+  return userMessage(error)
+}
+
 export function useOpenSession() {
   const queryClient = useQueryClient()
   return useMutation({
@@ -71,6 +98,20 @@ export function useOpenSession() {
       // El arqueo de apertura puede haber emitido un ajuste: el saldo de las
       // cuentas cambió y el listado tiene que reflejarlo.
       queryClient.invalidateQueries({ queryKey: ['accounts'] })
+    },
+    onError: (error) => {
+      // Los dos rechazos de este endpoint significan lo mismo: **lo que el
+      // front cree del estado de la caja ya no es cierto** (alguien abrió o
+      // cerró en otra pestaña, o el día cambió). Refrescar es lo que hace
+      // que el banner global y el botón "Abrir caja" se corrijan solos en
+      // vez de seguir ofreciendo una acción imposible
+      // (docs/ARCHITECTURE.md §6).
+      if (
+        error instanceof ApiError &&
+        (error.code === 'CASH_SESSION_ALREADY_OPEN' || error.code === 'CASH_SESSION_ALREADY_CLOSED_TODAY')
+      ) {
+        queryClient.invalidateQueries({ queryKey: ['cashbox'] })
+      }
     },
   })
 }

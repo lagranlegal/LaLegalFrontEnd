@@ -3,7 +3,7 @@ import { AppDialog } from '@/components/shared/AppDialog'
 import { MoneyInput } from '@/components/shared/MoneyInput'
 import { Money } from '@/components/shared/Money'
 import { Button } from '@/components/ui/button'
-import { useOpenSession } from '@/features/cashbox/api'
+import { openSessionErrorMessage, useOpenSession } from '@/features/cashbox/api'
 import { useAccounts } from '@/lib/accounts/list'
 import { cashOnHand } from '@/lib/accounts/types'
 import { subtractMoney } from '@/lib/money'
@@ -32,6 +32,7 @@ export function OpenSessionDialog({ open, onOpenChange }: { open: boolean; onOpe
   const [contar, setContar] = useState(false)
   const [counted, setCounted] = useState('')
   const [reason, setReason] = useState('')
+  const [formError, setFormError] = useState<string | null>(null)
   const openSession = useOpenSession()
 
   const registrado = cashOnHand(accounts ?? [])
@@ -45,16 +46,24 @@ export function OpenSessionDialog({ open, onOpenChange }: { open: boolean; onOpe
     setContar(false)
     setCounted('')
     setReason('')
+    setFormError(null)
   }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     if (faltaMotivo) return
-    await openSession.mutateAsync({
-      countedCash: contar && counted ? counted : undefined,
-      differenceReason: hayDiferencia ? reason.trim() : undefined,
-    })
-    cerrar()
+    setFormError(null)
+    try {
+      await openSession.mutateAsync({
+        countedCash: contar && counted ? counted : undefined,
+        differenceReason: hayDiferencia ? reason.trim() : undefined,
+      })
+      cerrar()
+    } catch (error) {
+      // El `mutateAsync` estaba sin `catch`: además del mensaje genérico, la
+      // promesa quedaba rechazada sin dueño en cada fallo.
+      setFormError(openSessionErrorMessage(error))
+    }
   }
 
   return (
@@ -132,11 +141,10 @@ export function OpenSessionDialog({ open, onOpenChange }: { open: boolean; onOpe
           </div>
         )}
 
-        {openSession.isError && (
-          <p className="rounded-input bg-danger-soft px-3 py-2 text-sm text-danger">
-            No se pudo abrir la caja. Intenta de nuevo.
-          </p>
-        )}
+        {/* El texto sale de `openSessionErrorMessage`: "ya hay una abierta" y
+            "la de hoy ya se cerró" no son reintentables, y decir «Intenta de
+            nuevo» sobre ellos era mandar a repetir lo único imposible. */}
+        {formError && <p className="rounded-input bg-danger-soft px-3 py-2 text-sm text-danger">{formError}</p>}
       </form>
     </AppDialog>
   )

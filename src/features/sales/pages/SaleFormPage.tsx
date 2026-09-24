@@ -19,7 +19,8 @@ import { formatCOP, multiplyMoney, subtractMoney, sumMoney } from '@/lib/money'
 import { AccountPicker } from '@/components/shared/AccountPicker'
 import { PAYMENT_METHOD_LABELS } from '@/lib/paymentMethods'
 import { useCreateSale } from '@/features/sales/api'
-import { allowsFractions, unitAbbr, unitLabel } from '@/lib/inventory/units'
+import { QuantityInput } from '@/features/sales/components/QuantityInput'
+import { allowsFractions, clampQuantity, unitAbbr } from '@/lib/inventory/units'
 import { useCustomerCreditNotes } from '@/lib/sales/creditNotes'
 import { minMoney } from '@/lib/money'
 import type { Item } from '@/lib/inventory/items'
@@ -71,27 +72,20 @@ export function SaleFormPage() {
       const existing = prev.find((line) => line.item.id === item.id)
       if (existing) {
         return prev.map((line) =>
-          line.item.id === item.id ? { ...line, quantity: Math.min(line.quantity + 1, Number(item.quantity)) } : line,
+          line.item.id === item.id ? { ...line, quantity: clampQuantity(item.unit, Number(item.quantity), line.quantity + 1) } : line,
         )
       }
       return [...prev, { item, quantity: 1 }]
     })
   }
 
-  /**
-   * Se acota al stock disponible y a un mínimo positivo. El mínimo NO es 1:
-   * desde 00036 un producto medido en gramos puede venderse en 0,5 — poner
-   * el piso en 1 impediría vender medio gramo de oro, que es justo el caso
-   * que la unidad de medida vino a habilitar.
-   */
+  /** Se acota al stock disponible y a un mínimo positivo — la regla vive en `clampQuantity`. */
   function updateQuantity(itemId: string, quantity: number) {
     setCart((prev) =>
       prev.map((line) => {
         if (line.item.id !== itemId) return line
-        const disponible = Number(line.item.quantity)
-        const minimo = allowsFractions(line.item.unit) ? 0.001 : 1
         if (!Number.isFinite(quantity)) return line
-        return { ...line, quantity: Math.max(minimo, Math.min(quantity, disponible)) }
+        return { ...line, quantity: clampQuantity(line.item.unit, Number(line.item.quantity), quantity) }
       }),
     )
   }
@@ -176,13 +170,7 @@ export function SaleFormPage() {
                           la unidad del producto. */}
                       {allowsFractions(item.unit) ? (
                         <div className="flex items-center gap-1">
-                          <input
-                            inputMode="decimal"
-                            aria-label={`Cantidad en ${unitLabel(item.unit)}`}
-                            className="w-20 rounded-input border border-border bg-background px-2 py-1 text-right text-sm tnum outline-none focus:border-primary"
-                            defaultValue={quantity}
-                            onChange={(e) => updateQuantity(item.id, Number(e.target.value))}
-                          />
+                          <QuantityInput item={item} quantity={quantity} onChange={(q) => updateQuantity(item.id, q)} />
                           <span className="text-xs text-muted-foreground">{unitAbbr(item.unit)}</span>
                         </div>
                       ) : (
