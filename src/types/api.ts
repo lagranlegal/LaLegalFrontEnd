@@ -4507,6 +4507,11 @@ export interface components {
             account_id: string | null;
             /** Credit Note Redeemed Amount */
             credit_note_redeemed_amount?: string | null;
+            /**
+             * Returned Amount
+             * @default 0.00
+             */
+            returned_amount: string;
         };
         /** SaleReturnCreateIn */
         SaleReturnCreateIn: {

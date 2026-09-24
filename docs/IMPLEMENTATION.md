@@ -2,6 +2,28 @@
 
 > Registro vivo de qué existe en el código, cómo está armado y por qué se tomó cada decisión — para que cualquiera (humano o Claude Code) pueda retomar el proyecto sin releer todo el historial de commits. Se actualiza en cada paso del "Orden de implementación" de `CLAUDE.md`. No repite lo que ya está en `ARCHITECTURE.md`/`DESIGN_SYSTEM.md` (el qué-debería-ser); esto es el qué-hay-hoy y las decisiones concretas tomadas al construirlo.
 
+## F21-17 — columna «Devuelto» en la lista y el Excel de Ventas (24/09/2026)
+
+`sale.status` sigue en `completed` tras una devolución (decisión de F21-12), así que ni la tabla ni el
+Excel de Ventas dejaban verlas. El backend ya expone `SaleOut.returned_amount` (string decimal, `"0.00"` sin
+devoluciones, NETO de su parte prorrateada del descuento). Se regeneraron los tipos (único cambio en
+`api.ts`: ese campo) y la columna «Devuelto» va junto a «Total» en los dos lados.
+
+**Decisiones:**
+- **En pesos, no Sí/No:** una devolución parcial y una total no son lo mismo para quien concilia.
+- **Vacía cuando es 0.** En el Excel, celda vacía como «Nota crédito redimida»; en la tabla, guion atenuado.
+  Así las ventas con devolución saltan a la vista en vez de perderse entre `$ 0`.
+- **«toda la venta» debajo del monto cuando se devolvió entera.** Como el backend lo manda neto del
+  descuento, entera = exactamente `total`: `returnExtent` compara en centavos (`compareMoney`), sin tolerancia.
+- **La fila del Excel salió a una función pura** (`saleExportRow`, `features/sales/export.ts`) para poder
+  probar orden y contenido de columnas sin montar la página.
+- **No se tocó el comprobante (`SaleReceiptDialog`).** Ya lista cada devolución, y un «Devuelto» ahí quedaría
+  desfasado: el `sale` que recibe es una foto de la fila clicada (no se refresca tras devolver desde el mismo
+  diálogo), y el `total_amount` de cada devolución hoy es bruto, así que no sumaría al neto hasta F21-33.
+
+**Tests:** `tests/sales-returned-column.test.ts`, 7, vistos fallar sin la implementación. Suite: 238 tests,
+typecheck limpio, lint 0 errores.
+
 ## F21-14 — los descuadres de caja llegan a Reportes (24/09/2026)
 
 `GET /reports/closings` devolvía `difference` en cada cierre desde siempre y `ReportesPage` ya tenía esa

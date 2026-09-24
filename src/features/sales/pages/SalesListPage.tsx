@@ -4,7 +4,7 @@ import { useNavigate } from '@tanstack/react-router'
 import { Download } from 'lucide-react'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { DataTable } from '@/components/shared/DataTable'
-import { StatusBadge, statusLabel } from '@/components/shared/StatusBadge'
+import { StatusBadge } from '@/components/shared/StatusBadge'
 import { Money } from '@/components/shared/Money'
 import { Can } from '@/components/shared/Can'
 import { RecordNumber } from '@/components/shared/RecordNumber'
@@ -15,6 +15,7 @@ import { fetchAllSales, useSalesList, type Sale } from '@/features/sales/api'
 import { fetchAllCustomers } from '@/features/customers/api'
 import { SaleReceiptDialog } from '@/components/shared/SaleReceiptDialog'
 import { exportRowsToExcel } from '@/lib/export/xlsx'
+import { returnExtent, saleExportRow } from '@/features/sales/export'
 
 export function SalesListPage() {
   const navigate = useNavigate()
@@ -32,17 +33,9 @@ export function SalesListPage() {
     try {
       const [allSales, customers] = await Promise.all([fetchAllSales(), fetchAllCustomers()])
       const customerById = new Map(customers.map((c) => [c.id, c]))
-      const rows = allSales.map((sale) => ({
-        Número: sale.number,
-        Fecha: formatDateTime(sale.sold_at),
-        Cliente: sale.customer_id ? (customerById.get(sale.customer_id)?.full_name ?? '') : '',
-        'Medio de pago': PAYMENT_METHOD_LABELS[sale.payment_method as 'cash' | 'transfer' | 'other'] ?? sale.payment_method,
-        Descuento: Number(sale.discount_amount),
-        'Nota crédito redimida': sale.credit_note_redeemed_amount ? Number(sale.credit_note_redeemed_amount) : '',
-        Total: Number(sale.total),
-        Estado: statusLabel(sale.status),
-        'Motivo de anulación': sale.void_reason ?? '',
-      }))
+      const rows = allSales.map((sale) =>
+        saleExportRow(sale, sale.customer_id ? (customerById.get(sale.customer_id)?.full_name ?? '') : ''),
+      )
       exportRowsToExcel(`ventas-${todayBogota()}.xlsx`, 'Ventas', rows)
     } finally {
       setIsExporting(false)
@@ -54,6 +47,24 @@ export function SalesListPage() {
     { accessorKey: 'sold_at', header: 'Fecha', cell: (info) => formatDateTime(info.getValue<string>()) },
     { accessorKey: 'payment_method', header: 'Medio', cell: (info) => PAYMENT_METHOD_LABELS[info.getValue<'cash' | 'transfer' | 'other'>()] ?? info.getValue<string>() },
     { accessorKey: 'total', header: 'Total', cell: (info) => <Money value={info.getValue<string>()} /> },
+    {
+      // F21-17: el Estado sigue en «Completada» tras una devolución, así que
+      // es esta columna la que la delata. Guion si no hubo (como las columnas
+      // vacías del resto de tablas); si se devolvió toda, se dice, porque el
+      // monto solo no lo distingue de una parcial a simple vista.
+      accessorKey: 'returned_amount',
+      header: 'Devuelto',
+      cell: ({ row }) => {
+        const extent = returnExtent(row.original)
+        if (extent === 'none') return <span className="text-muted-foreground">—</span>
+        return (
+          <span className="flex flex-col">
+            <Money value={row.original.returned_amount} />
+            {extent === 'full' && <span className="text-xs text-muted-foreground">toda la venta</span>}
+          </span>
+        )
+      },
+    },
     { accessorKey: 'status', header: 'Estado', cell: (info) => <StatusBadge status={info.getValue<string>()} /> },
   ]
 
