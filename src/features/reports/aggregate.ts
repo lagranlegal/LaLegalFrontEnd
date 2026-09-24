@@ -1,5 +1,6 @@
-import { sumMoney } from '@/lib/money'
+import { compareMoney, subtractMoney, sumMoney } from '@/lib/money'
 import type { Expense, ExpenseCategory } from '@/features/cashbox/api'
+import type { ClosingHistory } from '@/lib/cashbox/closings'
 import type { components } from '@/types/api'
 
 export type ClosingsBreakdownLine = components['schemas']['ClosingsBreakdownLineOut']
@@ -308,4 +309,60 @@ export function aggregateExpensesByCategory(expenses: Expense[], categories: Exp
   return [...totals.entries()]
     .map(([categoryId, total]) => ({ categoryId, name: nameById.get(categoryId) ?? 'Sin categoría', total }))
     .sort((a, b) => Number(b.total) - Number(a.total))
+}
+
+export interface CashDifferenceSummary {
+  sessionCount: number
+  /** Cierres cuyo conteo no coincidió con lo esperado (faltante o sobrante). */
+  sessionsWithDifference: number
+  shortageCount: number
+  surplusCount: number
+  /** Suma de los faltantes, en POSITIVO: plata que el sistema esperaba y no se contó. */
+  faltantes: string
+  /** Suma de los sobrantes: plata contada que el sistema no tenía registrada. */
+  sobrantes: string
+  /** `sobrantes − faltantes`, con signo. Nunca se muestra solo: un faltante y un sobrante iguales dan 0 y no significan que la caja cuadró. */
+  neto: string
+}
+
+/**
+ * Descuadres del arqueo de cierre en el rango (F21-14). `GET /reports/closings`
+ * ya trae `difference` por sesión (`counted_cash − expected_cash`, con signo,
+ * calculado y guardado por el backend al cerrar); hasta ahora la pantalla lo
+ * recibía y solo contaba sesiones. Esto es suma de PRESENTACIÓN en centavos
+ * (`sumMoney`, CLAUDE.md regla 5) — el backend ya decidió cada diferencia.
+ *
+ * Faltantes y sobrantes van por separado porque NO se compensan: que falten
+ * 500.000 un día y sobren 500.000 otro no es una caja cuadrada, son dos
+ * errores de conteo. El neto se da como dato adicional, no como resumen.
+ *
+ * Alcance, que la tarjeta debe decir: solo el arqueo de CIERRE. El descuadre
+ * del conteo de apertura no queda en la sesión (su ajuste nace con
+ * `session_id = NULL` y la cifra vive solo en la auditoría), así que desde
+ * este endpoint no se ve. Y es de toda la caja: el arqueo no tiene módulo.
+ */
+export function aggregateCashDifferences(closings: Pick<ClosingHistory, 'difference'>[]): CashDifferenceSummary {
+  let faltantes = '0.00'
+  let sobrantes = '0.00'
+  let shortageCount = 0
+  let surplusCount = 0
+  for (const { difference } of closings) {
+    const sign = compareMoney(difference, '0')
+    if (sign < 0) {
+      faltantes = subtractMoney(faltantes, difference)
+      shortageCount += 1
+    } else if (sign > 0) {
+      sobrantes = sumMoney(sobrantes, difference)
+      surplusCount += 1
+    }
+  }
+  return {
+    sessionCount: closings.length,
+    sessionsWithDifference: shortageCount + surplusCount,
+    shortageCount,
+    surplusCount,
+    faltantes,
+    sobrantes,
+    neto: subtractMoney(sobrantes, faltantes),
+  }
 }

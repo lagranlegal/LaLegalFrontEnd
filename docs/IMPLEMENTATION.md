@@ -2,6 +2,31 @@
 
 > Registro vivo de qué existe en el código, cómo está armado y por qué se tomó cada decisión — para que cualquiera (humano o Claude Code) pueda retomar el proyecto sin releer todo el historial de commits. Se actualiza en cada paso del "Orden de implementación" de `CLAUDE.md`. No repite lo que ya está en `ARCHITECTURE.md`/`DESIGN_SYSTEM.md` (el qué-debería-ser); esto es el qué-hay-hoy y las decisiones concretas tomadas al construirlo.
 
+## F21-14 — los descuadres de caja llegan a Reportes (24/09/2026)
+
+`GET /reports/closings` devolvía `difference` en cada cierre desde siempre y `ReportesPage` ya tenía esa
+lista en memoria, pero solo la usaba para **contar** sesiones: el número llegaba y se descartaba. Ahora lo
+suma `aggregateCashDifferences` (`features/reports/aggregate.ts`, pura, en centavos) y lo pinta la tarjeta
+**«Descuadres de caja al cierre»** en la pestaña Período. Cero backend, cero requests nuevos.
+
+**Decisiones:**
+- **Faltantes y sobrantes por separado, ambos en positivo.** No se compensan: que falten 500.000 un día y
+  sobren 500.000 otro no es una caja cuadrada, son dos errores de conteo. El neto aparece, pero como cuarto
+  dato con la aclaración, nunca como resumen.
+- **Se muestra con cualquier filtro Todo/Empeño/Tienda, y lo dice.** El arqueo es del cajón entero, no
+  tiene módulo; esconderla o «filtrarla» habría prometido algo que el dato no permite.
+- **El pie aclara que no incluye la apertura.** El descuadre del conteo de apertura no queda en la sesión
+  (solo en `audit_log`), así que desde este endpoint no se ve. Sumarlo es trabajo de backend.
+- **No hay contador de «cierres sin motivo»:** el backend rechaza cerrar con diferencia y sin motivo, así
+  que sería un cero permanente.
+
+**Tests:** `tests/reports-cash-differences.test.ts`, 6, vistos fallar sin la implementación (incluye el
+caso medido en la auditoría: sobrantes $13.726.000 / faltantes $755.000). Suite: 231 tests, typecheck
+limpio, lint 0 errores.
+
+**Sigue abierto** (de la misma medición): los movimientos contra cuentas `bank` quedan fuera del INNER JOIN
+de `closings-breakdown` — ítem propio, ver `../backend-starter/docs/QA_AUDITORIA.md` F21-14.
+
 ## Once defectos abiertos, cerrados — y uno nuevo de plata que salió midiendo (23/09/2026, tarde)
 
 Se atacó la serie F20-xx / F21-xx que quedaba abierta, en tres frentes paralelos: **códigos de error**,

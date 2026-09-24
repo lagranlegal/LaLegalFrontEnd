@@ -14,6 +14,7 @@ import { DonutChart, type DonutDatum } from '@/components/shared/charts/DonutCha
 import { MODULE_LABELS, conceptLabel } from '@/lib/modules'
 import { PAYMENT_METHOD_LABELS } from '@/lib/paymentMethods'
 import { todayBogota } from '@/lib/dates'
+import { compareMoney } from '@/lib/money'
 import { cn } from '@/lib/utils'
 import { useCategories } from '@/lib/catalogs/categories'
 import { usePermission } from '@/lib/permissions/usePermission'
@@ -21,7 +22,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { ContablesSection } from '@/features/reports/components/ContablesSection'
 import { useExpenseCategories } from '@/features/cashbox/api'
 import { useIncomeStatement, useClosingsBreakdown, useClosingsInRange, useCarteraActual, useExpensesByCategory, useItemSales, useMonthlySeries, useProfitSummary, usePawnPerformance, MAX_RANGE_DAYS } from '@/features/reports/api'
-import { aggregateFinancialSummary, aggregateExpensesByCategory, computeDelta, daysBetweenDateOnly, previousRangeFor } from '@/features/reports/aggregate'
+import { aggregateCashDifferences, aggregateFinancialSummary, aggregateExpensesByCategory, computeDelta, daysBetweenDateOnly, previousRangeFor } from '@/features/reports/aggregate'
 import { aggregateItemRanking } from '@/features/reports/rankings'
 import { ModuleSplitBar } from '@/features/reports/components/ModuleSplitBar'
 
@@ -364,6 +365,8 @@ export function ReportesPage() {
     () => aggregateFinancialSummary(breakdown?.lines ?? [], sessionDates, moduleParam),
     [breakdown, sessionDates, moduleParam],
   )
+  // F21-14: `difference` ya venía en cada cierre y se descartaba.
+  const cashDifferences = useMemo(() => aggregateCashDifferences(closings ?? []), [closings])
   const previousSummary = useMemo(
     () => (previousBreakdown ? aggregateFinancialSummary(previousBreakdown.lines, previousSessionDates, moduleParam) : null),
     [previousBreakdown, previousSessionDates, moduleParam],
@@ -586,6 +589,44 @@ export function ReportesPage() {
               </div>
             </div>
           )}
+
+          {/* F21-14. Va sin importar el filtro de módulo porque el arqueo no
+              tiene módulo: se cuenta el cajón entero. Faltantes y sobrantes
+              por separado — no se compensan; el neto es un dato más, no el
+              resumen (ver `aggregateCashDifferences`). */}
+          <div className="enter-up rounded-card border border-border bg-card p-card shadow-card">
+            <div className="mb-3 flex flex-wrap items-center justify-between gap-x-4 gap-y-1">
+              <h2 className="text-sm font-medium text-foreground">Descuadres de caja al cierre</h2>
+              <span className="text-xs text-muted-foreground">
+                Lo contado frente a lo que el sistema esperaba en cada cierre del período. Es de toda la caja: no se separa por módulo.
+              </span>
+            </div>
+            <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+              <KpiCard
+                label="Faltantes"
+                value={<Money value={cashDifferences.faltantes} tone={cashDifferences.shortageCount > 0 ? 'out' : undefined} />}
+                hint={cashDifferences.shortageCount === 1 ? 'En 1 cierre' : `En ${cashDifferences.shortageCount} cierres`}
+              />
+              <KpiCard
+                label="Sobrantes"
+                value={<Money value={cashDifferences.sobrantes} />}
+                hint={cashDifferences.surplusCount === 1 ? 'En 1 cierre' : `En ${cashDifferences.surplusCount} cierres`}
+              />
+              <KpiCard
+                label="Neto (sobrantes − faltantes)"
+                value={<Money value={cashDifferences.neto} tone={compareMoney(cashDifferences.neto, '0') < 0 ? 'out' : undefined} />}
+                hint="No se compensan: cada descuadre es un error de conteo"
+              />
+              <KpiCard
+                label="Cierres con descuadre"
+                value={`${cashDifferences.sessionsWithDifference} de ${cashDifferences.sessionCount}`}
+                tone={cashDifferences.sessionsWithDifference > 0 ? 'danger' : 'default'}
+              />
+            </div>
+            <p className="mt-3 border-t border-border pt-2 text-xs text-muted-foreground">
+              No incluye los descuadres del conteo de apertura: esos se registran como ajuste de la cuenta, fuera de la sesión.
+            </p>
+          </div>
 
           {(showEmpeñoTiendaSplit || showCartera) && (
             <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
