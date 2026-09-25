@@ -2,6 +2,71 @@
 
 > Registro vivo de qué existe en el código, cómo está armado y por qué se tomó cada decisión — para que cualquiera (humano o Claude Code) pueda retomar el proyecto sin releer todo el historial de commits. Se actualiza en cada paso del "Orden de implementación" de `CLAUDE.md`. No repite lo que ya está en `ARCHITECTURE.md`/`DESIGN_SYSTEM.md` (el qué-debería-ser); esto es el qué-hay-hoy y las decisiones concretas tomadas al construirlo.
 
+## Avisos por correo, fase 3: la base legal del cliente, la casilla del mostrador y la página de baja (25/09/2026)
+
+El backend (`00059`, `../backend-starter/docs/NOTIFICACIONES.md` §17) empezó a guardar **con qué base se le puede
+escribir a cada cliente**: `email_basis` (`contract` | `consent` | ninguna), con fecha, origen de la autorización,
+baja y rebote. Tener correo **no** es tener base. Ningún aviso al cliente se enciende por esto: siguen apagados por
+empresa (§12.3). Lo que tocó al front:
+
+**1. La casilla de autorización expresa, en el formulario del cliente** (`CustomerFormDialog`, §9.2-f). Un
+`fieldset` «Avisos por correo» con:
+- «El cliente autoriza expresamente recibir avisos por correo», con el texto de qué cubre y que se puede retirar.
+  **Deshabilitada sin correo** (autorizar a escribirle a una dirección que no existe no autoriza nada) y **nunca
+  obligatoria** — el correo es opcional y la mayoría de los clientes no lo tiene (§1).
+- Solo al editar: «Pidió no recibir avisos por correo» — la baja pedida en persona, con la fecha si ya la tenía.
+- **Las casillas viajan solo si cambiaron** (`email_consent` / `email_opt_out` en el `PATCH`). Una casilla que
+  nadie tocó no es una decisión de nadie; y el backend conserva la fecha original de la autorización aunque se
+  reenvíe, que es la prueba.
+- **Dónde NO está:** en la pantalla de crear contrato. §1c/§9.2-f proponen pedirla ahí (el momento en que el
+  cliente tiene un motivo para decir sí), pero esa pantalla elige un cliente existente con `CustomerPicker` y no
+  tiene formulario de cliente. Quedó en la ficha; el origen que se guarda es `counter`. Pendiente, anotado en el
+  §17 del backend.
+
+**2. El correo viejo inválido no congela la ficha (F21-19).** El esquema de `zod` pasó a ser una función del correo
+**guardado**: ese valor se acepta aunque no tenga forma de correo, con un aviso ámbar debajo; cualquier otro se
+valida como siempre. El backend hace lo mismo en el `PATCH`. Medido: en la base local no hay ninguno (3 de 1.146
+clientes con correo, los 3 válidos) y en dev tampoco había el 23/09 (0 de 2) — la regla es para prod, que nadie
+midió.
+
+**3. La ficha dice con qué base se le puede escribir** (`CustomerDetailPage`, bajo el correo). Sale de
+`features/customers/emailBasis.ts::emailNoticeStatus`, con el **mismo orden que el backend** (`customer_gate`): sin
+correo, baja, rebote, y recién ahí la base. Si la ficha dijera «autorizó» de alguien que pidió la baja, quien atiende
+le prometería un correo que no va a salir. Dice «puede», no «va a»: los avisos están apagados.
+
+**4. La página de baja, `/baja/$token`** (`features/unsubscribe/`). Es a donde lleva el «Darse de baja» de cada correo
+al cliente. **Pública y sin gate de permiso, a propósito**: quien llega es un cliente de la compraventa, no un
+usuario de Prendo; la autoriza el token firmado de la URL, que valida el backend. Ruta hija de la raíz, fuera de
+`/auth`, **sin `beforeLoad`**.
+- **Abrirla no da de baja.** El `GET` solo lee (empresa y correo enmascarado, `j•••@gmail.com`); la baja es el
+  `POST` del botón «Dejar de recibir avisos». Los escáneres de correo abren cada enlace solos, y algunos ejecutan el
+  JS — es la misma lección de `/auth/callback` (bloque de abajo), aplicada desde el día uno.
+- Estados: carga (esqueleto), suscrito (botón), ya dado de baja (fecha, sin botón), `UNSUBSCRIBE_LINK_INVALID`
+  (mensaje del backend, sin reintentar — no se arregla reintentando) y error de red (con «Reintentar»). No hay
+  «vacío»: es un solo recurso.
+- **Le habla de usted**, no de tú: el destinatario es el cliente de la compraventa y los correos del backend le
+  hablan de usted. Es la única pantalla de la app en ese tono, y es a propósito.
+- `UNSUBSCRIBE_LINK_INVALID` entró en `lib/api/errors.ts` en un commit aparte y acotado (había otro agente en ese
+  archivo).
+
+**5. Etiqueta de auditoría** `email_opt_out` → «El cliente se dio de baja de los correos». Llega con `user_id` nulo:
+la pidió el titular, no un usuario.
+
+**Tipos regenerados contra el backend LOCAL** (`VITE_API_URL=http://127.0.0.1:8010 npm run gen:api`), no contra dev:
+el deploy de dev no tiene este código. De paso entró `InvitedUserOut.invite_delivery` (fase 2 del backend), que
+nunca se había generado.
+
+**Verificación:** `typecheck` limpio; `lint` 0 errores (los 8 warnings previos — el `watch()` nuevo se cambió por
+`useWatch` para no sumar uno); **275 tests**; `build` ok. Tests nuevos: `unsubscribe-page.test.tsx` (5, con los
+sobres **copiados de respuestas reales** del backend local; el de «abrir no da de baja» se vio fallar metiendo un
+`POST` al montar), `customer-form-email.test.tsx` (5; el del correo viejo se vio fallar quitando la excepción) y
+`customer-email-basis.test.ts` (5). En navegador (Chrome vía Playwright, backend y base locales): la página de baja
+a 360 y 1280 px sin scroll horizontal, tres `GET` seguidos sin tocar la baja, el clic da de baja y deja el
+`audit_log`; el formulario a 360 y 1280 px en alta, edición y con correo inválido, montado en una página de prueba
+temporal (no commiteada). **La ficha del cliente no se vio en navegador:** el Auth local no tiene configurado el
+hook de claims (`config.toml`), sin él no hay sesión que el backend acepte, y cambiarlo tocaba la configuración que
+usa el otro agente. Está cubierta por el test de `emailNoticeStatus`.
+
 ## Caja y Reportes: reabrir una caja ya abierta, y lo cobrado por banco con la caja cerrada (25/09/2026)
 
 Dos defectos anotados el 24/09 en `../backend-starter/docs/QA_AUDITORIA.md`; el detalle y las mediciones

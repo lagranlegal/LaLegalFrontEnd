@@ -40,6 +40,7 @@ import { DocumentTemplatesPage } from '@/features/settings/documentTemplates/pag
 import { ProfilePage } from '@/features/settings/pages/ProfilePage'
 import { NotificationSettingsPage } from '@/features/settings/notifications/pages/NotificationSettingsPage'
 import { CompaniesPage } from '@/features/platform/pages/CompaniesPage'
+import { UnsubscribePage } from '@/features/unsubscribe/pages/UnsubscribePage'
 
 interface RouterContext {
   queryClient: QueryClient
@@ -108,6 +109,20 @@ const subscriptionBlockedRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/cuenta-bloqueada',
   component: SubscriptionBlockedPage,
+})
+
+// ---- /baja/$token — el enlace «Darse de baja» de los correos al cliente ----
+//
+// PÚBLICA y sin gate de permiso, a propósito (NOTIFICACIONES.md §17 del
+// backend): quien llega es un cliente de la compraventa, no un usuario de
+// Prendo. La autoriza el token firmado, que valida el backend. Fuera de
+// `/auth` porque no tiene nada que ver con una sesión, y sin `beforeLoad`:
+// abrirla no puede hacer NADA más que leer (los escáneres abren los enlaces).
+
+const unsubscribeRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/baja/$token',
+  component: UnsubscribePage,
 })
 
 // ---- /* — protegidas, requieren sesión + bootstrap de /me (§4.5, §9) ----
@@ -527,6 +542,7 @@ const platformCompaniesRoute = createRoute({
 const routeTree = rootRoute.addChildren([
   authLayoutRoute.addChildren([loginRoute, authCallbackRoute]),
   subscriptionBlockedRoute,
+  unsubscribeRoute,
   platformLayoutRoute.addChildren([platformCompaniesRoute]),
   appLayoutRoute.addChildren([
     dashboardRoute,

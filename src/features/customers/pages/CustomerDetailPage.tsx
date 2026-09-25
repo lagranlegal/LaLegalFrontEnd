@@ -14,6 +14,7 @@ import { formatDateTime } from '@/lib/dates'
 import { useCustomer } from '@/lib/customers/search'
 import { useCustomerContracts, useCustomerSales, type ContractSummary, type SaleSummary } from '@/features/customers/history'
 import { CustomerFormDialog } from '@/features/customers/components/CustomerFormDialog'
+import { emailNoticeStatus } from '@/features/customers/emailBasis'
 import { SaleReceiptDialog } from '@/components/shared/SaleReceiptDialog'
 import { useCustomerCreditNotes, type CreditNote } from '@/lib/sales/creditNotes'
 import { formatCOP, sumMoney } from '@/lib/money'
@@ -136,7 +137,16 @@ export function CustomerDetailPage() {
           </div>
           <div>
             <p className="text-xs text-muted-foreground">Correo</p>
-            <p className="text-sm text-foreground">{customer.email ?? '—'}</p>
+            <p className="text-sm text-foreground break-all">{customer.email ?? '—'}</p>
+            {/* §9.2 de NOTIFICACIONES.md: con qué base se le puede escribir. Tener
+                correo no es tener autorización, y quien atiende tiene que verlo. */}
+            <p
+              className={`text-xs ${
+                { ok: 'text-success', muted: 'text-muted-foreground', warning: 'text-warning' }[emailNoticeStatus(customer).tone]
+              }`}
+            >
+              Avisos: {emailNoticeStatus(customer).text}
+            </p>
           </div>
           <div>
             <p className="text-xs text-muted-foreground">Dirección</p>

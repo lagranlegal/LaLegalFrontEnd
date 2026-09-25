@@ -2106,6 +2106,35 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/public/unsubscribe/{token}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Unsubscribe
+         * @description Lo que muestra la página de baja. **Solo lee: NUNCA da de baja.** Los
+         *     escáneres de correo y las vistas previas abren cada enlace apenas llega
+         *     (03/09/2026); si este GET escribiera, un cliente quedaría fuera sin haber
+         *     abierto el correo. La baja es el `POST`.
+         */
+        get: operations["get_unsubscribe_api_v1_public_unsubscribe__token__get"];
+        put?: never;
+        /**
+         * Confirm Unsubscribe
+         * @description Confirma la baja. Idempotente: repetirla devuelve la fecha original.
+         *     Ignora el cuerpo, así que también sirve de destino de un
+         *     `List-Unsubscribe-Post` el día que se agreguen esas cabeceras.
+         */
+        post: operations["confirm_unsubscribe_api_v1_public_unsubscribe__token__post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/health": {
         parameters: {
             query?: never;
@@ -3191,6 +3220,11 @@ export interface components {
             phone: string;
             /** Email */
             email?: string | null;
+            /**
+             * Email Consent
+             * @description Autorización EXPRESA para recibir avisos por correo (NOTIFICACIONES §9.2-f): la casilla del mostrador. `true` deja la base en `consent` con fecha y origen `counter` (si ya la tenía, conserva la fecha original: es la prueba). `false` la retira: la base vuelve a `contract` si hay un contrato vivo, o a ninguna. Omitido = no se toca.
+             */
+            email_consent?: boolean | null;
             /** Doc Photos */
             doc_photos?: string[] | null;
             /** Doc Photo Url */
@@ -3234,6 +3268,18 @@ export interface components {
              * Format: date-time
              */
             created_at: string;
+            /** Email Basis */
+            email_basis?: ("contract" | "consent") | null;
+            /** Email Basis At */
+            email_basis_at?: string | null;
+            /** Email Consent At */
+            email_consent_at?: string | null;
+            /** Email Consent Source */
+            email_consent_source?: ("counter" | "contract_form" | "import") | null;
+            /** Email Opt Out At */
+            email_opt_out_at?: string | null;
+            /** Email Invalid At */
+            email_invalid_at?: string | null;
         };
         /** CustomerUpdateIn */
         CustomerUpdateIn: {
@@ -3245,8 +3291,21 @@ export interface components {
             address?: string | null;
             /** Phone */
             phone?: string | null;
-            /** Email */
+            /**
+             * Email
+             * Format: email
+             */
             email?: string | null;
+            /**
+             * Email Consent
+             * @description Autorización EXPRESA para recibir avisos por correo (NOTIFICACIONES §9.2-f): la casilla del mostrador. `true` deja la base en `consent` con fecha y origen `counter` (si ya la tenía, conserva la fecha original: es la prueba). `false` la retira: la base vuelve a `contract` si hay un contrato vivo, o a ninguna. Omitido = no se toca.
+             */
+            email_consent?: boolean | null;
+            /**
+             * Email Opt Out
+             * @description Baja de los avisos por correo registrada en el mostrador (la persona la pidió en persona). `true` la registra con fecha si no estaba; `false` la levanta. La baja GANA sobre cualquier base (§9.2-c) pero no la borra. Omitido = no se toca.
+             */
+            email_opt_out?: boolean | null;
             /** Doc Photos */
             doc_photos?: string[] | null;
             /** Doc Photo Url */
@@ -3321,6 +3380,8 @@ export interface components {
              * Format: date-time
              */
             updated_at: string;
+            /** Legal Basis */
+            legal_basis?: ("contract" | "consent") | null;
         };
         /** DigestRecipientOut */
         DigestRecipientOut: {
@@ -3875,6 +3936,12 @@ export interface components {
             created_at: string;
             /** Invite Link */
             invite_link?: string | null;
+            /**
+             * Invite Delivery
+             * @default link
+             * @enum {string}
+             */
+            invite_delivery: "link" | "email" | "email_supabase";
         };
         /** ItemOut */
         ItemOut: {
@@ -5486,6 +5553,21 @@ export interface components {
              * Format: date-time
              */
             created_at: string;
+        };
+        /**
+         * UnsubscribeOut
+         * @description Lo que ve quien abre el enlace de baja (NOTIFICACIONES §17). Lo justo
+         *     para reconocerse: la empresa y el correo enmascarado. Ni el nombre del
+         *     cliente ni su documento — quien tiene el enlace puede no ser el titular
+         *     (un correo reenviado).
+         */
+        UnsubscribeOut: {
+            /** Company Name */
+            company_name: string;
+            /** Email Hint */
+            email_hint: string | null;
+            /** Unsubscribed At */
+            unsubscribed_at: string | null;
         };
         /** UpdateUserRoleIn */
         UpdateUserRoleIn: {
@@ -9516,6 +9598,68 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["CursorPage_DeliveryOut_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_unsubscribe_api_v1_public_unsubscribe__token__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                token: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnsubscribeOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    confirm_unsubscribe_api_v1_public_unsubscribe__token__post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                token: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnsubscribeOut"];
                 };
             };
             /** @description Validation Error */

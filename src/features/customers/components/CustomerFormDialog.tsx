@@ -1,13 +1,16 @@
 import { useState } from 'react'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { Controller, useForm } from 'react-hook-form'
+import { Controller, useForm, useWatch } from 'react-hook-form'
 import { z } from 'zod'
 import { AppDialog } from '@/components/shared/AppDialog'
 import { Button } from '@/components/ui/button'
+import { Checkbox } from '@/components/ui/checkbox'
 import { PhotoUploader } from '@/components/shared/PhotoUploader'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { applyServerErrors } from '@/lib/forms/applyServerErrors'
 import { useCreateCustomer, useUpdateCustomer, type Customer } from '@/features/customers/api'
+import { isValidEmailShape } from '@/features/customers/emailBasis'
+import { formatDateTime } from '@/lib/dates'
 
 const DOC_TYPE_LABELS: Record<string, string> = {
   cc: 'Cédula de ciudadanía',
@@ -16,24 +19,51 @@ const DOC_TYPE_LABELS: Record<string, string> = {
   nit: 'NIT',
 }
 
-const customerSchema = z.object({
-  full_name: z.string().min(1, 'El nombre es obligatorio'),
-  doc_type: z.enum(['cc', 'ce', 'passport', 'nit']),
-  doc_number: z.string().min(1, 'El documento es obligatorio'),
-  doc_issue_place: z.string().optional(),
-  address: z.string().optional(),
-  phone: z.string().min(1, 'El teléfono es obligatorio'),
-  email: z.union([z.string().email('Correo inválido'), z.literal('')]).optional(),
-  notes: z.string().optional(),
-  doc_photos: z.array(z.string()),
-})
+/**
+ * El esquema depende del correo YA GUARDADO: ese valor se acepta aunque no
+ * tenga forma de correo (lo guardó alguien antes de que el backend validara,
+ * F21-19). Si no, la ficha quedaría congelada: no se podría corregir ni el
+ * teléfono sin tocar un campo que la persona quizá no sabe arreglar. El
+ * backend hace exactamente lo mismo (`CustomerUpdateIn.email`); cualquier
+ * OTRO valor se valida igual que siempre.
+ */
+function customerSchema(savedEmail: string) {
+  return z.object({
+    full_name: z.string().min(1, 'El nombre es obligatorio'),
+    doc_type: z.enum(['cc', 'ce', 'passport', 'nit']),
+    doc_number: z.string().min(1, 'El documento es obligatorio'),
+    doc_issue_place: z.string().optional(),
+    address: z.string().optional(),
+    phone: z.string().min(1, 'El teléfono es obligatorio'),
+    email: z
+      .string()
+      .optional()
+      .refine((v) => !v || (savedEmail !== '' && v === savedEmail) || isValidEmailShape(v), 'Correo inválido'),
+    notes: z.string().optional(),
+    doc_photos: z.array(z.string()),
+    email_consent: z.boolean(),
+    email_opt_out: z.boolean(),
+  })
+}
 
-type CustomerFormValues = z.infer<typeof customerSchema>
+type CustomerFormValues = z.infer<ReturnType<typeof customerSchema>>
 
 const inputClass = 'mt-1 w-full rounded-input border border-border bg-background px-3 py-2 text-sm text-foreground outline-none focus:border-primary disabled:bg-muted disabled:text-muted-foreground'
 
 function emptyValues(): CustomerFormValues {
-  return { full_name: '', doc_type: 'cc', doc_number: '', doc_issue_place: '', address: '', phone: '', email: '', notes: '', doc_photos: [] }
+  return {
+    full_name: '',
+    doc_type: 'cc',
+    doc_number: '',
+    doc_issue_place: '',
+    address: '',
+    phone: '',
+    email: '',
+    notes: '',
+    doc_photos: [],
+    email_consent: false,
+    email_opt_out: false,
+  }
 }
 
 function valuesFromCustomer(customer: Customer): CustomerFormValues {
@@ -47,6 +77,8 @@ function valuesFromCustomer(customer: Customer): CustomerFormValues {
     email: customer.email ?? '',
     notes: customer.notes ?? '',
     doc_photos: customer.doc_photos ?? [],
+    email_consent: customer.email_basis === 'consent',
+    email_opt_out: Boolean(customer.email_opt_out_at),
   }
 }
 
@@ -68,6 +100,8 @@ export function CustomerFormDialog({ open, onOpenChange, customer }: { open: boo
   const [draftId] = useState(() => crypto.randomUUID())
   const createCustomer = useCreateCustomer()
   const updateCustomer = useUpdateCustomer()
+  const savedEmail = customer?.email ?? ''
+  const savedEmailIsInvalid = savedEmail !== '' && !isValidEmailShape(savedEmail)
   const {
     register,
     handleSubmit,
@@ -75,22 +109,39 @@ export function CustomerFormDialog({ open, onOpenChange, customer }: { open: boo
     setError,
     formState: { errors },
   } = useForm<CustomerFormValues>({
-    resolver: zodResolver(customerSchema),
+    resolver: zodResolver(customerSchema(savedEmail)),
     defaultValues: customer ? valuesFromCustomer(customer) : emptyValues(),
   })
+  const hasEmail = Boolean(useWatch({ control, name: 'email' })?.trim())
 
   async function onSubmit(values: CustomerFormValues) {
     setFormError(null)
-    const email = values.email || null
+    const { email_consent: consent, email_opt_out: optOut, ...fields } = values
+    const email = fields.email || null
     try {
       if (mode === 'create') {
         // `doc_photos` viaja tal cual: es el campo de la API. Antes había que
         // sacarlo del payload porque el formulario guardaba un arreglo y la
         // API pedía un solo `doc_photo_url` — esa traducción ya no existe.
-        await createCustomer.mutateAsync({ ...values, email })
+        // La casilla solo viaja marcada y con correo: autorizar a escribirle a
+        // una dirección que no existe no es una autorización de nada.
+        await createCustomer.mutateAsync({ ...fields, email, ...(consent && email ? { email_consent: true } : {}) })
       } else if (customer) {
-        const { doc_type: _docType, doc_number: _docNumber, ...editable } = values
-        await updateCustomer.mutateAsync({ customerId: customer.id, body: { ...editable, email } })
+        const { doc_type: _docType, doc_number: _docNumber, ...editable } = fields
+        // Las dos casillas viajan SOLO si cambiaron: reenviar «sí autoriza»
+        // en cada edición no reescribe la fecha (el backend la conserva),
+        // pero una casilla que nadie tocó no es una decisión de nadie.
+        const initialConsent = customer.email_basis === 'consent'
+        const initialOptOut = Boolean(customer.email_opt_out_at)
+        await updateCustomer.mutateAsync({
+          customerId: customer.id,
+          body: {
+            ...editable,
+            email,
+            ...(consent !== initialConsent && (email || !consent) ? { email_consent: consent } : {}),
+            ...(optOut !== initialOptOut ? { email_opt_out: optOut } : {}),
+          },
+        })
       }
       onOpenChange(false)
     } catch (error) {
@@ -184,8 +235,71 @@ export function CustomerFormDialog({ open, onOpenChange, customer }: { open: boo
             </label>
             <input id="email" type="email" className={inputClass} {...register('email')} />
             {errors.email && <p className="mt-1 text-sm text-danger">{errors.email.message}</p>}
+            {savedEmailIsInvalid && !errors.email && (
+              <p className="mt-1 text-xs text-warning">El correo guardado no tiene forma de correo. Se puede dejar así, pero conviene corregirlo.</p>
+            )}
           </div>
         </div>
+
+        {/* §9.2-f de NOTIFICACIONES.md: la autorización EXPRESA, en una casilla
+            aparte y con su texto. Sin marcarla, al cliente solo se le puede
+            escribir sobre un contrato vigente suyo; con ella, también lo demás.
+            Nunca se marca sola ni se vuelve obligatoria: el correo es opcional
+            y la mayoría de los clientes no lo tiene (§1). */}
+        <fieldset className="flex flex-col gap-3 rounded-input border border-border p-3">
+          <legend className="px-1 text-sm font-medium text-foreground">Avisos por correo</legend>
+          <Controller
+            control={control}
+            name="email_consent"
+            render={({ field }) => (
+              <label className="flex items-start gap-2 text-sm text-foreground">
+                <Checkbox
+                  checked={field.value}
+                  onCheckedChange={(checked) => field.onChange(checked === true)}
+                  disabled={!hasEmail}
+                  className="mt-0.5"
+                  aria-describedby="email-consent-help"
+                />
+                <span>
+                  El cliente autoriza expresamente recibir avisos por correo
+                  <span id="email-consent-help" className="mt-0.5 block text-xs text-muted-foreground">
+                    {hasEmail
+                      ? 'Cuotas, abonos y demás avisos de sus contratos y compras, y otras comunicaciones de la compraventa. Puede retirarla cuando quiera. Sin esta casilla solo se le escribe sobre un contrato vigente suyo.'
+                      : 'Primero escribe el correo.'}
+                  </span>
+                  {mode === 'edit' && customer?.email_basis === 'consent' && customer.email_consent_at && (
+                    <span className="mt-0.5 block text-xs text-muted-foreground">
+                      Autorizó el {formatDateTime(customer.email_consent_at)}.
+                    </span>
+                  )}
+                </span>
+              </label>
+            )}
+          />
+          {mode === 'edit' && (
+            <Controller
+              control={control}
+              name="email_opt_out"
+              render={({ field }) => (
+                <label className="flex items-start gap-2 text-sm text-foreground">
+                  <Checkbox
+                    checked={field.value}
+                    onCheckedChange={(checked) => field.onChange(checked === true)}
+                    className="mt-0.5"
+                  />
+                  <span>
+                    Pidió no recibir avisos por correo
+                    <span className="mt-0.5 block text-xs text-muted-foreground">
+                      {customer?.email_opt_out_at
+                        ? `Desde el ${formatDateTime(customer.email_opt_out_at)}. Desmárcala solo si el cliente pide volver a recibirlos.`
+                        : 'Gana sobre cualquier autorización: con esta casilla no se le escribe nada.'}
+                    </span>
+                  </span>
+                </label>
+              )}
+            />
+          )}
+        </fieldset>
 
         <div>
           <label htmlFor="address" className="text-sm font-medium text-foreground">

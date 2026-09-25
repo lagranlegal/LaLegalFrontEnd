@@ -59,6 +59,7 @@ const ACCIONES_AUDITADAS = [
   'deactivate_document_template',
   'deactivate_user',
   'delete_document_template',
+  'email_opt_out',
   'expire_subscription',
   'extend_loan',
   'extend_subscription',
