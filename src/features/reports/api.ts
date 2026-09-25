@@ -17,6 +17,12 @@ export const MAX_RANGE_DAYS = 90
  * cerradas de un rango, ya sumado por el backend en una sola consulta
  * (`GET /reports/closings-breakdown`) — reemplaza el N+1 de antes (un
  * `GET /cashbox/sessions/{id}/report` por sesión, ~1/día del rango).
+ * Desde el 25/09/2026 (F21-35, backend) trae además lo registrado con la
+ * caja CERRADA contra cuentas que no son el cajón —una venta por
+ * transferencia, un aporte al banco—, fechado en su día; antes entraba o no
+ * según hubiera un turno abierto a esa hora. Puede traer, entonces, líneas
+ * de un día SIN cierre: `aggregateFinancialSummary` ya les abre su día en
+ * `byDay` y no las cuenta en `sessionCount`, que sale de los cierres.
  * La agregación en sí vive en `aggregateFinancialSummary`
  * (features/reports/aggregate.ts), llamada desde la página vía `useMemo` —
  * así cambiar el filtro de módulo (Todo/Empeño/Tienda) sigue siendo

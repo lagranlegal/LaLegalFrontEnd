@@ -2,6 +2,45 @@
 
 > Registro vivo de qué existe en el código, cómo está armado y por qué se tomó cada decisión — para que cualquiera (humano o Claude Code) pueda retomar el proyecto sin releer todo el historial de commits. Se actualiza en cada paso del "Orden de implementación" de `CLAUDE.md`. No repite lo que ya está en `ARCHITECTURE.md`/`DESIGN_SYSTEM.md` (el qué-debería-ser); esto es el qué-hay-hoy y las decisiones concretas tomadas al construirlo.
 
+## Caja y Reportes: reabrir una caja ya abierta, y lo cobrado por banco con la caja cerrada (25/09/2026)
+
+Dos defectos anotados el 24/09 en `../backend-starter/docs/QA_AUDITORIA.md`; el detalle y las mediciones
+viven allá (F21-34, F21-35). Acá, lo que tocó al front.
+
+**F21-34 — «Reabrir caja» sobre una caja que ya estaba abierta.** El backend respondía `409 CONFLICT` a
+secas y `CashboxPage` tapaba cualquier error con «No se pudo reabrir la caja. Intenta de nuevo.» — mandaba a
+repetir algo que ya estaba hecho. El caso es real aunque el botón solo aparezca con la caja de hoy cerrada:
+un doble clic, o una segunda pestaña que no se refrescó. Ahora el backend emite
+**`CASH_SESSION_NOT_CLOSED`** con `details: {session_id, status}`, y:
+- `lib/api/errors.ts` lo tipa (sin él, `parseApiError` lo bajaba a `UNKNOWN`).
+- `reopenSessionErrorMessage` (`features/cashbox/api.ts`) deja pasar el mensaje del backend, que ya dice qué
+  pasó y qué hacer; el texto genérico queda solo para lo que no es de negocio. Es el mismo criterio que
+  `openSessionErrorMessage` (F21-03), del otro lado del ciclo. Cubre también `CASH_SESSION_ALREADY_OPEN`, que
+  al **reabrir** significa *otra* sesión abierta — son casos distintos y el front no los mezcla.
+- Ante `CASH_SESSION_NOT_CLOSED`, `useReopenSession` invalida el estado de la caja: si la pantalla ofreció
+  «Reabrir», estaba mostrando un estado viejo.
+- 5 tests en `tests/error-codes-contract.test.ts`, con el sobre **copiado de la respuesta real** del test del
+  backend, y uno que lee `CashboxPage.tsx` para que el texto fijo no vuelva. Los 5 vistos fallar antes.
+
+**F21-35 — `closings-breakdown` trae lo cobrado por banco con la caja cerrada. Sin cambios de código en el
+front, a propósito.** El shape es el mismo; lo que cambia es qué líneas llegan: ahora también las de cuentas
+que no son el cajón registradas sin turno abierto, fechadas en su día. `aggregate.ts` no se tocó — la
+decisión de F21-12/F21-13 de no crear otra definición de «ingreso» sigue intacta: no se mueve ninguna regla,
+solo deja de faltar un movimiento según la hora. Dos consecuencias que conviene saber:
+- Puede llegar una línea de un día **sin cierre** (medido en dev: un aporte de $5.000.000 el 13/09, día sin
+  turno). `aggregateFinancialSummary` ya le abre su día en `byDay` y no la cuenta en `sessionCount`, que sale
+  de `/reports/closings`. Se documentó en `features/reports/api.ts`.
+- **No se agregó test del front:** `aggregate.ts` no cambió, y un test sobre él no puede fallar por este
+  arreglo — no probaría nada. El test está donde está el cambio (`backend-starter`,
+  `test_desglose_incluye_lo_cobrado_por_banco_con_la_caja_cerrada`).
+
+**Dudoso, anotado y sin tocar:** un rango con líneas de banco pero **sin ningún cierre** sigue mostrando «No
+hay cierres de caja en este rango» (`ReportesPage.tsx`, la rama `closings.length === 0`), aunque ahora el
+desglose sí traería algo. Es raro —un período entero sin abrir caja— y cambiar esa rama es cambiar qué es
+esta pantalla, no arreglar un defecto.
+
+Verificación: `typecheck` limpio, `lint` 0 errores (8 warnings previos), **260 tests** (255 + 5), `build` ok.
+
 ## Callback de invitación: el canje espera un clic (24/09/2026)
 
 El backend está pasando la invitación por correo del SMTP de Supabase (que responde 429,
