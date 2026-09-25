@@ -4,7 +4,7 @@ import { Controller, useForm } from 'react-hook-form'
 import { z } from 'zod'
 import { toast } from 'sonner'
 import { Link } from '@tanstack/react-router'
-import { FileEdit } from 'lucide-react'
+import { FileEdit, Mail } from 'lucide-react'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { PhotoUploader } from '@/components/shared/PhotoUploader'
 import { EmptyState } from '@/components/shared/EmptyState'
@@ -241,6 +241,20 @@ export function SettingsPage() {
                 )}
               />
             </Field>
+          </div>
+        </Section>
+
+        <Section title="Notificaciones" description="Correos que la empresa manda: el resumen diario y semanal, y los avisos al cliente.">
+          <div className="flex items-start justify-between gap-4 rounded-input border border-border bg-background p-3">
+            <div>
+              <p className="text-sm font-medium text-foreground">Avisos por correo</p>
+              <p className="text-xs text-muted-foreground">Qué se manda, a quién, y cuáles correos salieron. Nacen apagados.</p>
+            </div>
+            <Button variant="outline" size="sm" asChild>
+              <Link to="/configuracion/notificaciones">
+                <Mail className="size-4" /> Notificaciones
+              </Link>
+            </Button>
           </div>
         </Section>
 

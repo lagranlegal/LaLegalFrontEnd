@@ -38,6 +38,7 @@ import { CapitalPage } from '@/features/capital/pages/CapitalPage'
 import { SettingsPage } from '@/features/settings/pages/SettingsPage'
 import { DocumentTemplatesPage } from '@/features/settings/documentTemplates/pages/DocumentTemplatesPage'
 import { ProfilePage } from '@/features/settings/pages/ProfilePage'
+import { NotificationSettingsPage } from '@/features/settings/notifications/pages/NotificationSettingsPage'
 import { CompaniesPage } from '@/features/platform/pages/CompaniesPage'
 
 interface RouterContext {
@@ -422,6 +423,22 @@ const documentTemplatesRoute = createRoute({
   },
 })
 
+// `GET/PATCH /notifications/settings` y `GET /notifications/deliveries`
+// exigen `company.configure` (API_GUIDE §13-ter): mismo guard que el resto de
+// /configuracion. Los permisos `notifications.receive_*` deciden quién RECIBE
+// los correos, no quién los configura.
+const notificationSettingsRoute = createRoute({
+  getParentRoute: () => appLayoutRoute,
+  path: '/configuracion/notificaciones',
+  component: NotificationSettingsPage,
+  beforeLoad: ({ context }) => {
+    const me = context.queryClient.getQueryData(meQueryOptions().queryKey)
+    if (me && !me.permissions.includes('company.configure')) {
+      throw redirect({ to: '/' })
+    }
+  },
+})
+
 // Perfil propio: SIN guard de permiso, a diferencia del resto de
 // /configuracion. Editarse el nombre y la foto no es configurar la empresa —
 // cualquier usuario logueado puede, igual que `GET`/`PATCH /me` en el backend.
@@ -534,6 +551,7 @@ const routeTree = rootRoute.addChildren([
     capitalRoute,
     settingsRoute,
     documentTemplatesRoute,
+    notificationSettingsRoute,
     profileRoute,
   ]),
 ])

@@ -121,6 +121,13 @@ export const API_ERROR_CODES = [
   // nombra el contrato sucesor, y `details` lo trae para enlazarlo:
   // `{successor_contract_id, successor_number}`.
   'CONTRACT_SUPERSEDED',
+  // Configuración de avisos por correo (00058). La pantalla solo manda los
+  // códigos que el propio `GET /notifications/settings` le devolvió y nunca
+  // los de audiencia `platform`, así que los dos solo llegan si el catálogo
+  // del backend cambió entre la carga y el guardado. Caen al banner genérico
+  // con el mensaje del backend; `details` trae los códigos culpables.
+  'NOTIFICATION_EVENT_UNKNOWN',
+  'NOTIFICATION_EVENT_NOT_CONFIGURABLE',
 ] as const
 
 export type ApiErrorCode = (typeof API_ERROR_CODES)[number]

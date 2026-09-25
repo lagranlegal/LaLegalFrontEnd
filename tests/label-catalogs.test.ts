@@ -131,6 +131,7 @@ const MODULOS_DE_NEGOCIO = [
   'customers',
   'identity',
   'inventory',
+  'notifications',
   'payments',
   'platform',
   'reports',

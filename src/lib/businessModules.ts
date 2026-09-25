@@ -31,6 +31,9 @@ export const BUSINESS_MODULE_LABELS: Record<string, string> = {
   customers: 'Clientes',
   identity: 'Identidad',
   inventory: 'Inventario',
+  // 00058. Solo aparece en Auditoría (`update_settings`): no tiene permisos
+  // propios, se configura con `company.configure`.
+  notifications: 'Notificaciones',
   payments: 'Pagos',
   platform: 'Plataforma',
   reports: 'Reportes',

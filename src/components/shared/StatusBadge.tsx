@@ -34,6 +34,21 @@ export const STATUS_LABELS = {
   // `ContractItemOut.status` del contrato ampliado: la prenda NO se
   // devolvió, pasó a respaldar el contrato nuevo.
   transferred: 'Pasó al nuevo contrato',
+  // `DeliveryOut.status` (00058, avisos por correo). Los cinco últimos son
+  // terminales que NO son un error —la mayoría de las filas son de esos—, así
+  // que la etiqueta dice qué pasó y no suena a falla.
+  pending: 'En cola',
+  sending: 'Enviando',
+  sent: 'Enviado',
+  delivered: 'Entregado',
+  bounced: 'Rebotó',
+  failed: 'Falló, se reintenta',
+  dead: 'No se pudo enviar',
+  unroutable: 'Sin correo',
+  suppressed: 'Suprimido',
+  throttled: 'Tope de contactos',
+  skipped_stale: 'Llegó tarde',
+  skipped_no_provider: 'Correo no configurado',
 } as const
 
 export type KnownStatus = keyof typeof STATUS_LABELS
@@ -64,6 +79,22 @@ const STATUS_CLASSES: Record<KnownStatus, string> = {
   // documento reemplazado. Pintarlo como `paid` diría que se saldó.
   superseded: 'bg-status-neutral/15 text-status-neutral',
   transferred: 'bg-status-neutral/15 text-status-neutral',
+  // Entregas: el color de «pagado» para lo que salió, ámbar lo que está en vuelo o se va a
+  // reintentar, rojo solo lo que se perdió. Todo lo que no salió POR DISEÑO
+  // (sin correo, suprimido, tope, tarde, sin proveedor) va neutro — pintarlo
+  // de rojo mandaría a buscar un problema que no existe.
+  pending: 'bg-status-extension/15 text-status-extension',
+  sending: 'bg-status-extension/15 text-status-extension',
+  sent: 'bg-status-paid/15 text-status-paid',
+  delivered: 'bg-status-paid/15 text-status-paid',
+  bounced: 'bg-status-auctioned/15 text-status-auctioned',
+  failed: 'bg-status-arrears/15 text-status-arrears',
+  dead: 'bg-status-auctioned/15 text-status-auctioned',
+  unroutable: 'bg-status-neutral/15 text-status-neutral',
+  suppressed: 'bg-status-neutral/15 text-status-neutral',
+  throttled: 'bg-status-neutral/15 text-status-neutral',
+  skipped_stale: 'bg-status-neutral/15 text-status-neutral',
+  skipped_no_provider: 'bg-status-neutral/15 text-status-neutral',
 }
 
 const FALLBACK_CLASSES = 'bg-status-neutral/15 text-status-neutral'

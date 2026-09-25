@@ -2,6 +2,47 @@
 
 > Registro vivo de qué existe en el código, cómo está armado y por qué se tomó cada decisión — para que cualquiera (humano o Claude Code) pueda retomar el proyecto sin releer todo el historial de commits. Se actualiza en cada paso del "Orden de implementación" de `CLAUDE.md`. No repite lo que ya está en `ARCHITECTURE.md`/`DESIGN_SYSTEM.md` (el qué-debería-ser); esto es el qué-hay-hoy y las decisiones concretas tomadas al construirlo.
 
+## Fase 5b — pantalla de Notificaciones (`/configuracion/notificaciones`, 24/09/2026)
+
+El backend de la fase 1 (00058, `GET/PATCH /notifications/settings`, `GET /notifications/deliveries`) estaba
+desplegado sin pantalla: la única forma de encender los correos de una empresa era un `PATCH` a mano. Contrato
+en `../backend-starter/docs/API_GUIDE.md` §13-ter. Se regeneraron los tipos (`npm run gen:api`).
+
+**Qué hay:** `features/settings/notifications/` — `api.ts` (hooks), `logic.ts` (funciones puras) y la
+página. Guard de ruta `company.configure`, igual que el resto de `/configuracion`, y un enlace desde
+Configuración. Cuatro bloques: interruptor general + quién recibe el resumen; los eventos agrupados
+(resumen / alertas / avisos al cliente); parámetros (umbrales, rezago, límites de la Ley 2300); y el
+historial de entregas con filtro por estado y «Cargar más».
+
+**Decisiones:**
+- **Dos formas de guardar, a propósito.** Los interruptores (general y por evento) se guardan al tocarlos,
+  con confirmación en el momento: encender es un acto explícito con consecuencias hacia afuera y no puede
+  viajar escondido en un «Guardar» junto con un umbral. Los parámetros van en un formulario con botón.
+- **El PATCH lleva solo lo que cambió** (`buildParamsPatch`): el backend audita campo por campo con su antes y
+  después, y mandar el formulario entero ensuciaría la auditoría. `"0"` y `"0.00"` cuentan como el mismo
+  umbral (comparación de texto normalizado, sin `parseFloat`).
+- **Encender el interruptor general confirma nombrando a quién le va a escribir**, avisa que la primera
+  corrida manda un **semanal** sea el día que sea, y dice si nadie tiene el permiso de recibir el resumen o si
+  la plataforma no tiene correo configurado.
+- **R5 (`auction_ready_customer`) exige leer el texto de `NOTIFICACIONES.md` §2.2-c** en un confirm `danger`
+  antes de encenderse, como pide el contrato.
+- **Notas que dicen lo que no funciona todavía:** las alertas A1–A4 no tienen productor (fase 7) y los avisos
+  al cliente quedan `suppressed` hasta que exista la base legal por cliente (fase 3). Sin la nota, una casilla
+  marcada se lee como que ya sale.
+- **Los eventos de audiencia `platform` no se muestran:** el backend los rechaza con
+  `NOTIFICATION_EVENT_NOT_CONFIGURABLE`. Ese código y `NOTIFICATION_EVENT_UNKNOWN` quedaron en `errors.ts`.
+- **Sin nombrar al proveedor de correo** en el aviso de «no configurado» (lección de F21-06).
+- **Estados de entrega en `StatusBadge`** (el mapa único). Los terminales que no son falla (`unroutable`,
+  `suppressed`, `throttled`, `skipped_*`) van en neutro: en rojo mandarían a buscar un problema que no existe.
+- **`notifications` agregado a `BUSINESS_MODULE_LABELS`**: el módulo nuevo de auditoría rompía
+  `tests/label-catalogs.test.ts` (que funcionó exactamente para lo que existe).
+
+**Verificado en navegador** (front local → backend dev, cuenta de laboratorio `qa.admin@qalab.com`, sin tocar
+ningún interruptor): 1280 y 360 px sin desborde horizontal, sin errores de página, cero requests de mutación.
+**No se probó encender nada en vivo.**
+
+**Tests:** `tests/notification-settings.test.ts`, 13. Suite: 251, typecheck limpio, lint 0 errores.
+
 ## F21-17 — columna «Devuelto» en la lista y el Excel de Ventas (24/09/2026)
 
 `sale.status` sigue en `completed` tras una devolución (decisión de F21-12), así que ni la tabla ni el

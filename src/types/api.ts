@@ -2067,6 +2067,45 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/notifications/settings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Notification Settings */
+        get: operations["get_notification_settings_api_v1_notifications_settings_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Update Notification Settings */
+        patch: operations["update_notification_settings_api_v1_notifications_settings_patch"];
+        trace?: never;
+    };
+    "/api/v1/notifications/deliveries": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Notification Deliveries
+         * @description Entregas recientes, las más nuevas primero. Incluye las que NO salieron
+         *     (`unroutable`, `suppressed`, `skipped_*`): son la mayoría y son información.
+         */
+        get: operations["list_notification_deliveries_api_v1_notifications_deliveries_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/health": {
         parameters: {
             query?: never;
@@ -2633,6 +2672,51 @@ export interface components {
             /** Return Window Days */
             return_window_days?: number | null;
         };
+        /** ContactLimitsIn */
+        ContactLimitsIn: {
+            /** Enabled */
+            enabled?: boolean | null;
+            /** Max Per Week */
+            max_per_week?: number | null;
+            /** Max Per Day */
+            max_per_day?: number | null;
+            /** Weekday Hours */
+            weekday_hours?: [
+                string,
+                string
+            ] | null;
+            /** Saturday Hours */
+            saturday_hours?: [
+                string,
+                string
+            ] | null;
+            /** Sundays And Holidays */
+            sundays_and_holidays?: boolean | null;
+        };
+        /**
+         * ContactLimitsOut
+         * @description Límites de contacto al CLIENTE (Ley 2300). No aplican a la empresa.
+         */
+        ContactLimitsOut: {
+            /** Enabled */
+            enabled: boolean;
+            /** Max Per Week */
+            max_per_week: number;
+            /** Max Per Day */
+            max_per_day: number;
+            /** Weekday Hours */
+            weekday_hours: [
+                string,
+                string
+            ];
+            /** Saturday Hours */
+            saturday_hours: [
+                string,
+                string
+            ];
+            /** Sundays And Holidays */
+            sundays_and_holidays: boolean;
+        };
         /** ContractCreateIn */
         ContractCreateIn: {
             /** Account Id */
@@ -2983,6 +3067,13 @@ export interface components {
             /** Next Cursor */
             next_cursor?: string | null;
         };
+        /** CursorPage[DeliveryOut] */
+        CursorPage_DeliveryOut_: {
+            /** Items */
+            items: components["schemas"]["DeliveryOut"][];
+            /** Next Cursor */
+            next_cursor?: string | null;
+        };
         /** CursorPage[EntryOut] */
         CursorPage_EntryOut_: {
             /** Items */
@@ -3174,6 +3265,74 @@ export interface components {
             sales: components["schemas"]["SalesKpisOut"];
             inventory: components["schemas"]["InventoryKpisOut"];
             cashbox: components["schemas"]["CashboxKpisOut"];
+        };
+        /** DeliveryOut */
+        DeliveryOut: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Event Id
+             * Format: uuid
+             */
+            event_id: string;
+            /** Event Type */
+            event_type: string;
+            /** Audience */
+            audience: string;
+            /**
+             * Occurred On
+             * Format: date
+             */
+            occurred_on: string;
+            /** Channel */
+            channel: string;
+            /** To Address */
+            to_address: string | null;
+            /** Recipient User Id */
+            recipient_user_id: string | null;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "pending" | "sending" | "sent" | "delivered" | "bounced" | "failed" | "dead" | "unroutable" | "suppressed" | "throttled" | "skipped_stale" | "skipped_no_provider";
+            /** Attempts */
+            attempts: number;
+            /** Last Error */
+            last_error: string | null;
+            /** Provider Id */
+            provider_id: string | null;
+            /**
+             * Scheduled At
+             * Format: date-time
+             */
+            scheduled_at: string;
+            /** Sent At */
+            sent_at: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+        };
+        /** DigestRecipientOut */
+        DigestRecipientOut: {
+            /**
+             * User Id
+             * Format: uuid
+             */
+            user_id: string;
+            /** Full Name */
+            full_name: string;
+            /** Email */
+            email: string;
         };
         /** DocumentSettingsIn */
         DocumentSettingsIn: {
@@ -3379,6 +3538,33 @@ export interface components {
             payment_method: "cash" | "transfer" | "other";
             /** Account Id */
             account_id?: string | null;
+        };
+        /** EventTypeSettingOut */
+        EventTypeSettingOut: {
+            /** Code */
+            code: string;
+            /**
+             * Audience
+             * @enum {string}
+             */
+            audience: "customer" | "company" | "platform";
+            /**
+             * Purpose
+             * @enum {string}
+             */
+            purpose: "service" | "marketing";
+            /** Family */
+            family: string;
+            /** Description */
+            description: string;
+            /** Default Enabled */
+            default_enabled: boolean;
+            /** Enabled */
+            enabled: boolean;
+            /** Overridden */
+            overridden: boolean;
+            /** Effective */
+            effective: boolean;
         };
         /** ExitCreateIn */
         ExitCreateIn: {
@@ -4015,6 +4201,40 @@ export interface components {
             sales_returns: string;
             /** Expenses */
             expenses: string;
+        };
+        /** NotificationSettingsOut */
+        NotificationSettingsOut: {
+            /** Enabled */
+            enabled: boolean;
+            /** Provider Configured */
+            provider_configured: boolean;
+            /** Events */
+            events: components["schemas"]["EventTypeSettingOut"][];
+            thresholds: components["schemas"]["ThresholdsOut"];
+            customer_contact_limits: components["schemas"]["ContactLimitsOut"];
+            /** Stale After Days */
+            stale_after_days: number;
+            /** Digest Recipients */
+            digest_recipients: components["schemas"]["DigestRecipientOut"][];
+        };
+        /**
+         * NotificationSettingsUpdateIn
+         * @description PATCH parcial: lo que no viene no cambia.
+         *
+         *     `events` es un mapa código → `true`/`false`/`null`; `null` borra el
+         *     override y el evento vuelve al default del catálogo.
+         */
+        NotificationSettingsUpdateIn: {
+            /** Enabled */
+            enabled?: boolean | null;
+            /** Events */
+            events?: {
+                [key: string]: boolean | null;
+            } | null;
+            thresholds?: components["schemas"]["ThresholdsIn"] | null;
+            customer_contact_limits?: components["schemas"]["ContactLimitsIn"] | null;
+            /** Stale After Days */
+            stale_after_days?: number | null;
         };
         /**
          * PawnPerformanceOut
@@ -5017,6 +5237,20 @@ export interface components {
             notes?: string | null;
             /** Active */
             active?: boolean | null;
+        };
+        /** ThresholdsIn */
+        ThresholdsIn: {
+            /** Discount Amount */
+            discount_amount?: number | string | null;
+            /** Cash Difference Amount */
+            cash_difference_amount?: number | string | null;
+        };
+        /** ThresholdsOut */
+        ThresholdsOut: {
+            /** Discount Amount */
+            discount_amount: string;
+            /** Cash Difference Amount */
+            cash_difference_amount: string;
         };
         /**
          * TransferIn
@@ -9195,6 +9429,93 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["MonthlySeriesOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_notification_settings_api_v1_notifications_settings_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotificationSettingsOut"];
+                };
+            };
+        };
+    };
+    update_notification_settings_api_v1_notifications_settings_patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["NotificationSettingsUpdateIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotificationSettingsOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_notification_deliveries_api_v1_notifications_deliveries_get: {
+        parameters: {
+            query?: {
+                cursor?: string | null;
+                limit?: number;
+                status?: ("pending" | "sending" | "sent" | "delivered" | "bounced" | "failed" | "dead" | "unroutable" | "suppressed" | "throttled" | "skipped_stale" | "skipped_no_provider") | null;
+                event_type?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CursorPage_DeliveryOut_"];
                 };
             };
             /** @description Validation Error */
