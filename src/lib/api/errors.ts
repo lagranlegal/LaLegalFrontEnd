@@ -135,6 +135,11 @@ export const API_ERROR_CODES = [
   // con el mensaje del backend; `details` trae los códigos culpables.
   'NOTIFICATION_EVENT_UNKNOWN',
   'NOTIFICATION_EVENT_NOT_CONFIGURABLE',
+  // Enlace de baja del correo al cliente (00059, NOTIFICACIONES §17): firma
+  // mala, cliente o empresa inexistente, o la plataforma sin secreto. Un solo
+  // código a propósito. Lo lee SOLO la página pública `/baja/$token`, que no
+  // tiene sesión: el mensaje del backend ya le dice a la persona qué hacer.
+  'UNSUBSCRIBE_LINK_INVALID',
 ] as const
 
 export type ApiErrorCode = (typeof API_ERROR_CODES)[number]
