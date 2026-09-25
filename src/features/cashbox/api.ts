@@ -202,6 +202,21 @@ export function useCloseSession() {
   })
 }
 
+/**
+ * Mensaje de error al REABRIR la caja — mismo criterio que
+ * `openSessionErrorMessage` (F21-03), del otro lado del ciclo.
+ *
+ * El texto fijo «No se pudo reabrir la caja. Intenta de nuevo.» tapaba los dos
+ * rechazos reales del endpoint, y ninguno se arregla reintentando:
+ * `CASH_SESSION_NOT_CLOSED` (esa sesión YA está abierta: doble clic, otra
+ * pestaña — F21-34) y `CASH_SESSION_ALREADY_OPEN` (hay OTRA abierta de otro
+ * día). El backend ya dice qué pasó y qué hacer; acá solo se deja pasar.
+ */
+export function reopenSessionErrorMessage(error: unknown): string {
+  if (!(error instanceof ApiError)) return 'No se pudo reabrir la caja. Intenta de nuevo.'
+  return userMessage(error)
+}
+
 export function useReopenSession() {
   const queryClient = useQueryClient()
   return useMutation({
@@ -210,6 +225,11 @@ export function useReopenSession() {
     onSuccess: (session) => {
       queryClient.setQueryData(cashboxCurrentQueryOptions().queryKey, session)
       invalidateAfterSessionChange(queryClient)
+    },
+    // Si ya estaba abierta, esta pantalla estaba mostrando un estado viejo
+    // (por eso ofreció «Reabrir»): se refresca para que muestre el turno.
+    onError: (error) => {
+      if (error instanceof ApiError && error.code === 'CASH_SESSION_NOT_CLOSED') invalidateAfterSessionChange(queryClient)
     },
   })
 }

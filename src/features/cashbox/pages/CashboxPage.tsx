@@ -24,6 +24,7 @@ import {
   useExpensesList,
   useTodaySession,
   useReopenSession,
+  reopenSessionErrorMessage,
   type Expense,
 } from '@/features/cashbox/api'
 import { OpenSessionDialog } from '@/features/cashbox/components/OpenSessionDialog'
@@ -96,8 +97,8 @@ export function CashboxPage() {
     try {
       await reopenSession.mutateAsync({ sessionId: todaySession.id, reason: result.reason })
       toast.success('Caja reabierta')
-    } catch {
-      toast.error('No se pudo reabrir la caja. Intenta de nuevo.')
+    } catch (error) {
+      toast.error(reopenSessionErrorMessage(error))
     }
   }
 

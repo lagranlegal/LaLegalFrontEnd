@@ -25,6 +25,13 @@ export const API_ERROR_CODES = [
   // `CASH_SESSION_NOT_OPEN`: un código es un contrato entre dos capas y nadie
   // lo compila.
   'CASH_SESSION_ALREADY_CLOSED_TODAY',
+  // Se intentó REABRIR una sesión que ya está abierta: un doble clic, o una
+  // segunda pestaña que todavía mostraba la caja cerrada (F21-34). Hasta el
+  // 25/09/2026 el backend mandaba `CONFLICT` a secas y la pantalla decía
+  // «No se pudo reabrir la caja. Intenta de nuevo.» — mandaba a repetir algo
+  // que ya estaba hecho. No confundir con `CASH_SESSION_ALREADY_OPEN`, que al
+  // reabrir significa OTRA sesión abierta. `details: {session_id, status}`.
+  'CASH_SESSION_NOT_CLOSED',
   'PAYMENT_PARTIAL_INTEREST_REJECTED',
   'CONTRACT_CLOSED',
   'CONTRACT_NOT_READY_FOR_AUCTION',

@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import { API_ERROR_CODES, parseApiError, userMessage } from '@/lib/api/errors'
-import { openSessionErrorMessage } from '@/features/cashbox/api'
+import { readFileSync } from 'node:fs'
+import { resolve } from 'node:path'
+import { openSessionErrorMessage, reopenSessionErrorMessage } from '@/features/cashbox/api'
 import { applyServerErrors } from '@/lib/forms/applyServerErrors'
 
 /**
@@ -33,6 +35,31 @@ const YA_CERRADA_HOY = {
 const YA_ABIERTA = {
   status: 409,
   body: { code: 'CASH_SESSION_ALREADY_OPEN', message: 'Ya hay una sesión de caja abierta.', details: {} },
+}
+
+/**
+ * `app/modules/cashbox/service.py::reopen_session`, rama `status != 'closed'`
+ * (ConflictError → 409). Copiado de la respuesta REAL del test
+ * `test_reabrir_una_sesion_que_ya_esta_abierta_tiene_codigo_propio` del
+ * backend (25/09/2026), no de memoria; solo el `session_id` es otro.
+ */
+const REABRIR_YA_ABIERTA = {
+  status: 409,
+  body: {
+    code: 'CASH_SESSION_NOT_CLOSED',
+    message: 'Esta sesión de caja ya está abierta: no hay nada que reabrir. Registra lo que falte directamente en el turno abierto.',
+    details: { session_id: 'fc6c083a-17d0-4d8d-ae39-46eb2f38a3e2', status: 'open' },
+  },
+}
+
+/** `app/modules/cashbox/service.py::reopen_session`, rama «hay OTRA abierta». */
+const REABRIR_CON_OTRA_ABIERTA = {
+  status: 409,
+  body: {
+    code: 'CASH_SESSION_ALREADY_OPEN',
+    message: 'Ya hay otra sesión abierta para esta caja; ciérrala antes de reabrir esta.',
+    details: {},
+  },
 }
 
 /** `app/core/errors.py::handle_integrity_error`, rama `idempotency_key`. */
@@ -127,6 +154,41 @@ describe('F21-03: abrir caja no reintenta lo imposible', () => {
 
   it('lo que no es de negocio sí puede reintentarse', () => {
     expect(openSessionErrorMessage(new Error('sin conexión'))).toBe('No se pudo abrir la caja. Intenta de nuevo.')
+  })
+})
+
+describe('F21-34: reabrir una caja que ya está abierta dice qué pasó', () => {
+  it('`CASH_SESSION_NOT_CLOSED` se tipa en vez de caer a UNKNOWN, y trae la sesión', () => {
+    const error = parseApiError(REABRIR_YA_ABIERTA.status, REABRIR_YA_ABIERTA.body)
+    expect(error.code).toBe('CASH_SESSION_NOT_CLOSED')
+    expect(error.details?.status).toBe('open')
+  })
+
+  it('muestra el texto del backend, no «intenta de nuevo»: reintentar no cambia nada', () => {
+    const msg = reopenSessionErrorMessage(parseApiError(REABRIR_YA_ABIERTA.status, REABRIR_YA_ABIERTA.body))
+    expect(msg).toContain('Esta sesión de caja ya está abierta')
+    expect(msg).toContain('turno abierto')
+    expect(msg).not.toContain('Intenta de nuevo')
+  })
+
+  it('«hay OTRA abierta» es otro caso y también conserva el texto del backend', () => {
+    const msg = reopenSessionErrorMessage(parseApiError(REABRIR_CON_OTRA_ABIERTA.status, REABRIR_CON_OTRA_ABIERTA.body))
+    expect(msg).toContain('ciérrala antes de reabrir esta')
+    expect(msg).not.toContain('Intenta de nuevo')
+  })
+
+  it('lo que no es de negocio sí puede reintentarse', () => {
+    expect(reopenSessionErrorMessage(new Error('sin conexión'))).toBe('No se pudo reabrir la caja. Intenta de nuevo.')
+  })
+
+  it('la pantalla de Caja usa esa función en vez de su texto fijo', () => {
+    // Lee el código de verdad, como `cash-session-dialog.test.ts`: la función
+    // puede estar perfecta y la pantalla seguir tapándola con un texto fijo,
+    // que es exactamente como estaba (`CashboxPage.tsx`, «No se pudo reabrir
+    // la caja. Intenta de nuevo.» para todo).
+    const page = readFileSync(resolve(__dirname, '../src/features/cashbox/pages/CashboxPage.tsx'), 'utf8')
+    expect(page).toContain('toast.error(reopenSessionErrorMessage(')
+    expect(page).not.toContain("toast.error('No se pudo reabrir la caja")
   })
 })
 
