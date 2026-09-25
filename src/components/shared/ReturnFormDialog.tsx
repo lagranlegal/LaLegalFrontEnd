@@ -8,7 +8,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useItemsByIds, type Item } from '@/lib/inventory/items'
 import { formatQuantity } from '@/lib/inventory/units'
 import { ApiError } from '@/lib/api/client'
-import { useCreateReturn, useSaleReturns, RETURN_REASON_LABELS, RETURN_SETTLEMENT_LABELS } from '@/lib/sales/returns'
+import { useCreateReturn, useSaleReturns, returnSettlementSummary, RETURN_REASON_LABELS, RETURN_SETTLEMENT_LABELS } from '@/lib/sales/returns'
+import { compareMoney, formatCOP } from '@/lib/money'
 import type { Sale } from '@/lib/sales/void'
 import type { Customer } from '@/lib/customers/search'
 
@@ -100,6 +101,11 @@ export function ReturnFormDialog({ open, onOpenChange, sale }: { open: boolean; 
   const [cashDialogOpen, setCashDialogOpen] = useState(false)
 
   const needsCustomer = settlementMethod === 'credit_note' && !sale.customer_id
+  // F21-37: lo pagado con nota crédito no es plata — nunca entró al cajón, y
+  // no sale de él. El backend parte la liquidación; esto solo lo anticipa,
+  // para que el cajero no le prometa al cliente el total en efectivo.
+  const redeemed = sale.credit_note_redeemed_amount
+  const paidWithNote = redeemed != null && compareMoney(redeemed, '0') > 0
 
   function draftFor(line: Sale['lines'][number]): LineDraft {
     return drafts[line.id] ?? { included: false, quantity: String(Number(line.quantity) - alreadyReturned(returns, line.id)), restock: true }
@@ -124,14 +130,15 @@ export function ReturnFormDialog({ open, onOpenChange, sale }: { open: boolean; 
     }
 
     try {
-      await createReturn.mutateAsync({
+      const created = await createReturn.mutateAsync({
         lines,
         reason,
         settlement_method: settlementMethod,
         customer_id: customer?.id ?? null,
         notes: notes.trim() || null,
       })
-      toast.success('Devolución registrada')
+      // El reparto que liquidó el backend, no uno calculado acá.
+      toast.success('Devolución registrada', { description: returnSettlementSummary(created) })
       onOpenChange(false)
     } catch (error) {
       if (error instanceof ApiError && error.code === 'CASH_SESSION_NOT_OPEN') {
@@ -191,6 +198,15 @@ export function ReturnFormDialog({ open, onOpenChange, sale }: { open: boolean; 
               </SelectContent>
             </Select>
           </div>
+
+          {paidWithNote && (
+            <p className="rounded-input bg-info-soft px-3 py-2 text-sm text-foreground">
+              Esta venta se pagó {formatCOP(redeemed)} con nota crédito.{' '}
+              {settlementMethod === 'cash'
+                ? 'Esa parte vuelve como una nota crédito nueva y del cajón solo sale lo que se pagó en plata. En una devolución parcial, cada parte vuelve en la misma proporción en que se pagó la venta.'
+                : 'Todo lo devuelto queda en una nota crédito nueva.'}
+            </p>
+          )}
 
           {needsCustomer && (
             <div>

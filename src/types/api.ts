@@ -2721,6 +2721,8 @@ export interface components {
             ] | null;
             /** Sundays And Holidays */
             sundays_and_holidays?: boolean | null;
+            /** Transactional In Weekly Cap */
+            transactional_in_weekly_cap?: boolean | null;
         };
         /**
          * ContactLimitsOut
@@ -2745,6 +2747,8 @@ export interface components {
             ];
             /** Sundays And Holidays */
             sundays_and_holidays: boolean;
+            /** Transactional In Weekly Cap */
+            transactional_in_weekly_cap: boolean;
         };
         /** ContractCreateIn */
         ContractCreateIn: {
@@ -4893,6 +4897,12 @@ export interface components {
             credit_note_id: string | null;
             /** Total Amount */
             total_amount: string;
+            /** Refunded Amount */
+            refunded_amount: string;
+            /** Credit Note Amount */
+            credit_note_amount: string;
+            /** Credit Note Number */
+            credit_note_number: number | null;
             /** Time Limit Warning */
             time_limit_warning: boolean;
         };

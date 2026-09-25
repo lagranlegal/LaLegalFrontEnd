@@ -17,7 +17,7 @@ import { useItemsByIds, type Item } from '@/lib/inventory/items'
 import { formatQuantity } from '@/lib/inventory/units'
 import { ApiError, userMessage } from '@/lib/api/errors'
 import { useVoidSale, type Sale } from '@/lib/sales/void'
-import { useSaleReturns, RETURN_REASON_LABELS, RETURN_SETTLEMENT_LABELS } from '@/lib/sales/returns'
+import { useSaleReturns, returnSettlementParts, RETURN_REASON_LABELS, RETURN_SETTLEMENT_LABELS } from '@/lib/sales/returns'
 import type { components } from '@/types/api'
 
 type SaleLine = components['schemas']['SaleLineOut']
@@ -175,6 +175,15 @@ export function SaleReceiptDialog({ open, onOpenChange, sale }: { open: boolean;
                         {RETURN_SETTLEMENT_LABELS[ret.settlement_method as keyof typeof RETURN_SETTLEMENT_LABELS] ?? ret.settlement_method}
                       </p>
                       <p className="text-xs text-muted-foreground">{formatDate(ret.return_date)}</p>
+                      {/* F21-37: cómo se liquidó — una devolución en efectivo sobre una venta pagada con nota sale en parte en efectivo y en parte como nota nueva. */}
+                      <p className="text-xs text-muted-foreground">
+                        {returnSettlementParts(ret).map((part, i) => (
+                          <span key={part.kind}>
+                            {i > 0 && ' · '}
+                            {part.label} <Money value={part.amount} />
+                          </span>
+                        ))}
+                      </p>
                     </div>
                     <Money value={ret.total_amount} />
                   </div>

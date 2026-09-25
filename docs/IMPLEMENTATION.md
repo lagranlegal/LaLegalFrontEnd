@@ -2,6 +2,41 @@
 
 > Registro vivo de qué existe en el código, cómo está armado y por qué se tomó cada decisión — para que cualquiera (humano o Claude Code) pueda retomar el proyecto sin releer todo el historial de commits. Se actualiza en cada paso del "Orden de implementación" de `CLAUDE.md`. No repite lo que ya está en `ARCHITECTURE.md`/`DESIGN_SYSTEM.md` (el qué-debería-ser); esto es el qué-hay-hoy y las decisiones concretas tomadas al construirlo.
 
+## F21-37: la devolución de una venta pagada con nota crédito muestra su reparto (25/09/2026)
+
+Una devolución en efectivo sobre una venta pagada con nota crédito sacaba del cajón el **total**, incluida la parte
+de la nota —que nunca entró—: $800.000 = $500.000 de nota + $300.000 en efectivo → salían $800.000. Decisión de
+Mateo (opción A): **se parte la liquidación**. Lo pagado con nota vuelve como una **nota crédito nueva** ligada a
+la devolución, y solo lo pagado en plata sale por el medio elegido; una devolución parcial se reparte
+**proporcional a cómo se pagó la venta**, sobre el acumulado, y la que agota la venta se lleva el residuo. La regla,
+el porqué y los números están en `../backend-starter/docs/QA_AUDITORIA.md` §F21-37 (y en
+`../backend-starter/app/modules/sales/settlement.py`). Acá, lo que tocó al front:
+
+- **Tipos regenerados contra el backend LOCAL** (`VITE_API_URL=http://127.0.0.1:<puerto> npm run gen:api`).
+  `SaleReturnOut` trae tres campos nuevos, aditivos: `refunded_amount` (lo que salió en plata) +
+  `credit_note_amount` (lo que quedó en la nota) = `total_amount`, y `credit_note_number`. La regeneración trajo
+  además `transactional_in_weekly_cap` en los límites de contacto de los avisos: era drift del backend desde la
+  fase 4/6 de notificaciones (`NOTIFICACIONES.md` §18.4 ya lo anotaba), no de este cambio.
+- **`lib/sales/returns.ts`: `returnSettlementParts` y `returnSettlementSummary`.** No calculan el reparto —lo
+  calcula el backend—: solo eligen qué partes mostrar (las que no son cero, con `compareMoney`, no con `Number`) y
+  con qué etiqueta («Efectivo», «Nota crédito #N»). Una devolución sin nota de por medio sigue siendo una sola
+  parte, como antes.
+- **El recibo (`SaleReceiptDialog`)** muestra, debajo de cada devolución, cómo se liquidó: «Efectivo $ 300.000 ·
+  Nota crédito #2 $ 500.000». La columna del monto sigue siendo el `total_amount`.
+- **El diálogo de devolución (`ReturnFormDialog`)**, si la venta se pagó con nota (`credit_note_redeemed_amount`),
+  avisa antes de registrar: en efectivo, «esa parte vuelve como una nota crédito nueva y del cajón solo sale lo que
+  se pagó en plata»; en nota, «todo lo devuelto queda en una nota crédito nueva». No anticipa montos: el reparto de
+  una parcial depende de las devoluciones anteriores y lo decide el backend. **El toast de éxito** trae el reparto
+  que devolvió el `POST` («Efectivo $ 300.000 · Nota crédito #2 $ 500.000»), para que el cajero sepa cuánto entregar
+  en la mano.
+- **Test con la respuesta REAL** del backend local (el caso de $800.000 devuelto completo en efectivo, capturado de la
+  API, no escrito de memoria): `tests/return-settlement.test.tsx` — las partes, el recibo (y que no diga $800.000),
+  el aviso del diálogo (y su ausencia sin nota) y el toast. Se vio fallar antes de implementar. Front en **284**
+  tests (278 + 6); `typecheck` y `lint` sin errores (8 warnings viejos, ninguno de estos archivos); `build` ok.
+- **No cambió:** el mensaje de `SALE_PAID_WITH_CREDIT_NOTE` (F21-36) sigue mandando a «una devolución liquidada en
+  nota crédito». Sigue siendo cierto; ya no es la única salida (en efectivo ahora también cuadra), y cambiarlo es
+  del backend.
+
 ## F21-36: anular una venta pagada con nota crédito se rechaza con su propio código (25/09/2026)
 
 Anular una venta pagada (toda o en parte) con una nota crédito sacaba del cajón el **total entero**, incluida la
