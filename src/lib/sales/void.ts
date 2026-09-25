@@ -15,7 +15,9 @@ export type Sale = components['schemas']['SaleOut']
  * reponer el stock. Este comentario decía lo contrario hasta el 23/09/2026.
  * Por eso exige caja abierta (`CASH_SESSION_NOT_OPEN`) y por eso una venta
  * con devoluciones ya no se puede anular (`SALE_HAS_RETURNS`, F21-31): lo
- * devuelto ya se le pagó al cliente.
+ * devuelto ya se le pagó al cliente. Tampoco una pagada con nota crédito
+ * (`SALE_PAID_WITH_CREDIT_NOTE`, F21-36): el contra-movimiento es por el
+ * total y sacaría en plata la parte de la nota, que nunca entró al cajón.
  */
 export function useVoidSale() {
   const queryClient = useQueryClient()

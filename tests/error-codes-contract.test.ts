@@ -93,6 +93,21 @@ const ANULAR_SIN_CAJA = {
   },
 }
 
+/**
+ * `app/modules/sales/service.py::void_sale`, guarda de F21-36 (ConflictError →
+ * 409). Copiado de la respuesta del backend local a la venta del hallazgo
+ * ($800.000 = $500.000 de nota + $300.000 en efectivo).
+ */
+const ANULAR_PAGADA_CON_NOTA = {
+  status: 409,
+  body: {
+    code: 'SALE_PAID_WITH_CREDIT_NOTE',
+    message:
+      'Esta venta se pagó (toda o en parte) con la nota crédito Nº 1 y por eso no se puede anular: anularla le devolvería en plata lo que se pagó con la nota, que nunca entró a la caja. Para revertirla, registra una devolución liquidada en nota crédito.',
+    details: { credit_note_id: '8c4896cf-a809-4332-8fc2-6394feca3a60', credit_note_number: 1, redeemed_amount: '500000.00' },
+  },
+}
+
 /** `app/modules/identity/auth_admin.py::invite_user`, rama `status_code == 429`. */
 const CUOTA_DE_CORREOS = {
   status: 429,
@@ -133,6 +148,22 @@ describe('el catálogo de códigos coincide con lo que el backend emite', () => 
     const error = parseApiError(409, { code: 'ALGO_QUE_NO_EXISTE', message: 'texto del backend' })
     expect(error.code).toBe('UNKNOWN')
     expect(error.message).toBe('texto del backend')
+  })
+})
+
+describe('F21-36: anular una venta pagada con nota crédito dice por qué y qué hacer', () => {
+  it('`SALE_PAID_WITH_CREDIT_NOTE` se tipa en vez de caer a UNKNOWN, y su `details` sobrevive', () => {
+    const error = parseApiError(ANULAR_PAGADA_CON_NOTA.status, ANULAR_PAGADA_CON_NOTA.body)
+    expect(error.code).toBe('SALE_PAID_WITH_CREDIT_NOTE')
+    expect(error.details?.credit_note_number).toBe(1)
+    expect(error.details?.redeemed_amount).toBe('500000.00')
+  })
+
+  it('el cajero ve el mensaje del backend TAL CUAL: nombra la nota y la salida', () => {
+    const msg = userMessage(parseApiError(ANULAR_PAGADA_CON_NOTA.status, ANULAR_PAGADA_CON_NOTA.body))
+    expect(msg).toBe(ANULAR_PAGADA_CON_NOTA.body.message)
+    expect(msg).toContain('Nº 1')
+    expect(msg).toContain('devolución liquidada en nota crédito')
   })
 })
 

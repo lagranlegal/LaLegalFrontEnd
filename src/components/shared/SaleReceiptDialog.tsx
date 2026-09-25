@@ -87,9 +87,11 @@ export function SaleReceiptDialog({ open, onOpenChange, sale }: { open: boolean;
         return
       }
       // El resto: el mensaje del backend, no uno genérico. `SALE_HAS_RETURNS`
-      // (F21-31) explica que la venta tiene devoluciones y qué hacer en su
-      // lugar; «Intenta de nuevo» sobre un rechazo que nunca va a cambiar es
-      // un callejón sin salida.
+      // (F21-31) explica que la venta tiene devoluciones, y
+      // `SALE_PAID_WITH_CREDIT_NOTE` (F21-36) que se pagó con la nota Nº X;
+      // los dos dicen qué hacer en su lugar (una devolución). «Intenta de
+      // nuevo» sobre un rechazo que nunca va a cambiar es un callejón sin
+      // salida.
       toast.error(error instanceof ApiError ? userMessage(error) : 'No se pudo anular la venta. Intenta de nuevo.')
     }
   }

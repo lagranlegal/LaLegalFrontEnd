@@ -88,6 +88,13 @@ export const API_ERROR_CODES = [
   // `{return_count, return_numbers, return_ids}` para poder decir «esta
   // venta tiene la devolución Nº 4».
   'SALE_HAS_RETURNS',
+  // F21-36: la venta se pagó (toda o en parte) con una nota crédito. Anularla
+  // sacaba del cajón el total entero, incluida la parte de la nota —que
+  // nunca entró—, y la nota seguía gastada. Mismo molde que el anterior: cae
+  // al toast con el mensaje del backend, que nombra la nota y la salida
+  // (registrar una devolución liquidada en nota crédito); `details` trae
+  // `{credit_note_id, credit_note_number, redeemed_amount}`.
+  'SALE_PAID_WITH_CREDIT_NOTE',
   // Identidad (04/09/2026). Los tres reemplazan errores que se leían como
   // fallas del sistema —un 500 en texto plano y dos 502 "no se pudo invitar en
   // Supabase Auth"— cuando en realidad el admin tenía que hacer otra cosa.

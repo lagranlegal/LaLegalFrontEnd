@@ -2,6 +2,29 @@
 
 > Registro vivo de qué existe en el código, cómo está armado y por qué se tomó cada decisión — para que cualquiera (humano o Claude Code) pueda retomar el proyecto sin releer todo el historial de commits. Se actualiza en cada paso del "Orden de implementación" de `CLAUDE.md`. No repite lo que ya está en `ARCHITECTURE.md`/`DESIGN_SYSTEM.md` (el qué-debería-ser); esto es el qué-hay-hoy y las decisiones concretas tomadas al construirlo.
 
+## F21-36: anular una venta pagada con nota crédito se rechaza con su propio código (25/09/2026)
+
+Anular una venta pagada (toda o en parte) con una nota crédito sacaba del cajón el **total entero**, incluida la
+parte de la nota —que nunca entró—, y la nota seguía gastada: $800.000 = $500.000 de nota + $300.000 en efectivo
+→ salían $800.000. Decisión de Mateo: se **rechaza**, como `SALE_HAS_RETURNS` (F21-31). El detalle y las razones
+están en `../backend-starter/docs/QA_AUDITORIA.md` §F21-36; acá, lo que tocó al front:
+
+- **`SALE_PAID_WITH_CREDIT_NOTE` (409) en `lib/api/errors.ts`**, con su comentario al lado del de
+  `SALE_HAS_RETURNS`. Sin él, `parseApiError` lo bajaba a `UNKNOWN`; el mensaje igual llegaba, pero cualquier rama
+  que quiera decidir por este código no se ejecutaría nunca — que es el bug que el catálogo existe para impedir.
+- **La UI de anular no cambió de comportamiento, y es a propósito.** `SaleReceiptDialog` (el que consume
+  `useVoidSale`; `features/sales/` no tiene otra pantalla de anular) ya mostraba `userMessage(error)` en el toast
+  desde F21-31, y este código no está en `FRONT_MESSAGES`, así que el cajero lee el texto del backend tal cual:
+  nombra la nota («Nº 1») y la salida («registra una devolución liquidada en nota crédito»). Solo se actualizaron
+  los comentarios de ese `catch` y el docstring de `useVoidSale`, para que no sigan listando un solo rechazo.
+- **Tests con el sobre REAL**, copiado de la respuesta del backend local (no escrito de memoria):
+  `tests/error-codes-contract.test.ts` (se tipa, `details` sobrevive, el mensaje sale tal cual) y
+  `tests/void-sale-cash-session.test.tsx` (el toast recibe exactamente ese texto, y no se abre el modal de caja).
+  El de contrato se vio fallar quitando el código de `errors.ts`.
+- **No se aprovechó `details` en la UI todavía** (`credit_note_number`, `redeemed_amount`). El mensaje ya nombra la
+  nota; un botón «Registrar devolución» desde el toast sería lo siguiente si hace falta, igual que con
+  `SALE_HAS_RETURNS`.
+
 ## Avisos por correo, fase 3: la base legal del cliente, la casilla del mostrador y la página de baja (25/09/2026)
 
 El backend (`00059`, `../backend-starter/docs/NOTIFICACIONES.md` §17) empezó a guardar **con qué base se le puede

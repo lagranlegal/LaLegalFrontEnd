@@ -107,4 +107,26 @@ describe('anular una venta con la caja cerrada', () => {
     await waitFor(() => expect(toastError).toHaveBeenCalledWith(expect.stringContaining('ya tiene 1 devolución')))
     expect(screen.queryByText('MODAL_ABRIR_CAJA')).not.toBeInTheDocument()
   })
+
+  it('F21-36: una venta pagada con nota crédito muestra el mensaje del backend, que nombra la nota', async () => {
+    // Sobre copiado de la respuesta real del backend local (el mismo de
+    // `tests/error-codes-contract.test.ts`), no escrito de memoria.
+    const message =
+      'Esta venta se pagó (toda o en parte) con la nota crédito Nº 1 y por eso no se puede anular: anularla le devolvería en plata lo que se pagó con la nota, que nunca entró a la caja. Para revertirla, registra una devolución liquidada en nota crédito.'
+    mutateAsync.mockRejectedValue(
+      new ApiError({
+        code: 'SALE_PAID_WITH_CREDIT_NOTE',
+        message,
+        status: 409,
+        details: { credit_note_id: '8c4896cf-a809-4332-8fc2-6394feca3a60', credit_note_number: 1, redeemed_amount: '500000.00' },
+      }),
+    )
+
+    render(<SaleReceiptDialog open onOpenChange={() => {}} sale={venta} />)
+    fireEvent.click(screen.getByRole('button', { name: 'Anular venta' }))
+
+    await waitFor(() => expect(toastError).toHaveBeenCalledWith(message))
+    expect(toastSuccess).not.toHaveBeenCalled()
+    expect(screen.queryByText('MODAL_ABRIR_CAJA')).not.toBeInTheDocument()
+  })
 })
