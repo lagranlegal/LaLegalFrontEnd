@@ -52,6 +52,25 @@ export function setPasswordErrorMessage(error: unknown): string {
 }
 
 /**
+ * ¿El canje del enlace falló porque el token ya no sirve, o porque la
+ * petición no llegó bien?
+ *
+ * La diferencia decide qué se le dice a la persona. Un 4xx de Supabase Auth
+ * (`otp_expired`, 403) significa que el token se usó o venció: reintentar no
+ * puede funcionar y hay que pedir otro. Pero sin red, un 5xx o un 429
+ * (`AuthRetryableFetchError`, status 0/5xx; o el límite de peticiones) el
+ * token casi seguro sigue intacto — decirle "ya se usó" la manda a pedirle
+ * otro enlace al administrador por nada, y encima anula el que tenía.
+ *
+ * Se decide por `status`, no por `code` ni por el texto: `code` falta en las
+ * respuestas de versiones viejas de la API y el texto está en inglés.
+ */
+export function canjeFallidoEsDefinitivo(error: unknown): boolean {
+  const status = (error as { status?: number } | null)?.status
+  return typeof status === 'number' && status >= 400 && status < 500 && status !== 429
+}
+
+/**
  * Invitación y recuperación: la sesión ya está activa (viene del enlace) — lo
  * que falta es que la persona elija su contraseña.
  *

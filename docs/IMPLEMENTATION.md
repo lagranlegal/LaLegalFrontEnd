@@ -2,6 +2,57 @@
 
 > Registro vivo de qué existe en el código, cómo está armado y por qué se tomó cada decisión — para que cualquiera (humano o Claude Code) pueda retomar el proyecto sin releer todo el historial de commits. Se actualiza en cada paso del "Orden de implementación" de `CLAUDE.md`. No repite lo que ya está en `ARCHITECTURE.md`/`DESIGN_SYSTEM.md` (el qué-debería-ser); esto es el qué-hay-hoy y las decisiones concretas tomadas al construirlo.
 
+## Callback de invitación: el canje espera un clic (24/09/2026)
+
+El backend está pasando la invitación por correo del SMTP de Supabase (que responde 429,
+`INVITE_RATE_LIMITED`) a un correo propio: pide el enlace con `generate_link` y manda uno a
+`/auth/callback?token_hash=…&type=invite`, el mismo formato que ya usaba «Generar enlace». Se auditó la
+página para ese enlace.
+
+**Lo que ya estaba bien:** acepta `token_hash` con `type=invite` y `recovery` y lo canjea con `verifyOtp`
+(POST); limpia el token de la barra de direcciones; un `#error_code=…` en el fragmento muestra «ya se usó».
+
+**Lo que se cambió (`features/auth/pages/AuthCallbackPage.tsx`):**
+- **El canje ya no corre al cargar: espera a que la persona toque «Continuar».** Estaba en un `useEffect`.
+  Un GET no quema el token, pero un escáner de correo que EJECUTA la página (Safe Links de Microsoft y los
+  antivirus que "detonan" enlaces en un navegador) sí lo habría quemado — la falla del 03/09 un piso más
+  arriba, y justo ahora que el enlace pasa a viajar por correo. Es la mitigación que documenta Supabase para
+  el "email prefetching". Efecto lateral: en desarrollo `StrictMode` montaba dos veces y el segundo
+  `verifyOtp` fallaba siempre, así que probar un enlace en local lo mostraba como quemado. Verificado en
+  Chrome (360 y 1280 px, con `StrictMode`): cero `POST /auth/v1/verify` antes del clic, uno después.
+- **Una falla de red ya no se presenta como enlace quemado.** Cualquier error de `verifyOtp` terminaba en
+  «Este enlace ya se usó» — también sin conexión, con un 5xx o un 429, donde el token casi seguro sigue
+  sirviendo, y el consejo (pedir otro) anula el que la persona tenía. `canjeFallidoEsDefinitivo`
+  (`features/auth/api.ts`) decide por `status`: 4xx salvo 429 es definitivo; lo demás deja el token en
+  la URL y ofrece «Intentar de nuevo».
+- **«Este enlace ya se usó o venció».** Supabase responde `otp_expired` en los dos casos; con la invitación
+  llegando por correo, abrirla días después ya no es raro, y un «ya se usó» a secas hace creer que alguien
+  más entró. El título conserva el prefijo que busca el grep de `RUNBOOK_USUARIOS.md` §5.
+- **«Link inválido»** decía «pide que reenvíe la invitación»; reinvitar al mismo correo responde
+  `USER_ALREADY_INVITED`. Ahora pide «un enlace nuevo», que es lo que sirve (runbook §4).
+
+**Diálogo de invitar (`features/identity`) — sin cambios, a propósito.** Ningún texto visible asume que el
+correo lo manda Supabase («El alta es solo por invitación: por correo, o con un enlace que tú entregas»,
+«Enviar por correo»). `INVITE_RATE_LIMITED` y su `FRONT_MESSAGES` («Se agotó por ahora la cuota de correos de
+invitación…») siguen siendo verdad: el backend lo emite cuando no hay proveedor propio y vuelve a Supabase, y
+no nombra al proveedor (F21-06). Los comentarios de código que hablan del SMTP de Supabase se refieren a
+«¿Olvidaste tu contraseña?», que sigue saliendo por ahí.
+
+**Descartado:**
+- **Canjear al cargar si no hay pista de escáner** (user-agent, `navigator.webdriver`): los escáneres que
+  ejecutan JS usan navegadores reales; sería adivinar.
+- **Sacar el token de la URL al montar** (antes del clic): una recarga antes de tocar «Continuar» dejaría
+  a la persona en «Link inválido» con un enlace todavía bueno.
+- **Regenerar `src/types/api.ts`:** el backend servido no trae el cambio todavía y esta pantalla no usa tipos
+  de la API.
+
+**Exposición que queda:** un escáner que además haga clic en botones sí lo quemaría (no conocemos uno común
+que lo haga; la persona vería «ya se usó o venció» y el camino de salida es el mismo). Y los enlaces que no
+arma el backend —el correo de Supabase de «¿Olvidaste tu contraseña?», y una invitación si el backend no tiene
+`FRONTEND_URL` y devuelve el `action_link`— siguen siendo GET de un solo uso; eso no se arregla desde acá.
+
+**Tests:** `tests/auth-callback.test.tsx`, de 4 a 8 (los nuevos vistos fallar antes). Suite: 255.
+
 ## Fase 5b — pantalla de Notificaciones (`/configuracion/notificaciones`, 24/09/2026)
 
 El backend de la fase 1 (00058, `GET/PATCH /notifications/settings`, `GET /notifications/deliveries`) estaba
