@@ -4,6 +4,14 @@
 
 ## La landing pública en `/`, y el panel se muda a `/inicio` (26/09/2026)
 
+> **Actualización, misma tarde — decisiones de Mateo aplicadas y PUBLICADO.** (1) El canal de «Solicitar
+> demostración» es **correo**, `contacto@prendo.com.co` (todavía no hay WhatsApp); los botones abren un `mailto:`
+> con asunto y el CTA final muestra la dirección. ⚠️ Ese buzón **tiene que recibir**: el dominio solo envía
+> (Resend, `notificaciones@`), y un correo a un buzón inexistente rebota sin que nadie se entere. (2) **Inter
+> arreglado**: `--font-sans` nombra `'Inter Variable'` primero; medido en Chrome que carga. Cambia la cara de toda
+> la app (ancho de columnas, cortes de línea): las pantallas internas no se pudieron ver localmente (el backend
+> dev solo acepta el origen de Vercel) y se revisan sobre lo servido. (3) Push autorizado.
+
 Tres commits: `2b5df96` (rutas), `c473bdd` (la landing) y `7fab32a` (posiciones de las tarjetas del hero, que se
 tapaban textos a 1280 y 1440). **Sin pushear**: el push a `dev` publica la landing en la URL que usan los clientes,
 y eso lo decide Mateo.

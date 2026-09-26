@@ -19,7 +19,7 @@ repo — ver `../../marca/README.md`), publicado en
 | Nombre | **Prendo** — *prenda* en forma de verbo. Sin tilde ni eñe (a propósito: ver `00056`) |
 | Dominio | `prendo.com.co`, comprado el 20/09/2026. Verificar siempre contra `whois -h whois.registry.co`, que es el único que responde de verdad (el `whois` del sistema cae a IANA y devuelve el TLD) |
 | Logo | **Etiqueta**: rombo de esquinas redondeadas con perforación — un solo `path` con `fill-rule: evenodd`, sobre tile de radio 16/64. Es el objeto que la app imprime para cada lote, y en segunda lectura una gema. Reemplaza el monograma P del 12/09, que no distinguía |
-| Tipografía de marca | **Archivo** SemiBold, tracking −0.035em (`--font-display`, `--tracking-display`; en código desde el 26/09 con la landing, §7). **La interfaz sigue en Inter** — eso no cambia (pero ver el hallazgo de §7: la app nunca cargó Inter de verdad) |
+| Tipografía de marca | **Archivo** SemiBold, tracking −0.035em (`--font-display`, `--tracking-display`; en código desde el 26/09 con la landing, §7). **La interfaz sigue en Inter** — eso no cambia (y desde el 26/09 de verdad: antes el token pedía una familia que no existía, ver §7) |
 
 **Paleta "Oro Moderno".** Los valores viven en `tokens.css`; acá está solo lo que hay que saber para no
 romperlos.
@@ -254,10 +254,11 @@ las cascadas se derivan de ellas (60 ms entre palabras del titular = la mitad de
 6. **El hover que sube una tarjeta va solo bajo `(hover: hover)`**: en un celular, un toque no deja la tarjeta
    levantada.
 
-### Hallazgo abierto: la app nunca cargó Inter
+### Cerrado (26/09/2026): la app nunca había cargado Inter
 
-`--font-sans` pide `'Inter'`, pero `@fontsource-variable/inter` registra la familia como `'Inter Variable'`. El
-navegador no la encuentra y cae a `system-ui`: **toda la app se ve en la fuente del sistema desde siempre**. El
-arreglo es una línea en `tokens.css`, pero cambia la cara de toda la app (anchos, cortes de línea, columnas), así
-que queda para que lo decida Mateo y se verifique pantalla por pantalla. Los tokens de la landing ya nombran primero
-la familia variable.
+`--font-sans` pedía `'Inter'`, pero `@fontsource-variable/inter` registra la familia como `'Inter Variable'`. El
+navegador no la encontraba y caía a `system-ui`, **sin ningún error**: toda la app se vio en la fuente del sistema
+desde el día uno. Mateo decidió arreglarlo: el token nombra ahora `'Inter Variable'` primero. Medido en Chrome:
+`document.fonts.check('16px "Inter Variable"')` da `true` y la familia figura cargada en `/` y `/auth/login`, sin
+desborde a 360. **Regla:** al instalar una fuente de `@fontsource-variable/*`, el nombre de la familia lleva el
+sufijo `Variable` — abrir su `index.css` y copiarlo de ahí, no suponerlo.

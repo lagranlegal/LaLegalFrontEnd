@@ -8,8 +8,8 @@ import type { ReactNode } from 'react'
  * - Hay UN solo `<h1>` y las secciones son landmarks con nombre.
  * - Sin sesión, el acceso dice «Iniciar sesión» y va a `/auth/login`; con
  *   sesión, «Ir a mi panel» y va a `/inicio` (la raíz ya no es la app).
- * - Mientras no haya canal de contacto (`DEMO_CONTACT = null`), «Solicitar
- *   demostración» baja a `#demo` y no se inventa ningún correo ni teléfono.
+ * - «Solicitar demostración» abre un correo a `contacto@prendo.com.co`
+ *   (`DEMO_CONTACT`, decisión de Mateo del 26/09) y no aparece ningún teléfono.
  * - En jsdom no existe IntersectionObserver: nada puede quedar invisible
  *   esperando que la sección «entre en pantalla».
  */
@@ -83,15 +83,16 @@ describe('LandingPage', () => {
     }
   })
 
-  it('sin canal de contacto, «Solicitar demostración» baja a #demo', () => {
+  it('«Solicitar demostración» abre un correo a contacto@prendo.com.co', () => {
     getSession.mockResolvedValue(sinSesion)
     render(<LandingPage />)
 
     const demos = screen.getAllByRole('link', { name: /Solicitar demostración/ })
     expect(demos.length).toBeGreaterThanOrEqual(2)
-    for (const link of demos) expect(link).toHaveAttribute('href', '#demo')
-    expect(document.body.innerHTML).not.toMatch(/mailto:|wa\.me|tel:/)
-    expect(screen.queryByText(/escríbenos directamente/i)).not.toBeInTheDocument()
+    for (const link of demos) expect(link.getAttribute('href')).toMatch(/^mailto:contacto@prendo\.com\.co\?subject=/)
+    // La dirección se lee también en texto, para quien no tenga cliente de correo.
+    expect(screen.getByRole('link', { name: 'contacto@prendo.com.co' })).toBeInTheDocument()
+    expect(document.body.innerHTML).not.toMatch(/wa\.me|tel:/)
   })
 
   it('el menú de celular abre y cierra con aria-expanded', () => {

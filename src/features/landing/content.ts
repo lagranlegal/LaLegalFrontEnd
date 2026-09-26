@@ -9,13 +9,17 @@
 /**
  * Canal del botón «Solicitar demostración».
  *
- * TODO(Mateo): definir el canal real — un `mailto:` o un enlace `https://…`.
- * Mientras sea `null`, los botones de demostración bajan a la sección final
- * (`#demo`) y la línea de contacto bajo sus botones no se muestra. Nada de
- * inventar un correo o un teléfono: un visitante que escribe a una dirección
- * que nadie lee es peor que uno que no encuentra dónde escribir.
+ * Correo por decisión de Mateo (26/09/2026): todavía no hay número de
+ * WhatsApp. Cuando lo haya, cambiar por `https://wa.me/57…` — los botones
+ * abren un enlace `https://` en pestaña nueva solos. Con `null`, bajan a la
+ * sección final (`#demo`) y la línea de contacto no se muestra.
+ *
+ * ⚠️ `contacto@prendo.com.co` tiene que RECIBIR: el dominio solo envía
+ * (Resend, desde `notificaciones@`). Si el buzón no existe, las solicitudes
+ * rebotan sin que nadie se entere — ver `docs/DEPLOY.md`.
  */
-export const DEMO_CONTACT: string | null = null
+export const DEMO_CONTACT: string | null =
+  'mailto:contacto@prendo.com.co?subject=Quiero%20una%20demostraci%C3%B3n%20de%20Prendo'
 
 /** Cómo se lee el canal en la línea bajo el CTA final. */
 export function contactLabel(href: string): string {

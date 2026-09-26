@@ -253,7 +253,7 @@ producto** — no desbloquea el ambiente de producción, que funciona igual sobr
 > raíz es la página de venta de Prendo, con Archivo en los titulares y el oro sobre carbón del kit. No cambia nada
 > de este mapa: hoy se ve en `dev.prendo.com.co/` (el apex redirige ahí) y el día de prod queda en `prendo.com.co`.
 > Diseño, decisiones y lo que la landing no debe prometer: `IMPLEMENTATION.md` del 26/09 y `DESIGN_SYSTEM.md` §7.
-> Pendiente de Mateo: el canal de «Solicitar demostración» (`DEMO_CONTACT` en `features/landing/content.ts`).
+> Canal de «Solicitar demostración»: correo a `contacto@prendo.com.co` (`DEMO_CONTACT` en `features/landing/content.ts`, 26/09). Ese buzón tiene que existir y recibir: el dominio hoy solo envía.
 
 > **`prendo.co` no se compra (decidido 21/09/2026).** Quedó libre en el drop, pero el precio se sale del
 > presupuesto. **Toda la marca vive en `prendo.com.co`.** No es un plan B: era el plan desde el principio,

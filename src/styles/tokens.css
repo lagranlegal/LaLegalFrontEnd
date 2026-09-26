@@ -159,7 +159,11 @@
   --duration-slow: 320ms; /* modales, drawers, lo que ocupa la pantalla */
 
   /* ==== Tipografía y espaciado ==== */
-  --font-sans: 'Inter', system-ui, sans-serif; /* cifras de KPI con font-feature "tnum" */
+  /* `'Inter Variable'` es el nombre con que `@fontsource-variable/inter` registra
+     la fuente. Hasta el 26/09/2026 acá decía `'Inter'` y la app entera se veía
+     en la fuente del sistema desde el día uno, sin ningún error: una familia
+     que no existe cae al respaldo en silencio. */
+  --font-sans: 'Inter Variable', 'Inter', system-ui, sans-serif; /* cifras de KPI con font-feature "tnum" */
   /* Tipografía de marca (DESIGN_SYSTEM §1-bis): titulares de la landing.
      Instalada con @fontsource-variable, NO de Google Fonts: la CSP solo
      permite `font-src 'self' data:`. */
