@@ -203,8 +203,12 @@ export function groupEvents(events: NotificationEventSetting[]): EventGroup[] {
       key: 'customer',
       title: 'Avisos al cliente',
       note:
-        'Todavía no se envían, aunque los enciendas: la app aún no registra con qué base legal aceptó cada cliente recibir correos (Ley 1581), ' +
-        'y un aviso sin esa base queda «Suprimido». Están acá para que encenderlos después sea una casilla y no un desarrollo.',
+        // Reescrita el 25/09/2026: decía que la base legal no existía, y existe
+        // desde la fase 3 (00059); y los comprobantes C1–C7 tienen disparo
+        // desde las fases 4 y 6. Lo que sigue sin disparo son los recordatorios.
+        'Le llegan solo al cliente que tiene correo, tiene base legal (un contrato vivo, o la autorización marcada en su ficha) y no se dio de baja; ' +
+        'a los demás se les registra sin mandar nada. Los comprobantes (contrato, abono, paz y salvo, ampliación, nota crédito, venta, anulación) ya se envían; ' +
+        'los recordatorios de cuota, mora y prórroga (R1–R4) todavía no.',
       events: events.filter((e) => e.audience === 'customer'),
     },
   ].filter((g) => g.events.length > 0) as EventGroup[]
