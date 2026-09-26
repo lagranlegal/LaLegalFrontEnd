@@ -16,6 +16,7 @@ import { ErrorPage } from '@/app/pages/ErrorPage'
 import { LoginPage } from '@/features/auth/pages/LoginPage'
 import { AuthCallbackPage } from '@/features/auth/pages/AuthCallbackPage'
 import { DashboardPage } from '@/features/dashboard/pages/DashboardPage'
+import { LandingPage } from '@/features/landing/pages/LandingPage'
 import { CustomersPage } from '@/features/customers/pages/CustomersPage'
 import { CustomerDetailPage } from '@/features/customers/pages/CustomerDetailPage'
 import { CatalogsPage } from '@/features/catalogs/pages/CatalogsPage'
@@ -93,7 +94,7 @@ const loginRoute = createRoute({
     const {
       data: { session },
     } = await supabase.auth.getSession()
-    if (session) throw redirect({ to: '/' })
+    if (session) throw redirect({ to: '/inicio' })
   },
 })
 
@@ -123,6 +124,17 @@ const unsubscribeRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/baja/$token',
   component: UnsubscribePage,
+})
+
+// ---- / — landing pública de venta de Prendo ----
+//
+// Hija de la raíz, sin `beforeLoad` y sin AppShell: la ve cualquiera, con o sin
+// sesión. Por eso nada de la app manda a `/` — la entrada es `/inicio`.
+
+const landingRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/',
+  component: LandingPage,
 })
 
 // ---- /* — protegidas, requieren sesión + bootstrap de /me (§4.5, §9) ----
@@ -156,9 +168,11 @@ const appLayoutRoute = createRoute({
   },
 })
 
+// La entrada a la app es `/inicio`, no `/`: la raíz es la landing pública de
+// venta (abajo). Todos los guards de permiso rebotan acá.
 const dashboardRoute = createRoute({
   getParentRoute: () => appLayoutRoute,
-  path: '/',
+  path: '/inicio',
   component: DashboardPage,
 })
 
@@ -169,7 +183,7 @@ const customersRoute = createRoute({
   beforeLoad: ({ context }) => {
     const me = context.queryClient.getQueryData(meQueryOptions().queryKey)
     if (me && !me.permissions.includes('customers.view')) {
-      throw redirect({ to: '/' })
+      throw redirect({ to: '/inicio' })
     }
   },
 })
@@ -184,7 +198,7 @@ const customerDetailRoute = createRoute({
   beforeLoad: ({ context }) => {
     const me = context.queryClient.getQueryData(meQueryOptions().queryKey)
     if (me && !me.permissions.includes('customers.view')) {
-      throw redirect({ to: '/' })
+      throw redirect({ to: '/inicio' })
     }
   },
 })
@@ -196,7 +210,7 @@ const catalogsRoute = createRoute({
   beforeLoad: ({ context }) => {
     const me = context.queryClient.getQueryData(meQueryOptions().queryKey)
     if (me && !me.permissions.includes('catalogs.view')) {
-      throw redirect({ to: '/' })
+      throw redirect({ to: '/inicio' })
     }
   },
 })
@@ -211,7 +225,7 @@ const supplierDetailRoute = createRoute({
   beforeLoad: ({ context }) => {
     const me = context.queryClient.getQueryData(meQueryOptions().queryKey)
     if (me && !me.permissions.includes('catalogs.view')) {
-      throw redirect({ to: '/' })
+      throw redirect({ to: '/inicio' })
     }
   },
 })
@@ -229,7 +243,7 @@ const contractsRoute = createRoute({
   beforeLoad: ({ context }) => {
     const me = context.queryClient.getQueryData(meQueryOptions().queryKey)
     if (me && !me.permissions.includes('contracts.view')) {
-      throw redirect({ to: '/' })
+      throw redirect({ to: '/inicio' })
     }
   },
 })
@@ -241,7 +255,7 @@ const contractNewRoute = createRoute({
   beforeLoad: ({ context }) => {
     const me = context.queryClient.getQueryData(meQueryOptions().queryKey)
     if (me && !me.permissions.includes('contracts.create')) {
-      throw redirect({ to: '/' })
+      throw redirect({ to: '/inicio' })
     }
   },
 })
@@ -270,7 +284,7 @@ const contractDetailRoute = createRoute({
   beforeLoad: ({ context }) => {
     const me = context.queryClient.getQueryData(meQueryOptions().queryKey)
     if (me && !me.permissions.includes('contracts.view')) {
-      throw redirect({ to: '/' })
+      throw redirect({ to: '/inicio' })
     }
   },
 })
@@ -282,7 +296,7 @@ const cashboxRoute = createRoute({
   beforeLoad: ({ context }) => {
     const me = context.queryClient.getQueryData(meQueryOptions().queryKey)
     if (me && !me.permissions.includes('cashbox.view')) {
-      throw redirect({ to: '/' })
+      throw redirect({ to: '/inicio' })
     }
   },
 })
@@ -323,7 +337,7 @@ const inventoryRoute = createRoute({
   beforeLoad: ({ context }) => {
     const me = context.queryClient.getQueryData(meQueryOptions().queryKey)
     if (me && !me.permissions.includes('inventory.view')) {
-      throw redirect({ to: '/' })
+      throw redirect({ to: '/inicio' })
     }
   },
 })
@@ -335,7 +349,7 @@ const entryNewRoute = createRoute({
   beforeLoad: ({ context }) => {
     const me = context.queryClient.getQueryData(meQueryOptions().queryKey)
     if (me && !me.permissions.includes('inventory.create')) {
-      throw redirect({ to: '/' })
+      throw redirect({ to: '/inicio' })
     }
   },
 })
@@ -349,7 +363,7 @@ const transformationNewRoute = createRoute({
   beforeLoad: ({ context }) => {
     const me = context.queryClient.getQueryData(meQueryOptions().queryKey)
     if (me && !me.permissions.includes('inventory.transform')) {
-      throw redirect({ to: '/' })
+      throw redirect({ to: '/inicio' })
     }
   },
 })
@@ -361,7 +375,7 @@ const salesRoute = createRoute({
   beforeLoad: ({ context }) => {
     const me = context.queryClient.getQueryData(meQueryOptions().queryKey)
     if (me && !me.permissions.includes('sales.view')) {
-      throw redirect({ to: '/' })
+      throw redirect({ to: '/inicio' })
     }
   },
 })
@@ -373,7 +387,7 @@ const saleNewRoute = createRoute({
   beforeLoad: ({ context }) => {
     const me = context.queryClient.getQueryData(meQueryOptions().queryKey)
     if (me && !me.permissions.includes('sales.create')) {
-      throw redirect({ to: '/' })
+      throw redirect({ to: '/inicio' })
     }
   },
 })
@@ -389,7 +403,7 @@ const identityRoute = createRoute({
   beforeLoad: ({ context }) => {
     const me = context.queryClient.getQueryData(meQueryOptions().queryKey)
     if (me && !me.permissions.includes('identity.manage_users') && !me.permissions.includes('identity.manage_roles')) {
-      throw redirect({ to: '/' })
+      throw redirect({ to: '/inicio' })
     }
   },
 })
@@ -403,7 +417,7 @@ const auditRoute = createRoute({
   beforeLoad: ({ context }) => {
     const me = context.queryClient.getQueryData(meQueryOptions().queryKey)
     if (me && !me.permissions.includes('audit.view')) {
-      throw redirect({ to: '/' })
+      throw redirect({ to: '/inicio' })
     }
   },
 })
@@ -419,7 +433,7 @@ const settingsRoute = createRoute({
   beforeLoad: ({ context }) => {
     const me = context.queryClient.getQueryData(meQueryOptions().queryKey)
     if (me && !me.permissions.includes('company.configure')) {
-      throw redirect({ to: '/' })
+      throw redirect({ to: '/inicio' })
     }
   },
 })
@@ -433,7 +447,7 @@ const documentTemplatesRoute = createRoute({
   beforeLoad: ({ context }) => {
     const me = context.queryClient.getQueryData(meQueryOptions().queryKey)
     if (me && !me.permissions.includes('company.configure')) {
-      throw redirect({ to: '/' })
+      throw redirect({ to: '/inicio' })
     }
   },
 })
@@ -449,7 +463,7 @@ const notificationSettingsRoute = createRoute({
   beforeLoad: ({ context }) => {
     const me = context.queryClient.getQueryData(meQueryOptions().queryKey)
     if (me && !me.permissions.includes('company.configure')) {
-      throw redirect({ to: '/' })
+      throw redirect({ to: '/inicio' })
     }
   },
 })
@@ -475,7 +489,7 @@ const accountsRoute = createRoute({
   beforeLoad: ({ context }) => {
     const me = context.queryClient.getQueryData(meQueryOptions().queryKey)
     if (me && !me.permissions.includes('accounts.view')) {
-      throw redirect({ to: '/' })
+      throw redirect({ to: '/inicio' })
     }
   },
 })
@@ -491,7 +505,7 @@ const capitalRoute = createRoute({
   beforeLoad: ({ context }) => {
     const me = context.queryClient.getQueryData(meQueryOptions().queryKey)
     if (me && !me.permissions.includes('capital.view')) {
-      throw redirect({ to: '/' })
+      throw redirect({ to: '/inicio' })
     }
   },
 })
@@ -504,7 +518,7 @@ const reportesRoute = createRoute({
   beforeLoad: ({ context }) => {
     const me = context.queryClient.getQueryData(meQueryOptions().queryKey)
     if (me && !me.permissions.includes('reports.view')) {
-      throw redirect({ to: '/' })
+      throw redirect({ to: '/inicio' })
     }
   },
 })
@@ -528,7 +542,7 @@ const platformLayoutRoute = createRoute({
       throw redirect({ to: '/auth/login', search: { redirect: location.href } })
     }
     if (!(await isSuperAdmin())) {
-      throw redirect({ to: '/' })
+      throw redirect({ to: '/inicio' })
     }
   },
 })
@@ -540,6 +554,7 @@ const platformCompaniesRoute = createRoute({
 })
 
 const routeTree = rootRoute.addChildren([
+  landingRoute,
   authLayoutRoute.addChildren([loginRoute, authCallbackRoute]),
   subscriptionBlockedRoute,
   unsubscribeRoute,

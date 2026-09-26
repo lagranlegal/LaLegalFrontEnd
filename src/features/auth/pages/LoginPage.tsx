@@ -5,6 +5,7 @@ import { z } from 'zod'
 import { useNavigate, useSearch } from '@tanstack/react-router'
 import { Button } from '@/components/ui/button'
 import { useLogin, useRequestPasswordReset } from '@/features/auth/api'
+import { postLoginTarget } from '@/features/auth/postLoginTarget'
 
 const loginSchema = z.object({
   email: z.string().min(1, 'El correo es obligatorio').email('Correo inválido'),
@@ -58,7 +59,7 @@ export function LoginPage() {
     setSubmitting(true)
     try {
       await login.mutateAsync(values)
-      await navigate({ to: search.redirect || '/' })
+      await navigate({ to: postLoginTarget(search.redirect) })
     } catch {
       // login.error ya queda disponible para mostrarlo abajo — no hace falta relanzar.
       setSubmitting(false)

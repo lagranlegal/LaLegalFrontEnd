@@ -49,7 +49,7 @@ interface NavItem {
 // redirigen todos los guards, así que gatearlo podría dejar a un usuario sin
 // ningún lugar a donde ir.
 const NAV_ITEMS: NavItem[] = [
-  { label: 'Inicio', icon: Home, to: '/' },
+  { label: 'Inicio', icon: Home, to: '/inicio' },
   { label: 'Contratos', icon: FileText, to: '/contratos', anyPermission: ['contracts.view'] },
   { label: 'Ventas', icon: ShoppingCart, to: '/ventas', anyPermission: ['sales.view'] },
   { label: 'Inventario', icon: Package, to: '/inventario', anyPermission: ['inventory.view'] },

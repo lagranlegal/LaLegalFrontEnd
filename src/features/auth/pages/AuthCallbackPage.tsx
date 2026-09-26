@@ -6,6 +6,7 @@ import { useNavigate } from '@tanstack/react-router'
 import { Button } from '@/components/ui/button'
 import { initialUrl, supabase } from '@/lib/auth/supabase'
 import { canjeFallidoEsDefinitivo, setPasswordErrorMessage, useSetPassword } from '@/features/auth/api'
+import { APP_HOME } from '@/features/auth/postLoginTarget'
 
 const setPasswordSchema = z
   .object({
@@ -137,7 +138,7 @@ export function AuthCallbackPage() {
     // segundos antes de saltar al inicio — la interfaz afirmando que no estaba
     // pasando nada justo cuando más estaba pasando.
     setEntrando(true)
-    await navigate({ to: '/' })
+    await navigate({ to: APP_HOME })
   }
 
   if (status === 'loading') {
