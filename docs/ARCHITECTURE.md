@@ -8,6 +8,11 @@ SPA en **React + Vite + TypeScript estricto**, desplegada en **Vercel**, que con
 
 Por qué SPA y no Next.js: es un panel administrativo 100% detrás de login — no hay SEO, no hay contenido público, y el "servidor" ya existe (FastAPI). SSR agregaría una segunda capa de servidor sin beneficio. Vite + Vercel static es más simple, más barato y más rápido de iterar. (Decisión alineada con `ARCHITECTURE.md` §8 del backend: "Front: Vercel (Vite + React)".)
 
+**Desde el 26/09/2026 hay UNA página pública: la landing de venta en `/`** (§9). No cambió la decisión: es una
+ruta más de la SPA. El HTML servido trae `<title>`, meta description, `og:*` y `theme-color` (`index.html`), y el
+resto lo pinta React; un crawler que no ejecute JavaScript ve solo esas meta. Si algún día la landing necesita SEO de
+verdad, se prerenderiza esa ruta, no se muda la app a SSR.
+
 ## 2. Panorama general
 
 ```mermaid
@@ -127,13 +132,16 @@ RBAC dinámico por empresa (roles editables), así que los permisos NO se hardco
 ## 9. Rutas y layouts
 
 - `/auth/*` — AuthLayout (login, callback de invitación). Sin sidebar. `/cuenta-bloqueada` (pantalla de bloqueo por suscripción vencida, §4.7) vive fuera del shell normal.
-- `/*` — AppShell (sidebar + topbar + `CashSessionBanner` + `<Outlet>`), protegido por sesión + suscripción. Rutas reales hoy: `/` (dashboard), `/contratos`, `/contratos/nuevo`, `/contratos/importar` (paso 5b), `/contratos/:contractId`, `/clientes`, `/clientes/:customerId`, `/inventario`, `/inventario/ingresos/nuevo`, `/ventas`, `/ventas/nueva`, `/caja`, `/cuentas`, `/catalogos`, `/identidad` (usuarios y roles juntos en una sola pantalla, no dos rutas separadas), `/auditoria`, `/reportes`, `/configuracion`. URLs en español (las ve el usuario).
+- `/` — **la landing pública de venta** (26/09/2026, `features/landing`). Hija de la raíz, sin `beforeLoad` ni AppShell: la ve cualquiera, con o sin sesión; con sesión el nav dice «Ir a mi panel». Por eso **nada de la app manda a `/`**: la entrada a la app es `/inicio`. Por qué la raíz es la landing y no «landing sin sesión, panel con sesión»: la raíz de un producto que se vende le muestra a cualquiera qué es, incluido el dueño que lo presenta con la sesión abierta (detalle en `IMPLEMENTATION.md` del 26/09).
+- `/baja/$token` — página pública de baja de los avisos al cliente (sin sesión, fuera del shell).
+- `/*` — AppShell (sidebar + topbar + `CashSessionBanner` + `<Outlet>`), protegido por sesión + suscripción. Rutas reales hoy: `/inicio` (dashboard; hasta el 26/09/2026 era `/`), `/contratos`, `/contratos/nuevo`, `/contratos/importar` (paso 5b), `/contratos/:contractId`, `/clientes`, `/clientes/:customerId`, `/inventario`, `/inventario/ingresos/nuevo`, `/ventas`, `/ventas/nueva`, `/caja`, `/cuentas`, `/catalogos`, `/identidad` (usuarios y roles juntos en una sola pantalla, no dos rutas separadas), `/auditoria`, `/reportes`, `/configuracion`. URLs en español (las ve el usuario).
 
   `/reportes` y `/configuracion` **ya existen** (fueron ítems de sidebar sin ruta mientras el backend no tenía qué mostrar ahí; `GET /reports/*` y `GET/PATCH /company/settings` los desbloquearon).
 
-  **Toda** ruta de módulo lleva `beforeLoad` + `redirect({ to: '/' })`, y **todo** ítem de menú lleva `anyPermission`. Las dos cosas, no una: ocultar el link no impide escribir la URL, y un guard sin ocultar el ítem promete un módulo que va a rebotar. Seis módulos estuvieron sin ninguna de las dos hasta el 21/08/2026 — quitarle contratos a un rol dejaba el ítem visible y la pantalla accesible.
+  **Toda** ruta de módulo lleva `beforeLoad` + `redirect({ to: '/inicio' })`, y **todo** ítem de menú lleva `anyPermission`. Las dos cosas, no una: ocultar el link no impide escribir la URL, y un guard sin ocultar el ítem promete un módulo que va a rebotar. Seis módulos estuvieron sin ninguna de las dos hasta el 21/08/2026 — quitarle contratos a un rol dejaba el ítem visible y la pantalla accesible.
 
-  `/` (dashboard) es la única ruta sin guard, y es deliberado: es el destino de todos los `redirect`, así que gatearla podría dejar a un usuario sin ningún lugar a donde ir. A cambio, maneja explícitamente el caso de no tener `reports.view`. El guard usa siempre el permiso de **lectura** de la pantalla, no el de administración — `/cuentas` se gatea con `accounts.view` y no con `accounts.manage`, porque un asesor que solo cobra necesita ver a qué cuenta manda la plata aunque no pueda editar el catálogo; crear y editar se gatean por botón dentro de la pantalla.
+  `/inicio` (dashboard) es la única ruta del shell sin guard de permiso, y es deliberado: es el destino de todos los `redirect`, así que gatearla podría dejar a un usuario sin ningún lugar a donde ir. A cambio, maneja explícitamente el caso de no tener `reports.view`. El guard usa siempre el permiso de **lectura** de la pantalla, no el de administración — `/cuentas` se gatea con `accounts.view` y no con `accounts.manage`, porque un asesor que solo cobra necesita ver a qué cuenta manda la plata aunque no pueda editar el catálogo; crear y editar se gatean por botón dentro de la pantalla.
+  **Después del login, `postLoginTarget`** (`features/auth/postLoginTarget.ts`) decide el destino: el `redirect` del search si es una ruta interna, y `/inicio` si no hay `redirect`, si es la raíz (quien abrió `/` y pasó por el login volvería a la landing con la sesión recién abierta) o si no es una ruta interna (`//otro-sitio`, `https://…`: el search lo puede escribir cualquiera). Lo usa el login; el callback de invitación, que no trae `redirect`, va directo a `APP_HOME` (`/inicio`), exportado del mismo archivo.
 - `/platform/*` — PlatformLayout (solo `super_admin`): empresas, planes. Visualmente diferenciado (banda superior distinta) para que un super-admin nunca confunda contexto.
 - Router: rutas declaradas a mano en `src/app/router.tsx` (TanStack Router, no file-based routing) — no hay lazy loading por feature todavía, todo el árbol de rutas entra en el bundle inicial (ver el warning de tamaño de chunk en `npm run build`, documentado como deuda conocida, no bloqueante).
 

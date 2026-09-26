@@ -44,7 +44,8 @@ src/
                       # PhotoUploader (Storage + compresión), Can, CashSessionBanner
   features/
     auth/             # login, recuperar contraseña, callback de invitación
-    dashboard/        # KPIs de /reports/dashboard (pantalla de inicio)
+    dashboard/        # KPIs de /reports/dashboard (pantalla de inicio, en /inicio — / es la landing)
+    landing/          # la página pública de venta de Prendo en /, sin sesión ni AppShell (DESIGN_SYSTEM.md §7)
     customers/
     catalogs/         # árbol de categorías (3 niveles) + proveedores
     contracts/        # crear contrato, detalle, abonos vía payment-options, listos para remate, rematar

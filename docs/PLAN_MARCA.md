@@ -249,6 +249,12 @@ Fuera de la guía del cliente: el panel de super-admin (`/platform`).
 `prendo.com.co` ya está comprado. Lo que el dominio desbloquea de verdad es **el correo** y **la cara del
 producto** — no desbloquea el ambiente de producción, que funciona igual sobre `.fly.dev` y la URL de Vercel.
 
+> **La cara del producto ya existe (26/09/2026): la landing pública en `/`.** El panel se mudó a `/inicio`, y la
+> raíz es la página de venta de Prendo, con Archivo en los titulares y el oro sobre carbón del kit. No cambia nada
+> de este mapa: hoy se ve en `dev.prendo.com.co/` (el apex redirige ahí) y el día de prod queda en `prendo.com.co`.
+> Diseño, decisiones y lo que la landing no debe prometer: `IMPLEMENTATION.md` del 26/09 y `DESIGN_SYSTEM.md` §7.
+> Pendiente de Mateo: el canal de «Solicitar demostración» (`DEMO_CONTACT` en `features/landing/content.ts`).
+
 > **`prendo.co` no se compra (decidido 21/09/2026).** Quedó libre en el drop, pero el precio se sale del
 > presupuesto. **Toda la marca vive en `prendo.com.co`.** No es un plan B: era el plan desde el principio,
 > y por eso se compró primero — para que la marca no quedara de rehén de un dominio.

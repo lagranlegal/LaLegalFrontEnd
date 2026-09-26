@@ -2,6 +2,105 @@
 
 > Registro vivo de qué existe en el código, cómo está armado y por qué se tomó cada decisión — para que cualquiera (humano o Claude Code) pueda retomar el proyecto sin releer todo el historial de commits. Se actualiza en cada paso del "Orden de implementación" de `CLAUDE.md`. No repite lo que ya está en `ARCHITECTURE.md`/`DESIGN_SYSTEM.md` (el qué-debería-ser); esto es el qué-hay-hoy y las decisiones concretas tomadas al construirlo.
 
+## La landing pública en `/`, y el panel se muda a `/inicio` (26/09/2026)
+
+Tres commits: `2b5df96` (rutas), `c473bdd` (la landing) y `7fab32a` (posiciones de las tarjetas del hero, que se
+tapaban textos a 1280 y 1440). **Sin pushear**: el push a `dev` publica la landing en la URL que usan los clientes,
+y eso lo decide Mateo.
+
+**1. Por qué `/` es la landing y la app va a `/inicio`.** Se descartó «landing solo sin sesión, dashboard con
+sesión» en la misma `/`: la raíz de un producto que se vende tiene que mostrarle a cualquiera qué es, **incluido el
+dueño que lo presenta con la sesión abierta** en su propio computador. Con sesión, el nav dice «Ir a mi panel» en
+vez de «Iniciar sesión» (`useHasSession`, que arranca en `false` porque es el caso de la mayoría). Costo aceptado:
+quien tenga la raíz como marcador ve la landing y entra con un clic. Los correos no se afectan: el backend solo
+enlaza a `/auth/callback` (invitación) y `/baja/{token}` (ver `../backend-starter/docs/API_GUIDE.md` §2).
+- La landing es hija de la raíz, **sin `beforeLoad` ni AppShell**. El dashboard pasó a `/inicio`, y con él todo lo
+  que mandaba a `/` como entrada a la app: los ~23 `redirect` de los guards de permiso, el rebote de `/platform`
+  para quien no es super-admin, el login con sesión ya abierta, el callback de invitación y el ítem «Inicio» del
+  sidebar (23 `redirect({ to: '/inicio' })` en `router.tsx`). `tests/root-landing-route.test.ts` vigila las dos
+  entradas: `/` sin sesión se queda en la landing, `/inicio` sin sesión va al login.
+- **`postLoginTarget`** (`features/auth/postLoginTarget.ts`, con `tests/post-login-target.test.ts`): tras el login
+  va a `/inicio` si no hay `redirect` **o si el `redirect` es la raíz**. Sin eso, quien abría `/` sin sesión y
+  pasaba por el login volvía con `redirect=/` y terminaba en la landing con la sesión recién abierta. De paso
+  descarta todo lo que no sea ruta interna (`//otro-sitio`, `https://…`): el search lo puede escribir cualquiera.
+- **Trampa anotada en `DEPLOY.md`:** el Site URL de Supabase apunta a la raíz del front. Si GoTrue alguna vez cae a
+  él (un `redirect_to` que no está en la lista de permitidas), el usuario aterriza en la **landing**, no en el
+  panel ni en el callback. Las plantillas de correo no caen ahí: arman `{{ .SiteURL }}/auth/callback?…` completo.
+
+**2. El mapa de dominios no cambia** (`DEPLOY.md` §«Los dominios propios», `PLAN_MARCA.md` §Fase 4). Hoy el apex
+redirige 308 a `dev.prendo.com.co`, así que la landing se ve en `dev.prendo.com.co/`. Cuando exista prod, el apex
+sirve prod y la landing queda en `prendo.com.co`, que es donde tiene que estar.
+
+**3. El diseño se hizo en un lienzo de claude.ai (tipo Design), no en Figma**: en el entorno no hay conector de
+Figma. Lienzo: <https://claude.ai/artifact/MbHqXJJBoKf1zjVjqqmaX5> — escritorio a 1440, celular a 390 y las notas
+de movimiento. Es privado hasta que Mateo lo comparta.
+
+**4. El texto se verificó contra el código antes de implementar, y cambió 13 frases del primer borrador.** Las que
+más pesaban:
+- la tasa **no** es por categoría: se digita en el contrato; la categoría da plazo, ventana de mora y tope;
+- la app **no** imprime etiquetas ni códigos de barras: la sección es «Códigos que cuentan la historia» (producto
+  y lote en un código, y la última letra dice de dónde vino);
+- no existe un botón de «cancelar total» en los abonos;
+- nunca «cumple la Ley 2300 / 1581» como hecho legal: es la lectura de Mateo, no el concepto de un abogado. La
+  landing describe lo que hace (autorización, baja, horario) y deja que el lector saque la conclusión;
+- los avisos nacen **apagados**: no se promete que «le avisa al cliente» desde el primer día.
+
+**Lo que la landing NO debe prometer** (no existe en el código hoy): PDF generado, WhatsApp o SMS, facturación
+DIAN, impresión de etiquetas o código de barras, firma digital, integración con Sistecrédito, datáfono o bancos,
+varias cajas o sucursales, importación masiva, app nativa u offline, otras monedas, avisos encendidos desde el
+primer día, portal del cliente. **Las cifras que sí usa son verdaderas:** 43 permisos, 4 roles de fábrica, 7 estados
+visibles del contrato, 12 avisos al cliente + 4 alertas + 2 resúmenes, 4 tipos de cuenta. Cualquier frase nueva de
+venta se contrasta igual antes de escribirse.
+
+**5. Lo que quedó** (`src/features/landing/`): nav, hero sobre carbón con la composición de tarjetas (contrato #128,
+etiqueta JOC0007-01R, caja cuadrada, intereses), «El problema», la cadena de 7 pasos, «Dos motores», el bento, «Para
+quién», «Confianza», «Migración» y el CTA final. `content.ts` guarda lo que alguien va a cambiar sin leer JSX
+(canal de contacto, enlaces del nav, título); `hooks.ts` trae `useInView`, `useHasSession` y `useScrolled`;
+`landing.css`, el movimiento y los fondos. Tokens nuevos en `tokens.css` y sus alias en `globals.css` (mapa de roles
+en `DESIGN_SYSTEM.md` §2 y §7). `index.html`: meta description de venta, `og:*` y `theme-color`; **el script
+inline del tema no se tocó**, porque el CSP lo permite por su hash y un solo carácter distinto lo bloquea.
+- **Fuentes vía `@fontsource-variable/archivo` y `@fontsource-variable/jetbrains-mono`, no Google Fonts:** el CSP
+  solo permite `font-src 'self' data:`. Abrirlo a `fonts.gstatic.com` por una página era agrandar la superficie de
+  toda la app.
+
+**6. Movimiento.** Los tokens de siempre (`--ease-out` y las tres duraciones), sin una cuarta; los retrasos de las
+cascadas se derivan de las mismas tres. `enter-up` **una vez** por sección, con IntersectionObserver.
+- **La cadena se dibuja en 6 tramos**, uno por par de pasos: con **una sola línea** en `--ease-out` —que hace casi
+  todo el recorrido al principio— los cinco primeros pasos se encendían en 200 ms. Con tramos, el paso k se
+  enciende justo cuando llega el tramo k−1.
+- **Parallax por `requestAnimationFrame` escribiendo variables CSS** (`--px`/`--py`) en el contenedor: sin
+  re-render de React en cada frame.
+- **`prefers-reduced-motion`**: la regla global de `globals.css` acorta duraciones pero **no toca los retrasos**, y
+  los elementos con delay quedaban invisibles hasta 1,9 s y después saltaban. `landing.css` anula además los
+  retrasos y apaga el flote.
+- **Sin IntersectionObserver** (jsdom, un navegador viejo), `useInView` arranca en `true`: el estado final visible
+  es el de por defecto, y nada queda esperando un evento que no llega.
+
+**7. Contraste** (casos nuevos en `tests/token-contrast.test.ts`, en los dos temas):
+- el oro como texto sobre carbón usa `--brand-500` (6.24 en claro, 9.10 en oscuro); `--brand-600` en claro daba
+  solo 4.77, demasiado justo;
+- `--success` sobre carbón da 2.4 → token propio `--sidebar-success` (7.69), solo para puntos e íconos de estado;
+- los numerales «01 / 02 / 03» en oro sobre marfil (2.42) son ornamento con `aria-hidden`, nunca texto legible;
+- las secciones oscuras usan los tokens `--sidebar-*` porque **siguen oscuras en los dos temas**; con `--bg-*` se
+  habrían vuelto claras en el tema claro.
+
+**8. Pendiente de Mateo.** El canal del botón «Solicitar demostración»: `DEMO_CONTACT` en `content.ts` (un
+`mailto:` o un `https://…`). Mientras sea `null`, los botones bajan a la sección final (`#demo`) y la línea de
+contacto no se muestra. No se inventó un correo: un visitante que escribe a una dirección que nadie lee es peor que
+uno que no encuentra dónde escribir.
+
+**Hallazgo abierto (no se arregló, lo decide Mateo): la app nunca se vio en Inter.** `--font-sans` pide `'Inter'`,
+pero `@fontsource-variable/inter` registra la familia como `'Inter Variable'`. El navegador no encuentra `'Inter'` y
+cae a `system-ui`: **toda la app se ve en la fuente del sistema desde siempre**. El arreglo es una línea en
+`tokens.css`, pero cambia la cara de toda la app (métricas, anchos de columnas, cortes de línea), así que no se hace
+de paso. Los tokens nuevos de la landing ya nombran la familia variable primero (`'Archivo Variable'`,
+`'JetBrains Mono Variable'`).
+
+**Verificado:** 357 tests, typecheck, lint sin errores nuevos, build. Capturas en Chrome real a 360, 768, 1280 y
+1440, en claro y en oscuro, con `scrollWidth == clientWidth` en todas (sin desborde). `tests/landing-page.test.tsx`
+cubre un solo `h1`, los accesos con y sin sesión, «Solicitar demostración» sin canal, el menú de celular
+(`aria-expanded`) y que sin IntersectionObserver ninguna sección quede escondida.
+
 ## Contratos: la cadena de ampliaciones, «solo se puede ampliar una vez» (F21-38) y la casilla de avisos al crear (25/09/2026)
 
 Tres pedidos del dueño sobre contratos. Backend: `GET /contracts/{id}/chain` y dos campos nuevos en

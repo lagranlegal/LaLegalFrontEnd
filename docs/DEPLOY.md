@@ -116,6 +116,11 @@ El plan completo, con el porqué de cada decisión, vive en `PLAN_MARCA.md` §Fa
 Prod suma dos nombres nuevos (el apex para el front, `api.prendo.com.co` para el backend) y **no toca
 ninguno de los dos de dev**. Esa es la propiedad entera del mapa.
 
+**La landing pública (26/09/2026) no cambia el mapa.** Desde ese día `/` es la página de venta de Prendo y el panel
+vive en `/inicio` (`ARCHITECTURE.md` §9). Mientras el apex redirija 308 a dev, la landing se ve en
+`dev.prendo.com.co/`; cuando exista prod, el apex sirve prod y la landing queda en `prendo.com.co`. **Un push a
+`dev` la publica en la URL que usan los clientes**, así que el primero con la landing lo decide Mateo.
+
 **Un nombre por ambiente, no por pieza.** Se descartó apuntar el apex a dev y mudarlo después: la URL de la
 app queda embebida en las Redirect URLs de Supabase, en los enlaces de invitación ya enviados, en CORS, en
 el CSP y en los marcadores del cliente. Un hostname que cambia de ambiente hace que todo eso apunte, un día
@@ -184,6 +189,14 @@ En el navegador: abrir la consola y confirmar que no hay errores de CSP al inici
 El backend manda `redirect_to = {FRONTEND_URL}/auth/callback` al invitar (`app/modules/identity/auth_admin.py`). Si esa URL **no está en la lista de permitidas**, Supabase **la ignora en silencio** y manda al usuario al **Site URL** del proyecto. Con el Site URL por defecto (`http://localhost:3000`) el navegador no llega a ningún lado — y nada en el correo ni en los logs dice que el redirect fue descartado.
 
 Por eso son **dos** campos, no uno. Configurar solo la lista y dejar el Site URL en localhost deja un fallback roto esperando.
+
+> **Trampa nueva desde el 26/09/2026: el Site URL cae en la landing.** El Site URL apunta a la **raíz** del front, y
+> la raíz ya no es la app: es la landing pública (el panel está en `/inicio`). Si GoTrue alguna vez descarta un
+> `redirect_to` y cae al Site URL, el usuario aterriza en la página de venta, no en el panel ni en
+> `/auth/callback` — sin error, igual que siempre. **No se arregla apuntando el Site URL a `/inicio`**: las
+> plantillas de correo arman `{{ .SiteURL }}/auth/callback?token_hash=…` y quedarían en `/inicio/auth/callback`. La
+> defensa es la de siempre: que el `redirect_to` esté en la lista. Las plantillas no se afectan porque ya concatenan
+> el camino completo, y los correos del backend solo enlazan a `/auth/callback` y `/baja/{token}`.
 
 Valores aplicados en dev el 21/08/2026:
 
@@ -310,7 +323,7 @@ no lo es.
 4. Reemplazar las tres variables de scope **Production** en Vercel por las de prod (hoy tienen los valores de dev).
 5. Configurar **Site URL y Redirect URLs** del proyecto Supabase de producción con el dominio definitivo (sección anterior) — y `FRONTEND_URL` del backend de prod con ese mismo dominio. En prod el Site URL debe ser el dominio real, **nunca** un preview de Vercel.
 6. Cargar `CORS_ALLOW_ORIGINS` en el backend de prod con el dominio definitivo. En prod **no hay red de seguridad**: la regex de `*.vercel.app` de `app/common/cors.py` solo aplica con `ENVIRONMENT=dev`.
-7. **Recién entonces** mover la Production Branch a `main` (Settings → Git). Ese es el instante en que el apex deja de redirigir a dev y empieza a servir prod — y en que `dev.prendo.com.co` se queda, a propósito, con el ambiente de dev y su base.
+7. **Recién entonces** mover la Production Branch a `main` (Settings → Git). Ese es el instante en que el apex deja de redirigir a dev y empieza a servir prod —con la landing en `prendo.com.co/`— — y en que `dev.prendo.com.co` se queda, a propósito, con el ambiente de dev y su base.
 8. Push a `main`.
 
 No hace falta tocar código en ningún paso: el CSP y las URLs salen de las variables.

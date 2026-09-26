@@ -291,9 +291,11 @@ Y (l. 118-141, docstring de `ProductSearchAdd`): **buscar un producto conocido a
 
 ---
 
-## 5 · INICIO (dashboard) — `/`
+## 5 · INICIO (dashboard) — `/inicio`
 
-**Ruta y permiso.** `/` → `DashboardPage`, **sin guard de ruta** (`FE/app/router.tsx:143-147`). Pero el contenido **necesita `reports.view`**: el endpoint que lo alimenta lo exige, y la pantalla maneja ese caso explícitamente.
+> **Corregido el 26/09/2026:** el panel se mudó de `/` a `/inicio`; `/` es ahora la landing pública de venta. Lo demás de esta sección sigue valiendo (las líneas de `router.tsx` citadas abajo son del 20/09).
+
+**Ruta y permiso.** `/inicio` → `DashboardPage`, **sin guard de ruta** (`FE/app/router.tsx:143-147`). Pero el contenido **necesita `reports.view`**: el endpoint que lo alimenta lo exige, y la pantalla maneja ese caso explícitamente.
 
 **Qué se ve** (`FE/features/dashboard/pages/DashboardPage.tsx`):
 - Encabezado: **"Hola, {nombre}"** / *"Actualizado al {fecha}"* (l. 72).
@@ -303,7 +305,7 @@ Y (l. 118-141, docstring de `ProductSearchAdd`): **buscar un producto conocido a
 
 **Estados vacíos.**
 - Sin remates pendientes: **"Nada pendiente de remate"** / *"Los contratos vencidos que agotan su prórroga aparecen aquí."* (l. 102).
-- **Sin `reports.view`** (caso importante: `/` es adonde redirigen TODOS los guards, así que es lo que ve un rol restringido): **"Hola, {nombre}"** / *"Tu rol no incluye el resumen del inicio. Usa el menú de la izquierda para ir a lo que sí tienes habilitado, o pídele a un administrador el permiso «Dashboard y reportes»."* (l. 44-51).
+- **Sin `reports.view`** (caso importante: `/inicio` es adonde redirigen TODOS los guards, así que es lo que ve un rol restringido): **"Hola, {nombre}"** / *"Tu rol no incluye el resumen del inicio. Usa el menú de la izquierda para ir a lo que sí tienes habilitado, o pídele a un administrador el permiso «Dashboard y reportes»."* (l. 44-51).
 - Error genérico: *"No se pudo cargar el dashboard."* + Reintentar (l. 52-59).
 
 **Formularios:** ninguno.

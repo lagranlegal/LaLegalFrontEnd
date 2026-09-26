@@ -19,7 +19,7 @@ repo — ver `../../marca/README.md`), publicado en
 | Nombre | **Prendo** — *prenda* en forma de verbo. Sin tilde ni eñe (a propósito: ver `00056`) |
 | Dominio | `prendo.com.co`, comprado el 20/09/2026. Verificar siempre contra `whois -h whois.registry.co`, que es el único que responde de verdad (el `whois` del sistema cae a IANA y devuelve el TLD) |
 | Logo | **Etiqueta**: rombo de esquinas redondeadas con perforación — un solo `path` con `fill-rule: evenodd`, sobre tile de radio 16/64. Es el objeto que la app imprime para cada lote, y en segunda lectura una gema. Reemplaza el monograma P del 12/09, que no distinguía |
-| Tipografía de marca | **Archivo** SemiBold, tracking −0.035em. **La interfaz sigue en Inter** — eso no cambia |
+| Tipografía de marca | **Archivo** SemiBold, tracking −0.035em (`--font-display`, `--tracking-display`; en código desde el 26/09 con la landing, §7). **La interfaz sigue en Inter** — eso no cambia (pero ver el hallazgo de §7: la app nunca cargó Inter de verdad) |
 
 **Paleta "Oro Moderno".** Los valores viven en `tokens.css`; acá está solo lo que hay que saber para no
 romperlos.
@@ -64,6 +64,7 @@ que la app es cálida contrasta todavía más.
 |---|---|
 | Sidebar, topbar, contrato impreso, paz y salvo | **El tenant** (`me.company.name` + su `logo_url`); Prendo solo al pie del impreso, en gris |
 | Login, `/auth/callback`, favicon, `<title>`, `AppFooter`, panel de super-admin, correos | **Prendo** |
+| **La landing pública (`/`)** — 26/09/2026 | **Prendo, y solo Prendo**: es la cara de venta del producto. Ningún dato de un tenant; los ejemplos (contrato #128, etiqueta JOC0007-01R) son de muestra. Ver §7 |
 
 Por eso el respaldo de `AppShell`/`AppFooter` cuando no hay empresa es **`'Mi empresa'`**, no `'Prendo'`:
 poner la marca de la plataforma ahí diría que el inquilino se llama Prendo.
@@ -98,13 +99,14 @@ CSS variables consumidas por Tailwind (`@theme` en Tailwind v4). Las features us
 | Semánticos | `--success` `--warning` `--danger` `--info` + su `-soft` | Estado de una operación. Cada uno cumple AA sobre `--bg-app`, `--bg-surface` **y su propio `-soft`**, que es el caso más exigente por compartir tono con el texto |
 | Neutrales | `--bg-app` `--bg-surface` `--bg-muted` `--border` `--text-strong` `--text-body` `--text-muted` | Superficies y texto. `--bg-muted` es distinto de `--bg-app` a propósito (28/08/2026): antes eran el mismo color y un botón "outline" desaparecía sobre el fondo de página |
 | Papel | `--paper` `--paper-ink` `-ink-soft` `-muted` `-rule` `-accent` `-accent-ink` `-accent-soft` `-danger` `-danger-soft` | Documentos impresos y la vista previa de /configuracion/documentos (`PrintLayout`, `PrintBlocks`). **No se redefinen en oscuro**: son el hex del tema claro repetido a propósito, y `tests/paper-tokens.test.ts` exige que sigan siendo copia exacta de su token claro. Si cambia la marca, el test avisa que el papel también |
-| Sidebar | `--sidebar-bg` `-hover` `-active-bg` `-fg` `-fg-strong` `-border` | Superficie propia, **no** `--bg-surface`: antes el sidebar era el mismo blanco que cualquier card y no contrastaba con el shell |
+| Sidebar | `--sidebar-bg` `-hover` `-active-bg` `-fg` `-fg-strong` `-fg-muted` `-border` `--sidebar-success` | Superficie propia, **no** `--bg-surface`: antes el sidebar era el mismo blanco que cualquier card y no contrastaba con el shell. **También es el carbón de la landing** (§7): son los únicos tokens que siguen oscuros en los dos temas. `-fg-muted` es el tercer nivel de texto sobre carbón (no va sobre `-active-bg`); `--sidebar-success` es el «bien» sobre carbón, porque `--success` ahí da 2.4 |
 | Estados de dominio | `--status-active` `-arrears` `-extension` `-auctioned` `-paid` `-neutral` | Badges. Casi todos son alias de un semántico; la prórroga tiene color propio |
 | Gráficas | `--chart-1` … `--chart-5` | Recharts lee de acá (ver §5). `1` es la serie principal, `2` los egresos |
 | Plataforma | `--platform` `--platform-foreground` | Banda del panel super-admin. Navy frío **a propósito**: ningún tenant lo ve nunca, y su razón de existir es que no se confunda con la marca |
-| Forma | `--radius-input` `-card` `-modal` `-pill` `--shadow-card` `--shadow-modal` | |
+| Forma | `--radius-input` `-card` `-modal` `-pill` `-panel` `--shadow-card` `--shadow-modal` `--shadow-float` `-float-sm` `--shadow-lift` | `--radius-panel` (tarjetas grandes de la landing) queda entre la card y el modal. `--shadow-float`/`-float-sm` son negras y densas porque sobre el carbón del hero `--shadow-modal` no se ve; `--shadow-lift` es el hover que sube una tarjeta |
+| Luz de marca | `--brand-halo` `--hero-grid-line` | El oro como **luz**, no como relleno: brillo radial del hero y del CTA final, anillo del paso «Remate». La grilla sutil del hero. Solo landing |
 | Movimiento | `--ease-out` `--duration-fast` `-base` `-slow` | |
-| Tipografía y espacio | `--font-sans` `--space-page` `--space-card` | Inter con `font-feature: tnum` en las cifras |
+| Tipografía y espacio | `--font-sans` `--font-display` `--font-mono` `--tracking-display` `--font-size-hero` `-closing` `-section` `-subsection` `--space-page` `--space-card` | `--font-sans`: la interfaz, con `font-feature: tnum` en las cifras. `--font-display` (Archivo) solo titulares de la marca; `--font-mono` (JetBrains Mono) solo códigos de etiqueta, porque deja ver cada carácter. La escala de titulares es fluida entre 390 y 1280 px (el valor chico es el del diseño de celular). Todas se instalan con `@fontsource-variable`, nunca de Google Fonts: el CSP solo permite `font-src 'self' data:` |
 
 **El movimiento también es un token.** Sin estas cuatro líneas cada pantalla inventaba su propia duración y la app se sentía hecha por manos distintas. Tres duraciones y una sola curva — si algo pide una cuarta, casi siempre es que está animando de más.
 
@@ -197,3 +199,65 @@ Recharts con wrapper propio `components/shared/charts/` que lee colores de los t
 2. Tailwind expone los tokens como utilidades semánticas (`bg-primary`, `border-default`, `text-muted`, `rounded-card`).
 3. ESLint (regla custom o revisión de PR) rechaza hex/rgb en `features/` y `components/shared/`.
 4. Rebranding futuro (otro tenant quiere su color): editar las 6 líneas de marca de `tokens.css`. Si algún día se quiere marca por empresa en runtime, las variables ya lo permiten (inyectar `<style>` con overrides al cargar la empresa) — no construirlo aún.
+
+## 7. La landing pública (`/`, 26/09/2026)
+
+La única superficie de la app que no es un panel: la página de venta de Prendo, en la raíz (el panel vive en
+`/inicio` — por qué, en `IMPLEMENTATION.md` del 26/09). Código en `src/features/landing/`; diseño aprobado en un
+lienzo de claude.ai (tipo Design, escritorio 1440 y celular 390, con notas de movimiento):
+<https://claude.ai/artifact/MbHqXJJBoKf1zjVjqqmaX5>. No se hizo en Figma porque el entorno no tiene conector de
+Figma.
+
+**Es Prendo, no el tenant** (tabla de §1-bis). Las mismas reglas del resto de la app: todo sale de tokens, y los
+tokens nuevos que pidió están en la tabla de §2.
+
+### Tipografía
+
+- **Titulares en `--font-display` (Archivo) con `--tracking-display`**, sobre la escala fluida
+  `--font-size-hero` / `-closing` / `-section` / `-subsection`. Es la tipografía de marca del kit, que hasta acá
+  solo vivía en el logo.
+- **Códigos de etiqueta en `--font-mono` (JetBrains Mono)**, y nada más en mono.
+- El cuerpo, en `--font-sans`, como la app.
+
+### Superficies y contraste
+
+- **Las secciones oscuras (hero, «Para quién», CTA final) usan `--sidebar-*`**, porque siguen oscuras en los dos
+  temas. Con `--bg-*` se habrían vuelto claras en el tema claro y la composición del hero se desarma.
+- **El oro como texto sobre carbón es `--brand-500`** (alias `--color-brand-on-dark` en `globals.css`): 6.24 en
+  claro y 9.10 en oscuro. `--brand-600` en claro daba solo 4.77. Es la inversa de la regla de §1-bis: sobre claro,
+  el texto de marca es `--brand-700`; sobre carbón, el relleno sí se lee.
+- **El estado «bien» sobre carbón es `--sidebar-success`** (7.69): `--success` está pensado para fondo claro y
+  sobre el carbón da 2.4.
+- **Los numerales grandes «01 / 02 / 03» en oro sobre marfil son ornamento** (alias `--color-ornament`): dan 2.42,
+  así que van con `aria-hidden` y nunca llevan información que haya que leer.
+- `tests/token-contrast.test.ts` mide los pares que la landing usa de verdad, en los dos temas.
+
+### Protocolo de movimiento
+
+Todo en `src/features/landing/landing.css`. Sin tokens nuevos: `--ease-out` y las tres duraciones, y los retrasos de
+las cascadas se derivan de ellas (60 ms entre palabras del titular = la mitad de `--duration-fast`).
+
+1. **Estado final por defecto.** Lo que empieza escondido solo lo está bajo `[data-in='false']`, que pone
+   `useInView` cuando hay IntersectionObserver y el sistema no pide movimiento reducido. Sin IntersectionObserver,
+   todo está visible desde el principio.
+2. **Cada sección entra una vez**: `Reveal` (`landing/components/primitives.tsx`) le pone `enter-up` al
+   contenedor —no a cada hijo, como en el resto de la app— y `data-in` para que las piezas de adentro (la cadena,
+   la curva del reporte) sepan cuándo arrancar. No vuelve a animarse al subir y bajar.
+3. **La cadena de 7 pasos se dibuja en 6 tramos**, cada uno en `--duration-slow`, uno detrás del otro: el paso k se
+   enciende cuando llega el tramo k−1. Con una sola línea en `--ease-out`, que hace casi todo el recorrido al
+   principio, los cinco primeros pasos se encendían en 200 ms.
+4. **El parallax del hero lo escribe `requestAnimationFrame` en variables CSS** (`--px`/`--py`), y cada capa se
+   mueve según su `--depth`. Sin re-render de React en cada frame.
+5. **`prefers-reduced-motion`:** la regla global de §2 reduce duraciones pero no toca los retrasos, y un elemento
+   con 1,9 s de delay quedaba invisible 1,9 s y después saltaba. `landing.css` pone además los retrasos en cero y
+   apaga el flote de las tarjetas.
+6. **El hover que sube una tarjeta va solo bajo `(hover: hover)`**: en un celular, un toque no deja la tarjeta
+   levantada.
+
+### Hallazgo abierto: la app nunca cargó Inter
+
+`--font-sans` pide `'Inter'`, pero `@fontsource-variable/inter` registra la familia como `'Inter Variable'`. El
+navegador no la encuentra y cae a `system-ui`: **toda la app se ve en la fuente del sistema desde siempre**. El
+arreglo es una línea en `tokens.css`, pero cambia la cara de toda la app (anchos, cortes de línea, columnas), así
+que queda para que lo decida Mateo y se verifique pantalla por pantalla. Los tokens de la landing ya nombran primero
+la familia variable.
