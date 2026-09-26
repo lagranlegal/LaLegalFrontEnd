@@ -249,3 +249,30 @@ describe('F21-06: el nombre del proveedor no sale a pantalla', () => {
     expect(applyServerErrors(variasCajas, () => {})).toBe(VARIAS_CAJAS.body.message)
   })
 })
+
+/**
+ * `app/modules/notifications/router.py::_rate_limit` (RateLimitedError → 429).
+ * Copiado de la respuesta REAL del backend (TestClient, 61 pedidos desde la
+ * misma IP, 25/09/2026), no de memoria. Además viene la cabecera
+ * `Retry-After: 60`, que el front no necesita leer.
+ */
+const BAJA_LIMITADA = {
+  status: 429,
+  body: {
+    code: 'RATE_LIMITED',
+    message: 'Demasiados intentos seguidos. Espere un momento y vuelva a intentarlo.',
+    details: { retry_after_seconds: 60 },
+  },
+}
+
+describe('límite de tasa del enlace de baja (NOTIFICACIONES §17-bis)', () => {
+  it('`RATE_LIMITED` se tipa en vez de caer a UNKNOWN, con su espera', () => {
+    const error = parseApiError(BAJA_LIMITADA.status, BAJA_LIMITADA.body)
+    expect(error.code).toBe('RATE_LIMITED')
+    expect(error.details?.retry_after_seconds).toBe(60)
+  })
+
+  it('la página de baja muestra el texto del backend, de usted como los correos', () => {
+    expect(userMessage(parseApiError(BAJA_LIMITADA.status, BAJA_LIMITADA.body))).toBe(BAJA_LIMITADA.body.message)
+  })
+})

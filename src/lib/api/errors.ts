@@ -147,6 +147,12 @@ export const API_ERROR_CODES = [
   // código a propósito. Lo lee SOLO la página pública `/baja/$token`, que no
   // tiene sesión: el mensaje del backend ya le dice a la persona qué hacer.
   'UNSUBSCRIBE_LINK_INVALID',
+  // Límite de tasa del mismo endpoint público (25/09/2026, NOTIFICACIONES
+  // §17-bis): 60 por minuto por IP o 10 cada 10 minutos por token. `details`
+  // trae `retry_after_seconds`. Sin trato propio a propósito: la página de
+  // baja ya muestra el mensaje del backend («espere un momento…») y, en la
+  // carga, su botón «Reintentar» — que es justo lo que hay que hacer.
+  'RATE_LIMITED',
 ] as const
 
 export type ApiErrorCode = (typeof API_ERROR_CODES)[number]

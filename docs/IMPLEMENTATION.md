@@ -2,6 +2,22 @@
 
 > Registro vivo de qué existe en el código, cómo está armado y por qué se tomó cada decisión — para que cualquiera (humano o Claude Code) pueda retomar el proyecto sin releer todo el historial de commits. Se actualiza en cada paso del "Orden de implementación" de `CLAUDE.md`. No repite lo que ya está en `ARCHITECTURE.md`/`DESIGN_SYSTEM.md` (el qué-debería-ser); esto es el qué-hay-hoy y las decisiones concretas tomadas al construirlo.
 
+## `RATE_LIMITED` en el catálogo de errores: el enlace de baja tiene límite de tasa (25/09/2026)
+
+El backend le puso límite de tasa al endpoint público de baja (`../backend-starter/docs/NOTIFICACIONES.md` §17-bis):
+60 pedidos por minuto por IP y 10 cada 10 minutos por token, en memoria y por máquina. Pasado, responde
+`429 RATE_LIMITED` con `details.retry_after_seconds`. En el mismo cambio los correos al cliente empezaron a llevar
+`List-Unsubscribe` (baja de un clic de Gmail/Yahoo), que apunta a la API y **no toca esta app**: el POST lo manda el
+servidor del proveedor de correo. Si un cliente de correo abre esa URI en el navegador, el backend lo redirige a
+`/baja/$token`, que es la página de siempre.
+
+- **`RATE_LIMITED` en `API_ERROR_CODES`**, sin trato propio: la página `/baja/$token` ya muestra el mensaje del
+  backend («Demasiados intentos seguidos. Espere un momento…», de usted como los correos) y, si falló la carga, su
+  botón «Reintentar» — que es justo lo que hay que hacer. Sin el código en el catálogo caía a `UNKNOWN` con el mismo
+  texto: funcionaba, pero el contrato lo conocía solo una de las dos capas.
+- **Test** en `tests/error-codes-contract.test.ts`, con el sobre **real** (copiado de un `TestClient` del backend, no
+  de memoria).
+
 ## «Volver al documento de fábrica» en Documentos (F21-05, 25/09/2026)
 
 El backend tenía `POST /company/document-templates/{id}/deactivate` desde F8-02, pero la pantalla no lo llamaba: en
