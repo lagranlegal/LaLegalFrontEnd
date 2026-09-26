@@ -33,6 +33,7 @@ import {
   type ParamsDraft,
   type ParamsErrors,
 } from '@/features/settings/notifications/logic'
+import { ContractClauseNotice } from '@/features/settings/notifications/components/ContractClauseNotice'
 
 const inputClass =
   'mt-1 w-full rounded-input border border-border bg-background px-3 py-2 text-sm text-foreground outline-none focus:border-primary'
@@ -225,6 +226,7 @@ function EventsSection({ settings }: { settings: NotificationSettings }) {
           <h3 className="text-sm font-medium text-foreground">{group.title}</h3>
           {group.note && <p className="text-xs text-muted-foreground">{group.note}</p>}
           {group.key === 'alert' && <AlertRecipients settings={settings} />}
+          {group.key === 'customer' && <ContractClauseNotice />}
           <ul className="flex flex-col divide-y divide-border rounded-input border border-border">
             {group.events.map((event) => (
               <li key={event.code} className="flex flex-wrap items-start justify-between gap-2 px-3 py-2">

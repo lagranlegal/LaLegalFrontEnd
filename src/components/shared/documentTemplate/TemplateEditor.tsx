@@ -1,12 +1,17 @@
 import { useEffect, useRef } from 'react'
 import { useEditor, EditorContent } from '@tiptap/react'
 import StarterKit from '@tiptap/starter-kit'
-import { Bold, Heading2, Heading3, Italic, List, ListOrdered, PenLine, PlusCircle, Table2 } from 'lucide-react'
+import { Bold, FileCheck2, FileSignature, Heading2, Heading3, Italic, List, ListOrdered, PenLine, PlusCircle, Table2 } from 'lucide-react'
+import { toast } from 'sonner'
+import type { Editor } from '@tiptap/react'
 import { Button } from '@/components/ui/button'
+import { Callout } from '@/components/shared/Callout'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { MergeFieldNode } from '@/lib/documents/nodes/MergeFieldNode'
 import { ItemsTableBlockNode } from '@/lib/documents/nodes/ItemsTableBlockNode'
 import { SignatureBlockNode } from '@/lib/documents/nodes/SignatureBlockNode'
+import { NoticeConsentClauseNode } from '@/lib/documents/nodes/NoticeConsentClauseNode'
+import { hasNoticeConsentClause } from '@/lib/documents/noticeConsentClause'
 import { MERGE_FIELDS, type DocumentType } from '@/lib/documents/mergeFields'
 import { cn } from '@/lib/utils'
 import type { JSONContent } from '@tiptap/core'
@@ -49,7 +54,7 @@ export function TemplateEditor({ documentType, value, onChange }: { documentType
 
   const editor = useEditor({
     content: value,
-    extensions: [StarterKit, MergeFieldNode, ItemsTableBlockNode, SignatureBlockNode],
+    extensions: [StarterKit, MergeFieldNode, ItemsTableBlockNode, SignatureBlockNode, NoticeConsentClauseNode],
     onUpdate: ({ editor }) => {
       const json = editor.getJSON()
       lastSyncedValue.current = json
@@ -69,84 +74,136 @@ export function TemplateEditor({ documentType, value, onChange }: { documentType
   const fields = MERGE_FIELDS[documentType]
 
   return (
-    <div className="flex flex-col gap-2 rounded-card border border-border bg-card">
-      <div className="flex flex-wrap items-center gap-1 border-b border-border p-2">
-        <ToolbarButton label="Negrita" active={editor.isActive('bold')} onClick={() => editor.chain().focus().toggleBold().run()}>
-          <Bold className="size-4" />
-        </ToolbarButton>
-        <ToolbarButton label="Cursiva" active={editor.isActive('italic')} onClick={() => editor.chain().focus().toggleItalic().run()}>
-          <Italic className="size-4" />
-        </ToolbarButton>
-        <ToolbarButton label="Título grande" active={editor.isActive('heading', { level: 2 })} onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()}>
-          <Heading2 className="size-4" />
-        </ToolbarButton>
-        <ToolbarButton label="Título pequeño" active={editor.isActive('heading', { level: 3 })} onClick={() => editor.chain().focus().toggleHeading({ level: 3 }).run()}>
-          <Heading3 className="size-4" />
-        </ToolbarButton>
-        <ToolbarButton label="Lista" active={editor.isActive('bulletList')} onClick={() => editor.chain().focus().toggleBulletList().run()}>
-          <List className="size-4" />
-        </ToolbarButton>
-        <ToolbarButton label="Lista numerada" active={editor.isActive('orderedList')} onClick={() => editor.chain().focus().toggleOrderedList().run()}>
-          <ListOrdered className="size-4" />
-        </ToolbarButton>
+    <div className="flex flex-col gap-3">
+      {documentType === 'contract' && <NoticeConsentHelp editor={editor} included={hasNoticeConsentClause(value)} />}
+      <div className="flex flex-col gap-2 rounded-card border border-border bg-card">
+        <div className="flex flex-wrap items-center gap-1 border-b border-border p-2">
+          <ToolbarButton label="Negrita" active={editor.isActive('bold')} onClick={() => editor.chain().focus().toggleBold().run()}>
+            <Bold className="size-4" />
+          </ToolbarButton>
+          <ToolbarButton label="Cursiva" active={editor.isActive('italic')} onClick={() => editor.chain().focus().toggleItalic().run()}>
+            <Italic className="size-4" />
+          </ToolbarButton>
+          <ToolbarButton label="Título grande" active={editor.isActive('heading', { level: 2 })} onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()}>
+            <Heading2 className="size-4" />
+          </ToolbarButton>
+          <ToolbarButton label="Título pequeño" active={editor.isActive('heading', { level: 3 })} onClick={() => editor.chain().focus().toggleHeading({ level: 3 }).run()}>
+            <Heading3 className="size-4" />
+          </ToolbarButton>
+          <ToolbarButton label="Lista" active={editor.isActive('bulletList')} onClick={() => editor.chain().focus().toggleBulletList().run()}>
+            <List className="size-4" />
+          </ToolbarButton>
+          <ToolbarButton label="Lista numerada" active={editor.isActive('orderedList')} onClick={() => editor.chain().focus().toggleOrderedList().run()}>
+            <ListOrdered className="size-4" />
+          </ToolbarButton>
 
-        <div className="mx-1 h-6 w-px bg-border" />
+          <div className="mx-1 h-6 w-px bg-border" />
 
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button type="button" variant="outline" size="sm">
-              <PlusCircle className="size-4" /> Insertar campo
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button type="button" variant="outline" size="sm">
+                <PlusCircle className="size-4" /> Insertar campo
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start" className="max-h-72 overflow-y-auto">
+              {fields.map((field) => (
+                <DropdownMenuItem
+                  key={field.key}
+                  onSelect={() =>
+                    editor
+                      .chain()
+                      .focus()
+                      // El campo es un nodo atómico — insertarlo SOLO deja el
+                      // cursor como una NodeSelection sobre él (sin caret
+                      // visible), así que insertar otro campo justo después
+                      // reemplaza el anterior en vez de agregarlo al lado. El
+                      // espacio de texto que sigue fuerza un cursor normal
+                      // colapsado DESPUÉS del campo, para poder seguir
+                      // escribiendo o insertar otro campo a continuación.
+                      .insertContent([{ type: 'mergeField', attrs: { key: field.key } }, { type: 'text', text: ' ' }])
+                      .run()
+                  }
+                >
+                  {field.label}
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
+
+          {documentType === 'contract' && (
+            <Button type="button" variant="outline" size="sm" onClick={() => editor.chain().focus().insertContent({ type: 'itemsTableBlock' }).run()}>
+              <Table2 className="size-4" /> Tabla de prendas
             </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="start" className="max-h-72 overflow-y-auto">
-            {fields.map((field) => (
-              <DropdownMenuItem
-                key={field.key}
-                onSelect={() =>
-                  editor
-                    .chain()
-                    .focus()
-                    // El campo es un nodo atómico — insertarlo SOLO deja el
-                    // cursor como una NodeSelection sobre él (sin caret
-                    // visible), así que insertar otro campo justo después
-                    // reemplaza el anterior en vez de agregarlo al lado. El
-                    // espacio de texto que sigue fuerza un cursor normal
-                    // colapsado DESPUÉS del campo, para poder seguir
-                    // escribiendo o insertar otro campo a continuación.
-                    .insertContent([{ type: 'mergeField', attrs: { key: field.key } }, { type: 'text', text: ' ' }])
-                    .run()
-                }
-              >
-                {field.label}
+          )}
+
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button type="button" variant="outline" size="sm">
+                <PenLine className="size-4" /> Firma
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start">
+              <DropdownMenuItem onSelect={() => editor.chain().focus().insertContent({ type: 'signatureBlock', attrs: { variant: 'cliente' } }).run()}>
+                Firma del cliente
               </DropdownMenuItem>
-            ))}
-          </DropdownMenuContent>
-        </DropdownMenu>
+              <DropdownMenuItem onSelect={() => editor.chain().focus().insertContent({ type: 'signatureBlock', attrs: { variant: 'empresa' } }).run()}>
+                Firma de la empresa
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
 
-        {documentType === 'contract' && (
-          <Button type="button" variant="outline" size="sm" onClick={() => editor.chain().focus().insertContent({ type: 'itemsTableBlock' }).run()}>
-            <Table2 className="size-4" /> Tabla de prendas
-          </Button>
-        )}
-
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button type="button" variant="outline" size="sm">
-              <PenLine className="size-4" /> Firma
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="start">
-            <DropdownMenuItem onSelect={() => editor.chain().focus().insertContent({ type: 'signatureBlock', attrs: { variant: 'cliente' } }).run()}>
-              Firma del cliente
-            </DropdownMenuItem>
-            <DropdownMenuItem onSelect={() => editor.chain().focus().insertContent({ type: 'signatureBlock', attrs: { variant: 'empresa' } }).run()}>
-              Firma de la empresa
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+        <EditorContent
+          editor={editor}
+          className="prose prose-sm min-h-64 max-w-none px-4 py-3 [&_section[data-notice-consent]]:border-l-2 [&_section[data-notice-consent]]:border-brand-100 [&_section[data-notice-consent]]:pl-3"
+        />
       </div>
-
-      <EditorContent editor={editor} className="prose prose-sm min-h-64 max-w-none px-4 py-3" />
     </div>
+  )
+}
+
+/**
+ * Recuadro de la cláusula de autorización de avisos (solo Contrato). Las
+ * compraventas no saben que la necesitan, así que se les explica y se les da
+ * lista para insertar. La detección es por el nodo (`hasNoticeConsentClause`),
+ * no por el texto: si la reescriben, sigue contando. `included` sale de
+ * `value`, que el editor mantiene al día en cada cambio.
+ */
+function NoticeConsentHelp({ editor, included }: { editor: Editor; included: boolean }) {
+  const lawyerNote = <p className="text-xs text-muted-foreground">Es un ejemplo; revísalo con tu abogado.</p>
+
+  if (included) {
+    return (
+      <Callout tone="success" icon={FileCheck2} title="Esta plantilla ya incluye la cláusula de autorización de avisos.">
+        <p>En el editor la marca una línea a la izquierda. Puedes cambiarle el texto: sigue contando como la cláusula.</p>
+        {lawyerNote}
+      </Callout>
+    )
+  }
+
+  function insert() {
+    // Antes de la primera firma y no en el cursor: ver `clauseInsertIndex`.
+    if (editor.commands.insertNoticeConsentClause()) toast.success('Cláusula agregada antes de las firmas.')
+  }
+
+  return (
+    <Callout
+      tone="info"
+      icon={FileSignature}
+      title="Agrega la cláusula de autorización de avisos"
+      action={
+        <Button type="button" size="sm" className="rounded-pill" onClick={insert}>
+          Insertar cláusula de avisos
+        </Button>
+      }
+    >
+      <p>
+        La plataforma le manda a tu cliente comprobantes y recordatorios de pago por correo, y más adelante por WhatsApp. Si el contrato que
+        firma dice que autoriza esos avisos, esa autorización queda por escrito y firmada, junto con tu política de tratamiento de datos (Ley
+        1581 de 2012).
+      </p>
+      <p>Se agrega antes de las firmas y la puedes editar como cualquier texto.</p>
+      {lawyerNote}
+    </Callout>
   )
 }

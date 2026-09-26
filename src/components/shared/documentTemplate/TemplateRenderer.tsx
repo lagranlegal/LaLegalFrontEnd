@@ -3,6 +3,7 @@ import StarterKit from '@tiptap/starter-kit'
 import { MergeFieldNode } from '@/lib/documents/nodes/MergeFieldNode'
 import { ItemsTableBlockNode, type PrintableContractItem } from '@/lib/documents/nodes/ItemsTableBlockNode'
 import { SignatureBlockNode } from '@/lib/documents/nodes/SignatureBlockNode'
+import { NoticeConsentClauseNode } from '@/lib/documents/nodes/NoticeConsentClauseNode'
 import { LAYOUT_CONTENT_CLASSES, type DocumentLayout } from '@/lib/documents/layouts'
 import type { MergeFieldContext } from '@/lib/documents/mergeFields'
 import type { JSONContent } from '@tiptap/core'
@@ -40,6 +41,7 @@ export function TemplateRenderer({
         MergeFieldNode.configure({ context: mergeFieldContext }),
         ItemsTableBlockNode.configure({ items: items ?? [] }),
         SignatureBlockNode.configure({ companySignatureUrl, companyLegalName }),
+        NoticeConsentClauseNode,
       ],
     },
     [body, mergeFieldContext, items, companySignatureUrl, companyLegalName],

@@ -7,6 +7,7 @@ import { useSignedPhotoUrl } from '@/lib/storage/photos'
 import { LazyTemplateRenderer, preloadTemplateRenderer } from '@/components/shared/documentTemplate/lazy'
 import { useActiveDocumentTemplate } from '@/features/settings/documentTemplates/api'
 import { buildContractContext } from '@/lib/documents/mergeFields'
+import { noticeConsentClauseBlocks } from '@/lib/documents/noticeConsentClause'
 import type { PrintableContractItem } from '@/lib/documents/nodes/ItemsTableBlockNode'
 import type { Contract } from '@/features/contracts/api'
 import type { Customer } from '@/lib/customers/search'
@@ -40,6 +41,27 @@ function CompanySignature() {
   )
 }
 
+/** La cláusula de avisos en el formato de siempre — ver el comentario de `ContractPrintView`. */
+function NoticeConsentSection({ contract, customer }: { contract: Contract; customer: Customer | undefined }) {
+  const { data: me } = useMe()
+  const blocks = noticeConsentClauseBlocks(buildContractContext(contract, customer, me?.company))
+  return (
+    <section className="mt-6 text-sm">
+      {blocks.map((block, i) =>
+        block.kind === 'heading' ? (
+          <p key={i} className="font-semibold">
+            {block.text}
+          </p>
+        ) : (
+          <p key={i} className="mt-1">
+            {block.text}
+          </p>
+        ),
+      )}
+    </section>
+  )
+}
+
 function months(count: number): string {
   return `${count} ${count === 1 ? 'mes' : 'meses'}`
 }
@@ -59,6 +81,12 @@ function months(count: number): string {
  * empresa (`CompanySignature`, en el fallback) se estampa automáticamente
  * si está cargada en /configuracion, si no cae a la línea en blanco de
  * siempre.
+ *
+ * El formato de siempre trae también la cláusula de autorización de avisos
+ * (25/09/2026, `lib/documents/noticeConsentClause.ts`), antes de las firmas:
+ * mismo texto que el formato de arranque del editor, resuelto a texto plano
+ * para no cargar TipTap acá. Es un agregado al final, nada de lo que ya se
+ * imprimía se movió.
  */
 export function ContractPrintView({ contract, customer, categories }: { contract: Contract; customer: Customer | undefined; categories: Category[] | undefined }) {
   const { data: me } = useMe()
@@ -183,6 +211,8 @@ export function ContractPrintView({ contract, customer, categories }: { contract
       </table>
 
       {contract.notes && <p className="mt-4 text-sm">Notas: {contract.notes}</p>}
+
+      <NoticeConsentSection contract={contract} customer={customer} />
 
       <section className="mt-16 grid grid-cols-2 items-end gap-8 text-sm">
         <div>

@@ -2,6 +2,65 @@
 
 > Registro vivo de qué existe en el código, cómo está armado y por qué se tomó cada decisión — para que cualquiera (humano o Claude Code) pueda retomar el proyecto sin releer todo el historial de commits. Se actualiza en cada paso del "Orden de implementación" de `CLAUDE.md`. No repite lo que ya está en `ARCHITECTURE.md`/`DESIGN_SYSTEM.md` (el qué-debería-ser); esto es el qué-hay-hoy y las decisiones concretas tomadas al construirlo.
 
+## La cláusula de autorización de avisos va en el contrato (25/09/2026)
+
+Los correos al cliente (comprobantes hoy, recordatorios de cuota pronto) se apoyan en la base legal «contrato»
+del backend (`email_basis = 'contract'`, `../backend-starter/docs/NOTIFICACIONES.md` §17). Lo que más la protege es
+que el **contrato firmado** diga que el cliente autoriza esos avisos, junto con la política de tratamiento de datos
+(Ley 1581 de 2012). Las compraventas no lo saben y no lo van a redactar solas, así que la app se lo dice y se lo da
+hecho.
+
+- **Un solo texto, `src/lib/documents/noticeConsentClause.ts`**, marcado en código como **borrador para revisión
+  legal**. Cinco ideas: qué autoriza (comprobantes, recordatorios de pago, avisos del estado del contrato, al correo y
+  celular registrados, hoy correo y más adelante WhatsApp); que son informativos y no reemplazan ni modifican lo
+  pactado ni sus formas de notificación; Ley 2300 de 2023 para horarios y frecuencia; baja con el enlace de cada correo
+  o en el establecimiento; tratamiento de datos según la política de la empresa, Ley 1581 de 2012. Usa campos
+  dinámicos, sin corchetes: `cliente.nombre`, `empresa.razon_social`, `cliente.telefono` y un campo nuevo,
+  **`cliente.correo`** («Correo del cliente», solo Contrato; sin correo se imprime «no registrado» para que el
+  paréntesis no quede vacío en un papel firmado). El texto está escrito una vez, como piezas, y de ahí salen el JSON de
+  TipTap y el texto plano: no pueden divergir.
+- **Detección por nodo, no por texto.** Nodo TipTap propio `noticeConsentClause`
+  (`lib/documents/nodes/NoticeConsentClauseNode.ts`): un envoltorio **no atómico** con párrafos editables adentro y un
+  atributo `version` (hoy 1). La empresa puede reescribir la cláusula con su abogado y sigue contando; el mismo texto
+  pegado como párrafos sueltos no cuenta (hay un test para eso). Si un abogado corrige el texto, se sube la versión y
+  cada plantilla guardada dice con cuál nació. Registrado en `TemplateEditor` y `TemplateRenderer` (mismas
+  extensiones, como siempre). El backend guarda `body` como `dict` libre y no valida tipos de nodo, así que no hizo
+  falta tocarlo.
+- **Editor, solo Contrato:** recuadro de ayuda (`Callout`, patrón nuevo en DESIGN_SYSTEM §3) arriba de la barra, con
+  el porqué en dos frases, «Es un ejemplo; revísalo con tu abogado» y el botón **«Insertar cláusula de avisos»**. Si
+  la plantilla ya la tiene, el recuadro lo dice (en verde) y no ofrece el botón. En el editor la cláusula se marca con
+  una línea a la izquierda; al imprimir no lleva nada.
+- **Dónde se inserta: antes de la primera firma, o al final si no hay firmas — no en el cursor.** Lo último que tocó
+  el usuario puede ser el título o la mitad de un párrafo, y una autorización debajo de las firmas es una
+  autorización que nadie firmó. Es un comando del nodo (`insertNoticeConsentClause`), que no hace nada si ya está.
+- **Formato de arranque:** `STARTING_TEMPLATES.contract` la trae antes de las firmas.
+- **El formato de siempre (sin plantilla propia) también la imprime.** `ContractPrintView` no usa
+  `STARTING_TEMPLATES`: su fallback es JSX y no carga TipTap. Se le agregó `NoticeConsentSection`, el mismo texto en
+  plano (`noticeConsentClauseBlocks`) con los datos reales, **después de las notas y antes de las firmas**. Es un
+  agregado: nada de lo que ya se imprimía se movió. Consecuencia buscada: toda empresa sin plantilla propia la imprime
+  desde este deploy, sin hacer nada. Los contratos ya firmados, obviamente, no la tienen.
+- **Configuración → Notificaciones**, dentro del grupo «Avisos al cliente»:
+  `features/settings/notifications/components/ContractClauseNotice.tsx` dice «Para escribirle a tus clientes con
+  respaldo, tu contrato debe incluir la cláusula de autorización de avisos» y el estado, con
+  `useActiveDocumentTemplate('contract')` (el mismo query de la impresión): sin plantilla activa → hecho («formato de
+  fábrica, que ya la trae»); plantilla activa con el nodo → hecho, nombrándola; sin el nodo → pendiente, con «Agregarla
+  en Documentos». Cargando, error o un rol sin `contracts.view`: no afirma nada, deja la frase y el enlace
+  (DESIGN_SYSTEM §4.8).
+- **Tests:** `tests/notice-consent-clause.test.ts` (detección, contenido, campos existentes, sin corchetes, lugar de
+  inserción, arranque, estado) y `tests/notice-consent-ui.test.tsx` (recuadro, inserción real en TipTap antes de las
+  firmas, no la ofrece dos veces, paz y salvo sin recuadro, los cuatro estados de la nota, el impreso del formato de
+  siempre). Vistos fallar rompiendo cada pieza a propósito: sin la cláusula en el arranque, insertando al final,
+  impreso sin la sección, recuadro sin detección, fábrica contada como pendiente, detección por texto. **312 tests**
+  (289 + 23).
+- **Verificado en navegador** (Playwright, 360 y 1280, empresa ZZ QA, sin guardar ni activar nada; todo POST/PATCH al
+  backend quedaba abortado por el script y no hubo ninguno): la nota muestra «formato de fábrica» (ZZ QA no tiene
+  plantilla activa de contrato), el recuadro inserta y cambia a verde, «Empezar desde la plantilla actual» ya la trae,
+  la vista previa la resuelve, y el impreso del contrato #9 con el formato de siempre la trae antes de las firmas.
+  Sin desborde horizontal a 360.
+
+**Pendiente:** la revisión legal del texto. **Lo que no cubre:** una empresa que ya redactó su propia cláusula como
+texto suelto verá el recuadro ofreciéndole insertar otra (no se detecta por texto, a propósito).
+
 ## Avisos por correo, fase 7: las alertas a la empresa ya salen (25/09/2026)
 
 El backend conectó las cuatro alertas inmediatas —venta anulada, descuento por encima del umbral (en venta o en

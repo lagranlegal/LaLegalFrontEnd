@@ -1,4 +1,5 @@
 import type { JSONContent } from '@tiptap/core'
+import { noticeConsentClause } from '@/lib/documents/noticeConsentClause'
 
 function field(key: string): JSONContent {
   return { type: 'mergeField', attrs: { key } }
@@ -14,6 +15,11 @@ function text(value: string): JSONContent {
  * una vez, no se deriva de nada). El botón "Empezar desde la plantilla
  * actual" la precarga en el editor; de ahí en adelante el usuario edita
  * libremente.
+ *
+ * Trae además la cláusula de autorización de avisos al cliente
+ * (`noticeConsentClause.ts`), antes de las firmas: una empresa nueva la tiene
+ * desde el primer día sin saber que existe. El formato de siempre
+ * (`ContractPrintView`, sin plantilla) la imprime igual, del mismo módulo.
  */
 export const STARTING_CONTRACT_TEMPLATE: JSONContent = {
   type: 'doc',
@@ -45,6 +51,7 @@ export const STARTING_CONTRACT_TEMPLATE: JSONContent = {
         ),
       ],
     },
+    noticeConsentClause(),
     { type: 'signatureBlock', attrs: { variant: 'cliente' } },
     { type: 'signatureBlock', attrs: { variant: 'empresa' } },
   ],

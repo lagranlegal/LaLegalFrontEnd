@@ -24,6 +24,7 @@ export const MERGE_FIELDS: Record<DocumentType, MergeFieldDef[]> = {
     { key: 'cliente.documento', label: 'Documento del cliente' },
     { key: 'cliente.direccion', label: 'Dirección del cliente' },
     { key: 'cliente.telefono', label: 'Teléfono del cliente' },
+    { key: 'cliente.correo', label: 'Correo del cliente' },
     { key: 'contrato.numero', label: 'Número de contrato' },
     { key: 'contrato.codigo_anterior', label: 'Código anterior' },
     { key: 'contrato.fecha_inicio', label: 'Fecha de inicio' },
@@ -99,6 +100,10 @@ export function buildContractContext(
     'cliente.documento': customer ? `${customer.doc_type.toUpperCase()} ${customer.doc_number}` : '',
     'cliente.direccion': customer?.address ?? '',
     'cliente.telefono': customer?.phone ?? '',
+    // «no registrado» y no vacío: la cláusula de avisos lo pone entre
+    // paréntesis, y «al correo electrónico ()» en un papel firmado se lee
+    // como un error de impresión.
+    'cliente.correo': customer?.email || 'no registrado',
     'contrato.numero': `#${contract.number}`,
     'contrato.codigo_anterior': contract.legacy_code ? `(código anterior ${contract.legacy_code})` : '',
     'contrato.fecha_inicio': formatDate(contract.start_date),
@@ -120,6 +125,7 @@ export function buildSampleContractContext(company: Me['company'] | undefined): 
     'cliente.documento': 'CC 1234567890',
     'cliente.direccion': 'Calle 10 # 20-30',
     'cliente.telefono': '3001234567',
+    'cliente.correo': 'cliente@ejemplo.com',
     'contrato.numero': '#0000',
     'contrato.codigo_anterior': '',
     'contrato.fecha_inicio': formatDate(todayBogota()),
