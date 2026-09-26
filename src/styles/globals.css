@@ -3,6 +3,8 @@
 @import 'tw-animate-css';
 @import 'shadcn/tailwind.css';
 @import '@fontsource-variable/inter';
+@import '@fontsource-variable/archivo/wght.css';
+@import '@fontsource-variable/jetbrains-mono/wght.css';
 @plugin '@tailwindcss/typography';
 
 /* Un solo mecanismo de dark mode: el atributo que ya usa tokens.css. */
@@ -99,6 +101,32 @@
   --color-sidebar-hover: var(--sidebar-bg-hover);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--brand-500);
+  --color-sidebar-foreground-strong: var(--sidebar-fg-strong);
+  --color-sidebar-muted-foreground: var(--sidebar-fg-muted);
+  --color-sidebar-success: var(--sidebar-success);
+  /* La marca como TEXTO sobre carbón (hero, «Para quién», CTA final de la
+     landing). Al revés que sobre claro, acá el oro del relleno sí se lee:
+     6.24:1 en claro y 9.10 en oscuro sobre --sidebar-bg. `text-primary`
+     sigue prohibido en features: este alias dice para qué es. */
+  --color-brand-on-dark: var(--brand-500);
+  /* El oro del relleno como ORNAMENTO sobre claro: los numerales grandes
+     (01, 02, 03) de la landing, que van con `aria-hidden`. Da 2.42:1 sobre
+     marfil, así que nunca para texto que haya que leer — para eso, `text-brand`. */
+  --color-ornament: var(--brand-500);
+
+  /* Landing pública: tipografía de marca, escala de titulares, halo. */
+  --color-body: var(--text-body); /* texto de párrafo, un paso bajo el fuerte */
+  --color-brand-50: var(--brand-50);
+  --color-brand-100: var(--brand-100);
+  --color-primary-hover: var(--brand-600); /* hover del relleno dorado */
+  --font-display: var(--font-display);
+  --font-mono: var(--font-mono);
+  --tracking-display: var(--tracking-display);
+  --text-hero: var(--font-size-hero);
+  --text-closing: var(--font-size-closing);
+  --text-section: var(--font-size-section);
+  --text-subsection: var(--font-size-subsection);
+  --color-brand-halo: var(--brand-halo);
 
   /* Forma */
   --radius-input: var(--radius-input);
@@ -109,10 +137,14 @@
   --radius-md: var(--radius-input);
   --radius-lg: var(--radius-card);
   --radius-xl: var(--radius-modal);
+  --radius-panel: var(--radius-panel);
 
   /* Sombra */
   --shadow-card: var(--shadow-card);
   --shadow-modal: var(--shadow-modal);
+  --shadow-float: var(--shadow-float);
+  --shadow-float-sm: var(--shadow-float-sm);
+  --shadow-lift: var(--shadow-lift);
 
   /* Espaciado de layout (p-page, gap-card…) */
   --spacing-page: var(--space-page);

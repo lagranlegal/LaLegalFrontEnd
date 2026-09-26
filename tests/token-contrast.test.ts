@@ -109,4 +109,37 @@ describe('contraste de los tokens (WCAG AA, 4.5:1 para texto normal)', () => {
       expect(ratio(claro[t], claro['--bg-app'])).toBeGreaterThanOrEqual(4.5)
     }
   })
+
+  // La landing pública (26/09/2026) pinta secciones enteras sobre el carbón del
+  // sidebar —hero, «Para quién», CTA final— en los DOS temas, y la sección de
+  // la cadena sobre `--bg-muted`. Se miden los pares que usa de verdad.
+  it('la landing: texto sobre el carbón y sobre el beige, en los dos temas', () => {
+    const malos: string[] = []
+    for (const [tema, vars] of [
+      ['claro', claro],
+      ['oscuro', { ...claro, ...oscuro }],
+    ] as const) {
+      const pares: [string, string][] = [
+        ['--sidebar-fg-strong', '--sidebar-bg'],
+        ['--sidebar-fg', '--sidebar-bg'],
+        ['--sidebar-fg-muted', '--sidebar-bg'],
+        ['--brand-500', '--sidebar-bg'], // text-brand-on-dark
+        ['--sidebar-fg', '--sidebar-bg-hover'], // tarjetas de «Para quién»
+        ['--sidebar-fg-muted', '--sidebar-bg-hover'], // chip de caja del hero
+        ['--brand-500', '--sidebar-bg-hover'],
+        ['--text-body', '--bg-muted'], // la cadena
+        ['--brand-700', '--bg-muted'],
+        ['--brand-700', '--brand-50'], // chips «Gana por…», tarjeta «celular»
+        ['--text-body', '--brand-50'],
+      ]
+      for (const [fg, bg] of pares) {
+        const r = ratio(vars[fg], vars[bg])
+        if (r < 4.5) malos.push(`${tema}: ${fg} sobre ${bg} da ${r.toFixed(2)}`)
+      }
+      // Punto de «Caja cuadrada»: no es texto, pide 3:1 (WCAG 1.4.11).
+      const punto = ratio(vars['--sidebar-success'], vars['--sidebar-bg-hover'])
+      if (punto < 3) malos.push(`${tema}: --sidebar-success sobre --sidebar-bg-hover da ${punto.toFixed(2)}`)
+    }
+    expect(malos, `por debajo de AA:\n  ${malos.join('\n  ')}`).toEqual([])
+  })
 })

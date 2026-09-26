@@ -1,0 +1,239 @@
+/*
+ * Movimiento y fondos de la landing pública (`/`).
+ *
+ * Todo sale de tokens: la curva es --ease-out y las duraciones son
+ * --duration-fast/base/slow o múltiplos suyos (docs/DESIGN_SYSTEM.md §2,
+ * «tres duraciones, no más»). Los retrasos de las cascadas se derivan de las
+ * mismas tres.
+ *
+ * Estado final por defecto: las clases que esconden algo solo lo hacen bajo
+ * `[data-in='false']`, que pone el hook `useInView` cuando hay
+ * IntersectionObserver y el sistema no pide movimiento reducido.
+ */
+
+html:has(.landing) {
+  scroll-behavior: smooth;
+}
+
+/* ==== Fondos del carbón ==== */
+
+.landing-grid {
+  background-image:
+    linear-gradient(var(--hero-grid-line) 1px, transparent 1px),
+    linear-gradient(90deg, var(--hero-grid-line) 1px, transparent 1px);
+  background-size: 80px 80px;
+}
+
+.landing-glow {
+  border-radius: var(--radius-pill);
+  background: radial-gradient(closest-side, var(--brand-halo), transparent 70%);
+}
+
+/* Miniatura de la prenda en la tarjeta de muestra: una gema de oro. */
+.landing-gem {
+  background: linear-gradient(135deg, var(--brand-100), var(--brand-500));
+}
+
+/* ==== Entrada del hero ==== */
+
+@keyframes landing-rise {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* Titular palabra por palabra: 60 ms entre cada una (la mitad de --duration-fast). */
+.landing-word {
+  display: inline-block;
+  animation: landing-rise var(--duration-slow) var(--ease-out) both;
+  animation-delay: calc(var(--i, 0) * var(--duration-fast) / 2);
+}
+
+/* Texto y botones: enter-up escalonado, 80 ms entre sí, después del titular. */
+.landing-stagger {
+  animation: enter-up var(--duration-slow) var(--ease-out) both;
+  animation-delay: calc(var(--duration-slow) + var(--i, 0) * var(--duration-base) * 0.4);
+}
+
+/* Tarjetas del producto: entran después, 120 ms entre sí. */
+.landing-card-in {
+  animation: landing-rise calc(var(--duration-slow) * 2) var(--ease-out) both;
+  animation-delay: calc(var(--duration-slow) * 2 + var(--i, 0) * var(--duration-fast));
+}
+
+/* Luego flotan despacio: ±6 px en un ciclo de 6 s (3 s por sentido). */
+@keyframes landing-float {
+  from {
+    transform: translateY(6px);
+  }
+  to {
+    transform: translateY(-6px);
+  }
+}
+.landing-float {
+  animation: landing-float calc(var(--duration-base) * 15) var(--ease-out) infinite alternate;
+  animation-delay: calc(var(--duration-slow) * 4 + var(--i, 0) * var(--duration-slow) * 2);
+}
+
+/* La etiqueta rota de 0° a 4° al asentarse. */
+@keyframes landing-settle {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(4deg);
+  }
+}
+.landing-settle {
+  transform: rotate(4deg);
+  animation: landing-settle calc(var(--duration-slow) * 2) var(--ease-out) both;
+  animation-delay: calc(var(--duration-slow) * 3 + var(--i, 0) * var(--duration-fast));
+}
+
+/* Parallax leve con el mouse: `HeroComposition` escribe --px/--py (−1…1)
+   en el contenedor desde requestAnimationFrame; cada capa se mueve según su
+   --depth. Sin React de por medio en cada frame. */
+.landing-parallax {
+  transform: translate3d(calc(var(--px, 0) * var(--depth, 8px)), calc(var(--py, 0) * var(--depth, 8px)), 0);
+  transition: transform var(--duration-slow) var(--ease-out);
+}
+
+/* Curvas que se dibujan (necesitan `pathLength="1"`). */
+@keyframes landing-draw {
+  from {
+    stroke-dashoffset: 1;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+.landing-draw-now {
+  stroke-dasharray: 1;
+  animation: landing-draw calc(var(--duration-slow) * 4) var(--ease-out) both;
+  animation-delay: calc(var(--duration-slow) * 3);
+}
+.landing-draw {
+  stroke-dasharray: 1;
+  stroke-dashoffset: 0;
+  transition: stroke-dashoffset calc(var(--duration-slow) * 4) var(--ease-out) var(--duration-slow);
+}
+[data-in='false'] .landing-draw {
+  stroke-dashoffset: 1;
+}
+
+/* ==== La cadena ====
+   La línea son seis tramos, uno por par de pasos, y cada tramo se dibuja en
+   --duration-slow con la curva de la app, uno detrás del otro. Así el paso k
+   se enciende exactamente cuando el tramo k−1 termina de llegar (k × slow):
+   con UNA sola línea y --ease-out, que hace casi todo el recorrido al
+   principio, los cinco primeros pasos se encendían en 200 ms. */
+
+.landing-seg {
+  transition: transform var(--duration-slow) var(--ease-out);
+  transition-delay: calc(var(--k, 0) * var(--duration-slow));
+}
+.landing-seg-x {
+  /* De borde a borde de dos círculos de 72 px, con el gap de 1rem de la grilla. */
+  top: 35px;
+  left: calc(50% + 36px);
+  width: calc(100% + 1rem - 72px);
+  height: 2px;
+  transform-origin: left center;
+}
+.landing-seg-y {
+  /* Igual en vertical: círculos de 48 px arriba de cada fila, gap de 1.25rem. */
+  left: 23px;
+  top: 48px;
+  width: 2px;
+  height: calc(100% - 48px + 1.25rem);
+  transform-origin: center top;
+}
+[data-in='false'] .landing-seg-x {
+  transform: scaleX(0);
+}
+[data-in='false'] .landing-seg-y {
+  transform: scaleY(0);
+}
+
+.landing-step {
+  transition: opacity var(--duration-slow) var(--ease-out);
+  transition-delay: calc(var(--k, 0) * var(--duration-slow));
+}
+.landing-step-dot {
+  transition: transform var(--duration-slow) var(--ease-out);
+  transition-delay: calc(var(--k, 0) * var(--duration-slow));
+}
+[data-in='false'] .landing-step {
+  opacity: 0.35;
+}
+[data-in='false'] .landing-step-dot {
+  transform: scale(0.85);
+}
+
+/* El Remate late una vez al encenderse. */
+.landing-ring {
+  box-shadow: 0 0 0 8px var(--brand-halo);
+}
+@keyframes landing-pulse {
+  50% {
+    box-shadow: 0 0 0 16px var(--brand-halo);
+  }
+}
+[data-in='true'] .landing-ring {
+  animation: landing-pulse calc(var(--duration-slow) * 2) var(--ease-out) 1;
+  animation-delay: calc(var(--k, 0) * var(--duration-slow) + var(--duration-base));
+}
+
+/* El recorrido hacia atrás aparece al final, con la flecha que regresa. */
+.landing-back,
+.landing-back-arrow {
+  transition:
+    opacity var(--duration-slow) var(--ease-out),
+    transform var(--duration-slow) var(--ease-out);
+  transition-delay: calc(var(--duration-slow) * 6 + var(--duration-base));
+}
+.landing-back-arrow {
+  transition-delay: calc(var(--duration-slow) * 7 + var(--duration-base));
+}
+[data-in='false'] .landing-back {
+  opacity: 0;
+  transform: translateY(8px);
+}
+[data-in='false'] .landing-back-arrow {
+  transform: translateX(10px);
+}
+
+/* ==== Interacción ==== */
+
+.landing-lift {
+  transition:
+    transform var(--duration-fast) var(--ease-out),
+    box-shadow var(--duration-fast) var(--ease-out);
+}
+@media (hover: hover) {
+  .landing-lift:hover {
+    transform: translateY(-4px);
+    box-shadow: var(--shadow-lift);
+  }
+}
+
+/* La regla global de globals.css reduce duraciones a un salto, pero no toca
+   los RETRASOS: con ella sola, lo que tiene un delay de 1,9 s seguía
+   invisible 1,9 s y después saltaba. Acá los retrasos también van a cero. */
+@media (prefers-reduced-motion: reduce) {
+  .landing,
+  .landing *,
+  .landing *::before,
+  .landing *::after {
+    animation-delay: 0s !important;
+    transition-delay: 0s !important;
+  }
+  .landing-float {
+    animation: none !important;
+  }
+}

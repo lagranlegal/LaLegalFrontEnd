@@ -91,6 +91,14 @@
   --sidebar-fg: #c4bcac; /* texto/ícono de ítems inactivos */
   --sidebar-fg-strong: #ffffff; /* nombre de la empresa, ítem activo */
   --sidebar-border: #332f27;
+  /* Tercer nivel de texto sobre carbón (26/09/2026, landing pública): notas al
+     pie, rótulos de cifras. 6.10:1 sobre --sidebar-bg y 5.07 sobre
+     --sidebar-bg-hover; NO va sobre --sidebar-active-bg (4.04). */
+  --sidebar-fg-muted: #a79f8e;
+  /* Estado «bien» sobre carbón. --success (#2f6b50) está pensado para fondo
+     claro y sobre el carbón casi desaparece (2.4:1); este es el verde del tema
+     oscuro, 7.69:1 sobre --sidebar-bg. Solo puntos e íconos de estado. */
+  --sidebar-success: #4fc98c;
 
   /* ==== Estados de dominio (badges) ==== */
   --status-active: var(--success); /* Vigente / disponible / activa */
@@ -122,6 +130,20 @@
   --radius-pill: 9999px;
   --shadow-card: 0 1px 3px rgb(36 33 28 / 0.07);
   --shadow-modal: 0 20px 50px rgb(36 33 28 / 0.18);
+  /* Landing pública (26/09/2026). Tarjetas grandes: entre la card (14) y el
+     modal (24). */
+  --radius-panel: 20px;
+  /* Sombras de piezas que "flotan" sobre el carbón del hero: sobre un fondo
+     tan oscuro, --shadow-modal no se ve, así que la sombra es negra y densa. */
+  --shadow-float: 0 40px 80px rgb(0 0 0 / 0.45);
+  --shadow-float-sm: 0 24px 50px rgb(0 0 0 / 0.4);
+  /* Hover de una tarjeta de la landing: sube y la sombra crece. */
+  --shadow-lift: 0 16px 36px rgb(36 33 28 / 0.12);
+  /* El oro como luz, no como relleno: brillo radial del hero y del CTA final,
+     anillo del paso «Remate», área bajo la curva del reporte de muestra. */
+  --brand-halo: rgb(201 154 61 / 0.22);
+  /* Grilla sutil del hero, sobre el carbón. */
+  --hero-grid-line: rgb(247 244 236 / 0.035);
 
   /* ==== Movimiento ====
      El movimiento es diseño y también sale de acá (regla 4): sin estos
@@ -138,6 +160,19 @@
 
   /* ==== Tipografía y espaciado ==== */
   --font-sans: 'Inter', system-ui, sans-serif; /* cifras de KPI con font-feature "tnum" */
+  /* Tipografía de marca (DESIGN_SYSTEM §1-bis): titulares de la landing.
+     Instalada con @fontsource-variable, NO de Google Fonts: la CSP solo
+     permite `font-src 'self' data:`. */
+  --font-display: 'Archivo Variable', 'Archivo', system-ui, sans-serif;
+  --tracking-display: -0.035em;
+  /* Solo códigos de etiqueta (JOC0007-01R): la mono deja ver cada carácter. */
+  --font-mono: 'JetBrains Mono Variable', 'JetBrains Mono', ui-monospace, monospace;
+  /* Escala de titulares de la landing: fluida entre 390 y 1280 px de ancho
+     (el valor chico es el del diseño de celular, el grande el de escritorio). */
+  --font-size-hero: clamp(2.875rem, 2.05rem + 3.37vw, 4.75rem); /* 46 → 76 */
+  --font-size-closing: clamp(2.5rem, 1.625rem + 3.6vw, 4.5rem); /* 40 → 72 */
+  --font-size-section: clamp(2.125rem, 1.52rem + 2.47vw, 3.5rem); /* 34 → 56 */
+  --font-size-subsection: clamp(1.875rem, 1.49rem + 1.57vw, 2.75rem); /* 30 → 44 */
   --space-page: 24px;
   --space-card: 20px;
 }
@@ -204,6 +239,13 @@
   --sidebar-fg: #bdb4a2;
   --sidebar-fg-strong: #ffffff;
   --sidebar-border: #1c1a14;
+  /* --sidebar-fg-muted y --sidebar-success no cambian: sobre el carbón más
+     profundo dan 7.40 y 9.5+, así que el valor claro sirve igual. */
+
+  /* ==== Landing ====
+     Sobre fondo oscuro, la sombra marrón del hover no se ve. */
+  --shadow-lift: 0 16px 36px rgb(0 0 0 / 0.5);
+  --brand-halo: rgb(211 172 95 / 0.2);
 
   /* ==== Gráficas ==== */
   --chart-3: #8fa3b0; /* el #6b7f8c de luz es muy apagado sobre fondo oscuro */
