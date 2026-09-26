@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { toast } from 'sonner'
 import { AppDialog } from '@/components/shared/AppDialog'
 import { PrintLayout } from '@/components/shared/PrintLayout'
+import { PrintField, PrintSection, PrintTable, PrintTd, PrintTh } from '@/components/shared/PrintBlocks'
 import { Money } from '@/components/shared/Money'
 import { RecordNumber } from '@/components/shared/RecordNumber'
 import { StatusBadge } from '@/components/shared/StatusBadge'
@@ -12,27 +13,28 @@ import { Button } from '@/components/ui/button'
 import { confirm } from '@/components/shared/confirmStore'
 import { formatDate, formatDateTime } from '@/lib/dates'
 import { PAYMENT_METHOD_LABELS } from '@/lib/paymentMethods'
-import { useCustomer } from '@/lib/customers/search'
+import { useCustomer, type Customer } from '@/lib/customers/search'
 import { useItemsByIds, type Item } from '@/lib/inventory/items'
 import { formatQuantity } from '@/lib/inventory/units'
 import { ApiError, userMessage } from '@/lib/api/errors'
 import { useVoidSale, type Sale } from '@/lib/sales/void'
-import { useSaleReturns, returnSettlementParts, RETURN_REASON_LABELS, RETURN_SETTLEMENT_LABELS } from '@/lib/sales/returns'
+import { useSaleReturns, returnSettlementParts, RETURN_REASON_LABELS, RETURN_SETTLEMENT_LABELS, type SaleReturn } from '@/lib/sales/returns'
+import { compareMoney } from '@/lib/money'
 import type { components } from '@/types/api'
 
 type SaleLine = components['schemas']['SaleLineOut']
 
-function SaleLineRow({ line, item, forPrint = false }: { line: SaleLine; item: Item | undefined; forPrint?: boolean }) {
+function SaleLineRow({ line, item }: { line: SaleLine; item: Item | undefined }) {
   return (
-    <tr className={forPrint ? 'border-b border-black/10' : undefined}>
-      <td className={forPrint ? 'py-1.5' : 'px-3 py-2 text-foreground'}>
-        {item?.name ?? '…'} {item?.code && <span className={forPrint ? 'text-xs' : 'font-mono text-xs text-muted-foreground'}>{item.code}</span>}
+    <tr>
+      <td className="px-3 py-2 text-foreground">
+        {item?.name ?? '…'} {item?.code && <span className="font-mono text-xs text-muted-foreground">{item.code}</span>}
       </td>
-      <td className={forPrint ? 'py-1.5 text-right' : 'px-3 py-2 text-right text-foreground'}>{formatQuantity(line.quantity, item?.unit)}</td>
-      <td className={forPrint ? 'py-1.5 text-right' : 'px-3 py-2 text-right'}>
+      <td className="px-3 py-2 text-right text-foreground">{formatQuantity(line.quantity, item?.unit)}</td>
+      <td className="px-3 py-2 text-right">
         <Money value={line.unit_price} />
       </td>
-      <td className={forPrint ? 'py-1.5 text-right' : 'px-3 py-2 text-right'}>
+      <td className="px-3 py-2 text-right">
         <Money value={line.subtotal} />
       </td>
     </tr>
@@ -40,9 +42,154 @@ function SaleLineRow({ line, item, forPrint = false }: { line: SaleLine; item: I
 }
 
 /**
+ * El comprobante impreso (dentro de `PrintLayout`, que lo imprime solo — sin
+ * la lista de atrás). Mismo idioma visual que el contrato: campos arriba,
+ * tabla con el encabezado de marca, totales a la derecha. Todo lo que dice
+ * sale del backend tal cual; el front no suma nada (regla 5).
+ */
+function SaleReceiptPrint({
+  sale,
+  customer,
+  itemsById,
+  returns,
+}: {
+  sale: Sale
+  customer: Customer | undefined
+  itemsById: Map<string, Item> | undefined
+  returns: SaleReturn[] | undefined
+}) {
+  const hasDiscount = compareMoney(sale.discount_amount, '0') > 0
+  const creditNotePaid = sale.credit_note_redeemed_amount && compareMoney(sale.credit_note_redeemed_amount, '0') > 0 ? sale.credit_note_redeemed_amount : null
+  return (
+    <>
+      {sale.status === 'voided' && (
+        <div className="print-keep mb-6 border-l-2 border-paper-danger bg-paper-danger-soft px-4 py-2 text-sm text-paper-danger">
+          <p className="font-semibold uppercase">Venta anulada</p>
+          {sale.void_reason && <p>Motivo: {sale.void_reason}</p>}
+        </div>
+      )}
+
+      <section className="grid grid-cols-3 gap-6">
+        <PrintField label="Cliente">
+          {customer ? (
+            <>
+              <p>{customer.full_name}</p>
+              <p className="font-normal text-paper-ink-soft">
+                {customer.doc_type.toUpperCase()} {customer.doc_number}
+              </p>
+            </>
+          ) : (
+            'Consumidor final'
+          )}
+        </PrintField>
+        <PrintField label="Fecha de la venta">
+          <span className="tnum">{formatDateTime(sale.sold_at)}</span>
+        </PrintField>
+        <PrintField label="Medio de pago" align="right">
+          {PAYMENT_METHOD_LABELS[sale.payment_method as keyof typeof PAYMENT_METHOD_LABELS] ?? sale.payment_method}
+        </PrintField>
+      </section>
+
+      <PrintSection title="Artículos">
+        <PrintTable
+          head={
+            <>
+              <PrintTh>Artículo</PrintTh>
+              <PrintTh align="right">Cant.</PrintTh>
+              <PrintTh align="right">Precio</PrintTh>
+              <PrintTh align="right">Subtotal</PrintTh>
+            </>
+          }
+        >
+          {sale.lines.map((line) => {
+            const item = itemsById?.get(line.item_id)
+            return (
+              <tr key={line.id}>
+                <PrintTd>
+                  <p className="font-medium">{item?.name ?? '…'}</p>
+                  {item?.code && <p className="text-xs text-paper-muted">{item.code}</p>}
+                </PrintTd>
+                <PrintTd align="right">{formatQuantity(line.quantity, item?.unit)}</PrintTd>
+                <PrintTd align="right">
+                  <Money value={line.unit_price} />
+                </PrintTd>
+                <PrintTd align="right">
+                  <Money value={line.subtotal} />
+                </PrintTd>
+              </tr>
+            )
+          })}
+        </PrintTable>
+
+        <dl className="print-keep mt-3 ml-auto w-72 text-sm tnum">
+          {hasDiscount && (
+            <div className="flex justify-between py-1 text-paper-ink-soft">
+              <dt>Descuento</dt>
+              <dd>
+                − <Money value={sale.discount_amount} />
+              </dd>
+            </div>
+          )}
+          <div className="flex items-baseline justify-between border-t-2 border-paper-accent pt-2 text-paper-ink">
+            <dt className="text-xs font-semibold tracking-wider text-paper-accent-ink uppercase">Total</dt>
+            <dd className="text-xl font-semibold">
+              <Money value={sale.total} />
+            </dd>
+          </div>
+          {creditNotePaid && (
+            <div className="flex justify-between py-1 text-paper-ink-soft">
+              <dt>Pagado con nota crédito</dt>
+              <dd>
+                <Money value={creditNotePaid} />
+              </dd>
+            </div>
+          )}
+        </dl>
+      </PrintSection>
+
+      {returns && returns.length > 0 && (
+        <PrintSection title="Devoluciones">
+          <PrintTable
+            head={
+              <>
+                <PrintTh>Devolución</PrintTh>
+                <PrintTh>Fecha</PrintTh>
+                <PrintTh>Motivo</PrintTh>
+                <PrintTh>Liquidación</PrintTh>
+                <PrintTh align="right">Valor</PrintTh>
+              </>
+            }
+          >
+            {returns.map((ret) => (
+              <tr key={ret.id}>
+                <PrintTd>#{ret.number}</PrintTd>
+                <PrintTd>{formatDate(ret.return_date)}</PrintTd>
+                <PrintTd>{RETURN_REASON_LABELS[ret.reason as keyof typeof RETURN_REASON_LABELS] ?? ret.reason}</PrintTd>
+                <PrintTd>
+                  {returnSettlementParts(ret).map((part) => (
+                    <p key={part.kind}>
+                      {part.label} <Money value={part.amount} />
+                    </p>
+                  ))}
+                </PrintTd>
+                <PrintTd align="right">
+                  <Money value={ret.total_amount} />
+                </PrintTd>
+              </tr>
+            ))}
+          </PrintTable>
+        </PrintSection>
+      )}
+    </>
+  )
+}
+
+/**
  * Comprobante de venta (CLAUDE.md paso 7) — ver/imprimir + anular. Mismo
  * patrón que `ClosingActDialog` (paso 6): `PrintLayout` hermano del
- * `AppDialog`, nunca anidado. Movido a `components/shared/` en la revisión
+ * `AppDialog`, nunca anidado. Al imprimir sale SOLO el comprobante —
+ * `PrintLayout` se monta en un portal y oculta el resto de la página—, sin
+ * que la lista de Ventas ni la ficha del cliente tengan que hacer nada. Movido a `components/shared/` en la revisión
  * post-paso-10 (segundo consumidor real: historial de cliente en
  * `features/customers`, además de `SalesListPage`) — `useVoidSale`/`Sale`
  * viven en `lib/sales/void.ts` por la misma razón.
@@ -198,34 +345,8 @@ export function SaleReceiptDialog({ open, onOpenChange, sale }: { open: boolean;
 
       <CashSessionRequiredDialog open={cashDialogOpen} onOpenChange={setCashDialogOpen} />
 
-      <PrintLayout title={`Venta #${sale.number}`}>
-        <p className="mb-1 text-sm">{customer ? `${customer.full_name} — ${customer.doc_type.toUpperCase()} ${customer.doc_number}` : 'Consumidor final'}</p>
-        <p className="mb-4 text-sm">Medio de pago: {PAYMENT_METHOD_LABELS[sale.payment_method as keyof typeof PAYMENT_METHOD_LABELS] ?? sale.payment_method}</p>
-        <table className="w-full border-collapse text-sm">
-          <thead>
-            <tr className="border-b border-black/20 text-left">
-              <th className="py-1.5">Artículo</th>
-              <th className="py-1.5 text-right">Cant.</th>
-              <th className="py-1.5 text-right">Precio</th>
-              <th className="py-1.5 text-right">Subtotal</th>
-            </tr>
-          </thead>
-          <tbody>
-            {sale.lines.map((line) => (
-              <SaleLineRow key={line.id} line={line} item={itemsById?.get(line.item_id)} forPrint />
-            ))}
-          </tbody>
-        </table>
-        <div className="mt-4 flex flex-col items-end gap-1 text-sm">
-          {hasDiscount && (
-            <p>
-              Descuento <Money value={sale.discount_amount} />
-            </p>
-          )}
-          <p className="text-base font-semibold">
-            Total <Money value={sale.total} />
-          </p>
-        </div>
+      <PrintLayout title="Comprobante de venta" number={sale.number}>
+        <SaleReceiptPrint sale={sale} customer={customer} itemsById={itemsById} returns={returns} />
       </PrintLayout>
     </>
   )

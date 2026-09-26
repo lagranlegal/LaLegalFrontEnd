@@ -1,5 +1,6 @@
 import { AppDialog } from '@/components/shared/AppDialog'
 import { PrintLayout } from '@/components/shared/PrintLayout'
+import { PrintField, PrintSection, PrintTable, PrintTd, PrintTh } from '@/components/shared/PrintBlocks'
 import { Money } from '@/components/shared/Money'
 import { Button } from '@/components/ui/button'
 import { formatDate, formatDateTime } from '@/lib/dates'
@@ -98,56 +99,45 @@ export function ClosingActDialog({ open, onOpenChange, closing }: { open: boolea
 
       {report && (
         <PrintLayout title={`Acta de cierre — ${formatDate(closing.session_date)}`}>
-          <div className="mb-4 grid grid-cols-4 gap-4 text-sm">
-            <div>
-              <p className="text-black/60">Saldo inicial</p>
-              <p className="font-medium">
-                <Money value={closing.opening_balance} />
-              </p>
-            </div>
-            <div>
-              <p className="text-black/60">Esperado</p>
-              <p className="font-medium">
-                <Money value={closing.expected_cash} />
-              </p>
-            </div>
-            <div>
-              <p className="text-black/60">Contado</p>
-              <p className="font-medium">
-                <Money value={closing.counted_cash} />
-              </p>
-            </div>
-            <div>
-              <p className="text-black/60">Diferencia</p>
-              <p className="font-medium">
-                <Money value={closing.difference} />
-              </p>
-            </div>
-          </div>
-          {closing.difference_reason && <p className="mb-4 text-sm">Justificación: {closing.difference_reason}</p>}
-          <table className="w-full border-collapse text-sm">
-            <thead>
-              <tr className="border-b border-black/20 text-left">
-                <th className="py-1.5">Módulo</th>
-                <th className="py-1.5">Concepto</th>
-                <th className="py-1.5">Medio</th>
-                <th className="py-1.5 text-right">Total</th>
-              </tr>
-            </thead>
-            <tbody>
+          <section className="grid grid-cols-4 gap-4 tnum">
+            <PrintField label="Saldo inicial">
+              <Money value={closing.opening_balance} />
+            </PrintField>
+            <PrintField label="Esperado">
+              <Money value={closing.expected_cash} />
+            </PrintField>
+            <PrintField label="Contado">
+              <Money value={closing.counted_cash} />
+            </PrintField>
+            <PrintField label="Diferencia">
+              <Money value={closing.difference} />
+            </PrintField>
+          </section>
+          {closing.difference_reason && <p className="mt-4 text-sm">Justificación: {closing.difference_reason}</p>}
+          <PrintSection title="Desglose">
+            <PrintTable
+              head={
+                <>
+                  <PrintTh>Módulo</PrintTh>
+                  <PrintTh>Concepto</PrintTh>
+                  <PrintTh>Medio</PrintTh>
+                  <PrintTh align="right">Total</PrintTh>
+                </>
+              }
+            >
               {report.lines.map((line, index) => (
-                <tr key={index} className="border-b border-black/10">
-                  <td className="py-1.5">{MODULE_LABELS[line.module as keyof typeof MODULE_LABELS] ?? line.module}</td>
-                  <td className="py-1.5">{conceptLabel(line.concept)}</td>
-                  <td className="py-1.5">{PAYMENT_METHOD_LABELS[line.payment_method as keyof typeof PAYMENT_METHOD_LABELS] ?? line.payment_method}</td>
-                  <td className="py-1.5 text-right">
+                <tr key={index}>
+                  <PrintTd>{MODULE_LABELS[line.module as keyof typeof MODULE_LABELS] ?? line.module}</PrintTd>
+                  <PrintTd>{conceptLabel(line.concept)}</PrintTd>
+                  <PrintTd>{PAYMENT_METHOD_LABELS[line.payment_method as keyof typeof PAYMENT_METHOD_LABELS] ?? line.payment_method}</PrintTd>
+                  <PrintTd align="right">
                     <Money value={line.total} />
-                  </td>
+                  </PrintTd>
                 </tr>
               ))}
-            </tbody>
-          </table>
-          <p className="mt-6 text-xs text-black/60">Cerrado el {formatDateTime(closing.closed_at)}.</p>
+            </PrintTable>
+          </PrintSection>
+          <p className="mt-6 text-xs text-paper-muted">Cerrado el {formatDateTime(closing.closed_at)}.</p>
         </PrintLayout>
       )}
     </>

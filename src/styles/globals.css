@@ -71,6 +71,19 @@
   --color-chart-4: var(--chart-4);
   --color-chart-5: var(--chart-5);
 
+  /* Papel (PrintLayout y bloques de impresión) — NO cambia con el tema, ver
+     tokens.css. Utilidades bg-paper, text-paper-ink, border-paper-rule… */
+  --color-paper: var(--paper);
+  --color-paper-ink: var(--paper-ink);
+  --color-paper-ink-soft: var(--paper-ink-soft);
+  --color-paper-muted: var(--paper-muted);
+  --color-paper-rule: var(--paper-rule);
+  --color-paper-accent: var(--paper-accent);
+  --color-paper-accent-ink: var(--paper-accent-ink);
+  --color-paper-accent-soft: var(--paper-accent-soft);
+  --color-paper-danger: var(--paper-danger);
+  --color-paper-danger-soft: var(--paper-danger-soft);
+
   /* Panel de plataforma (PlatformLayout) */
   --color-platform: var(--platform);
   --color-platform-foreground: var(--platform-foreground);
@@ -189,4 +202,108 @@
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
   }
+}
+
+/*
+ * ==== Documentos impresos (PrintLayout) ====
+ *
+ * Imprimir un documento imprime SOLO el documento. `PrintLayout` se monta en
+ * un portal —hijo directo de <body>, con `data-print-document`— y esta regla
+ * oculta todo lo demás al imprimir: el #root con el shell y la página de
+ * atrás, los diálogos de Radix, los toasts. Antes cada página tenía que
+ * envolver su contenido en `print:hidden`, y la lista de Ventas no lo hacía:
+ * el comprobante salía debajo de la tabla completa con el botón de Excel.
+ */
+@page {
+  size: letter;
+  margin: 12mm 15mm 14mm;
+}
+
+@media print {
+  html,
+  body {
+    background: var(--paper) !important;
+    color-scheme: light;
+  }
+  /* El bloqueo de scroll de un diálogo abierto (react-remove-scroll) deja
+     `overflow: hidden` y un padding de compensación en <body>. */
+  body:has(> [data-print-document]) {
+    overflow: visible !important;
+    height: auto !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+  body:has(> [data-print-document]) > :not([data-print-document]) {
+    display: none !important;
+  }
+  /* Los fondos de marca (encabezado de tabla, barra de acento) se imprimen
+     aunque el diálogo del navegador tenga «gráficos de fondo» apagado. */
+  [data-print-document] {
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
+}
+
+/* Lo que no se parte entre dos hojas: una fila de tabla, un bloque de firma,
+   un título con el párrafo que lo sigue. */
+@utility print-keep {
+  break-inside: avoid;
+  page-break-inside: avoid;
+}
+
+/* Fuera de `@layer` a propósito: `prose` (@tailwindcss/typography) vive en
+   una capa, y dentro de una capa estas reglas perdían contra sus márgenes y
+   tamaños de `h3`/`p` sin importar la especificidad — la cláusula de una
+   plantilla propia salía con el título grande y los párrafos separados. */
+.print-doc tr {
+  break-inside: avoid;
+}
+.print-doc thead {
+  display: table-header-group;
+}
+.print-doc h1,
+.print-doc h2,
+.print-doc h3,
+.print-doc h4 {
+  break-after: avoid;
+}
+
+/* La cláusula de autorización de avisos (`noticeConsentClause`), igual en
+   la plantilla propia y en el formato de siempre: un filete de marca a la
+   izquierda la separa de lo pactado sin gritar — son avisos informativos,
+   no una condición del préstamo. */
+.print-doc section[data-notice-consent] {
+  margin-block: 1.25rem;
+  border-left: 2px solid var(--paper-accent);
+  padding-left: 0.875rem;
+}
+.print-doc section[data-notice-consent] > h3:first-child {
+  margin-top: 0;
+  margin-bottom: 0.375rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--paper-accent-ink);
+}
+.print-doc section[data-notice-consent] p {
+  margin-block: 0.25rem;
+  font-size: 0.8125rem;
+  line-height: 1.45;
+  color: var(--paper-ink-soft);
+}
+
+/* Firmas de una plantilla propia: cada bloque es un nodo de TipTap aparte,
+   uno debajo del otro. Dos seguidos (cliente + empresa) van lado a lado,
+   como en el formato de siempre. */
+.print-doc .ProseMirror .node-signatureBlock {
+  display: inline-block;
+  width: 50%;
+  vertical-align: top;
+  margin-top: 2.5rem;
+  padding-inline: 1rem;
+}
+.print-doc .ProseMirror .node-signatureBlock:first-child,
+.print-doc .ProseMirror :not(.node-signatureBlock) + .node-signatureBlock {
+  padding-left: 0;
 }

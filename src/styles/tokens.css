@@ -55,6 +55,26 @@
   --text-body: #4b463d;
   --text-muted: #716c63; /* labels de KPI, hints, placeholders — Gris cálido */
 
+  /* ==== Papel (documentos impresos: contrato, comprobante, paz y salvo, acta) ====
+     El papel NO tiene modo oscuro, y por eso estos tokens NO se redefinen en
+     `[data-theme='dark']`: quien tiene la app en oscuro imprime la misma hoja
+     blanca con tinta carbón que quien la tiene en claro, y la vista previa de
+     /configuracion/documentos muestra esa misma hoja.
+     Son el hex del tema CLARO repetido a propósito — un `var(--brand-500)` acá
+     se resolvería con el valor oscuro cuando `data-theme='dark'`, porque el
+     atributo vive en el mismo `<html>` que `:root`. La repetición la vigila
+     `tests/paper-tokens.test.ts`: si la marca cambia y el papel no, falla. */
+  --paper: #ffffff;
+  --paper-ink: #24211c; /* = --text-strong */
+  --paper-ink-soft: #4b463d; /* = --text-body */
+  --paper-muted: #716c63; /* = --text-muted: labels de campo, pie */
+  --paper-rule: #ddd7c9; /* = --border: filas de tabla, filetes finos */
+  --paper-accent: #c99a3d; /* = --brand-500: barra de marca, filetes de encabezado */
+  --paper-accent-ink: #7a5a1c; /* = --brand-700: títulos de sección, nombre del documento */
+  --paper-accent-soft: #fbf4e4; /* = --brand-50: fondo del encabezado de tabla */
+  --paper-danger: #a33c36; /* = --danger: «venta anulada» */
+  --paper-danger-soft: #faeae8; /* = --danger-soft */
+
   /* ==== Sidebar (28/08/2026, recoloreado 20/09/2026) ====
      Antes aliaseaba a --bg-surface (blanco, igual que cualquier card) — cero
      contraste con el resto del shell. Ahora es el carbón de la paleta, no un

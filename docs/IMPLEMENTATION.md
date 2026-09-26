@@ -2,6 +2,76 @@
 
 > Registro vivo de qué existe en el código, cómo está armado y por qué se tomó cada decisión — para que cualquiera (humano o Claude Code) pueda retomar el proyecto sin releer todo el historial de commits. Se actualiza en cada paso del "Orden de implementación" de `CLAUDE.md`. No repite lo que ya está en `ARCHITECTURE.md`/`DESIGN_SYSTEM.md` (el qué-debería-ser); esto es el qué-hay-hoy y las decisiones concretas tomadas al construirlo.
 
+## Documentos impresos: el comprobante imprime solo el comprobante, y el contrato con la marca (25/09/2026)
+
+Dos defectos reportados por el dueño. **Uno:** «al imprimir el comprobante de una venta me aparecen todas las ventas,
+incluyendo el botón de exportar Excel, y no tiene la plantilla con los colores de la aplicación». **Dos:** mejorar el
+estilizado del contrato impreso y verificar que una firma en blanco o transparente quede bien.
+
+**La causa del uno.** `PrintLayout` vivía dentro del árbol de la página (`hidden print:block`) y dependía de que CADA
+página envolviera su propio contenido en `print:hidden`. El detalle de contrato y la caja lo hacían; la lista de
+Ventas y la ficha del cliente (los dos lugares que abren `SaleReceiptDialog`) no. Al imprimir salía la página entera y
+el comprobante debajo, en negro sobre blanco y sin nada de la marca.
+
+- **`PrintLayout` se monta en un portal**, hijo directo de `<body>` con `data-print-document`, y una sola regla de
+  `globals.css` (`body:has(> [data-print-document]) > :not([data-print-document])`) oculta todo lo demás al imprimir:
+  el `#root` con el shell y la página de atrás, el diálogo de Radix, los toasts. Ninguna página tiene que acordarse de
+  nada; los `print:hidden` que ya había quedan inofensivos. La vista previa de `/configuracion/documentos`
+  (`screenPreview`) **no** va en portal: es parte de esa página. El bloqueo de scroll de un diálogo abierto deja
+  `overflow: hidden` en `<body>`; la misma regla lo anula al imprimir.
+- **Tokens del papel** (`--paper-*` en `tokens.css`): el papel no tiene modo oscuro. Con los tokens del tema, quien
+  tiene la app en oscuro imprimía —y veía en la vista previa— los encabezados de «Moderno» en `--brand-600`, que en
+  oscuro es un oro claro casi ilegible sobre la hoja blanca. Son el hex del tema claro repetido a propósito (un
+  `var(--brand-500)` se resolvería con el valor oscuro, porque `data-theme` vive en el mismo `<html>` que `:root`);
+  `tests/paper-tokens.test.ts` vigila que no se redefinan en oscuro, que sigan siendo copia exacta de su token claro y
+  el contraste AA.
+- **`PrintBlocks.tsx`** (nuevo, `components/shared/`): `PrintSection`, `PrintField`, `PrintTable`/`PrintTh`/`PrintTd`,
+  `PrintContractItemsTable` y `PrintSignature`. El contrato de fábrica, el bloque de tabla y el de firma de las
+  plantillas propias, el comprobante y el acta de cierre los usan: un solo idioma visual (títulos de sección en
+  versalitas con el oro de texto, encabezado de tabla sobre el oro suave, filete de marca bajo el membrete).
+- **Membrete de `PrintLayout`:** logo, razón social, nombre comercial, NIT y nota de encabezado a la izquierda; a la
+  derecha el nombre del documento en versalitas, el número grande (prop nueva `number`) y «Impreso el …». Hoja carta
+  con `@page` (12/15/14 mm) en vez de un ancho fijo de 51rem con padding.
+- **El comprobante** (`SaleReceiptPrint`, dentro de `SaleReceiptDialog`): cliente, fecha y medio de pago; artículos con
+  el código debajo; descuento, total y —si la venta se pagó con nota crédito— `credit_note_redeemed_amount`; recuadro
+  «Venta anulada» con el motivo; y las devoluciones con su reparto (F21-37). Todo sale del backend tal cual.
+- **Devolución y nota crédito no tienen impreso propio** (no hay ningún `window.print` fuera de venta, contrato, paz y
+  salvo y acta). Las devoluciones de una venta aparecen en su comprobante.
+- **Contrato:** secciones «Condiciones del préstamo» y «Prendas en garantía» con título; el aviso de recargo en un
+  recuadro con filete de marca; la cláusula de avisos con un filete a la izquierda y el título en versalitas — igual en
+  el formato de siempre y en una plantilla propia, porque `NoticeConsentSection` ahora emite el mismo marcado
+  (`section[data-notice-consent]`) que el nodo de TipTap. El texto legal no cambió; bajo la firma del cliente va su
+  nombre y documento (antes la línea no decía de quién era).
+- **Saltos de página:** una fila de tabla, un bloque de firma, la cláusula y el membrete no se parten (`print-keep`,
+  `.print-doc tr`); el encabezado de la tabla se repite en cada hoja. Con 22 prendas: tres hojas, ninguna fila partida.
+- **La firma** (`PrintSignature`): espacio fijo de 5 rem con o sin imagen, así las dos líneas quedan a la misma altura
+  (antes la de la empresa quedaba más arriba por traer la razón social). La imagen va con `object-contain
+  object-bottom`, apoyada en la línea. **Con fondo blanco el rectángulo de la imagen tapaba el tramo de la línea que
+  queda debajo** (se vio en el PDF): `mix-blend-multiply` lo resuelve sin tocar la tinta. El PNG transparente no
+  tenía problema de fondo negro: `compressImage` reencoda a WebP, que conserva el alfa.
+- **Dos bugs viejos que salieron al medir:** (a) `PrintLayout` anteponía `print:` a la clase de fuente en tiempo de
+  ejecución (`'font-serif'.replace(...)`) y Tailwind nunca generó esas clases — el membrete salía en la fuente por
+  defecto. Ahora membrete, tablas y firmas van siempre en Inter con cifras tabulares, y solo el texto libre de una
+  plantilla «Clásica» va en serif. (b) «Compacto» usaba `prose-xs`, que no existe en `@tailwindcss/typography`: caía al
+  `prose` base de 16 px y salía **más grande** que los otros dos. Ahora es `prose-sm` con párrafos de 13 px. Y las
+  reglas de la cláusula tuvieron que ir **fuera de `@layer`**: dentro de una capa perdían contra los márgenes de
+  `prose` sin importar la especificidad.
+- **Dos firmas de una plantilla propia van lado a lado** (`.node-signatureBlock` inline-block al 50 %), como en el
+  formato de siempre; antes quedaban una debajo de la otra a todo el ancho.
+- **Medido en navegador** (Playwright + Chrome, `emulateMedia print` + `page.pdf`, empresa ZZ QA, sin escribir nada:
+  todo POST/PATCH/DELETE abortado salvo el login y la firma de URLs de Storage): comprobante de una venta normal, una
+  con devolución pagada con nota crédito y una anulada; contrato de fábrica en claro y en oscuro; las tres plantillas
+  simuladas reescribiendo en el navegador el `GET /document-templates/active`; 22 prendas reescribiendo el `GET` del
+  contrato; firma PNG transparente y con fondo blanco generadas localmente e inyectadas reescribiendo el `GET /me` y la
+  URL firmada. La firma real de la empresa no se tocó.
+- **Tests:** `tests/print-documents.test.tsx` (portal, vista previa en su lugar, regla de `globals.css`, firma con y
+  sin imagen, comprobante anulado con descuento y nota crédito — visto fallar contra el comprobante de antes) y
+  `tests/paper-tokens.test.ts`. `tests/notice-consent-ui.test.tsx` lee ahora `baseElement`: el documento ya no está en
+  el `container` del render.
+- **Pendiente conocido:** con una plantilla propia larga, si las firmas no caben al final de la hoja saltan juntas a la
+  siguiente (no se parten, pero pueden quedar solas con el pie). Evitarlo pide `break-before: avoid`, que Chrome no
+  respeta en bloques; queda anotado.
+
 ## `RATE_LIMITED` en el catálogo de errores: el enlace de baja tiene límite de tasa (25/09/2026)
 
 El backend le puso límite de tasa al endpoint público de baja (`../backend-starter/docs/NOTIFICACIONES.md` §17-bis):

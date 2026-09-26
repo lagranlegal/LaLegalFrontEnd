@@ -1,6 +1,6 @@
 import { Node } from '@tiptap/core'
 import { NodeViewWrapper, ReactNodeViewRenderer, type ReactNodeViewProps } from '@tiptap/react'
-import { Money } from '@/components/shared/Money'
+import { PrintContractItemsTable } from '@/components/shared/PrintBlocks'
 
 export interface PrintableContractItem {
   id: string
@@ -30,29 +30,8 @@ function ItemsTableBlockView({ editor, extension }: ReactNodeViewProps) {
 
   const items = (extension.options.items ?? []) as PrintableContractItem[]
   return (
-    <NodeViewWrapper>
-      <table className="w-full border-collapse text-sm">
-        <thead>
-          <tr className="border-b border-black/20 text-left">
-            <th className="py-1.5">Prenda</th>
-            <th className="py-1.5">Categoría</th>
-            <th className="py-1.5">Peso</th>
-            <th className="py-1.5">Serial/IMEI</th>
-            <th className="py-1.5 text-right">Avalúo</th>
-          </tr>
-        </thead>
-        <tbody>
-          {items.map((item) => (
-            <tr key={item.id} className="border-b border-black/10">
-              <td className="py-1.5">{item.description}</td>
-              <td className="py-1.5">{item.categoryName}</td>
-              <td className="py-1.5">{item.weight_grams ? `${item.weight_grams} g` : '—'}</td>
-              <td className="py-1.5">{item.serial_imei ?? '—'}</td>
-              <td className="py-1.5 text-right">{item.item_appraisal ? <Money value={item.item_appraisal} /> : '—'}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+    <NodeViewWrapper className="my-5">
+      <PrintContractItemsTable items={items} />
     </NodeViewWrapper>
   )
 }

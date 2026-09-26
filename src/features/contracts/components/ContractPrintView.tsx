@@ -3,7 +3,7 @@ import { PrintLayout } from '@/components/shared/PrintLayout'
 import { Money } from '@/components/shared/Money'
 import { formatDate } from '@/lib/dates'
 import { useMe } from '@/lib/auth/me'
-import { useSignedPhotoUrl } from '@/lib/storage/photos'
+import { PrintContractItemsTable, PrintField, PrintSection, PrintSignature } from '@/components/shared/PrintBlocks'
 import { LazyTemplateRenderer, preloadTemplateRenderer } from '@/components/shared/documentTemplate/lazy'
 import { useActiveDocumentTemplate } from '@/features/settings/documentTemplates/api'
 import { buildContractContext } from '@/lib/documents/mergeFields'
@@ -21,45 +21,37 @@ function categoryName(categories: Category[] | undefined, categoryId: string): s
 /**
  * Firma de la empresa sobre la línea. Si no hay ninguna cargada en
  * /configuracion, queda el espacio en blanco de siempre — el documento nunca
- * sale peor que antes de que existiera esta función.
+ * sale peor que antes de que existiera esta función. La misma pieza
+ * (`PrintSignature`) que usa el bloque de firma de una plantilla propia.
  */
 function CompanySignature() {
   const { data: me } = useMe()
-  const signaturePath = me?.company.signature_url ?? null
-  const { data: signatureUrl } = useSignedPhotoUrl(signaturePath)
-
-  return (
-    <div>
-      <div className="flex h-16 items-end justify-center">
-        {signatureUrl && <img src={signatureUrl} alt="" className="max-h-16 object-contain" />}
-      </div>
-      <div className="border-t border-black/40 pt-2 text-center">
-        Firma de la empresa
-        {me?.company.legal_name && <span className="block text-xs text-black/60">{me.company.legal_name}</span>}
-      </div>
-    </div>
-  )
+  return <PrintSignature label="Firma de la empresa" detail={me?.company.legal_name} imagePath={me?.company.signature_url ?? null} />
 }
 
 /** La cláusula de avisos en el formato de siempre — ver el comentario de `ContractPrintView`. */
 function NoticeConsentSection({ contract, customer }: { contract: Contract; customer: Customer | undefined }) {
   const { data: me } = useMe()
   const blocks = noticeConsentClauseBlocks(buildContractContext(contract, customer, me?.company))
+  // `data-notice-consent`: el mismo marcado que el nodo de una plantilla
+  // propia, así los dos toman el estilo de `.print-doc section[data-notice-consent]`
+  // (globals.css) y se ven iguales.
   return (
-    <section className="mt-6 text-sm">
-      {blocks.map((block, i) =>
-        block.kind === 'heading' ? (
-          <p key={i} className="font-semibold">
-            {block.text}
-          </p>
-        ) : (
-          <p key={i} className="mt-1">
-            {block.text}
-          </p>
-        ),
-      )}
+    <section data-notice-consent="" className="print-keep">
+      {blocks.map((block, i) => (block.kind === 'heading' ? <h3 key={i}>{block.text}</h3> : <p key={i}>{block.text}</p>))}
     </section>
   )
+}
+
+function printableItems(contract: Contract, categories: Category[] | undefined): PrintableContractItem[] {
+  return contract.items.map((item) => ({
+    id: item.id,
+    description: item.description,
+    categoryName: categoryName(categories, item.category_id),
+    weight_grams: item.weight_grams,
+    serial_imei: item.serial_imei,
+    item_appraisal: item.item_appraisal,
+  }))
 }
 
 function months(count: number): string {
@@ -100,16 +92,9 @@ export function ContractPrintView({ contract, customer, categories }: { contract
   }, [activeTemplate])
 
   if (activeTemplate) {
-    const items: PrintableContractItem[] = contract.items.map((item) => ({
-      id: item.id,
-      description: item.description,
-      categoryName: categoryName(categories, item.category_id),
-      weight_grams: item.weight_grams,
-      serial_imei: item.serial_imei,
-      item_appraisal: item.item_appraisal,
-    }))
+    const items = printableItems(contract, categories)
     return (
-      <PrintLayout title={`Contrato de empeño #${contract.number}`} layout={activeTemplate.layout}>
+      <PrintLayout title="Contrato de empeño" number={contract.number} layout={activeTemplate.layout}>
         <Suspense fallback={null}>
           <LazyTemplateRenderer
             body={activeTemplate.body as JSONContent}
@@ -125,24 +110,26 @@ export function ContractPrintView({ contract, customer, categories }: { contract
   }
 
   return (
-    <PrintLayout title={`Contrato de empeño #${contract.number}`}>
-      <section className="mb-6 grid grid-cols-2 gap-4 text-sm">
-        <div>
-          <p className="text-black/60">Cliente</p>
-          <p className="font-medium">{customer?.full_name ?? '—'}</p>
-          {customer && <p>{customer.doc_type.toUpperCase()} {customer.doc_number}</p>}
-          {customer?.address && <p>{customer.address}</p>}
-          {customer?.phone && <p>{customer.phone}</p>}
-        </div>
-        <div className="text-right">
-          <p className="text-black/60">Contrato</p>
-          <p className="font-medium">
+    <PrintLayout title="Contrato de empeño" number={contract.number}>
+      <section className="grid grid-cols-2 gap-6">
+        <PrintField label="Cliente">
+          <p>{customer?.full_name ?? '—'}</p>
+          <div className="font-normal text-paper-ink-soft">
+            {customer && <p>{customer.doc_type.toUpperCase()} {customer.doc_number}</p>}
+            {customer?.address && <p>{customer.address}</p>}
+            {customer?.phone && <p>{customer.phone}</p>}
+          </div>
+        </PrintField>
+        <PrintField label="Contrato" align="right">
+          <p>
             #{contract.number}
             {contract.legacy_code ? ` (código anterior ${contract.legacy_code})` : ''}
           </p>
-          <p>Fecha: {formatDate(contract.start_date)}</p>
-          <p>Vencimiento: {formatDate(contract.due_date)}</p>
-        </div>
+          <div className="font-normal text-paper-ink-soft tnum">
+            <p>Fecha: {formatDate(contract.start_date)}</p>
+            <p>Vencimiento: {formatDate(contract.due_date)}</p>
+          </div>
+        </PrintField>
       </section>
 
       {/* LAS DOS FECHAS, y no es un detalle de formato.
@@ -152,7 +139,7 @@ export function ContractPrintView({ contract, customer, categories }: { contract
           que se firma el 25. Sin esta línea, el documento está antedatado y
           nada en él lo explica: es un problema legal, no de UI. */}
       {contract.extended_on && contract.extended_on !== contract.start_date && (
-        <section className="mb-6 border border-black/20 px-3 py-2 text-sm">
+        <section className="print-keep mt-6 border-l-2 border-paper-accent bg-paper-accent-soft px-4 py-3 text-sm">
           <p>
             Este contrato <strong>amplía el préstamo</strong> del contrato anterior de la misma
             garantía. Conserva la fecha de aquel ({formatDate(contract.start_date)}) porque el
@@ -166,59 +153,31 @@ export function ContractPrintView({ contract, customer, categories }: { contract
         </section>
       )}
 
-      <section className="mb-6 grid grid-cols-4 gap-4 text-sm">
-        <div>
-          <p className="text-black/60">Capital prestado</p>
-          <p className="font-medium">
+      <PrintSection title="Condiciones del préstamo">
+        <div className="grid grid-cols-4 gap-4 tnum">
+          <PrintField label="Capital prestado">
             <Money value={contract.principal} />
-          </p>
+          </PrintField>
+          <PrintField label="Tasa de interés mensual">{contract.interest_rate_pct}%</PrintField>
+          <PrintField label="Plazo">{months(contract.term_months)}</PrintField>
+          <PrintField label="Ventana de mora">{months(contract.arrears_window_months)}</PrintField>
         </div>
-        <div>
-          <p className="text-black/60">Tasa de interés mensual</p>
-          <p className="font-medium">{contract.interest_rate_pct}%</p>
-        </div>
-        <div>
-          <p className="text-black/60">Plazo</p>
-          <p className="font-medium">{months(contract.term_months)}</p>
-        </div>
-        <div>
-          <p className="text-black/60">Ventana de mora</p>
-          <p className="font-medium">{months(contract.arrears_window_months)}</p>
-        </div>
-      </section>
+      </PrintSection>
 
-      <table className="w-full border-collapse text-sm">
-        <thead>
-          <tr className="border-b border-black/20 text-left">
-            <th className="py-1.5">Prenda</th>
-            <th className="py-1.5">Categoría</th>
-            <th className="py-1.5">Peso</th>
-            <th className="py-1.5">Serial/IMEI</th>
-            <th className="py-1.5 text-right">Avalúo</th>
-          </tr>
-        </thead>
-        <tbody>
-          {contract.items.map((item) => (
-            <tr key={item.id} className="border-b border-black/10">
-              <td className="py-1.5">{item.description}</td>
-              <td className="py-1.5">{categoryName(categories, item.category_id)}</td>
-              <td className="py-1.5">{item.weight_grams ? `${item.weight_grams} g` : '—'}</td>
-              <td className="py-1.5">{item.serial_imei ?? '—'}</td>
-              <td className="py-1.5 text-right">{item.item_appraisal ? <Money value={item.item_appraisal} /> : '—'}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-
-      {contract.notes && <p className="mt-4 text-sm">Notas: {contract.notes}</p>}
+      <PrintSection title="Prendas en garantía">
+        <PrintContractItemsTable items={printableItems(contract, categories)} />
+        {contract.notes && <p className="mt-3 text-sm">Notas: {contract.notes}</p>}
+      </PrintSection>
 
       <NoticeConsentSection contract={contract} customer={customer} />
 
-      <section className="mt-16 grid grid-cols-2 items-end gap-8 text-sm">
-        <div>
-          <div className="h-16" />
-          <div className="border-t border-black/40 pt-2 text-center">Firma del cliente</div>
-        </div>
+      {/* Las dos líneas quedan a la misma altura: `PrintSignature` reserva el
+          mismo espacio con o sin imagen y con o sin segunda línea. */}
+      <section className="print-keep mt-10 grid grid-cols-2 gap-12">
+        <PrintSignature
+          label="Firma del cliente"
+          detail={customer ? `${customer.full_name} · ${customer.doc_type.toUpperCase()} ${customer.doc_number}` : undefined}
+        />
         <CompanySignature />
       </section>
     </PrintLayout>

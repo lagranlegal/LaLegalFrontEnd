@@ -158,7 +158,9 @@ describe('contrato impreso con el formato de siempre (sin plantilla propia)', ()
       extension_amount: null,
     }
     const customer = { full_name: 'Ana Gómez', doc_type: 'cc', doc_number: '123', address: null, phone: '3001234567', email: 'ana@example.com' }
-    const { container } = wrap(
+    // `baseElement` y no `container`: el documento impreso se monta en un
+    // portal, hijo directo de <body> (ver `PrintLayout`).
+    const { baseElement: container } = wrap(
       // @ts-expect-error — fixture parcial: solo los campos que lee la vista impresa.
       <ContractPrintView contract={contract} customer={customer} categories={[]} />,
     )

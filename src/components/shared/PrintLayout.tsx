@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react'
+import { createPortal } from 'react-dom'
 import { useMe } from '@/lib/auth/me'
 import { formatDate, todayBogota } from '@/lib/dates'
 import { useSignedPhotoUrl } from '@/lib/storage/photos'
@@ -19,26 +20,35 @@ function CompanyLogo({ path }: { path: string }) {
 
 /**
  * Layout imprimible mientras el backend no genera PDFs (docs/DESIGN_SYSTEM.md
- * §3, §1): hoja carta. Oculto en pantalla (`hidden print:block`) — vive
- * siempre en el DOM junto al contenido normal de la página, y aparece SOLO
- * cuando el usuario imprime (`window.print()` desde un botón `print:hidden`).
- * El shell de la app (sidebar/topbar/`CashSessionBanner`) se oculta con la
- * misma convención `print:hidden`.
+ * §3, §1): hoja carta (`@page` en globals.css), encabezado de marca del tenant
+ * (logo, razón social, NIT) y pie con los textos de /configuracion.
  *
- * `layout` (`lib/documents/layouts.ts`) da la identidad visual — tipografía,
- * borde del encabezado, barra de acento — de una plantilla activa; sin
+ * **Imprime SOLO el documento.** Fuera de la vista previa, se monta en un
+ * portal como hijo directo de `<body>` con `data-print-document`, y
+ * `globals.css` oculta todo lo demás al imprimir — el shell, la página de
+ * atrás, el diálogo desde el que se abrió. Antes vivía dentro del árbol de la
+ * página y dependía de que cada página se envolviera en `print:hidden`: la
+ * lista de Ventas no lo hacía, y el comprobante salía debajo de la tabla
+ * completa con el botón de Excel (reportado por el dueño, 25/09/2026). En
+ * pantalla sigue oculto (`hidden print:block`): aparece SOLO al imprimir
+ * (`window.print()` desde un botón cualquiera).
+ *
+ * **Colores del papel, no del tema:** todo va con los tokens `--paper-*`, que
+ * no se redefinen en oscuro (ver tokens.css). Las piezas de adentro
+ * (sección, campo, tabla, firma) están en `PrintBlocks.tsx`.
+ *
+ * `layout` (`lib/documents/layouts.ts`) da la identidad visual — borde del
+ * encabezado, barra de acento, tamaño — de una plantilla activa; sin
  * plantilla activa el caller no pasa `layout` y cae en `'classic'`. El
- * CONTENIDO de una empresa que nunca toca esta feature no cambia ni un
- * carácter (fallback de código, ver `ContractPrintView`), pero `classic` en
- * sí NO es pixel-idéntico al look de antes de esta feature — el borde bajo
- * el encabezado es intencionalmente doble (`LAYOUT_HEADER_DIVIDER_CLASS`),
- * antes era una línea simple. Decisión consciente de Mateo (28/08/2026):
- * mejora estética aceptada, no una regresión a corregir.
+ * encabezado y el pie van siempre en la tipografía de la app (Inter, con
+ * cifras tabulares); solo el TEXTO libre de una plantilla «Clásica» va en
+ * serif (`LAYOUT_CONTENT_CLASSES`).
  *
  * `screenPreview` hace que el MISMO componente se vea directo en pantalla en
  * vez de solo al imprimir — usado por la vista previa de
  * `/configuracion/documentos`, para que lo que el usuario ve ahí y lo que
- * realmente imprime nunca puedan divergir.
+ * realmente imprime nunca puedan divergir. La vista previa NO va en portal:
+ * es parte de la página, y al imprimir esa página no sale.
  *
  * Encabezado y pie salen de `GET /me` (no de `GET /company/settings`, que
  * exige el permiso `company.configure`): imprimir un contrato lo hace
@@ -46,11 +56,15 @@ function CompanyLogo({ path }: { path: string }) {
  */
 export function PrintLayout({
   title,
+  number,
   layout = 'classic',
   screenPreview = false,
   children,
 }: {
+  /** Nombre del documento: «Contrato de empeño», «Comprobante de venta». */
   title: string
+  /** Número del documento, destacado debajo del nombre. */
+  number?: number | string
   layout?: DocumentLayout
   screenPreview?: boolean
   children: ReactNode
@@ -60,64 +74,59 @@ export function PrintLayout({
   const documents = company?.documents
   const stackedHeader = layout === 'modern'
 
-  // El div raíz decide TODO lo que se ve: `hidden` en pantalla normal,
-  // `print:block` solo al imprimir (o directo visible si `screenPreview`).
-  // Como cualquier clase de un descendiente es irrelevante mientras su
-  // ancestro tiene `display:none`, el encabezado/barra de acento de abajo
-  // usan las mismas clases sin importar el modo — no hace falta duplicar
-  // cada una con el prefijo `print:`.
-  const containerClass = screenPreview
-    ? cn('mx-auto block w-full max-w-204 bg-white p-8 text-black print:hidden', LAYOUT_FONT_CLASS[layout])
-    : cn(
-        'hidden print:mx-auto print:block print:w-204 print:bg-white print:p-8 print:text-black',
-        LAYOUT_FONT_CLASS[layout].replace(/(^|\s)/g, '$1print:'),
-      )
-
   const headerClass = cn(
-    'flex gap-4',
+    'print-keep flex gap-6',
     stackedHeader ? 'flex-col items-start' : 'items-start justify-between',
     LAYOUT_HEADER_DIVIDER_CLASS[layout],
   )
 
-  return (
-    <div className={containerClass}>
-      {showAccentBar(layout) && <div className="mb-4 h-1.5 w-full bg-(--brand-500)" />}
+  const sheet = (
+    <div
+      className={cn(
+        'print-doc bg-paper text-paper-ink',
+        LAYOUT_FONT_CLASS[layout],
+        // En pantalla (vista previa) la hoja lleva su propio margen; al
+        // imprimir el margen lo pone `@page`.
+        screenPreview ? 'mx-auto block w-full max-w-204 px-10 py-9 print:hidden' : 'hidden w-full print:block',
+      )}
+      {...(screenPreview ? {} : { 'data-print-document': '' })}
+    >
+      {showAccentBar(layout) && <div className="mb-5 h-1.5 w-full bg-paper-accent" />}
 
       <header className={headerClass}>
-        <div className="flex items-start gap-3">
+        <div className="flex items-center gap-4">
           {company?.logo_url && <CompanyLogo path={company.logo_url} />}
-          <div>
-            <p className="text-lg font-semibold">{company?.legal_name || company?.name}</p>
+          <div className="leading-snug">
+            <p className="text-lg font-semibold tracking-tight">{company?.legal_name || company?.name}</p>
             {/* La razón social manda arriba cuando existe; el nombre comercial
                 pasa a segunda línea para no perderlo. */}
             {company?.legal_name && company.name !== company.legal_name && (
-              <p className="text-sm text-black/70">{company.name}</p>
+              <p className="text-sm text-paper-ink-soft">{company.name}</p>
             )}
-            {company?.tax_id && <p className="text-xs text-black/60">NIT {company.tax_id}</p>}
-            {documents?.header_note && <p className="mt-0.5 text-xs text-black/60">{documents.header_note}</p>}
+            {company?.tax_id && <p className="text-xs text-paper-muted tnum">NIT {company.tax_id}</p>}
+            {documents?.header_note && <p className="mt-0.5 text-xs text-paper-muted">{documents.header_note}</p>}
           </div>
         </div>
-        <div className={stackedHeader ? 'text-left' : 'text-right'}>
-          <p className="text-sm text-black/60">{title}</p>
-          <p className="text-sm text-black/60">{formatDate(todayBogota())}</p>
+        <div className={stackedHeader ? 'text-left' : 'shrink-0 text-right'}>
+          <p className="text-xs font-semibold tracking-wider text-paper-accent-ink uppercase">{title}</p>
+          {number != null && <p className="text-2xl leading-tight font-semibold tnum">Nº {number}</p>}
+          <p className="mt-1 text-xs text-paper-muted">Impreso el {formatDate(todayBogota())}</p>
         </div>
       </header>
 
       {children}
 
       {(documents?.legal_notice || documents?.footer_note || company?.address || company?.contact_phone) && (
-        <footer className="mt-8 border-t border-black/20 pt-3">
-          {documents?.legal_notice && (
-            <p className="mb-2 text-[10px] leading-snug text-black/60">{documents.legal_notice}</p>
-          )}
-          <div className="flex flex-wrap justify-between gap-x-4 gap-y-1 text-[10px] text-black/60">
+        <footer className="print-keep mt-6 border-t border-paper-rule pt-3 text-paper-muted">
+          {documents?.legal_notice && <p className="mb-2 text-xs leading-snug">{documents.legal_notice}</p>}
+          <div className="flex flex-wrap justify-between gap-x-4 gap-y-1 text-xs">
             <span>{documents?.footer_note}</span>
-            <span>
-              {[company?.address, company?.contact_phone].filter(Boolean).join(' · ')}
-            </span>
+            <span>{[company?.address, company?.contact_phone].filter(Boolean).join(' · ')}</span>
           </div>
         </footer>
       )}
     </div>
   )
+
+  return screenPreview ? sheet : createPortal(sheet, document.body)
 }

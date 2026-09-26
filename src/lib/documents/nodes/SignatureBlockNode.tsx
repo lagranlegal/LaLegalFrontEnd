@@ -1,6 +1,6 @@
 import { Node } from '@tiptap/core'
 import { NodeViewWrapper, ReactNodeViewRenderer, type ReactNodeViewProps } from '@tiptap/react'
-import { useSignedPhotoUrl } from '@/lib/storage/photos'
+import { PrintSignature } from '@/components/shared/PrintBlocks'
 
 export interface SignatureBlockOptions {
   companySignatureUrl: string | null
@@ -11,9 +11,11 @@ export interface SignatureBlockOptions {
  * Bloque atómico, variante `cliente`/`empresa`. En edición, placeholder. En
  * impresión: `cliente` siempre es la línea en blanco (fase 1, sin firma en
  * pantalla — CONTEXTO.md); `empresa` reusa la lógica que ya vivía en
- * `ContractPrintView::CompanySignature` — imagen si hay firma cargada en
- * /configuracion, si no, línea en blanco igual (el documento nunca queda
- * peor que antes de que existiera esa función).
+ * `ContractPrintView` — imagen si hay firma cargada en /configuracion, si
+ * no, línea en blanco igual (el documento nunca queda peor que antes de que
+ * existiera esa función). Los dos usan `PrintSignature`, así que la firma se
+ * ve igual con plantilla propia y con el formato de siempre; dos bloques
+ * seguidos van lado a lado (`.node-signatureBlock`, globals.css).
  */
 function SignatureBlockView({ node, editor, extension }: ReactNodeViewProps) {
   const variant = node.attrs.variant as 'cliente' | 'empresa'
@@ -27,34 +29,16 @@ function SignatureBlockView({ node, editor, extension }: ReactNodeViewProps) {
   }
 
   const { companySignatureUrl, companyLegalName } = extension.options as SignatureBlockOptions
+  // `not-prose` (en `PrintSignature`): `prose` le pone márgenes de 2em a toda
+  // `<img>`, y eso despegaba la firma de su línea.
   return (
-    <NodeViewWrapper as="div" className="inline-block w-full text-sm">
-      {variant === 'empresa' ? <EmpresaSignature signaturePath={companySignatureUrl} legalName={companyLegalName} /> : <ClienteSignature />}
+    <NodeViewWrapper as="div" className="w-full">
+      {variant === 'empresa' ? (
+        <PrintSignature label="Firma de la empresa" detail={companyLegalName} imagePath={companySignatureUrl} />
+      ) : (
+        <PrintSignature label="Firma del cliente" />
+      )}
     </NodeViewWrapper>
-  )
-}
-
-function ClienteSignature() {
-  return (
-    <div>
-      <div className="h-16" />
-      <div className="border-t border-black/40 pt-2 text-center">Firma del cliente</div>
-    </div>
-  )
-}
-
-function EmpresaSignature({ signaturePath, legalName }: { signaturePath: string | null; legalName: string | null }) {
-  const { data: signatureUrl } = useSignedPhotoUrl(signaturePath)
-  return (
-    <div>
-      <div className="flex h-16 items-end justify-center">
-        {signatureUrl && <img src={signatureUrl} alt="" className="max-h-16 object-contain" />}
-      </div>
-      <div className="border-t border-black/40 pt-2 text-center">
-        Firma de la empresa
-        {legalName && <span className="block text-xs text-black/60">{legalName}</span>}
-      </div>
-    </div>
   )
 }
 
