@@ -2,6 +2,27 @@
 
 > Registro vivo de qué existe en el código, cómo está armado y por qué se tomó cada decisión — para que cualquiera (humano o Claude Code) pueda retomar el proyecto sin releer todo el historial de commits. Se actualiza en cada paso del "Orden de implementación" de `CLAUDE.md`. No repite lo que ya está en `ARCHITECTURE.md`/`DESIGN_SYSTEM.md` (el qué-debería-ser); esto es el qué-hay-hoy y las decisiones concretas tomadas al construirlo.
 
+## «Volver al documento de fábrica» en Documentos (F21-05, 25/09/2026)
+
+El backend tenía `POST /company/document-templates/{id}/deactivate` desde F8-02, pero la pantalla no lo llamaba: en
+cuanto una empresa activaba su primera plantilla, la única salida era activar otra, y el documento de fábrica —la red
+de seguridad que promete `../backend-starter/docs/API_GUIDE.md` §4 bis— quedaba inalcanzable desde la UI.
+
+- **`useDeactivateDocumentTemplate`** (`features/settings/documentTemplates/api.ts`), con la misma invalidación por
+  prefijo que las otras mutaciones: alcanza `['company','document-templates','active', tipo]`, que es lo que leen
+  `ContractPrintView`/`SettlementPrintView`.
+- **`ActiveTemplateNotice`** en `DocumentTemplatesPage`, bajo la lista de plantillas y **solo si hay una activa de ese
+  tipo**: «Se imprime el contrato con «X»» + el botón. A nivel del tipo y no dentro del editor, porque la pregunta
+  «¿con qué se imprime hoy?» se tiene que contestar sin nada seleccionado. Con plantillas y ninguna activa, la lista
+  lo dice («se imprime con el documento de fábrica»), que antes solo se leía abriendo cada una.
+- **Confirmación** con el `confirm` compartido (tono normal, no `danger`: no se pierde nada). El texto dice qué deja de
+  usarse, que la plantilla queda guardada y se puede volver a activar, y que desde ahora se imprime con el formato de
+  siempre.
+- **Medido en navegador:** en la columna de 220px el botón se salía 16px del recuadro con `whitespace-nowrap` (el de
+  `Button`); va a ancho completo y parte la línea. La empresa de QA no tiene ninguna plantilla activa, así que el
+  estado se vio reescribiendo en el navegador la respuesta del `GET` de la lista — sin escribir nada.
+- **Test:** `tests/document-templates-deactivate.test.tsx` (3 casos).
+
 ## La cláusula de autorización de avisos va en el contrato (25/09/2026)
 
 Los correos al cliente (comprobantes hoy, recordatorios de cuota pronto) se apoyan en la base legal «contrato»
@@ -479,7 +500,7 @@ del carrito, así que una sincronización por props no se entera y la línea vue
 El hallazgo sospechaba que `deactivate_document_template` era una etiqueta huérfana. **Es al revés:** el
 backend la emite por un camino real (`company/router.py:115`, existe desde F8-02 porque sin él no había
 vuelta al documento de fábrica) y el endpoint está hasta en `types/api.ts`. Lo que falta es
-`useDeactivateDocumentTemplate` y su botón en `DocumentTemplatesPage`. **Queda abierto como feature.**
+`useDeactivateDocumentTemplate` y su botón en `DocumentTemplatesPage`. **Quedó abierto como feature** y se cerró el 25/09/2026 (ver «Volver al documento de fábrica» arriba).
 
 ### Lo que se midió y NO se arregló, con el número que lo sostiene
 

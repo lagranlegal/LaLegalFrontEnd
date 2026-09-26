@@ -4,6 +4,7 @@ import { BackLink } from '@/components/shared/BackLink'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { PrintLayout } from '@/components/shared/PrintLayout'
 import { Button } from '@/components/ui/button'
+import { confirm } from '@/components/shared/confirmStore'
 import { cn } from '@/lib/utils'
 import { useMe } from '@/lib/auth/me'
 import { LazyTemplateEditor, LazyTemplateRenderer } from '@/components/shared/documentTemplate/lazy'
@@ -14,6 +15,7 @@ import type { PrintableContractItem } from '@/lib/documents/nodes/ItemsTableBloc
 import {
   useActivateDocumentTemplate,
   useCreateDocumentTemplate,
+  useDeactivateDocumentTemplate,
   useDeleteDocumentTemplate,
   useDocumentTemplates,
   useUpdateDocumentTemplate,
@@ -25,6 +27,67 @@ const DOCUMENT_TYPE_TABS: { value: DocumentType; label: string }[] = [
   { value: 'contract', label: 'Contrato' },
   { value: 'settlement', label: 'Paz y salvo' },
 ]
+
+/** En minúscula y con artículo, para frases: «se imprime el contrato con…». */
+const DOCUMENT_TYPE_NOUN: Record<DocumentType, string> = {
+  contract: 'el contrato',
+  settlement: 'el paz y salvo',
+}
+
+/**
+ * «Volver al documento de fábrica» (F21-05). Vive a nivel de TIPO de
+ * documento y no dentro del editor de una plantilla: la pregunta que responde
+ * es «¿con qué se imprime hoy el contrato?», y eso se lee sin tener nada
+ * seleccionado. Sin este botón la única salida de una plantilla activa era
+ * activar otra — el documento de fábrica, que `API_GUIDE` §4 bis presenta
+ * como la red de seguridad, quedaba inalcanzable desde la UI aunque el
+ * backend ya lo permitía desde F8-02.
+ *
+ * La confirmación dice las tres cosas que alguien necesita para no dudar:
+ * qué deja de usarse, que NO se pierde (la plantilla queda guardada y se
+ * puede volver a activar) y con qué se va a imprimir desde ahora.
+ */
+function ActiveTemplateNotice({ documentType, active }: { documentType: DocumentType; active: DocumentTemplate }) {
+  const deactivate = useDeactivateDocumentTemplate()
+  const noun = DOCUMENT_TYPE_NOUN[documentType]
+
+  async function handleDeactivate() {
+    const { confirmed } = await confirm({
+      title: 'Volver al documento de fábrica',
+      description:
+        `Se deja de usar «${active.name}» para imprimir ${noun}. La plantilla no se borra: queda guardada ` +
+        'y la puedes volver a activar cuando quieras. Desde ahora se imprime con el formato de siempre.',
+      confirmLabel: 'Volver al de fábrica',
+    })
+    if (!confirmed) return
+    try {
+      await deactivate.mutateAsync(active.id)
+      toast.success('Listo — se imprime otra vez con el documento de fábrica.')
+    } catch {
+      toast.error('No se pudo volver al documento de fábrica. Intenta de nuevo.')
+    }
+  }
+
+  return (
+    <div className="flex flex-col items-start gap-2 rounded-input border border-border bg-card px-3 py-2 text-sm">
+      <p className="text-muted-foreground">
+        Se imprime {noun} con <span className="font-medium text-foreground">«{active.name}»</span>.
+      </p>
+      {/* La columna mide 220px: sin `whitespace-normal` el texto del botón se
+          sale del recuadro (medido: 16px de más). */}
+      <Button
+        type="button"
+        variant="outline"
+        size="sm"
+        className="h-auto w-full whitespace-normal py-1.5"
+        onClick={handleDeactivate}
+        disabled={deactivate.isPending}
+      >
+        Volver al documento de fábrica
+      </Button>
+    </div>
+  )
+}
 
 const SAMPLE_ITEMS: PrintableContractItem[] = [
   { id: '1', description: 'Cadena de oro 10g', categoryName: 'Oro', weight_grams: '10', serial_imei: null, item_appraisal: '1200000.00' },
@@ -222,6 +285,7 @@ export function DocumentTemplatesPage() {
   const [selectedId, setSelectedId] = useState<string | 'new' | null>(null)
 
   const selected: DocumentTemplate | undefined = templates?.find((t) => t.id === selectedId)
+  const active: DocumentTemplate | undefined = templates?.find((t) => t.is_active)
 
   function switchDocumentType(type: DocumentType) {
     setDocumentType(type)
@@ -282,6 +346,10 @@ export function DocumentTemplatesPage() {
           ))}
           {!isPending && !isError && templates?.length === 0 && (
             <p className="text-sm text-muted-foreground">Todavía no hay plantillas — se sigue imprimiendo con el formato de siempre.</p>
+          )}
+          {active && <ActiveTemplateNotice key={active.id} documentType={documentType} active={active} />}
+          {!isPending && !isError && templates && templates.length > 0 && !active && (
+            <p className="text-sm text-muted-foreground">Ninguna está activa — se imprime con el documento de fábrica.</p>
           )}
         </div>
 

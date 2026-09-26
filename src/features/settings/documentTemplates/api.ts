@@ -69,3 +69,21 @@ export function useActivateDocumentTemplate() {
     onSuccess: () => invalidateTemplateQueries(queryClient),
   })
 }
+
+/**
+ * Vuelve al documento de fábrica: la plantilla activa deja de usarse (queda
+ * guardada, no se borra) y se imprime con el JSX de respaldo de siempre.
+ * El endpoint existía desde F8-02 y la acción ya estaba en el catálogo de
+ * auditoría; faltaba este hook y su botón (F21-05). La invalidación por
+ * prefijo alcanza también `['company','document-templates','active', tipo]`,
+ * que es lo que leen las vistas de impresión — sin eso, un contrato impreso
+ * en la misma sesión seguiría saliendo con la plantilla recién apagada.
+ */
+export function useDeactivateDocumentTemplate() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (templateId: string) =>
+      unwrap(api.POST('/api/v1/company/document-templates/{template_id}/deactivate', { params: { path: { template_id: templateId } } })),
+    onSuccess: () => invalidateTemplateQueries(queryClient),
+  })
+}
