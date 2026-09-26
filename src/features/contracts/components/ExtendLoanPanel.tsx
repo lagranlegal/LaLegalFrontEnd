@@ -14,22 +14,9 @@ import { addMonthsToDateOnly, formatDate } from '@/lib/dates'
 import { PAYMENT_METHOD_LABELS } from '@/lib/paymentMethods'
 import { percentOfMoney, subtractMoney, sumMoney } from '@/lib/money'
 import { useCashboxCurrent } from '@/features/cashbox/api'
-import { useExtendLoan, useExtensionOptions, type Contract } from '@/features/contracts/api'
-
-/**
- * Por qué NO se puede ampliar, en palabras y con la salida.
- *
- * El backend devuelve el cupo SIEMPRE, incluso bloqueado, justamente para
- * que la pantalla pueda decir esto. Una card que desaparece sin explicar
- * deja al usuario buscándola — y el motivo casi siempre tiene arreglo
- * (registrar el avalúo, ponerse al día con los intereses).
- */
-const MOTIVOS: Record<string, string> = {
-  EXTENSION_WINDOW_CLOSED: 'Pasó el plazo para ampliar este préstamo.',
-  CONTRACT_INTEREST_OVERDUE: 'Primero hay que ponerse al día con los intereses, acá arriba.',
-  CONTRACT_WITHOUT_APPRAISAL: 'Sin avalúo no se puede calcular cuánto puede retirar. Regístralo en Editar.',
-  EXTENSION_NO_HEADROOM: 'La garantía ya no da para más: el préstamo llegó al tope del avalúo.',
-}
+import { useContractChain, useExtendLoan, useExtensionOptions, type Contract } from '@/features/contracts/api'
+import { extensionBlock } from '@/features/contracts/extensionBlock'
+import { usePermission } from '@/lib/permissions/usePermission'
 
 /**
  * "Ampliar el préstamo" — el recargo (docs/RECARGOS.md).
@@ -56,10 +43,26 @@ export function ExtendLoanPanel({ contract }: { contract: Contract }) {
   const [accountId, setAccountId] = useState<string | null>(null)
   const [cashDialogOpen, setCashDialogOpen] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const puedeExcederCupo = usePermission('contracts.override_ltv')
+  // La cadena solo hace falta en un sucesor, para nombrar al contrato
+  // original cuando la ventana venció (se cuenta desde él, RECARGOS §3). Misma
+  // key que usa `ContractChainPanel`: no es un request más.
+  const { data: chain } = useContractChain(contract.id, !!contract.parent_contract_id)
+  const raiz = contract.parent_contract_id && chain?.[0] && chain[0].id !== contract.id ? chain[0] : null
 
-  // Un contrato cerrado no muestra la card: no hay nada que explicar, el
-  // documento terminó. Los demás motivos SÍ se explican.
-  if (isPending || !cupo || cupo.blocked_reason === 'CONTRACT_CLOSED') return null
+  // Por qué NO se puede ampliar, en palabras y con la salida — o por qué SÍ
+  // aunque no quede cupo (F21-38, ver `extensionBlock`). El backend devuelve
+  // el cupo SIEMPRE, incluso bloqueado, justamente para que la pantalla pueda
+  // decir esto: una card que desaparece sin explicar deja al usuario
+  // buscándola. Un contrato cerrado no muestra la card: el documento terminó.
+  if (isPending || !cupo) return null
+  const estado = extensionBlock({
+    blockedReason: cupo.blocked_reason,
+    canOverrideLtv: puedeExcederCupo,
+    windowEndsOn: cupo.window_ends_on,
+    root: raiz,
+  })
+  if (estado.kind === 'hidden') return null
 
   const nuevoCapital = amount ? sumMoney(contract.capital_balance, amount) : contract.capital_balance
   const excedeCupo = !!amount && Number(subtractMoney(amount, cupo.available)) > 0
@@ -150,10 +153,15 @@ export function ExtendLoanPanel({ contract }: { contract: Contract }) {
           </p>
         )}
 
-        {cupo.blocked_reason ? (
-          <p className="mt-3 rounded-input bg-muted px-3 py-2 text-sm text-muted-foreground">
-            {MOTIVOS[cupo.blocked_reason] ?? 'No se puede ampliar este préstamo ahora.'}
+        {estado.kind === 'open' && estado.overLimitOnly && (
+          <p className="mt-3 rounded-input bg-warning-soft px-3 py-2 text-sm text-warning">
+            Ya no queda cupo sobre el avalúo. Tu rol puede autorizar un préstamo por encima del
+            tope: lo que entregues queda registrado como excepción y el contrato queda marcado.
           </p>
+        )}
+
+        {estado.kind === 'blocked' ? (
+          <p className="mt-3 rounded-input bg-muted px-3 py-2 text-sm text-muted-foreground">{estado.message}</p>
         ) : (
           <div className="mt-4 flex flex-wrap items-end gap-3">
             <div className="min-w-40 flex-1">
@@ -192,14 +200,14 @@ export function ExtendLoanPanel({ contract }: { contract: Contract }) {
           </div>
         )}
 
-        {excedeCupo && (
+        {excedeCupo && !(estado.kind === 'open' && estado.overLimitOnly) && (
           <p className="mt-2 rounded-input bg-warning-soft px-3 py-2 text-xs text-warning">
             Supera el cupo de la garantía. Solo puede autorizarlo quien tenga el permiso para
             prestar por encima del avalúo, y el contrato queda marcado.
           </p>
         )}
 
-        {!cupo.blocked_reason && avisaCajaCerrada && (
+        {estado.kind === 'open' && avisaCajaCerrada && (
           <p className="mt-2 rounded-input bg-warning-soft px-3 py-2 text-xs text-warning">
             La caja está cerrada, así que no se puede entregar efectivo. Puedes ampliar por
             transferencia, o abrir la caja primero.

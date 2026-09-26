@@ -11,6 +11,8 @@ import { MoneyInput } from '@/components/shared/MoneyInput'
 import { Money } from '@/components/shared/Money'
 import { CashSessionRequiredDialog } from '@/components/shared/CashSessionRequiredDialog'
 import { Button } from '@/components/ui/button'
+import { Checkbox } from '@/components/ui/checkbox'
+import { formatDateTime } from '@/lib/dates'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { useCategories } from '@/lib/catalogs/categories'
 import { normalizeDecimalInput } from '@/lib/money'
@@ -27,6 +29,7 @@ import { evaluarLtv, resolveMaxLtvPct } from '@/features/contracts/ltv'
 import { LtvHint } from '@/features/contracts/components/LtvHint'
 import { AccountPicker } from '@/components/shared/AccountPicker'
 import { PAYMENT_METHOD_LABELS } from '@/lib/paymentMethods'
+import { customerNoticePayload, customerNoticeState } from '@/features/contracts/customerNotice'
 
 const contractSchema = z.object({
   principal: z.string().refine((v) => Number(v) > 0, 'El monto del préstamo debe ser mayor a cero'),
@@ -44,6 +47,15 @@ const contractSchema = z.object({
   extension_window_days: z.string().optional(),
   notes: z.string().optional(),
   items: z.array(contractItemSchema).min(1, 'Agrega al menos una prenda'),
+  // NOTIFICACIONES §9.2-f: el correo (solo si el cliente no tiene) y la
+  // casilla de autorización, capturados donde se firma el contrato. Viven en
+  // el formulario —y no como estado aparte— para que un 422 del backend con
+  // `customer_email` en `loc` se pinte debajo de su campo sin traducción.
+  customer_email: z
+    .string()
+    .optional()
+    .refine((v) => !v?.trim() || z.string().email().safeParse(v.trim()).success, 'Escribe un correo válido'),
+  customer_email_consent: z.boolean(),
 })
 
 type ContractFormValues = z.infer<typeof contractSchema>
@@ -67,6 +79,7 @@ export function ContractFormPage() {
     handleSubmit,
     control,
     setError,
+    setValue,
     watch,
     formState: { errors, isDirty },
   } = useForm<ContractFormValues>({
@@ -81,12 +94,19 @@ export function ContractFormPage() {
       extension_window_days: '',
       notes: '',
       items: [emptyContractItem()],
+      customer_email: '',
+      customer_email_consent: false,
     },
   })
   const principal = watch('principal')
   // `useWatch` y no `watch()` para lo nuevo: este último devuelve una función
   // que el React Compiler no puede memoizar.
   const disbursementMethod = useWatch({ control, name: 'payment_method' })
+
+  // El correo y la autorización del cliente elegido (§9.2-f, reglas en
+  // `customerNotice.ts`).
+  const correoEscrito = useWatch({ control, name: 'customer_email' })
+  const { savedEmail: correoGuardado, hasEmail: tieneCorreo } = customerNoticeState(customer, correoEscrito)
 
   // El cupo del LTV, en vivo. El tope sale de la categoría de la PRIMERA
   // prenda porque es lo que hace el backend (`max_ltv_pct = first[...]`) —
@@ -145,6 +165,7 @@ export function ContractFormPage() {
           ? Number(values.extension_window_days)
           : null,
         notes: values.notes || null,
+        ...customerNoticePayload(customer, values),
         items: values.items.map((item) => ({
           category_id: item.category_id,
           description: item.description,
@@ -188,10 +209,83 @@ export function ContractFormPage() {
             value={customer}
             onChange={(next) => {
               setCustomer(next)
+              // Lo capturado era de OTRO cliente: la autorización es de una
+              // persona, no del formulario.
+              setValue('customer_email', '')
+              setValue('customer_email_consent', false)
               if (next) setCustomerError(null)
             }}
           />
           {customerError && <p className="text-sm text-danger">{customerError}</p>}
+
+          {/* NOTIFICACIONES §9.2-f: la autorización EXPRESA se pregunta donde
+              se firma el contrato, en una casilla aparte y con su texto. Nunca
+              se marca sola ni vuelve obligatorio el correo: la mayoría de los
+              clientes no lo tiene (§1), y eso es lo normal. */}
+          {customer && (
+            <fieldset className="flex flex-col gap-3 rounded-input border border-border p-3">
+              <legend className="px-1 text-sm font-medium text-foreground">Avisos por correo</legend>
+              {correoGuardado ? (
+                <p className="text-sm text-muted-foreground">
+                  Correo: <span className="break-all font-medium text-foreground">{correoGuardado}</span>
+                  {customer.email_invalid_at && (
+                    <span className="mt-0.5 block text-xs text-warning">El correo rebotó: corrígelo en su ficha.</span>
+                  )}
+                </p>
+              ) : (
+                <div>
+                  <label htmlFor="customer_email" className="text-sm font-medium text-foreground">
+                    Correo del cliente (opcional)
+                  </label>
+                  <input id="customer_email" type="email" inputMode="email" className={inputClass} {...register('customer_email')} />
+                  {errors.customer_email ? (
+                    <p className="mt-1 text-sm text-danger">{errors.customer_email.message}</p>
+                  ) : (
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      Sin correo no recibe avisos de sus cuotas ni de sus abonos. Si lo da, queda guardado en su ficha.
+                    </p>
+                  )}
+                </div>
+              )}
+              {customer.email_opt_out_at ? (
+                <p className="text-sm text-warning">
+                  Pidió no recibir avisos por correo ({formatDateTime(customer.email_opt_out_at)}). Solo se levanta desde su ficha.
+                </p>
+              ) : customer.email_basis === 'consent' && customer.email_consent_at ? (
+                <p className="text-sm text-muted-foreground">
+                  Autorizó recibir avisos por correo el {formatDateTime(customer.email_consent_at)}.
+                </p>
+              ) : (
+                <Controller
+                  control={control}
+                  name="customer_email_consent"
+                  render={({ field }) => (
+                    <label className="flex items-start gap-2 text-sm text-foreground">
+                      <Checkbox
+                        id="customer_email_consent"
+                        checked={field.value && tieneCorreo}
+                        onCheckedChange={(checked) => field.onChange(checked === true)}
+                        disabled={!tieneCorreo}
+                        className="mt-0.5"
+                        aria-describedby="customer-email-consent-help"
+                      />
+                      <span>
+                        El cliente autoriza recibir avisos por correo
+                        <span id="customer-email-consent-help" className="mt-0.5 block text-xs text-muted-foreground">
+                          {tieneCorreo
+                            ? 'Cuotas, abonos y demás avisos de sus contratos y compras, y otras comunicaciones de la compraventa. Puede retirarla cuando quiera desde su ficha. Sin esta casilla solo se le escribe sobre sus contratos vigentes.'
+                            : 'Primero escribe el correo.'}
+                        </span>
+                        {errors.customer_email_consent && (
+                          <span className="mt-0.5 block text-sm text-danger">{errors.customer_email_consent.message}</span>
+                        )}
+                      </span>
+                    </label>
+                  )}
+                />
+              )}
+            </fieldset>
+          )}
         </section>
 
         <section className="flex flex-col gap-4 rounded-card border border-border bg-card p-card shadow-card">

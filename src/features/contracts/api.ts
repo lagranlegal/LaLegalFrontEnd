@@ -13,6 +13,7 @@ export type PaymentQuote = components['schemas']['PaymentQuoteOut']
 export type PaymentOption = components['schemas']['PaymentOptionOut']
 export type Payment = components['schemas']['PaymentOut']
 export type PaymentCreateIn = components['schemas']['PaymentCreateIn']
+export type ContractChainLink = components['schemas']['ContractChainLinkOut']
 
 // `useCustomerSearch`/`useCustomer` viven en `lib/customers/search.ts` — el
 // paso 7 (sales) los necesita también, se promovieron de acá (mismo
@@ -80,7 +81,9 @@ export function useCreateContract() {
   return useMoneyMutation({
     mutationFn: (body: ContractCreateIn, idempotencyKey: string) =>
       unwrap(api.POST('/api/v1/contracts', { params: { header: { 'Idempotency-Key': idempotencyKey } }, body })),
-    invalidateKeys: [['contracts'], ['dashboard'], ['cashbox', 'current']],
+    // `['customers']`: el formulario puede cargar el correo del cliente y su
+    // autorización de avisos en la misma operación (NOTIFICACIONES §9.2-f).
+    invalidateKeys: [['contracts'], ['dashboard'], ['cashbox', 'current'], ['customers']],
   })
 }
 
@@ -182,6 +185,24 @@ export function useExtensionOptions(contractId: string, enabled = true) {
           params: { path: { contract_id: contractId } },
         }),
       ),
+    enabled,
+  })
+}
+
+/**
+ * La cadena de ampliaciones del contrato, de la raíz al último
+ * (`GET /contracts/{id}/chain`, RECARGOS §6). `ContractOut` solo mira hacia
+ * atrás (`parent_contract_id`); con esto el contrato ampliado sabe a cuál pasó
+ * la deuda, cuándo y por cuánto, y una cadena larga se puede recorrer.
+ *
+ * La key cuelga de `['contracts', id]` a propósito: ampliar ya invalida ese
+ * prefijo, así que la cadena del contrato recién cerrado se refresca sola.
+ */
+export function useContractChain(contractId: string, enabled = true) {
+  return useQuery({
+    queryKey: ['contracts', contractId, 'chain'] as const,
+    queryFn: () =>
+      unwrap(api.GET('/api/v1/contracts/{contract_id}/chain', { params: { path: { contract_id: contractId } } })),
     enabled,
   })
 }

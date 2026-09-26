@@ -899,6 +899,29 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/contracts/{contract_id}/chain": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Contract Chain
+         * @description La cadena de ampliaciones a la que pertenece el contrato, de la raíz
+         *     al último (docs/RECARGOS.md §6). Un contrato que nunca se amplió devuelve
+         *     una lista de uno: él mismo. El sucesor de un eslabón es el que lo tiene
+         *     como `parent_contract_id`.
+         */
+        get: operations["get_contract_chain_api_v1_contracts__contract_id__chain_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/contracts/{contract_id}/extension-options": {
         parameters: {
             query?: never;
@@ -2750,6 +2773,41 @@ export interface components {
             /** Transactional In Weekly Cap */
             transactional_in_weekly_cap: boolean;
         };
+        /**
+         * ContractChainLinkOut
+         * @description Un eslabón de la cadena de ampliaciones (docs/RECARGOS.md §6).
+         *
+         *     Lo justo para NOMBRAR cada contrato de la cadena y llevar a él: la
+         *     pantalla de un contrato ampliado tiene que decir a cuál pasó la deuda, y
+         *     la del sucesor de cuál viene. Sin eso un `superseded` parece un contrato
+         *     abandonado.
+         */
+        ContractChainLinkOut: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Number */
+            number: number;
+            /** Status */
+            status: string;
+            /** Parent Contract Id */
+            parent_contract_id: string | null;
+            /**
+             * Start Date
+             * Format: date
+             */
+            start_date: string;
+            /** Extended On */
+            extended_on: string | null;
+            /** Extension Amount */
+            extension_amount: string | null;
+            /** Principal */
+            principal: string;
+            /** Capital Balance */
+            capital_balance: string;
+        };
         /** ContractCreateIn */
         ContractCreateIn: {
             /** Account Id */
@@ -2783,6 +2841,10 @@ export interface components {
             notes?: string | null;
             /** Extension Window Days */
             extension_window_days?: number | null;
+            /** Customer Email */
+            customer_email?: string | null;
+            /** Customer Email Consent */
+            customer_email_consent?: boolean | null;
         };
         /**
          * ContractExtendIn
@@ -4285,6 +4347,7 @@ export interface components {
             customer_contact_limits: components["schemas"]["ContactLimitsOut"];
             /** Stale After Days */
             stale_after_days: number;
+            reminders: components["schemas"]["ReminderScheduleOut"];
             /** Digest Recipients */
             digest_recipients: components["schemas"]["DigestRecipientOut"][];
             /** Alert Recipients */
@@ -4308,6 +4371,7 @@ export interface components {
             customer_contact_limits?: components["schemas"]["ContactLimitsIn"] | null;
             /** Stale After Days */
             stale_after_days?: number | null;
+            reminders?: components["schemas"]["ReminderScheduleIn"] | null;
         };
         /**
          * PawnPerformanceOut
@@ -4665,6 +4729,24 @@ export interface components {
             email: string;
             /** Recovery Link */
             recovery_link: string;
+        };
+        /** ReminderScheduleIn */
+        ReminderScheduleIn: {
+            /** Installment Days Before */
+            installment_days_before?: number[] | null;
+            /** Extension Days Before */
+            extension_days_before?: number[] | null;
+        };
+        /**
+         * ReminderScheduleOut
+         * @description Cuántos días antes salen los recordatorios por fecha (NOTIFICACIONES §20).
+         *     De mayor a menor; `0` es el mismo día.
+         */
+        ReminderScheduleOut: {
+            /** Installment Days Before */
+            installment_days_before: number[];
+            /** Extension Days Before */
+            extension_days_before: number[];
         };
         /** RoleCreateIn */
         RoleCreateIn: {
@@ -7637,6 +7719,37 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["SettlementInfoOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_contract_chain_api_v1_contracts__contract_id__chain_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                contract_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ContractChainLinkOut"][];
                 };
             };
             /** @description Validation Error */

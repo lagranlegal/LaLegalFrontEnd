@@ -2,6 +2,52 @@
 
 > Registro vivo de qué existe en el código, cómo está armado y por qué se tomó cada decisión — para que cualquiera (humano o Claude Code) pueda retomar el proyecto sin releer todo el historial de commits. Se actualiza en cada paso del "Orden de implementación" de `CLAUDE.md`. No repite lo que ya está en `ARCHITECTURE.md`/`DESIGN_SYSTEM.md` (el qué-debería-ser); esto es el qué-hay-hoy y las decisiones concretas tomadas al construirlo.
 
+## Contratos: la cadena de ampliaciones, «solo se puede ampliar una vez» (F21-38) y la casilla de avisos al crear (25/09/2026)
+
+Tres pedidos del dueño sobre contratos. Backend: `GET /contracts/{id}/chain` y dos campos nuevos en
+`POST /contracts` (commit `024a03c` de `backend-starter`, sin migración); diseño en
+`../backend-starter/docs/RECARGOS.md` §12 y `NOTIFICACIONES.md` §9.2-f. Tipos regenerados contra el backend LOCAL
+(ver «Lo dudoso»).
+
+**1. El contrato ampliado dice a cuál pasó la deuda.** Antes: «fue ampliado… la deuda vive en el contrato que lo
+sucede», sin número ni enlace, porque `ContractOut` solo mira hacia atrás. Ahora `ContractChainPanel`
+(`features/contracts/components/`) reemplaza los dos avisos que tenía `ContractDetailPage`:
+- en el **ampliado**: cuándo se amplió, cuánto se entregó, a qué contrato pasó (número, estado, «Ir al contrato
+  #N») y, si la cadena siguió, **dónde vive la deuda hoy** — con A → B → C, «pasó a B» manda a otro cerrado;
+- en el **sucesor**: «Viene del contrato #P, ampliado el X con $Y más» y el enlace (conserva la explicación del ancla
+  de 00053);
+- con 2+ eslabones, **«Historia de este préstamo»**: la cadena entera con fecha, monto, estado y enlace; el actual
+  marcado.
+El sucesor de un eslabón se calcula por `parent_contract_id`, no por posición (`features/contracts/chain.ts`, con
+test): es la lección de F21-10.
+
+**2. «Solo se puede ampliar una vez».** El backend nunca lo prohibió. Eran dos motivos de `extension-options` que el
+panel trataba igual (`features/contracts/extensionBlock.ts`, test que falló 5/8 con la lógica vieja):
+- **`EXTENSION_NO_HEADROOM` — defecto, corregido.** La primera ampliación se suele llevar todo el cupo; con
+  `contracts.override_ltv` el backend acepta prestar por encima (§8.1) y el panel escondía el formulario igual.
+  Ahora queda abierto con una advertencia; sin el permiso, el bloqueo dice que hace falta quien lo tenga.
+- **`EXTENSION_WINDOW_CLOSED` — diseño, se queda.** La ventana se cuenta desde el contrato ORIGINAL (RECARGOS §3).
+  El mensaje ahora lo dice: nombra al original (#, fecha), cuándo venció y por qué ampliar no la reinicia. Con la
+  ventana en 0 dice que el contrato no admite ampliaciones, en vez de «pasó el plazo».
+
+**3. La casilla de avisos al crear el contrato.** En «Nuevo contrato», bajo el cliente elegido, un recuadro «Avisos
+por correo»: su correo, o un campo para cargarlo (con «sin correo no recibe avisos»); y si no autorizó ya ni pidió
+la baja, «El cliente autoriza recibir avisos por correo», deshabilitada hasta que haya un correo válido. Los dos
+campos son parte del formulario de RHF para que un `422` con `customer_email`/`customer_email_consent` en `loc` se
+pinte en su lugar. Qué viaja lo decide `features/contracts/customerNotice.ts` (con test): el correo solo si el
+cliente no tenía; la casilla solo marcada, ofrecida y con correo. `useCreateContract` ahora invalida
+`['customers']`. Cambiar de cliente limpia los dos campos: la autorización es de una persona.
+
+**Verificado en navegador** (ZZ QA, solo lectura, POST/PATCH/DELETE abortados): #9 → #10 a 360 y 1280. Como el
+backend dev todavía no tiene `/chain`, esa respuesta se sirvió desde el navegador con los datos reales de #9 y #10,
+y el caso «sin cupo con permiso» reescribiendo `extension-options` de #10. El formulario, con clientes reales: la
+casilla deshabilitada sin correo y habilitada al escribir uno. Sin desborde en lo nuevo; #9 desborda 14 px a 360 por
+el encabezado (código anterior largo + botones), que ya estaba así.
+
+**Lo dudoso.** `src/types/api.ts` trae también `ReminderScheduleIn/Out` y `reminders` en los ajustes de avisos: ya
+estaban en el backend commiteado (fase 5) y el front no se había regenerado. Se generó desde un worktree del backend
+en `HEAD` + estos cambios, para no arrastrar trabajo sin commitear de otros agentes.
+
 ## Documentos impresos: el comprobante imprime solo el comprobante, y el contrato con la marca (25/09/2026)
 
 Dos defectos reportados por el dueño. **Uno:** «al imprimir el comprobante de una venta me aparecen todas las ventas,
