@@ -2,6 +2,44 @@
 
 > Registro vivo de qué existe en el código, cómo está armado y por qué se tomó cada decisión — para que cualquiera (humano o Claude Code) pueda retomar el proyecto sin releer todo el historial de commits. Se actualiza en cada paso del "Orden de implementación" de `CLAUDE.md`. No repite lo que ya está en `ARCHITECTURE.md`/`DESIGN_SYSTEM.md` (el qué-debería-ser); esto es el qué-hay-hoy y las decisiones concretas tomadas al construirlo.
 
+## Avisos por correo, fase 7: las alertas a la empresa ya salen (25/09/2026)
+
+El backend conectó las cuatro alertas inmediatas —venta anulada, descuento por encima del umbral (en venta o en
+abono), retiro de capital del dueño, caja reabierta— (`../backend-starter/docs/NOTIFICACIONES.md` §19). Salen
+apenas pasa el hecho, a cualquier hora, a los usuarios activos con el permiso «Recibir por correo las alertas
+inmediatas», **menos a quien hizo el acto**. Acá, lo que tocó al front (`/configuracion/notificaciones`):
+
+- **Tipos regenerados contra el backend LOCAL** (uvicorn con `DATABASE_URL` de la base local, `VITE_API_URL=http://127.0.0.1:8765 npm run gen:api`).
+  Un solo campo nuevo, aditivo: `NotificationSettingsOut.alert_recipients`, con la misma forma que
+  `digest_recipients`. Sin otro drift.
+- **La nota del grupo «Alertas inmediatas» (`logic.ts::groupEvents`)** decía «Todavía no se envían…», que dejó de
+  ser cierto. Ahora dice qué las dispara, a qué hora salen (a cualquiera), qué permiso las recibe y dónde se da
+  (Identidad → Roles), y que al autor no le llega la suya. El nombre del permiso vive en una constante
+  (`ALERTS_PERMISSION_LABEL`) que usan la nota y la lista: es la descripción que siembra `00058`, y si se reescribe,
+  se cambia en un lugar.
+- **«Quién recibe las alertas»** debajo de esa nota: la lista de `alert_recipients`, con el mismo marcado que «Quién
+  recibe el resumen», y «Nadie todavía…» si está vacía. La lista **no** excluye a nadie por autor: el autor cambia en
+  cada acto; la regla está escrita en la nota.
+- **La confirmación de encender el interruptor general (`enableConfirmDescription`)** ahora también nombra a quién le
+  llegan las alertas (`alertRecipientsSummary`), porque encender las suelta: nacen marcadas por catálogo. Si alguien
+  las desmarcó todas, no las menciona. De paso, la frase «Los correos salen con el proceso nocturno» pasó a «El
+  resumen sale…»: con las alertas ya no era verdad para todos los correos.
+- **Tests (`tests/notification-settings.test.ts`, +5):** la nota ya no dice «Todavía no se envían» y nombra los cuatro
+  disparos, el permiso y la excepción del autor; la confirmación menciona las alertas encendidas y calla las
+  apagadas; el resumen de destinatarios con y sin gente. Los cuatro que dependían del cambio se vieron fallar contra
+  el `logic.ts` anterior. El fixture ganó `alert_recipients` (el tipo lo exige); nada existente se aflojó.
+
+**Orden de deploy:** el backend antes que este front. Contra un backend sin `alert_recipients` la lista vendría
+`undefined` y `.length` rompería la sección de eventos.
+
+**Lo que quedó igual, y no es cierto:** la nota del grupo «Avisos al cliente» todavía dice que «la app aún no
+registra con qué base legal aceptó cada cliente recibir correos». Lo registra desde la fase 3 (`email_basis`,
+`NOTIFICACIONES.md` §17) y los avisos al cliente tienen productor desde las fases 4 y 6. No se tocó porque no era de
+esta tarea; hay que reescribirla con el mismo criterio que la de las alertas.
+
+**No verificado en navegador**: el cambio es texto y una lista con el marcado que ya tenía la del resumen. Typecheck,
+lint (0 errores), vitest (289) y build en verde.
+
 ## F21-37: la devolución de una venta pagada con nota crédito muestra su reparto (25/09/2026)
 
 Una devolución en efectivo sobre una venta pagada con nota crédito sacaba del cajón el **total**, incluida la parte

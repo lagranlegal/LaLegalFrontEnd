@@ -22,6 +22,7 @@ import {
   type NotificationSettingsUpdateIn,
 } from '@/features/settings/notifications/api'
 import {
+  ALERTS_PERMISSION_LABEL,
   AUCTION_READY_CUSTOMER,
   AUCTION_READY_CUSTOMER_WARNING,
   buildParamsPatch,
@@ -223,6 +224,7 @@ function EventsSection({ settings }: { settings: NotificationSettings }) {
         <div key={group.key} className="flex flex-col gap-2">
           <h3 className="text-sm font-medium text-foreground">{group.title}</h3>
           {group.note && <p className="text-xs text-muted-foreground">{group.note}</p>}
+          {group.key === 'alert' && <AlertRecipients settings={settings} />}
           <ul className="flex flex-col divide-y divide-border rounded-input border border-border">
             {group.events.map((event) => (
               <li key={event.code} className="flex flex-wrap items-start justify-between gap-2 px-3 py-2">
@@ -257,6 +259,28 @@ function EventsSection({ settings }: { settings: NotificationSettings }) {
         </div>
       ))}
     </Section>
+  )
+}
+
+/** Quién recibe hoy las alertas (A1–A4), de `alert_recipients` (NOTIFICACIONES §19). */
+function AlertRecipients({ settings }: { settings: NotificationSettings }) {
+  return (
+    <div className="text-sm">
+      <p className="font-medium text-foreground">Quién recibe las alertas</p>
+      {settings.alert_recipients.length === 0 ? (
+        <p className="text-xs text-muted-foreground">
+          Nadie todavía. Las recibe quien tenga el permiso {ALERTS_PERMISSION_LABEL} (Identidad → Roles).
+        </p>
+      ) : (
+        <ul className="mt-1 flex flex-col gap-0.5 text-xs text-muted-foreground">
+          {settings.alert_recipients.map((r) => (
+            <li key={r.user_id} className="break-all">
+              {r.full_name} · {r.email}
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
   )
 }
 

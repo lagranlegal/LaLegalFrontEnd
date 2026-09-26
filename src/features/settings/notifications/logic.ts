@@ -138,11 +138,31 @@ export function enableConfirmDescription(s: NotificationSettings): string {
     const names = s.digest_recipients.map((r) => `${r.full_name} (${r.email})`).join(', ')
     parts.push(`El resumen le va a llegar a: ${names}.`)
   }
-  parts.push('Los correos salen con el proceso nocturno, y el primero después de encender es un resumen semanal, sea el día que sea.')
+  parts.push('El resumen sale con el proceso nocturno, y el primero después de encender es un resumen semanal, sea el día que sea.')
+  // Fase 7: encender el interruptor también suelta las alertas inmediatas,
+  // que nacen marcadas. Quien confirma tiene que saber que esas salen YA.
+  const alertsOn = s.events.some((e) => e.audience === 'company' && e.family === 'alert' && e.enabled)
+  if (alertsOn) parts.push(alertRecipientsSummary(s))
   if (!s.provider_configured) {
     parts.push('Ojo: el envío de correos todavía no está configurado en la plataforma. Hasta que lo esté, no sale ninguno.')
   }
   return parts.join(' ')
+}
+
+/** Nombre del permiso tal como lo muestra Identidad → Roles (descripción del seed de 00058, abreviada). */
+export const ALERTS_PERMISSION_LABEL = '«Recibir por correo las alertas inmediatas»'
+
+/**
+ * Quién recibe las alertas A1–A4 (`alert_recipients`, NOTIFICACIONES §19).
+ * Dice también la regla que la lista sola no muestra: a quien hizo el acto no
+ * le llega la suya.
+ */
+export function alertRecipientsSummary(s: NotificationSettings): string {
+  if (s.alert_recipients.length === 0) {
+    return `Las alertas inmediatas no le llegarían a nadie: nadie tiene el permiso ${ALERTS_PERMISSION_LABEL}. Dáselo a un rol en Identidad → Roles.`
+  }
+  const names = s.alert_recipients.map((r) => `${r.full_name} (${r.email})`).join(', ')
+  return `Las alertas inmediatas salen apenas pasa el hecho, a cualquier hora, y le llegan a: ${names} — menos a quien hizo el acto.`
 }
 
 export type EventGroupKey = 'digest' | 'alert' | 'customer'
@@ -171,9 +191,12 @@ export function groupEvents(events: NotificationEventSetting[]): EventGroup[] {
     {
       key: 'alert',
       title: 'Alertas inmediatas',
-      // §2.5: el tipo existe en el catálogo, el productor no (fase 7). Sin
-      // esta nota, encenderlas se lee como que ya funcionan.
-      note: 'Todavía no se envían: puedes dejarlas configuradas y empiezan a salir cuando se activen en la plataforma.',
+      // NOTIFICACIONES §2.5 y §19 (fase 7): qué las dispara y quién las
+      // recibe. Quiénes son hoy lo lista la pantalla, de `alert_recipients`.
+      note:
+        'Salen apenas pasa el hecho, a cualquier hora: una venta anulada, un descuento por encima del umbral (en una venta o en un abono), ' +
+        `un retiro de capital del dueño y una caja reabierta. Las recibe quien tenga el permiso ${ALERTS_PERMISSION_LABEL} (Identidad → Roles), ` +
+        'menos quien hizo el acto: esa persona ya lo sabe.',
       events: company.filter((e) => e.family !== 'digest'),
     },
     {

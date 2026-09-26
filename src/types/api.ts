@@ -4287,6 +4287,8 @@ export interface components {
             stale_after_days: number;
             /** Digest Recipients */
             digest_recipients: components["schemas"]["DigestRecipientOut"][];
+            /** Alert Recipients */
+            alert_recipients: components["schemas"]["DigestRecipientOut"][];
         };
         /**
          * NotificationSettingsUpdateIn

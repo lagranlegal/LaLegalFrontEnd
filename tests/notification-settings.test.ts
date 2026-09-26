@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { NotificationEventSetting, NotificationSettings } from '@/features/settings/notifications/api'
 import {
+  alertRecipientsSummary,
   buildParamsPatch,
   draftFromSettings,
   enableConfirmDescription,
@@ -50,6 +51,7 @@ function settings(overrides: Partial<NotificationSettings> = {}): NotificationSe
     },
     stale_after_days: 2,
     digest_recipients: [{ user_id: 'u1', full_name: 'Ana Admin', email: 'ana@example.com' }],
+    alert_recipients: [{ user_id: 'u1', full_name: 'Ana Admin', email: 'ana@example.com' }],
     ...overrides,
   }
 }
@@ -113,6 +115,18 @@ describe('groupEvents', () => {
     expect(codes).not.toContain('user_invitation')
   })
 
+  it('la nota de las alertas dice qué las dispara y quién las recibe (ya no «todavía no se envían»)', () => {
+    const alert = groupEvents(settings().events).find((g) => g.key === 'alert')
+    expect(alert?.note).not.toContain('Todavía no se envían')
+    expect(alert?.note).toContain('venta anulada')
+    expect(alert?.note).toContain('descuento por encima del umbral')
+    expect(alert?.note).toContain('retiro de capital')
+    expect(alert?.note).toContain('caja reabierta')
+    expect(alert?.note).toContain('«Recibir por correo las alertas inmediatas»')
+    expect(alert?.note).toContain('Identidad → Roles')
+    expect(alert?.note).toContain('menos quien hizo el acto')
+  })
+
   it('separa resumen, alertas y avisos al cliente', () => {
     const groups = groupEvents(settings().events)
     expect(groups.map((g) => [g.key, g.events.map((e) => e.code)])).toEqual([
@@ -135,7 +149,31 @@ describe('enableConfirmDescription', () => {
     expect(enableConfirmDescription(settings({ digest_recipients: [] }))).toContain('no le llegaría a nadie')
   })
 
+  it('encender también suelta las alertas: dice a quién le llegan, y que al autor no', () => {
+    const text = enableConfirmDescription(settings())
+    expect(text).toContain('alertas inmediatas salen apenas pasa el hecho')
+    expect(text).toContain('menos a quien hizo el acto')
+  })
+
+  it('con las alertas desmarcadas no las menciona', () => {
+    const events = settings().events.map((e) => (e.family === 'alert' ? { ...e, enabled: false } : e))
+    expect(enableConfirmDescription(settings({ events }))).not.toContain('alertas inmediatas')
+  })
+
   it('sin proveedor avisa que no sale ninguno', () => {
     expect(enableConfirmDescription(settings({ provider_configured: false }))).toContain('no sale ninguno')
   })
 })
+
+describe('alertRecipientsSummary', () => {
+  it('nombra a quién le llegan', () => {
+    expect(alertRecipientsSummary(settings())).toContain('Ana Admin (ana@example.com)')
+  })
+
+  it('sin nadie con el permiso lo dice y dice dónde darlo', () => {
+    const text = alertRecipientsSummary(settings({ alert_recipients: [] }))
+    expect(text).toContain('no le llegarían a nadie')
+    expect(text).toContain('Identidad → Roles')
+  })
+})
+
