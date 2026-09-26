@@ -105,10 +105,10 @@ export function HeroComposition() {
         ref={ref}
         role="img"
         aria-label="Muestra de Prendo con cifras de ejemplo: un contrato de empeño con sus abonos, una prenda rematada con su código, la caja del día cuadrada y los intereses cobrados en el mes."
-        className="relative h-84 sm:h-150"
+        className="relative h-84 sm:h-172"
       >
         {/* Contrato con sus abonos */}
-        <Layer className="left-0 right-6 top-0 z-10 sm:left-5 sm:right-auto sm:top-5 sm:w-139 xl:left-10" depth={6} index={0}>
+        <Layer className="left-0 right-6 top-0 z-10 sm:left-5 sm:right-auto sm:top-24 sm:w-139 xl:left-10" depth={6} index={0}>
           <div className="flex flex-col gap-3.5 rounded-panel bg-card p-5 text-foreground shadow-float sm:gap-5 sm:rounded-modal sm:p-7">
             <div className="flex items-center justify-between">
               <div className="flex flex-col gap-1">
@@ -153,7 +153,7 @@ export function HeroComposition() {
         </Layer>
 
         {/* La etiqueta: el objeto del logo */}
-        <Layer className="bottom-0 right-0 z-20 w-45 sm:bottom-auto sm:top-0 sm:w-66" depth={14} index={1}>
+        <Layer className="bottom-0 right-0 z-20 w-45 sm:bottom-auto sm:-right-4 sm:-top-14 sm:w-66" depth={14} index={1}>
           <div className="landing-settle flex flex-col gap-2 rounded-card bg-brand-50 p-4 text-foreground shadow-float-sm sm:gap-3 sm:rounded-panel sm:p-5.5" style={{ '--i': 1 } as Vars}>
             <div className="flex items-center justify-between">
               <PrendoMark bare className="hidden size-7 text-foreground sm:block" />
@@ -169,7 +169,7 @@ export function HeroComposition() {
         </Layer>
 
         {/* Caja cuadrada */}
-        <Layer className="bottom-5 left-0 z-20 hidden w-85 sm:block" depth={10} index={2}>
+        <Layer className="bottom-0 left-0 z-20 hidden w-72 sm:block" depth={10} index={2}>
           <div className="flex flex-col gap-3.5 rounded-panel border border-sidebar-accent bg-sidebar-hover p-5 text-sidebar-foreground-strong shadow-float-sm">
             <div className="flex items-center gap-2.5">
               <span className="size-2.5 rounded-pill bg-sidebar-success" />
@@ -190,7 +190,7 @@ export function HeroComposition() {
         </Layer>
 
         {/* Intereses del mes */}
-        <Layer className="bottom-6 right-7.5 z-20 hidden w-66.5 sm:block" depth={12} index={3}>
+        <Layer className="-bottom-2 right-0 z-20 hidden w-66.5 sm:block" depth={12} index={3}>
           <div className="flex flex-col gap-2 rounded-panel bg-card p-4.5 text-foreground shadow-float-sm">
             <span className="text-xs text-muted-foreground">Intereses cobrados · mes</span>
             <span className={cn(DISPLAY, 'tnum text-3xl font-semibold text-brand')}>$ 4.860.000</span>
