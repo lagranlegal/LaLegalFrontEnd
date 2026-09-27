@@ -230,7 +230,7 @@ export function ContractImportPage() {
               <Controller
                 control={control}
                 name="appraisal_value"
-                render={({ field }) => <MoneyInput id="appraisal_value" className="mt-1" value={field.value ?? ''} onChange={field.onChange} />}
+                render={({ field }) => <MoneyInput optional id="appraisal_value" className="mt-1" value={field.value ?? ''} onChange={field.onChange} />}
               />
             </div>
             <div>

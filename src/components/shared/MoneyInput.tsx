@@ -14,6 +14,7 @@ export function MoneyInput({
   placeholder,
   autoFocus,
   className,
+  optional,
 }: {
   value: string
   onChange: (decimalValue: string) => void
@@ -21,6 +22,13 @@ export function MoneyInput({
   placeholder?: string
   autoFocus?: boolean
   className?: string
+  /**
+   * Campo que puede quedar SIN dato: borrado emite `''` (el caller lo manda
+   * como `null`), no `"0.00"`. QA 03 H-08: tocar y borrar el avalúo mandaba
+   * que la prenda vale cero; el conteo de apertura de caja, que se contó $0.
+   * Un cero escrito a propósito sigue siendo `"0.00"`.
+   */
+  optional?: boolean
 }) {
   const display = maskMoneyInput(value.split('.')[0] ?? '')
   return (
@@ -33,7 +41,7 @@ export function MoneyInput({
         autoFocus={autoFocus}
         placeholder={placeholder}
         value={display}
-        onChange={(e) => onChange(parseMoneyInput(e.target.value))}
+        onChange={(e) => onChange(optional && !/\d/.test(e.target.value) ? '' : parseMoneyInput(e.target.value))}
         className="w-full bg-transparent px-2 py-2 text-sm text-foreground outline-none"
       />
     </div>

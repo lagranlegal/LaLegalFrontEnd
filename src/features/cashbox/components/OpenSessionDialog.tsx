@@ -113,7 +113,7 @@ export function OpenSessionDialog({ open, onOpenChange }: { open: boolean; onOpe
               <label htmlFor="counted-cash" className="text-sm font-medium text-foreground">
                 Efectivo contado
               </label>
-              <MoneyInput id="counted-cash" className="mt-1" value={counted} onChange={setCounted} autoFocus />
+              <MoneyInput optional id="counted-cash" className="mt-1" value={counted} onChange={setCounted} autoFocus />
             </div>
 
             {hayDiferencia && (

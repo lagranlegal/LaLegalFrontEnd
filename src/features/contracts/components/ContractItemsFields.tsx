@@ -101,7 +101,7 @@ export function ContractItemsFields<TFieldValues extends FieldValues & { items: 
                 <Controller
                   control={control}
                   name={`items.${index}.item_appraisal` as FieldPath<TFieldValues>}
-                  render={({ field: appraisalField }) => <MoneyInput className="mt-1" value={appraisalField.value ?? ''} onChange={appraisalField.onChange} />}
+                  render={({ field: appraisalField }) => <MoneyInput optional className="mt-1" value={appraisalField.value ?? ''} onChange={appraisalField.onChange} />}
                 />
                 {itemErrors?.[index]?.item_appraisal && <p className="mt-1 text-sm text-danger">{itemErrors[index]?.item_appraisal?.message}</p>}
               </div>

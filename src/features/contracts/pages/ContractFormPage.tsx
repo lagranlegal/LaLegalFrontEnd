@@ -313,7 +313,7 @@ export function ContractFormPage() {
               <Controller
                 control={control}
                 name="appraisal_value"
-                render={({ field }) => <MoneyInput id="appraisal_value" className="mt-1" value={field.value ?? ''} onChange={field.onChange} />}
+                render={({ field }) => <MoneyInput optional id="appraisal_value" className="mt-1" value={field.value ?? ''} onChange={field.onChange} />}
               />
               {errors.appraisal_value && <p className="mt-1 text-sm text-danger">{errors.appraisal_value.message}</p>}
               <LtvHint estado={ltv} />
