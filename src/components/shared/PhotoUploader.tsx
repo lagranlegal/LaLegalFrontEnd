@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react'
 import { ChevronLeft, ChevronRight, ImagePlus, Loader2, X } from 'lucide-react'
 import { useMe } from '@/lib/auth/me'
-import { deleteCompanyPhoto, uploadCompanyPhoto, useSignedPhotoUrl } from '@/lib/storage/photos'
+import { uploadCompanyPhoto, useSignedPhotoUrl } from '@/lib/storage/photos'
 import { cn } from '@/lib/utils'
 
 function PhotoThumbnail({
@@ -76,7 +76,12 @@ function PhotoThumbnail({
  * "Guardar" del formulario que lo contiene); si el usuario cierra el
  * diálogo sin guardar, el archivo queda huérfano en Storage sin que ningún
  * artículo lo referencie — aceptable (mismo trade-off que la mayoría de
- * uploaders), sin job de limpieza en el front.
+ * uploaders), sin job de limpieza en el front. Lo mismo con una foto que se
+ * quita en un formulario de ALTA: nadie la referenció nunca.
+ *
+ * Quitar, en cambio, no toca Storage: en una edición la foto sigue
+ * referenciada por el registro guardado hasta que se guarde. El formulario
+ * de edición la borra después del guardado con `deleteDetachedPhotos`.
  */
 export function PhotoUploader({
   value,
@@ -113,10 +118,12 @@ export function PhotoUploader({
     }
   }
 
+  // Quitar NO borra de Storage: solo saca la foto del valor del formulario.
+  // Borrarla acá dejaba, con quitar + Cancelar, la ficha apuntando a un
+  // archivo inexistente (QA 03 H-04). El borrado físico lo hace el caller
+  // DESPUÉS de guardar, con `deleteDetachedPhotos` (lib/storage).
   function handleRemove(path: string) {
     onChange(value.filter((p) => p !== path))
-    // Best-effort: si falla el borrado del blob, el artículo ya no lo referencia igual.
-    deleteCompanyPhoto(path).catch(() => {})
   }
 
   function move(index: number, direction: -1 | 1) {

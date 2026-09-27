@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button'
 import { ApiError } from '@/lib/api/client'
 import { useMe, useUpdateMe } from '@/lib/auth/me'
 import { useChangeOwnPassword, WrongCurrentPasswordError, setPasswordErrorMessage } from '@/features/auth/api'
+import { deleteDetachedPhotos } from '@/lib/storage/detachedPhotos'
 
 const inputClass =
   'mt-1 w-full rounded-input border border-border bg-background px-3 py-2 text-sm text-foreground outline-none focus:border-primary'
@@ -37,6 +38,8 @@ export function ProfilePage() {
     if (nameMissing) return
     try {
       await updateMe.mutateAsync({ full_name: fullName.trim(), photo_url: photos[0] ?? null })
+      // La foto anterior se borra de Storage solo con el perfil ya guardado (QA 03 H-04).
+      deleteDetachedPhotos([me?.user.photo_url], photos, 'perfil')
       toast.success('Perfil actualizado.')
     } catch (error) {
       setFormError(error instanceof ApiError ? error.message : 'No se pudo guardar. Intenta de nuevo.')

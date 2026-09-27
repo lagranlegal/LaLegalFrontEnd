@@ -11,6 +11,7 @@ import { applyServerErrors } from '@/lib/forms/applyServerErrors'
 import { useCreateCustomer, useUpdateCustomer, type Customer } from '@/features/customers/api'
 import { isValidEmailShape } from '@/features/customers/emailBasis'
 import { formatDateTime } from '@/lib/dates'
+import { deleteDetachedPhotos } from '@/lib/storage/detachedPhotos'
 
 const DOC_TYPE_LABELS: Record<string, string> = {
   cc: 'Cédula de ciudadanía',
@@ -142,6 +143,9 @@ export function CustomerFormDialog({ open, onOpenChange, customer }: { open: boo
             ...(optOut !== initialOptOut ? { email_opt_out: optOut } : {}),
           },
         })
+        // La cédula reemplazada se borra de Storage solo con la ficha ya
+        // guardada (QA 03 H-04): quitar + Cancelar la dejaba rota.
+        deleteDetachedPhotos(customer.doc_photos ?? [], fields.doc_photos, `customers/${customer.id}`)
       }
       onOpenChange(false)
     } catch (error) {

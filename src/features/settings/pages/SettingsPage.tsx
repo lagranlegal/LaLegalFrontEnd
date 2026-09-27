@@ -11,6 +11,7 @@ import { EmptyState } from '@/components/shared/EmptyState'
 import { Button } from '@/components/ui/button'
 import { applyServerErrors } from '@/lib/forms/applyServerErrors'
 import { useCompanySettings, useUpdateCompanySettings } from '@/features/settings/api'
+import { deleteDetachedPhotos } from '@/lib/storage/detachedPhotos'
 
 const settingsSchema = z.object({
   name: z.string().min(1, 'El nombre es obligatorio'),
@@ -124,6 +125,10 @@ export function SettingsPage() {
           legal_notice: values.legal_notice || null,
         },
       })
+      // Logo y firma reemplazados se borran recién con la configuración ya
+      // guardada (QA 03 H-04): antes los borraba la X del uploader.
+      deleteDetachedPhotos([settings?.logo_url], [saved.logo_url], 'company/logo')
+      deleteDetachedPhotos([settings?.signature_url], [saved.signature_url], 'company/signature')
       reset({
         name: saved.name,
         legal_name: saved.legal_name ?? '',

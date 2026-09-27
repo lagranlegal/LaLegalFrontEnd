@@ -17,6 +17,7 @@ import { useCategories } from '@/lib/catalogs/categories'
 import { useSuppliers } from '@/lib/catalogs/suppliers'
 import { formatQuantity } from '@/lib/inventory/units'
 import type { Item } from '@/lib/inventory/items'
+import { deleteDetachedPhotos } from '@/lib/storage/detachedPhotos'
 
 /** Contrato del que salió una pieza de remate — trazabilidad hacia atrás. */
 function AuctionOriginInfo({ contractId }: { contractId: string }) {
@@ -171,6 +172,7 @@ export function ItemEditDialog({ open, onOpenChange, item }: { open: boolean; on
     try {
       if (hasUnsavedPhotos) {
         await updateItem.mutateAsync({ itemId: item.id, body: { photos } })
+        deleteDetachedPhotos(item.photos, photos, `inventory/${item.id}`)
       }
       const published = await publishItem.mutateAsync({ itemId: item.id, body: { sale_price: salePrice } })
       toast.success(`Lote publicado — código ${published.code}`)
@@ -189,6 +191,9 @@ export function ItemEditDialog({ open, onOpenChange, item }: { open: boolean; on
     setFormError(null)
     try {
       await updateItem.mutateAsync({ itemId: item.id, body: { photos } })
+      // Solo las de la carpeta del lote: `item.photos` puede traer las
+      // heredadas del producto o las del contrato rematado, que no son suyas.
+      deleteDetachedPhotos(item.photos, photos, `inventory/${item.id}`)
       toast.success('Fotos guardadas — el lote sigue en borrador')
     } catch {
       setFormError('No se pudieron guardar las fotos. Intenta de nuevo.')

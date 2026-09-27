@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button'
 import { applyServerErrors } from '@/lib/forms/applyServerErrors'
 import { useUpdateContract, type Contract } from '@/features/contracts/api'
 import { preventImplicitSubmit } from '@/lib/forms/preventImplicitSubmit'
+import { deleteDetachedPhotos } from '@/lib/storage/detachedPhotos'
 
 const editSchema = z.object({
   appraisal_value: z.string().optional(),
@@ -58,6 +59,9 @@ export function ContractEditDialog({ open, onOpenChange, contract }: { open: boo
           signed_photo_url: values.signed_photo[0] ?? null,
         },
       })
+      // La foto firmada anterior se borra de Storage recién ahora, con el
+      // contrato ya apuntando a la nueva (QA 03 H-04).
+      deleteDetachedPhotos([contract.signed_photo_url], values.signed_photo, `contracts/${contract.id}`)
       toast.success('Contrato actualizado')
       onOpenChange(false)
     } catch (error) {
