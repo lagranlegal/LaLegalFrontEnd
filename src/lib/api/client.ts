@@ -15,6 +15,20 @@ export const api = createFetchClient<paths>({
   baseUrl: import.meta.env.VITE_API_URL,
 })
 
+/**
+ * Copia intacta de cada request, tomada ANTES de enviarlo, para poder
+ * reintentarlo tras un 401.
+ *
+ * POR QUÉ (QA 03 H-05): `fetch` consume el cuerpo del Request, así que el
+ * `request.clone()` que se hacía en `onResponse` lanzaba `TypeError` en todo
+ * POST/PATCH/PUT, y `unwrap` lo mostraba como "No se pudo conectar con el
+ * servidor". Con el token vencido (la laptop dormida), el primer abono,
+ * venta o contrato del día fallaba con un falso error de red. Un GET no tiene
+ * cuerpo y por eso nunca se notó. `WeakMap` para que la copia se vaya con el
+ * request: sin limpieza manual ni fuga si la red falla.
+ */
+const paraReintentar = new WeakMap<Request, Request>()
+
 api.use({
   async onRequest({ request }) {
     const {
@@ -23,6 +37,7 @@ api.use({
     if (session) {
       request.headers.set('Authorization', `Bearer ${session.access_token}`)
     }
+    paraReintentar.set(request, request.clone())
     return request
   },
   async onResponse({ request, response }) {
@@ -36,7 +51,8 @@ api.use({
       return response
     }
 
-    const retryRequest = request.clone()
+    const retryRequest = paraReintentar.get(request) ?? request.clone()
+    paraReintentar.delete(request)
     retryRequest.headers.set('Authorization', `Bearer ${data.session.access_token}`)
     const retryResponse = await fetch(retryRequest)
 
