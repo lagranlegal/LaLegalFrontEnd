@@ -102,7 +102,7 @@ export function TransformationFormPage() {
 
   // --- Los números que dan sentido a la pantalla -----------------------
   const costoConsumido = sumMoney(
-    ...entradas.map((e) => multiplyMoney(e.item.cost, Number(e.quantity || 0))),
+    ...entradas.map((e) => multiplyMoney(e.item.cost, e.quantity || '0')),
   )
   const costoTotal = sumMoney(costoConsumido, extraCost || '0.00')
 
@@ -225,7 +225,7 @@ export function TransformationFormPage() {
                 }
               />
               <span className="w-8 text-xs text-muted-foreground">{unitAbbr(item.unit)}</span>
-              <Money value={multiplyMoney(item.cost, Number(quantity || 0))} className="w-28 text-right text-sm font-medium" />
+              <Money value={multiplyMoney(item.cost, quantity || '0')} className="w-28 text-right text-sm font-medium" />
               <Button
                 type="button"
                 variant="ghost"

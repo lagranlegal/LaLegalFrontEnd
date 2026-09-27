@@ -215,7 +215,7 @@ function LineRow({
   onRemove?: () => void
 }) {
   const lista = lineIsReady(line)
-  const subtotal = multiplyMoney(line?.unit_cost || '0.00', Number(line?.quantity || 0))
+  const subtotal = multiplyMoney(line?.unit_cost || '0.00', line?.quantity || '0')
 
   return (
     <div className="flex items-center gap-2 rounded-input border border-border bg-background px-3 py-2">
@@ -329,7 +329,7 @@ export function EntryFormPage() {
     withResolver: true,
   })
 
-  const totalCost = sumMoney(...lines.map((line) => multiplyMoney(line.unit_cost || '0.00', Number(line.quantity || 0))))
+  const totalCost = sumMoney(...lines.map((line) => multiplyMoney(line.unit_cost || '0.00', line.quantity || '0')))
   const listasCount = lines.filter(lineIsReady).length
 
   /**

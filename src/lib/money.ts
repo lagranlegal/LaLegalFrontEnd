@@ -121,15 +121,72 @@ export function subtractMoney(a: string, b: string): string {
 }
 
 /**
- * Multiplicación de PRESENTACIÓN — subtotal de una línea del carrito de
- * venta (`unit_price × quantity`) ANTES de confirmar; el backend calcula el
- * `subtotal`/`total` reales al crear la venta. `quantity` es siempre un
- * entero (nunca fracción de unidad en este negocio), así que esto sigue
- * siendo aritmética entera sobre centavos, no floats.
- * `multiplyMoney("15000.00", 3)` → `"45000.00"`.
+ * Una cantidad (number o el string decimal de la API) como entero escalado:
+ * `"12.5"` → `{ units: 125n, scale: 1 }`. Es lo que permite multiplicar dinero
+ * por cantidad sin floats. `null` si no es un número legible (un campo a
+ * medio escribir, "1,5" antes de normalizar): quien llama decide qué mostrar.
+ *
+ * Un `number` se lee por su representación decimal más corta (`String(1.1)`
+ * es `"1.1"`, no `1.100000000000000088…`), que es la que escribió la persona.
  */
-export function multiplyMoney(unitPrice: string, quantity: number): string {
-  return centsToDecimal(toCents(unitPrice) * quantity)
+function toScaledQuantity(quantity: number | string): { units: bigint; scale: number } | null {
+  let text: string
+  if (typeof quantity === 'number') {
+    if (!Number.isFinite(quantity)) return null
+    text = String(quantity)
+    // 1e-7 y similares: String usa notación exponencial; toFixed no, hasta 1e21.
+    if (/e/i.test(text)) text = quantity.toFixed(20)
+  } else {
+    text = quantity.trim()
+  }
+  const match = /^(-?)(\d*)(?:\.(\d*))?$/.exec(text)
+  if (!match || (!match[2] && !match[3])) return null
+  const [, sign, whole = '', fraction = ''] = match
+  const units = BigInt(`${whole || '0'}${fraction}`)
+  return { units: sign ? -units : units, scale: fraction.length }
+}
+
+/**
+ * Multiplicación de PRESENTACIÓN — subtotal de una línea (`unit_price ×
+ * quantity`) ANTES de confirmar: carrito de venta, ingreso de inventario,
+ * transformación, contador de billetes. El backend calcula el subtotal real al
+ * guardar; esto solo lo muestra, pero tiene que dar LO MISMO.
+ * `multiplyMoney("19230.00", "12.5")` → `"240375.00"`.
+ *
+ * BUG REAL (QA, 27/09/2026): esto era `centsToDecimal(toCents(p) * quantity)`
+ * bajo el supuesto de que la cantidad siempre es entera. Dejó de serlo en
+ * 00036 (gramos, kilos, metros: `numeric(14,3)`). `1001 × 1,1` en centavos
+ * float da `110110.00000000001`, `centsToDecimal` hace `% 100` sobre eso y
+ * sale `"1101.10.000000000014552"`; `formatCOP` lanza y se cae la pantalla
+ * entera — la venta, el ingreso, la transformación. Es el mismo defecto que
+ * ya se había resuelto en `percentOfMoney`, visto desde la cantidad.
+ *
+ * Ahora la cantidad se escala a entero (`12.5` → `125`, escala 1), se
+ * multiplica en `bigint` (un precio de nueve cifras por mil gramos se pasa de
+ * `2^53`) y se redondea a centavos con la MISMA regla del backend:
+ * `quantize(unit_price * quantity)` con `ROUND_HALF_UP` —el empate se aleja
+ * de cero, no el redondeo del banquero— en `app/common/money.py`, aplicado
+ * por línea en `sales/service.py` y en `inventory/service.py`
+ * (transformación). Si el front redondeara distinto, el subtotal que ve el
+ * cajero no sería el que cobra el recibo.
+ *
+ * Una cantidad ilegible (campo vacío o a medio escribir) da `"0.00"`: es un
+ * subtotal de pantalla y el formulario ya marca el campo; tumbar la vista
+ * por eso es peor que mostrar cero.
+ */
+export function multiplyMoney(unitPrice: string, quantity: number | string): string {
+  const scaled = toScaledQuantity(quantity)
+  if (!scaled) return '0.00'
+  const divisor = 10n ** BigInt(scaled.scale)
+  const product = BigInt(toCents(unitPrice)) * scaled.units
+  const negative = product < 0n
+  const abs = negative ? -product : product
+  // ROUND_HALF_UP en enteros: floor((2·abs + d) / 2d) = abs/d redondeado,
+  // con el empate hacia arriba. Sobre el valor absoluto y con el signo
+  // después, que es "lejos de cero" — igual que `Decimal.quantize`.
+  const cents = (2n * abs + divisor) / (2n * divisor)
+  const sign = negative && cents > 0n ? '-' : ''
+  return `${sign}${cents / 100n}.${String(cents % 100n).padStart(2, '0')}`
 }
 
 /**

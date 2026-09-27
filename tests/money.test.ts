@@ -119,3 +119,68 @@ describe('multiplyMoney', () => {
     expect(multiplyMoney('15000.00', 0)).toBe('0.00')
   })
 })
+
+// Cantidades fraccionarias (00036: gramos, kilos, metros). Los esperados NO
+// se escribieron a mano: salen de lo que calcula el backend,
+// `quantize(unit_price * quantity)` con `ROUND_HALF_UP` a centavos
+// (backend-starter/app/common/money.py y sales/service.py:156), corrido en
+// Python con `Decimal`. Si el front redondea distinto, el subtotal que ve el
+// cajero no es el que cobra el recibo.
+describe('multiplyMoney con cantidades fraccionarias', () => {
+  it('1,1 no deja residuo de float (el bug: "1101.10.000000000014552")', () => {
+    expect(multiplyMoney('1001.00', 1.1)).toBe('1101.10')
+  })
+
+  it('0,333 kg a 1.000', () => {
+    expect(multiplyMoney('1000.00', 0.333)).toBe('333.00')
+  })
+
+  it('12,5 g a 19.230 (el ejemplo del backend)', () => {
+    expect(multiplyMoney('19230.00', 12.5)).toBe('240375.00')
+  })
+
+  it('2,5 con centavos en el precio', () => {
+    expect(multiplyMoney('15000.50', 2.5)).toBe('37501.25')
+  })
+
+  it('redondea a centavos cuando el producto trae milésimas', () => {
+    expect(multiplyMoney('999.99', 0.333)).toBe('333.00')
+    expect(multiplyMoney('10.01', 1.005)).toBe('10.06')
+    expect(multiplyMoney('33333.00', 0.001)).toBe('33.33')
+  })
+
+  it('el empate sube (ROUND_HALF_UP como el backend, no el del banquero)', () => {
+    // 0,05 × 0,5 = 0,025: HALF_EVEN daría 0,02; el backend da 0,03.
+    expect(multiplyMoney('0.05', 0.5)).toBe('0.03')
+  })
+
+  it('acepta la cantidad como el string que manda la API ("1.100")', () => {
+    expect(multiplyMoney('1000.00', '1.100')).toBe('1100.00')
+  })
+
+  it('una cantidad con basura de float (0,1 + 0,2) no corrompe el monto', () => {
+    expect(multiplyMoney('1000.00', 0.1 + 0.2)).toBe('300.00')
+  })
+
+  it('no pierde precisión con montos grandes', () => {
+    expect(multiplyMoney('999999999.99', 1000.001)).toBe('1000000999990.00')
+  })
+
+  it('una cantidad ilegible (campo a medio escribir) da "0.00" en vez de tumbar la vista', () => {
+    expect(multiplyMoney('1000.00', '')).toBe('0.00')
+    expect(multiplyMoney('1000.00', '1,5')).toBe('0.00')
+    expect(multiplyMoney('1000.00', '.')).toBe('0.00')
+    expect(multiplyMoney('1000.00', Number.NaN)).toBe('0.00')
+  })
+
+  it('una cantidad diminuta que String() escribe en notación exponencial', () => {
+    // String(1e-7) es "1e-7": sin el toFixed, la regex no la leería.
+    expect(multiplyMoney('100000000.00', 1e-7)).toBe('10.00')
+  })
+
+  it('el resultado siempre es formateable (antes formatCOP lanzaba y tumbaba la pantalla)', () => {
+    for (const qty of [1.1, 0.333, 2.5, 1.005, 0.001, 7.77]) {
+      expect(() => formatCOP(multiplyMoney('1001.00', qty))).not.toThrow()
+    }
+  })
+})
