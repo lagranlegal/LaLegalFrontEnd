@@ -16,7 +16,7 @@ import { confirm } from '@/components/shared/confirmStore'
 import { StatusBadge } from '@/components/shared/StatusBadge'
 import { ApiError } from '@/lib/api/client'
 import { useCategories } from '@/lib/catalogs/categories'
-import { sumMoney, multiplyMoney } from '@/lib/money'
+import { sumMoney, multiplyMoney, normalizeDecimalInput } from '@/lib/money'
 import { PAYMENT_METHOD_LABELS } from '@/lib/paymentMethods'
 import { SELECTABLE_UNITS, formatQuantity, unitAbbr, unitLabel, type ProductUnit } from '@/lib/inventory/units'
 import { useCreateTransformation } from '@/features/inventory/api'
@@ -101,8 +101,15 @@ export function TransformationFormPage() {
   const level1 = (categories ?? []).filter((c) => c.level === 1 && c.active)
 
   // --- Los números que dan sentido a la pantalla -----------------------
+  // Las cantidades se escriben con coma decimal ("1,5 g"): `Number("1,5")` es
+  // NaN, así que la vista previa valía $0 y la cantidad viajaba cruda (QA
+  // QTY-coma). Todo cálculo y el envío leen estas copias normalizadas; los
+  // inputs siguen mostrando lo que la persona escribió.
+  const entradasN = entradas.map((e) => ({ ...e, quantity: normalizeDecimalInput(e.quantity.trim()) }))
+  const salidasN = salidas.map((s) => ({ ...s, quantity: normalizeDecimalInput(s.quantity.trim()) }))
+
   const costoConsumido = sumMoney(
-    ...entradas.map((e) => multiplyMoney(e.item.cost, e.quantity || '0')),
+    ...entradasN.map((e) => multiplyMoney(e.item.cost, e.quantity || '0')),
   )
   const costoTotal = sumMoney(costoConsumido, extraCost || '0.00')
 
@@ -117,7 +124,7 @@ export function TransformationFormPage() {
   )
 
   const hayEntradas = entradas.length > 0
-  const salidasCompletas = salidas.every((s) => s.name.trim() && s.cat3_id && Number(s.quantity) > 0)
+  const salidasCompletas = salidasN.every((s) => s.name.trim() && s.cat3_id && Number(s.quantity) > 0)
   const puedeGuardar = hayEntradas && salidasCompletas && reason.trim().length > 0
 
   function agregarEntrada(item: Item) {
@@ -151,8 +158,8 @@ export function TransformationFormPage() {
         extra_cost: extraCost || '0.00',
         payment_method: Number(extraCost) > 0 ? paymentMethod : null,
         account_id: Number(extraCost) > 0 ? accountId : null,
-        inputs: entradas.map((e) => ({ item_id: e.item.id, quantity: e.quantity })),
-        outputs: salidas.map((s) => ({
+        inputs: entradasN.map((e) => ({ item_id: e.item.id, quantity: e.quantity })),
+        outputs: salidasN.map((s) => ({
           name: s.name.trim(),
           cat1_id: s.cat1_id,
           cat2_id: s.cat2_id,
@@ -225,7 +232,7 @@ export function TransformationFormPage() {
                 }
               />
               <span className="w-8 text-xs text-muted-foreground">{unitAbbr(item.unit)}</span>
-              <Money value={multiplyMoney(item.cost, quantity || '0')} className="w-28 text-right text-sm font-medium" />
+              <Money value={multiplyMoney(item.cost, normalizeDecimalInput(quantity.trim()) || '0')} className="w-28 text-right text-sm font-medium" />
               <Button
                 type="button"
                 variant="ghost"
@@ -308,7 +315,7 @@ export function TransformationFormPage() {
           const level2 = (categories ?? []).filter((c) => c.level === 2 && c.active && c.parent_id === salida.cat1_id)
           const level3 = (categories ?? []).filter((c) => c.level === 3 && c.active && c.parent_id === salida.cat2_id)
           const parte = repartos[index] ?? 0
-          const cantidad = Number(salida.quantity || 0)
+          const cantidad = Number(salidasN[index]?.quantity || 0)
           const costoUnitario = cantidad > 0 ? parte / cantidad : 0
 
           return (
@@ -486,7 +493,7 @@ export function TransformationFormPage() {
             Costo que viaja <Money value={costoTotal} className="font-medium text-foreground" />
           </p>
           <p className="text-xs text-muted-foreground">
-            {formatQuantity(String(entradas.reduce((a, e) => a + Number(e.quantity || 0), 0)))} de entrada ·{' '}
+            {formatQuantity(String(entradasN.reduce((a, e) => a + Number(e.quantity || 0), 0)))} de entrada ·{' '}
             {salidas.length} salida(s)
           </p>
         </div>

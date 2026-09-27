@@ -24,7 +24,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { ApiError } from '@/lib/api/client'
 import { useCategories } from '@/lib/catalogs/categories'
 import { useSuppliers } from '@/lib/catalogs/suppliers'
-import { sumMoney, multiplyMoney } from '@/lib/money'
+import { sumMoney, multiplyMoney, normalizeDecimalInput } from '@/lib/money'
 import { todayBogota } from '@/lib/dates'
 import { AccountPicker } from '@/components/shared/AccountPicker'
 import { PAYMENT_METHOD_LABELS } from '@/lib/paymentMethods'
@@ -32,29 +32,7 @@ import { applyServerErrors } from '@/lib/forms/applyServerErrors'
 import { useCreateEntry } from '@/features/inventory/api'
 import { entryOriginLabel, ENTRY_ORIGIN_HINTS, SELECTABLE_ENTRY_ORIGINS, entryOriginTouchesCash } from '@/lib/inventory/entryTypes'
 import { preventImplicitSubmit } from '@/lib/forms/preventImplicitSubmit'
-
-
-const entryLineSchema = z.object({
-  name: z.string().min(1, 'El nombre es obligatorio'),
-  cat1_id: z.string().min(1, 'Selecciona una categoría'),
-  cat2_id: z.string().min(1, 'Selecciona una subcategoría'),
-  cat3_id: z.string().min(1, 'Selecciona la categoría final'),
-  description: z.string().optional(),
-  unit_cost: z.string().refine((v) => Number(v) > 0, 'El costo debe ser mayor a cero'),
-  // Texto y no número: desde 00036 la cantidad puede tener decimales (12,5 g)
-  // y un `<input type=number>` con `valueAsNumber` pierde el valor a medio
-  // escribir ("12," es NaN). Se valida como cadena y se manda tal cual.
-  quantity: z.string().refine((v) => Number(v) > 0, 'La cantidad debe ser mayor a cero'),
-  unit: z.enum(['unit', 'gram', 'kilogram', 'meter', 'liter']),
-  // `true` cuando la línea salió del buscador de productos, o sea que el
-  // producto YA EXISTE. Su unidad manda y el backend ignora la que mandemos,
-  // así que el selector no puede fingir que se puede elegir.
-  from_existing_product: z.boolean().optional(),
-  // Opcionales: sin ellos el lote entra en borrador, que sigue siendo válido.
-  // Con los dos, el backend lo publica solo y queda listo para vender.
-  sale_price: z.string().optional(),
-  photos: z.array(z.string()).optional(),
-})
+import { entryLineSchema } from '@/features/inventory/entryLineSchema'
 
 const entrySchema = z
   .object({
@@ -216,7 +194,7 @@ function LineRow({
   onRemove?: () => void
 }) {
   const lista = lineIsReady(line)
-  const subtotal = multiplyMoney(line?.unit_cost || '0.00', line?.quantity || '0')
+  const subtotal = multiplyMoney(line?.unit_cost || '0.00', normalizeDecimalInput(line?.quantity || '0'))
 
   return (
     <div className="flex items-center gap-2 rounded-input border border-border bg-background px-3 py-2">
@@ -226,7 +204,7 @@ function LineRow({
           <span className="block truncate text-sm font-medium text-foreground">{line?.name || `Artículo ${index + 1}`}</span>
           <span className="flex flex-wrap items-center gap-x-2 text-xs text-muted-foreground">
             <span>
-              {formatQuantity(line?.quantity ?? '1', line?.unit)} × <Money value={line?.unit_cost || '0.00'} />
+              {formatQuantity(normalizeDecimalInput(line?.quantity ?? '1'), line?.unit)} × <Money value={line?.unit_cost || '0.00'} />
             </span>
             {(line?.photos?.length ?? 0) > 0 && (
               <span className="inline-flex items-center gap-0.5">
@@ -330,7 +308,7 @@ export function EntryFormPage() {
     withResolver: true,
   })
 
-  const totalCost = sumMoney(...lines.map((line) => multiplyMoney(line.unit_cost || '0.00', line.quantity || '0')))
+  const totalCost = sumMoney(...lines.map((line) => multiplyMoney(line.unit_cost || '0.00', normalizeDecimalInput(line.quantity || '0'))))
   const listasCount = lines.filter(lineIsReady).length
 
   /**
