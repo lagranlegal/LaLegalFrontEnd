@@ -61,7 +61,9 @@ export function ContractEditDialog({ open, onOpenChange, contract }: { open: boo
       toast.success('Contrato actualizado')
       onOpenChange(false)
     } catch (error) {
-      const banner = applyServerErrors(error, setError)
+      // Este diálogo no pinta errores por campo: todo 422 va al banner
+      // (antes se "marcaba" el avalúo y no se veía en ningún lado).
+      const banner = applyServerErrors(error, setError, { fields: [] })
       if (banner) setFormError(banner)
     }
   }

@@ -51,11 +51,25 @@ export function serverErrorFieldNames(error: unknown): string[] {
 }
 
 /**
+ * ¿El formulario pinta el error de `campo`? `fields` es la lista que declara
+ * cada formulario; `*` vale por UN índice de lista (`items.*.weight_grams`
+ * cubre `items.0.weight_grams`), no por cualquier segmento.
+ */
+function sePinta(campo: string, fields: readonly string[]): boolean {
+  const partes = campo.split('.')
+  return fields.some((patron) => {
+    const p = patron.split('.')
+    return p.length === partes.length && p.every((seg, i) => (seg === '*' ? /^\d+$/.test(partes[i]!) : seg === partes[i]))
+  })
+}
+
+/**
  * Errores por `code`, nunca por `message` (CLAUDE.md regla 9), aplicados a
  * un form de React Hook Form:
  *
  *  - `VALIDATION_ERROR` (422) → un `setError` por campo desde
- *    `details.errors` — el error vive junto a su input.
+ *    `details.errors` — el error vive junto a su input — SOLO para los
+ *    campos de `fields`; el resto va al banner.
  *  - `CONFLICT` (409) → mensaje contextual de la feature, en un campo
  *    específico si se pasa `conflictField`, o como banner si no.
  *  - cualquier otro código → banner genérico con `error.message`.
@@ -75,11 +89,26 @@ export function serverErrorFieldNames(error: unknown): string[] {
  *
  * Devolver `null` es una promesa: "el usuario ya está viendo el problema".
  * Solo se puede hacer si se cumplió.
+ *
+ * SEGUNDO PISO DEL MISMO BUG (QA 03 H-03, 27/09/2026): "marqué algún campo"
+ * tampoco es "el usuario lo está viendo". `setError` sobre un campo que el
+ * formulario no pinta (el plazo de prórroga del contrato, la cuenta del
+ * gasto, cualquier campo de editar contrato) no se ve en ningún lado, y aun
+ * así retornaba `null`. Por eso `fields` es OBLIGATORIO: cada formulario
+ * declara qué errores pinta junto a su campo, y todo lo que el servidor
+ * señale fuera de esa lista cae al banner. Si un formulario deja de pintar
+ * un campo y nadie actualiza la lista, el error aparece duplicado en el
+ * banner; nunca desaparece.
  */
 export function applyServerErrors<T extends FieldValues>(
   error: unknown,
   setError: UseFormSetError<T>,
-  options?: { conflictField?: Path<T>; conflictMessage?: string },
+  options: {
+    /** Los campos cuyo error este formulario PINTA junto al input (con `*` por índice de lista). */
+    fields: readonly string[]
+    conflictField?: Path<T>
+    conflictMessage?: string
+  },
 ): string | null {
   if (!(error instanceof ApiError)) {
     return 'Ocurrió un error inesperado. Intenta de nuevo.'
@@ -87,23 +116,27 @@ export function applyServerErrors<T extends FieldValues>(
 
   if (error.code === 'VALIDATION_ERROR') {
     const issues = Array.isArray(error.details?.errors) ? error.details.errors : []
-    const marcados: string[] = []
+    const sinDondePintarse: string[] = []
+    let marcados = 0
     for (const issue of issues) {
       const campo = Array.isArray(issue?.loc) ? nombreDeCampo(issue.loc) : ''
-      if (!campo) continue
-      setError(campo as Path<T>, { message: mensajeDe(issue) })
-      marcados.push(campo)
+      if (campo && sePinta(campo, options.fields)) {
+        setError(campo as Path<T>, { message: mensajeDe(issue) })
+        marcados++
+        continue
+      }
+      const mensaje = issue ? mensajeDe(issue) : ''
+      if (mensaje) sinDondePintarse.push(campo ? `${mensaje} (${campo})` : mensaje)
     }
-    if (marcados.length > 0) return null
-    // No se pudo señalar ningún campo: el banner es la única salida que le
-    // queda al usuario. Callarse acá es exactamente el bug de arriba.
-    const detalle = issues.map(mensajeDe).filter(Boolean).join(' ')
-    return detalle ? `${error.message} ${detalle}` : error.message
+    if (marcados > 0 && sinDondePintarse.length === 0) return null
+    // Lo que no se pudo señalar junto a su campo va al banner: es la única
+    // salida que le queda al usuario. Callarse acá es exactamente el bug.
+    return sinDondePintarse.length > 0 ? `${error.message} ${sinDondePintarse.join(' ')}` : error.message
   }
 
   if (error.code === 'CONFLICT') {
-    const message = options?.conflictMessage ?? error.message
-    if (options?.conflictField) {
+    const message = options.conflictMessage ?? error.message
+    if (options.conflictField) {
       setError(options.conflictField, { message })
       return null
     }

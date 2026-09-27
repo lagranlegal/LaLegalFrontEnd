@@ -125,7 +125,7 @@ export function ExpenseFormDialog({ open, onOpenChange }: { open: boolean; onOpe
         setCashDialogOpen(true)
         return
       }
-      const banner = applyServerErrors(error, setError)
+      const banner = applyServerErrors(error, setError, { fields: ['category_id', 'description', 'amount'] })
       if (banner) setFormError(banner)
     }
   }

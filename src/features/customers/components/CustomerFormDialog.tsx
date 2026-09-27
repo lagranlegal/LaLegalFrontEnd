@@ -146,6 +146,7 @@ export function CustomerFormDialog({ open, onOpenChange, customer }: { open: boo
       onOpenChange(false)
     } catch (error) {
       const banner = applyServerErrors(error, setError, {
+        fields: ['full_name', 'doc_number', 'phone', 'email'],
         conflictField: 'doc_number',
         conflictMessage: 'Ya existe un cliente con ese documento.',
       })

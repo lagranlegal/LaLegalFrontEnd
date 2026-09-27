@@ -62,7 +62,7 @@ export function InviteUserDialog({ open, onOpenChange }: { open: boolean; onOpen
       // plataforma"). El texto fijo que había acá era una suposición de
       // cuando el backend solo devolvía un 502 genérico, y ahora taparía la
       // respuesta buena.
-      const banner = applyServerErrors(error, setError)
+      const banner = applyServerErrors(error, setError, { fields: ['full_name', 'email', 'role_id'] })
       if (banner) setFormError(banner)
     }
   }

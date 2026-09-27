@@ -234,7 +234,7 @@ describe('F21-06: el nombre del proveedor no sale a pantalla', () => {
 
   it('el banner del formulario de invitación tampoco lo filtra', () => {
     // `InviteUserDialog` pinta lo que devuelve `applyServerErrors`.
-    const banner = applyServerErrors(parseApiError(CUOTA_DE_CORREOS.status, CUOTA_DE_CORREOS.body), () => {})
+    const banner = applyServerErrors(parseApiError(CUOTA_DE_CORREOS.status, CUOTA_DE_CORREOS.body), () => {}, { fields: [] })
     expect(banner).not.toMatch(/supabase/i)
     expect(banner).toContain('Generar enlace')
   })
@@ -246,7 +246,7 @@ describe('F21-06: el nombre del proveedor no sale a pantalla', () => {
     const sinCaja = parseApiError(ANULAR_SIN_CAJA.status, ANULAR_SIN_CAJA.body)
     expect(userMessage(sinCaja)).toBe('No hay una sesión de caja abierta para anular la venta.')
     const variasCajas = parseApiError(VARIAS_CAJAS.status, VARIAS_CAJAS.body)
-    expect(applyServerErrors(variasCajas, () => {})).toBe(VARIAS_CAJAS.body.message)
+    expect(applyServerErrors(variasCajas, () => {}, { fields: [] })).toBe(VARIAS_CAJAS.body.message)
   })
 })
 

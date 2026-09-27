@@ -159,7 +159,7 @@ export function ContractImportPage() {
         setError('capital_balance', { message: error.message })
         return
       }
-      const banner = applyServerErrors(error, setError)
+      const banner = applyServerErrors(error, setError, { fields: ['legacy_code', 'principal', 'capital_balance', 'interest_rate_pct', 'term_months', 'arrears_window_months', 'start_date', 'items', 'items.*.category_id', 'items.*.description', 'items.*.weight_grams', 'items.*.serial_imei', 'items.*.item_appraisal'] })
       if (banner) setFormError(banner)
       revealFirstError(serverErrorFieldNames(error))
     }

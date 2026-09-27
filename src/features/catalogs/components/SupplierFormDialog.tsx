@@ -94,6 +94,7 @@ export function SupplierFormDialog({ open, onOpenChange, supplier }: { open: boo
       onOpenChange(false)
     } catch (error) {
       const banner = applyServerErrors(error, setError, {
+        fields: ['name', 'code_letter', 'email'],
         conflictField: 'code_letter',
         conflictMessage: 'Ya existe un proveedor con esa letra de código.',
       })

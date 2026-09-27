@@ -27,7 +27,7 @@ describe('applyServerErrors', () => {
       },
     })
 
-    const banner = applyServerErrors(error, setError)
+    const banner = applyServerErrors(error, setError, { fields: ['doc_number', 'phone'] })
 
     expect(banner).toBeNull()
     expect(setError).toHaveBeenCalledWith('doc_number', { message: 'Ya existe' })
@@ -39,6 +39,7 @@ describe('applyServerErrors', () => {
     const error = new ApiError({ code: 'CONFLICT', message: 'conflicto', status: 409 })
 
     const banner = applyServerErrors(error, setError, {
+      fields: ['doc_number'],
       conflictField: 'doc_number',
       conflictMessage: 'Ya existe un cliente con ese documento.',
     })
@@ -51,7 +52,7 @@ describe('applyServerErrors', () => {
     const setError = vi.fn()
     const error = new ApiError({ code: 'CONFLICT', message: 'Ya existe una categoría con esa letra.', status: 409 })
 
-    const banner = applyServerErrors(error, setError)
+    const banner = applyServerErrors(error, setError, { fields: [] })
 
     expect(banner).toBe('Ya existe una categoría con esa letra.')
     expect(setError).not.toHaveBeenCalled()
@@ -61,11 +62,11 @@ describe('applyServerErrors', () => {
     const setError = vi.fn()
     const error = new ApiError({ code: 'BAD_REQUEST', message: 'Algo salió mal', status: 400 })
 
-    expect(applyServerErrors(error, setError)).toBe('Algo salió mal')
+    expect(applyServerErrors(error, setError, { fields: [] })).toBe('Algo salió mal')
   })
 
   it('errores que no son ApiError retornan un mensaje genérico', () => {
     const setError = vi.fn()
-    expect(applyServerErrors(new Error('boom'), setError)).toBe('Ocurrió un error inesperado. Intenta de nuevo.')
+    expect(applyServerErrors(new Error('boom'), setError, { fields: [] })).toBe('Ocurrió un error inesperado. Intenta de nuevo.')
   })
 })

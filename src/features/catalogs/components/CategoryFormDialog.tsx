@@ -130,6 +130,7 @@ export function CategoryFormDialog({
       onOpenChange(false)
     } catch (error) {
       const banner = applyServerErrors(error, setError, {
+        fields: ['name', 'code_letter'],
         conflictField: 'code_letter',
         conflictMessage: 'Ya existe una categoría con esa letra de código.',
       })

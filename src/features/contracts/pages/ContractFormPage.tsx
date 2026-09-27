@@ -188,7 +188,7 @@ export function ContractFormPage() {
         setCashDialogOpen(true)
         return
       }
-      const banner = applyServerErrors(error, setError)
+      const banner = applyServerErrors(error, setError, { fields: ['principal', 'interest_rate_pct', 'appraisal_value', 'notes', 'customer_email', 'customer_email_consent', 'items', 'items.*.category_id', 'items.*.description', 'items.*.weight_grams', 'items.*.serial_imei', 'items.*.item_appraisal'] })
       if (banner) setFormError(banner)
       // Los nombres salen del error del SERVIDOR, no de `errors` del formState:
       // ese todavía es el del render anterior — React no lo ha actualizado en

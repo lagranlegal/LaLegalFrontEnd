@@ -139,7 +139,7 @@ export function SettingsPage() {
       })
       toast.success('Configuración guardada')
     } catch (error) {
-      const banner = applyServerErrors(error, setError)
+      const banner = applyServerErrors(error, setError, { fields: ['name', 'legal_name', 'tax_id', 'contact_email', 'contact_phone', 'address', 'header_note', 'footer_note', 'legal_notice'] })
       if (banner) setFormError(banner)
     }
   }

@@ -52,7 +52,7 @@ export function RoleFormDialog({ open, onOpenChange, role }: { open: boolean; on
       }
       onOpenChange(false)
     } catch (error) {
-      const banner = applyServerErrors(error, setError, { conflictField: 'name', conflictMessage: 'Ya existe un rol con ese nombre.' })
+      const banner = applyServerErrors(error, setError, { fields: ['name'], conflictField: 'name', conflictMessage: 'Ya existe un rol con ese nombre.' })
       if (banner) setFormError(banner)
     }
   }

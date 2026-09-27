@@ -56,7 +56,7 @@ export function CompanyFormDialog({ open, onOpenChange }: { open: boolean; onOpe
       setInviteLink(creada.admin_invite_link ?? null)
       if (!creada.admin_invite_link) onOpenChange(false)
     } catch (error) {
-      const banner = applyServerErrors(error, setError, { conflictMessage: 'Ya existe una empresa con ese nombre.' })
+      const banner = applyServerErrors(error, setError, { fields: ['name', 'plan_code', 'subscription_expires_at', 'first_admin_email', 'first_admin_full_name'], conflictMessage: 'Ya existe una empresa con ese nombre.' })
       if (banner) setFormError(banner)
     }
   }

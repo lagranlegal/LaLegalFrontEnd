@@ -396,7 +396,7 @@ export function EntryFormPage() {
         setCashDialogOpen(true)
         return
       }
-      const banner = applyServerErrors(error, setError)
+      const banner = applyServerErrors(error, setError, { fields: ['supplier_id', 'entry_date', 'notes', 'lines', 'lines.*.name', 'lines.*.cat1_id', 'lines.*.cat2_id', 'lines.*.cat3_id', 'lines.*.unit_cost', 'lines.*.quantity'] })
       if (banner) setFormError(banner)
     }
   }
