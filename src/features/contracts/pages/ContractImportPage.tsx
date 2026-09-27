@@ -22,6 +22,7 @@ import type { Customer } from '@/lib/customers/search'
 import { CustomerPicker } from '@/components/shared/CustomerPicker'
 import { ContractItemsFields } from '@/features/contracts/components/ContractItemsFields'
 import { contractItemSchema, emptyContractItem } from '@/features/contracts/contractItemSchema'
+import { preventImplicitSubmit } from '@/lib/forms/preventImplicitSubmit'
 
 const importSchema = z
   .object({
@@ -172,7 +173,7 @@ export function ContractImportPage() {
         description="Migra un contrato de empeño del sistema anterior con su saldo real. No desembolsa dinero — ese préstamo ya se entregó afuera."
       />
 
-      <form onSubmit={handleSubmit(onSubmit, señalarProblemas)} className="flex flex-col gap-6" noValidate>
+      <form onKeyDown={preventImplicitSubmit} onSubmit={handleSubmit(onSubmit, señalarProblemas)} className="flex flex-col gap-6" noValidate>
         <section className="flex flex-col gap-4 rounded-card border border-border bg-card p-card shadow-card">
           <h2 className="text-sm font-medium text-foreground">Referencia y cliente</h2>
           <div>

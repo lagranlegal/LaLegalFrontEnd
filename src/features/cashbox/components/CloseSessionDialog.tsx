@@ -10,6 +10,7 @@ import { cn } from '@/lib/utils'
 import { useCloseSession, useSessionReport, type Session } from '@/features/cashbox/api'
 import { SessionReportPanel } from '@/features/cashbox/components/SessionReportPanel'
 import { DenominationCounter } from '@/features/cashbox/components/DenominationCounter'
+import { preventImplicitSubmit } from '@/lib/forms/preventImplicitSubmit'
 
 const inputClass = 'mt-1 w-full rounded-input border border-border bg-background px-3 py-2 text-sm text-foreground outline-none focus:border-primary'
 
@@ -58,7 +59,7 @@ export function CloseSessionDialog({ open, onOpenChange, session }: { open: bool
         </Button>
       }
     >
-      <form id="close-session-form" onSubmit={handleSubmit} className="flex flex-col gap-4" noValidate>
+      <form onKeyDown={preventImplicitSubmit} id="close-session-form" onSubmit={handleSubmit} className="flex flex-col gap-4" noValidate>
         {isPending && <div className="h-40 animate-pulse rounded-card bg-border" />}
         {isError && (
           <div className="flex flex-col items-center gap-2 rounded-card border border-border p-card text-center">

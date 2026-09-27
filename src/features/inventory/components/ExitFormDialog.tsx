@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { useCreateExit } from '@/features/inventory/api'
 import type { Item } from '@/lib/inventory/items'
+import { preventImplicitSubmit } from '@/lib/forms/preventImplicitSubmit'
 
 
 const inputClass = 'mt-1 w-full rounded-input border border-border bg-background px-3 py-2 text-sm text-foreground outline-none focus:border-primary'
@@ -82,7 +83,7 @@ export function ExitFormDialog({ open, onOpenChange }: { open: boolean; onOpenCh
         </Button>
       }
     >
-      <form id="exit-form" onSubmit={handleSubmit} className="flex flex-col gap-4" noValidate>
+      <form onKeyDown={preventImplicitSubmit} id="exit-form" onSubmit={handleSubmit} className="flex flex-col gap-4" noValidate>
         <div>
           <label className="text-sm font-medium text-foreground">Tipo de egreso</label>
           <Select value={exitType} onValueChange={(v) => setExitType(v as typeof exitType)}>

@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query'
+import { queryOptions, useQuery } from '@tanstack/react-query'
 import { api, unwrap } from '@/lib/api/client'
 import type { components } from '@/types/api'
 
@@ -50,19 +50,31 @@ export function useItemsByIds(itemIds: (string | null | undefined)[]) {
   })
 }
 
-export function useAvailableItemsSearch(q: string) {
+/**
+ * Opciones de la búsqueda, aparte del hook, para que `ItemPicker` pueda
+ * resolver un Enter con `fetchQuery` (la MISMA entrada de cache que pinta la
+ * lista): el lector de código de barras manda Enter antes de que venza el
+ * debounce del buscador, así que el Enter no puede depender de la lista ya
+ * pintada. Por eso la lista de artículos sale del `queryFn` y no de un
+ * `select` (que `fetchQuery` no aplica).
+ */
+export function availableItemsSearchOptions(q: string) {
   const query = q.trim()
-  return useQuery({
+  return queryOptions({
     // `q` va en la clave: cada término es su propia entrada de cache, así que
     // volver a un término ya buscado es instantáneo.
     queryKey: ['inventory', 'items', 'available-search', query] as const,
-    queryFn: () => unwrap(api.GET('/api/v1/inventory/items', { params: { query: { status: 'available', q: query, limit: 8 } } })),
+    queryFn: async () =>
+      (await unwrap(api.GET('/api/v1/inventory/items', { params: { query: { status: 'available', q: query, limit: 8 } } }))).items,
     // Sin término no se pide nada (el picker no muestra lista hasta que se
     // escribe). `SearchInput` ya trae debounce de 300ms, así que no se
     // dispara una request por tecla.
     enabled: query.length > 0,
-    select: (page) => page.items,
   })
+}
+
+export function useAvailableItemsSearch(q: string) {
+  return useQuery(availableItemsSearchOptions(q))
 }
 
 /**
@@ -103,12 +115,31 @@ export function useItemsForRestock(q: string, supplierId?: string) {
  * lista corta. Lo vendido y lo dado de baja quedan afuera: su stock ya no
  * existe y el backend los rechaza.
  */
-export function useTransformableItemsSearch(q: string) {
+export function transformableItemsSearchOptions(q: string) {
   const query = q.trim()
-  return useQuery({
+  return queryOptions({
     queryKey: ['inventory', 'items', 'transformable-search', query] as const,
-    queryFn: () => unwrap(api.GET('/api/v1/inventory/items', { params: { query: { q: query, limit: 20 } } })),
+    queryFn: async () =>
+      (await unwrap(api.GET('/api/v1/inventory/items', { params: { query: { q: query, limit: 20 } } }))).items
+        .filter((item) => item.status === 'available' || item.status === 'draft')
+        .slice(0, 8),
     enabled: query.length > 0,
-    select: (page) => page.items.filter((item) => item.status === 'available' || item.status === 'draft').slice(0, 8),
   })
+}
+
+export function useTransformableItemsSearch(q: string) {
+  return useQuery(transformableItemsSearchOptions(q))
+}
+
+/**
+ * Qué artículo agrega un Enter en el buscador: el de código EXACTO, o el
+ * único resultado. Con varios candidatos y ninguno exacto no se elige nada:
+ * adivinar por el cajero es peor que obligarlo a hacer clic.
+ */
+export function pickOnEnter(items: Item[], term: string): Item | null {
+  const t = term.trim().toLowerCase()
+  if (!t) return null
+  const exacto = items.find((item) => item.code?.toLowerCase() === t)
+  if (exacto) return exacto
+  return items.length === 1 ? (items[0] ?? null) : null
 }

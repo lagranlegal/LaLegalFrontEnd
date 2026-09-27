@@ -30,6 +30,7 @@ import { LtvHint } from '@/features/contracts/components/LtvHint'
 import { AccountPicker } from '@/components/shared/AccountPicker'
 import { PAYMENT_METHOD_LABELS } from '@/lib/paymentMethods'
 import { customerNoticePayload, customerNoticeState } from '@/features/contracts/customerNotice'
+import { preventImplicitSubmit } from '@/lib/forms/preventImplicitSubmit'
 
 const contractSchema = z.object({
   principal: z.string().refine((v) => Number(v) > 0, 'El monto del préstamo debe ser mayor a cero'),
@@ -201,7 +202,7 @@ export function ContractFormPage() {
       <BackLink to="/contratos" label="Contratos" />
       <PageHeader title="Nuevo contrato" description="Registra el préstamo y las prendas que quedan en garantía." />
 
-      <form onSubmit={handleSubmit(onSubmit, señalarProblemas)} className="flex flex-col gap-6" noValidate>
+      <form onKeyDown={preventImplicitSubmit} onSubmit={handleSubmit(onSubmit, señalarProblemas)} className="flex flex-col gap-6" noValidate>
         <section className="flex flex-col gap-4 rounded-card border border-border bg-card p-card shadow-card">
           <h2 className="text-sm font-medium text-foreground">Cliente</h2>
           <CustomerPicker

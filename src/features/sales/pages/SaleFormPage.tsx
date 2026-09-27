@@ -25,6 +25,7 @@ import { useCustomerCreditNotes } from '@/lib/sales/creditNotes'
 import { minMoney } from '@/lib/money'
 import type { Item } from '@/lib/inventory/items'
 import type { Customer } from '@/lib/customers/search'
+import { preventImplicitSubmit } from '@/lib/forms/preventImplicitSubmit'
 
 interface CartLine {
   item: Item
@@ -139,14 +140,15 @@ export function SaleFormPage() {
       <BackLink to="/ventas" label="Ventas" />
       <PageHeader title="Nueva venta" description="Busca el artículo por código o nombre y agrégalo al carrito." />
 
-      <form onSubmit={handleSubmit} className="grid grid-cols-1 gap-6 lg:grid-cols-[2fr_1fr]" noValidate>
+      <form onKeyDown={preventImplicitSubmit} onSubmit={handleSubmit} className="grid grid-cols-1 gap-6 lg:grid-cols-[2fr_1fr]" noValidate>
         <div className="flex flex-col gap-4">
           <div className="rounded-card border border-border bg-card p-card shadow-card">
-            {/* El buscador vive DENTRO del <form>, así que Enter dispara el
-                submit (registrar la venta), no un "agregar". El placeholder
-                decía "(Enter agrega)" y le pedía al cajero justo lo que no
-                debe hacer — se rotula la interacción real: agregar con clic. */}
-            <ItemPicker onSelect={addToCart} placeholder="Buscar artículo por código o nombre… (agrega con clic)" />
+            {/* El buscador vive DENTRO del <form>: Enter disparaba el submit
+                y cobraba el carrito ya armado (QA F6-03, confirmado en vivo).
+                Ahora Enter AGREGA el artículo de código exacto (lo que manda
+                un lector de código de barras) y el formulario entero ignora
+                el envío implícito: la venta se registra solo con "Vender". */}
+            <ItemPicker onSelect={addToCart} placeholder="Buscar o escanear artículo por código o nombre…" />
           </div>
 
           <div className="overflow-hidden rounded-card border border-border bg-card shadow-card">

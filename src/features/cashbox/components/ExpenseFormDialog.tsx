@@ -15,6 +15,7 @@ import { AccountPicker } from '@/components/shared/AccountPicker'
 import { PAYMENT_METHOD_LABELS } from '@/lib/paymentMethods'
 import { MODULE_LABELS } from '@/lib/modules'
 import { useCreateExpense, useCreateExpenseCategory, useExpenseCategories } from '@/features/cashbox/api'
+import { preventImplicitSubmit } from '@/lib/forms/preventImplicitSubmit'
 
 const expenseSchema = z.object({
   category_id: z.string().min(1, 'Selecciona una categoría'),
@@ -146,7 +147,7 @@ export function ExpenseFormDialog({ open, onOpenChange }: { open: boolean; onOpe
           </div>
         }
       >
-        <form id="expense-form" onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-4" noValidate>
+        <form onKeyDown={preventImplicitSubmit} id="expense-form" onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-4" noValidate>
           <div>
             <label className="text-sm font-medium text-foreground">Categoría</label>
             <Controller control={control} name="category_id" render={({ field }) => <ExpenseCategoryField value={field.value} onChange={field.onChange} />} />

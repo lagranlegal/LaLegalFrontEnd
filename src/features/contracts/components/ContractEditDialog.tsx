@@ -9,6 +9,7 @@ import { PhotoUploader } from '@/components/shared/PhotoUploader'
 import { Button } from '@/components/ui/button'
 import { applyServerErrors } from '@/lib/forms/applyServerErrors'
 import { useUpdateContract, type Contract } from '@/features/contracts/api'
+import { preventImplicitSubmit } from '@/lib/forms/preventImplicitSubmit'
 
 const editSchema = z.object({
   appraisal_value: z.string().optional(),
@@ -76,7 +77,7 @@ export function ContractEditDialog({ open, onOpenChange, contract }: { open: boo
         </Button>
       }
     >
-      <form id="contract-edit-form" onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-4" noValidate>
+      <form onKeyDown={preventImplicitSubmit} id="contract-edit-form" onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-4" noValidate>
         <div>
           <label htmlFor="appraisal_value" className="text-sm font-medium text-foreground">
             Avalúo total

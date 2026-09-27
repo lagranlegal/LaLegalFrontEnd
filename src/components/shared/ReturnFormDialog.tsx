@@ -12,6 +12,7 @@ import { useCreateReturn, useSaleReturns, returnSettlementSummary, RETURN_REASON
 import { compareMoney, formatCOP } from '@/lib/money'
 import type { Sale } from '@/lib/sales/void'
 import type { Customer } from '@/lib/customers/search'
+import { preventImplicitSubmit } from '@/lib/forms/preventImplicitSubmit'
 
 const inputClass = 'mt-1 w-full rounded-input border border-border bg-background px-3 py-2 text-sm text-foreground outline-none focus:border-primary'
 
@@ -152,7 +153,7 @@ export function ReturnFormDialog({ open, onOpenChange, sale }: { open: boolean; 
   return (
     <>
       <AppDialog open={open} onOpenChange={onOpenChange} title="Devolución de cliente" description={`Venta #${sale.number}`} size="lg">
-        <form onSubmit={handleSubmit} className="flex flex-col gap-4" noValidate>
+        <form onKeyDown={preventImplicitSubmit} onSubmit={handleSubmit} className="flex flex-col gap-4" noValidate>
           <div className="overflow-hidden rounded-input border border-border">
             {sale.lines.map((line) => (
               <ReturnLineRow

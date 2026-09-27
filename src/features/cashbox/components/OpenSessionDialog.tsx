@@ -7,6 +7,7 @@ import { openSessionErrorMessage, useOpenSession } from '@/features/cashbox/api'
 import { useAccounts } from '@/lib/accounts/list'
 import { cashOnHand } from '@/lib/accounts/types'
 import { subtractMoney } from '@/lib/money'
+import { preventImplicitSubmit } from '@/lib/forms/preventImplicitSubmit'
 
 /**
  * Abrir el turno.
@@ -88,7 +89,7 @@ export function OpenSessionDialog({ open, onOpenChange }: { open: boolean; onOpe
         </div>
       }
     >
-      <form id="open-session-form" onSubmit={handleSubmit} className="flex flex-col gap-4">
+      <form onKeyDown={preventImplicitSubmit} id="open-session-form" onSubmit={handleSubmit} className="flex flex-col gap-4">
         <div className="flex items-center justify-between rounded-card bg-muted px-3 py-2">
           <span className="text-sm text-muted-foreground">Efectivo registrado en el cajón</span>
           {accountsPending ? (

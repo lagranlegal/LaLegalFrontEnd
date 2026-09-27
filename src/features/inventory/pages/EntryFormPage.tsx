@@ -31,6 +31,7 @@ import { PAYMENT_METHOD_LABELS } from '@/lib/paymentMethods'
 import { applyServerErrors } from '@/lib/forms/applyServerErrors'
 import { useCreateEntry } from '@/features/inventory/api'
 import { entryOriginLabel, ENTRY_ORIGIN_HINTS, SELECTABLE_ENTRY_ORIGINS, entryOriginTouchesCash } from '@/lib/inventory/entryTypes'
+import { preventImplicitSubmit } from '@/lib/forms/preventImplicitSubmit'
 
 
 const entryLineSchema = z.object({
@@ -424,7 +425,7 @@ export function EntryFormPage() {
         description="Registra la mercancía que entra al inventario. Con precio queda lista para vender; sin precio, en borrador."
       />
 
-      <form onSubmit={handleSubmit(onSubmit, señalarProblemas)} className="flex flex-col gap-6" noValidate>
+      <form onKeyDown={preventImplicitSubmit} onSubmit={handleSubmit(onSubmit, señalarProblemas)} className="flex flex-col gap-6" noValidate>
         <section className="flex flex-col gap-4 rounded-card border border-border bg-card p-card shadow-card">
           <h2 className="text-sm font-medium text-foreground">Origen</h2>
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
