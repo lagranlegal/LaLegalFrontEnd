@@ -15,6 +15,7 @@ export function MoneyInput({
   autoFocus,
   className,
   optional,
+  ariaLabel,
 }: {
   value: string
   onChange: (decimalValue: string) => void
@@ -29,6 +30,8 @@ export function MoneyInput({
    * Un cero escrito a propósito sigue siendo `"0.00"`.
    */
   optional?: boolean
+  /** Nombre accesible cuando el `<label>` visible no alcanza a distinguirlo (una fila de varias). */
+  ariaLabel?: string
 }) {
   const display = maskMoneyInput(value.split('.')[0] ?? '')
   return (
@@ -36,6 +39,7 @@ export function MoneyInput({
       <span className="text-sm text-muted-foreground">$</span>
       <input
         id={id}
+        aria-label={ariaLabel}
         type="text"
         inputMode="numeric"
         autoFocus={autoFocus}

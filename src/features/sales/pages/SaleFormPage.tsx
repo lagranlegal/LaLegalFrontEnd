@@ -15,7 +15,10 @@ import { Can } from '@/components/shared/Can'
 import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { ApiError } from '@/lib/api/client'
-import { formatCOP, multiplyMoney, subtractMoney, sumMoney } from '@/lib/money'
+import { userMessage } from '@/lib/api/errors'
+import { compareMoney, formatCOP, multiplyMoney, subtractMoney, sumMoney } from '@/lib/money'
+import { usePermission } from '@/lib/permissions/usePermission'
+import { belowPriceDiscount } from '@/lib/sales/discount'
 import { AccountPicker } from '@/components/shared/AccountPicker'
 import { PAYMENT_METHOD_LABELS } from '@/lib/paymentMethods'
 import { useCreateSale } from '@/features/sales/api'
@@ -30,6 +33,13 @@ import { preventImplicitSubmit } from '@/lib/forms/preventImplicitSubmit'
 interface CartLine {
   item: Item
   quantity: number
+  /**
+   * Lo que se cobra por unidad. Arranca en el precio publicado; solo quien
+   * tiene `sales.apply_discount` lo puede cambiar, porque bajarlo es un
+   * descuento (F6-05 del backend) y subirlo sin ese permiso no tiene caso de
+   * uso en el mostrador.
+   */
+  unitPrice: string
 }
 
 const inputClass = 'mt-1 w-full rounded-input border border-border bg-background px-3 py-2 text-sm text-foreground outline-none focus:border-primary'
@@ -37,6 +47,7 @@ const inputClass = 'mt-1 w-full rounded-input border border-border bg-background
 export function SaleFormPage() {
   const navigate = useNavigate()
   const createSale = useCreateSale()
+  const canDiscount = usePermission('sales.apply_discount')
 
   const [cart, setCart] = useState<CartLine[]>([])
   const [customer, setCustomer] = useState<Customer | null>(null)
@@ -48,6 +59,13 @@ export function SaleFormPage() {
   const [cashDialogOpen, setCashDialogOpen] = useState(false)
   const [creditNoteId, setCreditNoteId] = useState<string | null>(null)
   const [creditNoteAmount, setCreditNoteAmount] = useState('0.00')
+  /**
+   * El backend pidió motivo por una rebaja que la pantalla no vio: el precio
+   * publicado subió con el carrito ya armado, y lo cargado quedó por debajo
+   * (400 con `details.price_discount`). Se muestra el campo del motivo; lo
+   * que venda es decisión del cajero.
+   */
+  const [serverPriceDiscount, setServerPriceDiscount] = useState<string | null>(null)
   const submittedRef = useRef(false)
 
   // Perder un carrito armado sin aviso era el hueco más agudo de navegación
@@ -76,7 +94,7 @@ export function SaleFormPage() {
           line.item.id === item.id ? { ...line, quantity: clampQuantity(item.unit, Number(item.quantity), line.quantity + 1) } : line,
         )
       }
-      return [...prev, { item, quantity: 1 }]
+      return [...prev, { item, quantity: 1, unitPrice: item.sale_price ?? '0.00' }]
     })
   }
 
@@ -91,12 +109,21 @@ export function SaleFormPage() {
     )
   }
 
+  function updateUnitPrice(itemId: string, unitPrice: string) {
+    setCart((prev) => prev.map((line) => (line.item.id === itemId ? { ...line, unitPrice } : line)))
+  }
+
   function removeLine(itemId: string) {
     setCart((prev) => prev.filter((line) => line.item.id !== itemId))
   }
 
-  const subtotal = sumMoney(...cart.map((line) => multiplyMoney(line.item.sale_price ?? '0.00', line.quantity)))
+  const subtotal = sumMoney(...cart.map((line) => multiplyMoney(line.unitPrice, line.quantity)))
   const hasDiscount = Number(discountAmount) > 0
+  const priceDiscount = belowPriceDiscount(cart.map((line) => ({ publishedPrice: line.item.sale_price, unitPrice: line.unitPrice, quantity: line.quantity })))
+  const hasPriceDiscount = compareMoney(priceDiscount, '0.00') > 0
+  // Motivo: con descuento explícito, con una línea por debajo del precio
+  // publicado, o cuando el backend lo pidió por una rebaja que acá no se veía.
+  const needsReason = hasDiscount || hasPriceDiscount || serverPriceDiscount !== null
   const total = hasDiscount ? subtractMoney(subtotal, discountAmount) : subtotal
   const hasCreditNote = !!creditNoteId && Number(creditNoteAmount) > 0
   const cashAmount = hasCreditNote ? subtractMoney(total, creditNoteAmount) : total
@@ -108,8 +135,10 @@ export function SaleFormPage() {
       setFormError('Agrega al menos un artículo al carrito.')
       return
     }
-    if (hasDiscount && !discountReason.trim()) {
-      setFormError('El descuento necesita un motivo.')
+    if (needsReason && !discountReason.trim()) {
+      setFormError(
+        hasDiscount ? 'El descuento necesita un motivo.' : 'Vender por debajo del precio publicado es un descuento: necesita un motivo.',
+      )
       return
     }
     try {
@@ -117,9 +146,9 @@ export function SaleFormPage() {
         customer_id: customer?.id ?? null,
         payment_method: paymentMethod,
         account_id: accountId,
-        lines: cart.map((line) => ({ item_id: line.item.id, quantity: String(line.quantity), unit_price: line.item.sale_price ?? '0.00' })),
+        lines: cart.map((line) => ({ item_id: line.item.id, quantity: String(line.quantity), unit_price: line.unitPrice })),
         discount_amount: hasDiscount ? discountAmount : null,
-        discount_reason: hasDiscount ? discountReason : null,
+        discount_reason: needsReason ? discountReason.trim() : null,
         credit_note_id: hasCreditNote ? creditNoteId : null,
         credit_note_amount: hasCreditNote ? creditNoteAmount : null,
       })
@@ -131,7 +160,10 @@ export function SaleFormPage() {
         setCashDialogOpen(true)
         return
       }
-      setFormError(error instanceof ApiError ? error.message : 'No se pudo registrar la venta. Intenta de nuevo.')
+      if (error instanceof ApiError && typeof error.details?.price_discount === 'string') {
+        setServerPriceDiscount(error.details.price_discount)
+      }
+      setFormError(error instanceof ApiError ? userMessage(error) : 'No se pudo registrar la venta. Intenta de nuevo.')
     }
   }
 
@@ -156,13 +188,29 @@ export function SaleFormPage() {
               <p className="p-card text-center text-sm text-muted-foreground">El carrito está vacío — busca un artículo arriba.</p>
             ) : (
               <div className="divide-y divide-border">
-                {cart.map(({ item, quantity }) => (
+                {cart.map(({ item, quantity, unitPrice }) => {
+                  const belowPublished = item.sale_price !== null && compareMoney(unitPrice, item.sale_price) < 0
+                  return (
                   <div key={item.id} className="flex flex-wrap items-center justify-between gap-3 p-4">
                     <div>
                       <p className="font-medium text-foreground">{item.name}</p>
                       <p className="text-xs text-muted-foreground">
                         {item.code && <span className="font-mono">{item.code}</span>} · <Money value={item.sale_price ?? '0.00'} />
                       </p>
+                      {/* Cambiar el precio de la línea: solo con permiso de
+                          descuentos. Bajarlo del publicado ES un descuento
+                          (F6-05 del backend): pide motivo y queda auditado. */}
+                      {canDiscount && (
+                        <div className="mt-2 flex items-center gap-2">
+                          <label htmlFor={`precio-${item.id}`} className="text-xs text-muted-foreground">
+                            Precio
+                          </label>
+                          <MoneyInput id={`precio-${item.id}`} ariaLabel={`Precio de ${item.name}`} className="w-36" value={unitPrice} onChange={(v) => updateUnitPrice(item.id, v)} />
+                        </div>
+                      )}
+                      {belowPublished && (
+                        <p className="mt-1 text-xs text-warning">Por debajo del precio publicado: cuenta como descuento y necesita motivo.</p>
+                      )}
                     </div>
                     <div className="flex items-center gap-3">
                       {/* Contar y PESAR son gestos distintos. Los botones +/-
@@ -193,13 +241,14 @@ export function SaleFormPage() {
                           </Button>
                         </div>
                       )}
-                      <Money value={multiplyMoney(item.sale_price ?? '0.00', quantity)} className="w-24 text-right font-medium" />
+                      <Money value={multiplyMoney(unitPrice, quantity)} className="w-24 text-right font-medium" />
                       <Button type="button" variant="ghost" size="icon-sm" aria-label="Quitar" onClick={() => removeLine(item.id)}>
                         <Trash2 className="size-4 text-danger" />
                       </Button>
                     </div>
                   </div>
-                ))}
+                  )
+                })}
               </div>
             )}
           </div>
@@ -284,13 +333,19 @@ export function SaleFormPage() {
                 <label className="text-sm font-medium text-foreground">Descuento (opcional)</label>
                 <MoneyInput className="mt-1" value={discountAmount} onChange={setDiscountAmount} />
               </div>
-              {hasDiscount && (
-                <div>
-                  <label className="text-sm font-medium text-foreground">Motivo del descuento</label>
-                  <input className={inputClass} value={discountReason} onChange={(e) => setDiscountReason(e.target.value)} />
-                </div>
-              )}
             </Can>
+            {/* Fuera del <Can>: el backend puede pedir el motivo aunque la
+                pantalla no viera rebaja (el precio publicado cambió con el
+                carrito armado). Sin el permiso, ese envío termina en un 403
+                que ya explica qué falta. */}
+            {needsReason && (
+              <div>
+                <label htmlFor="sale-discount-reason" className="text-sm font-medium text-foreground">
+                  Motivo del descuento
+                </label>
+                <input id="sale-discount-reason" className={inputClass} value={discountReason} onChange={(e) => setDiscountReason(e.target.value)} />
+              </div>
+            )}
           </div>
 
           <div className="flex flex-col gap-2 rounded-card border border-border bg-card p-card shadow-card text-sm">
@@ -298,6 +353,12 @@ export function SaleFormPage() {
               <span className="text-muted-foreground">Subtotal</span>
               <Money value={subtotal} />
             </div>
+            {hasPriceDiscount && (
+              <div className="flex items-center justify-between">
+                <span className="text-muted-foreground">Rebajado del precio publicado (ya incluido)</span>
+                <Money value={priceDiscount} />
+              </div>
+            )}
             {hasDiscount && (
               <div className="flex items-center justify-between">
                 <span className="text-muted-foreground">Descuento</span>

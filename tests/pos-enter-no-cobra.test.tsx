@@ -39,6 +39,9 @@ vi.mock('@/components/shared/CustomerPicker', () => ({ CustomerPicker: () => <in
 vi.mock('@/components/shared/AccountPicker', () => ({ AccountPicker: () => null }))
 vi.mock('@/components/shared/CashSessionRequiredDialog', () => ({ CashSessionRequiredDialog: () => null }))
 vi.mock('@/components/shared/Can', () => ({ Can: ({ children }: { children: ReactNode }) => children }))
+// El POS pregunta por `sales.apply_discount` para dejar editar el precio de
+// la línea (F6-05); sin este mock, `useMe` leería el `apiGet` de artículos.
+vi.mock('@/lib/permissions/usePermission', () => ({ usePermission: () => false }))
 
 const { SaleFormPage } = await import('@/features/sales/pages/SaleFormPage')
 
