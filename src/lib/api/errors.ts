@@ -7,6 +7,7 @@
  * los componentes que consuman estos errores — este módulo solo detecta y
  * tipa el código, no reacciona por sí mismo.
  */
+import { formatCOP } from '@/lib/money'
 
 export const API_ERROR_CODES = [
   'UNAUTHORIZED',
@@ -153,6 +154,32 @@ export const API_ERROR_CODES = [
   // baja ya muestra el mensaje del backend («espere un momento…») y, en la
   // carga, su botón «Reintentar» — que es justo lo que hay que hacer.
   'RATE_LIMITED',
+  // Auditoría 27/09/2026 del backend (e030188..5bef3ce). Todos traen un
+  // mensaje del backend ya escrito para quien opera; dos se completan con su
+  // `details` en `userMessage` (ver abajo).
+  //
+  // Quien gestiona usuarios o roles solo reparte permisos que él mismo tiene
+  // (F3-02). 403, pero NO es `PERMISSION_DENIED`: no hay que refrescar `/me`,
+  // el rol de uno está bien. `details.missing_permissions` = los que faltan.
+  'ROLE_EXCEEDS_ACTOR_PERMISSIONS',
+  // Nadie se cambia su propio rol (403). La ficha propia ya no ofrece el
+  // selector; esto cubre la carrera.
+  'CANNOT_CHANGE_OWN_ROLE',
+  // Categoría con `max_ltv_pct` y sin avalúo, sin `contracts.override_ltv`
+  // (422, F4-05). El formulario lo pide antes de enviar.
+  'CONTRACT_APPRAISAL_REQUIRED',
+  // Saldar dentro del primer mes cobra un mes de interés (422, F4-11).
+  // `details: {months_required, payoff_interest, payoff_total}`.
+  'PAYMENT_MINIMUM_INTEREST_REQUIRED',
+  // Segundo pago de una compra ya pagada (409): no es un conflicto genérico,
+  // es "ya está hecho".
+  'PURCHASE_ALREADY_PAID',
+  // Nombres repetidos que antes eran `CONFLICT` o un 500 (409). Los cuatro se
+  // señalan en el campo `name` del formulario (`applyServerErrors`).
+  'ROLE_NAME_TAKEN',
+  'ACCOUNT_NAME_TAKEN',
+  'EXPENSE_CATEGORY_NAME_TAKEN',
+  'CATEGORY_NAME_TAKEN',
 ] as const
 
 export type ApiErrorCode = (typeof API_ERROR_CODES)[number]
@@ -257,7 +284,35 @@ const FRONT_MESSAGES: Partial<Record<ApiErrorCode, string>> = {
  */
 export function userMessage(error: ApiError): string {
   if (error.code === 'UNKNOWN') return error.message
+  const conDetalle = messageWithDetails(error)
+  if (conDetalle) return conDetalle
   return FRONT_MESSAGES[error.code] ?? error.message
+}
+
+/** Cuántos permisos se nombran antes de resumir con «y N más». */
+const MAX_PERMISOS_NOMBRADOS = 5
+
+/**
+ * Los códigos cuyo `message` del backend es correcto pero incompleto: la
+ * cifra o la lista que responde "¿y entonces qué?" viene en `details`. Se
+ * AGREGA al texto del backend, no se reemplaza.
+ */
+function messageWithDetails(error: ApiError): string | null {
+  const details = error.details ?? {}
+  if (error.code === 'ROLE_EXCEEDS_ACTOR_PERMISSIONS') {
+    const faltan = Array.isArray(details.missing_permissions) ? details.missing_permissions.filter((p): p is string => typeof p === 'string') : []
+    if (faltan.length === 0) return null
+    const nombrados = faltan.slice(0, MAX_PERMISOS_NOMBRADOS).join(', ')
+    const resto = faltan.length - MAX_PERMISOS_NOMBRADOS
+    return `${error.message} Te ${faltan.length === 1 ? 'falta' : 'faltan'}: ${nombrados}${resto > 0 ? ` y ${resto} más` : ''}.`
+  }
+  if (error.code === 'PAYMENT_MINIMUM_INTEREST_REQUIRED') {
+    const total = details.payoff_total
+    const interes = details.payoff_interest
+    if (typeof total !== 'string' || typeof interes !== 'string') return null
+    return `${error.message} Para saldarlo hoy son ${formatCOP(total)} (incluye ${formatCOP(interes)} de interés).`
+  }
+  return null
 }
 
 export function parseApiError(status: number, body: unknown): ApiError {

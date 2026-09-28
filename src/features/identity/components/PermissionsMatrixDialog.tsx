@@ -3,6 +3,7 @@ import { AppDialog } from '@/components/shared/AppDialog'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { ApiError } from '@/lib/api/client'
+import { userMessage } from '@/lib/api/errors'
 import { businessModuleLabel } from '@/lib/businessModules'
 import { useRolePermissions, useUpdateRolePermissions, usePermissionsCatalog, type Permission, type Role } from '@/features/identity/api'
 
@@ -42,7 +43,7 @@ function PermissionsChecklist({ role, catalog, initialCodes, onSaved }: { role: 
       await updatePermissions.mutateAsync({ roleId: role.id, permissionCodes: Array.from(checked) })
       onSaved()
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Ocurrió un error inesperado. Intenta de nuevo.')
+      setError(err instanceof ApiError ? userMessage(err) : 'Ocurrió un error inesperado. Intenta de nuevo.')
     }
   }
 

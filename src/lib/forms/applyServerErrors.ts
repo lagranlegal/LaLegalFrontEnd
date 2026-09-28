@@ -18,10 +18,36 @@ const MENSAJES: Record<string, string> = {
   string_too_short: 'Este dato es obligatorio.',
   greater_than: 'Tiene que ser mayor que cero.',
   date_parsing: 'Escribe una fecha válida.',
+  // Los tres que traduce la BASE (`app/core/errors.py::_db_validation_error`,
+  // 27/09/2026): llegan con la misma forma que los de Pydantic y su `msg` ya
+  // viene en español; se fijan acá para no depender de ese texto.
+  not_null: 'Este campo no puede quedar vacío.',
+  check: 'Un valor está fuera de lo permitido.',
+  data: 'Un valor no cabe en el formato permitido.',
 }
 
 function mensajeDe(issue: ValidationIssue): string {
+  // `decimal_max_places` sirve para dinero (2) y para cantidades (3): el
+  // número sale de `ctx`, no se supone.
+  if (issue.type === 'decimal_max_places') {
+    const lugares = (issue as { ctx?: { decimal_places?: unknown } }).ctx?.decimal_places
+    if (typeof lugares === 'number') return `Máximo ${lugares} ${lugares === 1 ? 'decimal' : 'decimales'}.`
+  }
+  // Un `ValueError` de un validador propio del backend ya trae el texto en
+  // español, pero Pydantic le antepone «Value error, ».
+  if (issue.type === 'value_error') return issue.msg.replace(/^Value error, /, '')
   return (issue.type && MENSAJES[issue.type]) || issue.msg
+}
+
+/**
+ * Nombre repetido (409): `ROLE_NAME_TAKEN`, `ACCOUNT_NAME_TAKEN`,
+ * `EXPENSE_CATEGORY_NAME_TAKEN`, `CATEGORY_NAME_TAKEN`. Hasta el 27/09/2026
+ * eran `CONFLICT` o un 500. Van al campo `name` y no al `conflictField` del
+ * formulario: en categorías ese es la LETRA de código, y marcarla ahí
+ * mandaría a cambiar la letra cuando lo repetido es el nombre.
+ */
+function esNombreRepetido(code: string): boolean {
+  return code.endsWith('_NAME_TAKEN')
 }
 
 /**
@@ -132,6 +158,14 @@ export function applyServerErrors<T extends FieldValues>(
     // Lo que no se pudo señalar junto a su campo va al banner: es la única
     // salida que le queda al usuario. Callarse acá es exactamente el bug.
     return sinDondePintarse.length > 0 ? `${error.message} ${sinDondePintarse.join(' ')}` : error.message
+  }
+
+  if (esNombreRepetido(error.code)) {
+    if (options.fields.includes('name')) {
+      setError('name' as Path<T>, { message: error.message })
+      return null
+    }
+    return error.message
   }
 
   if (error.code === 'CONFLICT') {

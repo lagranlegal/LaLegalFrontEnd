@@ -6,6 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { UserStatusBadge } from '@/features/identity/components/UserStatusBadge'
 import { confirm } from '@/components/shared/confirmStore'
 import { ApiError } from '@/lib/api/client'
+import { userMessage } from '@/lib/api/errors'
 import { formatDateTime } from '@/lib/dates'
 import { useDeactivateUser, useReactivateUser, useRecoveryLink, useRoles, useUpdateUserRole, type User } from '@/features/identity/api'
 
@@ -58,7 +59,7 @@ export function UserDetailDialog({ open, onOpenChange, user, isSelf }: { open: b
       setEnlace(resultado.recovery_link)
       setCopiado(false)
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'No se pudo generar el enlace.')
+      setError(err instanceof ApiError ? userMessage(err) : 'No se pudo generar el enlace.')
     }
   }
 
@@ -82,7 +83,7 @@ export function UserDetailDialog({ open, onOpenChange, user, isSelf }: { open: b
         setSafeguardMessage(err.message)
         return
       }
-      setError(err instanceof ApiError ? err.message : 'Ocurrió un error inesperado. Intenta de nuevo.')
+      setError(err instanceof ApiError ? userMessage(err) : 'Ocurrió un error inesperado. Intenta de nuevo.')
     }
   }
 
@@ -110,7 +111,7 @@ export function UserDetailDialog({ open, onOpenChange, user, isSelf }: { open: b
         setSafeguardMessage(err.message)
         return
       }
-      setError(err instanceof ApiError ? err.message : 'Ocurrió un error inesperado. Intenta de nuevo.')
+      setError(err instanceof ApiError ? userMessage(err) : 'Ocurrió un error inesperado. Intenta de nuevo.')
     }
   }
 
