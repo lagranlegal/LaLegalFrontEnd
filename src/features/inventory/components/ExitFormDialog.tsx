@@ -10,36 +10,47 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useCreateExit } from '@/features/inventory/api'
 import type { Item } from '@/lib/inventory/items'
 import { preventImplicitSubmit } from '@/lib/forms/preventImplicitSubmit'
+import { quantityError } from '@/lib/forms/rules'
+import { normalizeDecimalInput } from '@/lib/money'
 
 
 const inputClass = 'mt-1 w-full rounded-input border border-border bg-background px-3 py-2 text-sm text-foreground outline-none focus:border-primary'
 
-/** Egreso de artículos (CLAUDE.md paso 7) — sin `Idempotency-Key`, sin caja: no es dinero, es una salida de inventario (ajuste, daño, devolución, uso interno). */
+/** Egreso de artículos (CLAUDE.md paso 7) — sin caja: no es dinero, es una salida de inventario (ajuste, daño, devolución, uso interno). Con `Idempotency-Key` desde F6-11 del backend (ver `useCreateExit`). */
 export function ExitFormDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (open: boolean) => void }) {
   // Tipado desde la lista compartida y no a mano: escrito a mano se quedó sin
   // `loss` cuando 00033 lo agregó, y el selector lo habría ofrecido mientras
   // TypeScript lo rechazaba al elegirlo.
   const [exitType, setExitType] = useState<(typeof SELECTABLE_EXIT_TYPES)[number]>('adjustment')
   const [reason, setReason] = useState('')
-  const [lines, setLines] = useState<{ item: Item; quantity: number }[]>([])
+  // La cantidad se guarda como se ESCRIBE ("1,5"): un input numérico
+  // controlado descartaba la coma y la línea se quedaba en 1 — se daba de
+  // baja otra cantidad sin avisar (H-20). Se normaliza y valida al enviar,
+  // igual que el ingreso y la transformación (07e8259).
+  const [lines, setLines] = useState<{ item: Item; quantity: string }[]>([])
   const [formError, setFormError] = useState<string | null>(null)
   const createExit = useCreateExit()
 
   function addItem(item: Item) {
-    setLines((prev) => (prev.some((l) => l.item.id === item.id) ? prev : [...prev, { item, quantity: 1 }]))
+    setLines((prev) => (prev.some((l) => l.item.id === item.id) ? prev : [...prev, { item, quantity: '1' }]))
   }
 
-  function updateQuantity(itemId: string, quantity: number) {
-    // Mínimo positivo, no 1: un lote medido en gramos se puede dar de baja
-    // en 0,5 g. Forzar 1 impediría registrar una merma real.
-    setLines((prev) =>
-      prev.map((l) => {
-        if (l.item.id !== itemId) return l
-        if (!Number.isFinite(quantity)) return l
-        const minimo = allowsFractions(l.item.unit) ? 0.001 : 1
-        return { ...l, quantity: Math.max(minimo, Math.min(quantity, Number(l.item.quantity))) }
-      }),
-    )
+  function updateQuantity(itemId: string, quantity: string) {
+    setLines((prev) => prev.map((l) => (l.item.id === itemId ? { ...l, quantity } : l)))
+  }
+
+  /**
+   * Por qué la cantidad de una línea no sirve, o `null`. Mínimo positivo y
+   * no 1: un lote en gramos se puede dar de baja en 0,5 g. Por unidades,
+   * entera; nunca más de lo disponible.
+   */
+  function lineError({ item, quantity }: { item: Item; quantity: string }): string | null {
+    const error = quantityError(quantity)
+    if (error) return `${item.name}: ${error}`
+    const n = Number(normalizeDecimalInput(quantity.trim()))
+    if (!allowsFractions(item.unit) && !Number.isInteger(n)) return `${item.name}: se mide en unidades enteras.`
+    if (n > Number(item.quantity)) return `${item.name}: solo hay ${Number(item.quantity).toLocaleString('es-CO')} ${unitAbbr(item.unit)} disponibles.`
+    return null
   }
 
   function removeLine(itemId: string) {
@@ -57,11 +68,16 @@ export function ExitFormDialog({ open, onOpenChange }: { open: boolean; onOpenCh
       setFormError('El motivo es obligatorio.')
       return
     }
+    const errorDeLinea = lines.map(lineError).find(Boolean)
+    if (errorDeLinea) {
+      setFormError(errorDeLinea)
+      return
+    }
     try {
       await createExit.mutateAsync({
         exit_type: exitType,
         reason: reason.trim(),
-        lines: lines.map((l) => ({ item_id: l.item.id, quantity: String(l.quantity) })),
+        lines: lines.map((l) => ({ item_id: l.item.id, quantity: normalizeDecimalInput(l.quantity.trim()) })),
       })
       toast.success('Egreso registrado')
       onOpenChange(false)
@@ -101,8 +117,10 @@ export function ExitFormDialog({ open, onOpenChange }: { open: boolean; onOpenCh
         </div>
 
         <div>
-          <label className="text-sm font-medium text-foreground">Motivo</label>
-          <textarea rows={2} className={inputClass} value={reason} onChange={(e) => setReason(e.target.value)} />
+          <label htmlFor="exit-reason" className="text-sm font-medium text-foreground">
+            Motivo
+          </label>
+          <textarea id="exit-reason" rows={2} className={inputClass} value={reason} onChange={(e) => setReason(e.target.value)} />
         </div>
 
         <div>
@@ -125,7 +143,7 @@ export function ExitFormDialog({ open, onOpenChange }: { open: boolean; onOpenCh
                     inputMode="decimal"
                     aria-label={`Cantidad en ${unitLabel(item.unit)}`}
                     value={quantity}
-                    onChange={(e) => updateQuantity(item.id, Number(e.target.value))}
+                    onChange={(e) => updateQuantity(item.id, e.target.value)}
                     className="w-20 rounded-input border border-border bg-background px-2 py-1 text-center text-sm tnum"
                   />
                   <span className="text-xs text-muted-foreground">{unitAbbr(item.unit)}</span>

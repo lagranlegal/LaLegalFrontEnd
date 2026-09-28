@@ -9,7 +9,8 @@ import { useItemsByIds, type Item } from '@/lib/inventory/items'
 import { formatQuantity } from '@/lib/inventory/units'
 import { ApiError } from '@/lib/api/client'
 import { useCreateReturn, useSaleReturns, returnSettlementSummary, RETURN_REASON_LABELS, RETURN_SETTLEMENT_LABELS } from '@/lib/sales/returns'
-import { compareMoney, formatCOP } from '@/lib/money'
+import { compareMoney, formatCOP, normalizeDecimalInput } from '@/lib/money'
+import { quantityError } from '@/lib/forms/rules'
 import type { Sale } from '@/lib/sales/void'
 import type { Customer } from '@/lib/customers/search'
 import { preventImplicitSubmit } from '@/lib/forms/preventImplicitSubmit'
@@ -119,10 +120,16 @@ export function ReturnFormDialog({ open, onOpenChange, sale }: { open: boolean; 
     const lines = sale.lines
       .map((line) => ({ line, draft: draftFor(line) }))
       .filter(({ draft }) => draft.included)
-      .map(({ line, draft }) => ({ sale_line_id: line.id, quantity: draft.quantity, restock: draft.restock }))
+      // Coma decimal (H-20): "1,5" viajaba crudo y el backend respondía 422.
+      .map(({ line, draft }) => ({ sale_line_id: line.id, quantity: normalizeDecimalInput(draft.quantity.trim()), restock: draft.restock }))
 
     if (lines.length === 0) {
       setFormError('Selecciona al menos una línea a devolver.')
+      return
+    }
+    const errorDeCantidad = lines.map((l) => quantityError(l.quantity)).find(Boolean)
+    if (errorDeCantidad) {
+      setFormError(errorDeCantidad)
       return
     }
     if (needsCustomer && !customer) {
