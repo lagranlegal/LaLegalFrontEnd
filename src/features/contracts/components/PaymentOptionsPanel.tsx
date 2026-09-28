@@ -8,9 +8,10 @@ import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { confirm } from '@/components/shared/confirmStore'
 import { ApiError } from '@/lib/api/client'
-import { formatCOP, sumMoney } from '@/lib/money'
+import { userMessage } from '@/lib/api/errors'
+import { compareMoney, formatCOP, subtractMoney, sumMoney } from '@/lib/money'
 import { cn } from '@/lib/utils'
-import { usePaymentOptions, useCreatePayment, type PaymentOption } from '@/features/contracts/api'
+import { usePaymentOptions, useCreatePayment, type PaymentOption, type PaymentQuote } from '@/features/contracts/api'
 import { AccountPicker } from '@/components/shared/AccountPicker'
 import { PAYMENT_METHOD_LABELS } from '@/lib/paymentMethods'
 
@@ -56,8 +57,15 @@ function PaymentMethodField({ value, onChange, accountId, onAccountChange }: { v
  * regla de "todos los meses adeudados cubiertos" se cumple trivialmente
  * cuando no se debe ninguno. Hueco real del front (no del backend): la UI
  * solo sabía pedir capital DENTRO de una opción de interés seleccionada.
+ *
+ * SALDAR DENTRO DEL PRIMER MES (F4-11 del backend, 27/09/2026): saldar causa
+ * como mínimo un mes de interés. Con `months_owed === 0` y el abono por TODO
+ * el capital, `months_covered: 0` es un 422
+ * `PAYMENT_MINIMUM_INTEREST_REQUIRED`: hay que mandar `payoff_months` y
+ * cobrar `payoff_total`. El saldo de capital no viene suelto en la
+ * cotización; es `payoff_total − payoff_interest`.
  */
-function CapitalOnlyPaymentForm({ contractId }: { contractId: string }) {
+function CapitalOnlyPaymentForm({ contractId, quote }: { contractId: string; quote: PaymentQuote }) {
   const createPayment = useCreatePayment(contractId)
   const [capitalAmount, setCapitalAmount] = useState('0.00')
   const [paymentMethod, setPaymentMethod] = useState<'cash' | 'transfer' | 'other'>('cash')
@@ -66,26 +74,34 @@ function CapitalOnlyPaymentForm({ contractId }: { contractId: string }) {
   const [error, setError] = useState<string | null>(null)
 
   const hasAmount = Number(capitalAmount) > 0
+  const capitalBalance = subtractMoney(quote.payoff_total, quote.payoff_interest)
+  // Abonar todo el capital es SALDAR: rige el mínimo de meses del backend.
+  const isPayoff = hasAmount && compareMoney(capitalAmount, capitalBalance) >= 0
+  const monthsCovered = isPayoff ? quote.payoff_months : 0
+  const payoffInterest = isPayoff ? quote.payoff_interest : '0.00'
+  const total = sumMoney(capitalAmount, payoffInterest)
 
   async function handleConfirm() {
     setError(null)
     const result = await confirm({
-      title: 'Registrar abono a capital',
-      description: `Contrato al día — este abono va completo a reducir el capital prestado.`,
-      confirmLabel: `Registrar abono ${formatCOP(capitalAmount)}`,
+      title: isPayoff ? 'Saldar el contrato' : 'Registrar abono a capital',
+      description: isPayoff
+        ? `${formatCOP(capitalAmount)} de capital + ${formatCOP(payoffInterest)} de interés: saldar causa como mínimo un mes de interés.`
+        : `Contrato al día — este abono va completo a reducir el capital prestado.`,
+      confirmLabel: `Registrar abono ${formatCOP(total)}`,
     })
     if (!result.confirmed) return
 
     try {
-      await createPayment.mutateAsync({ months_covered: 0, capital_amount: capitalAmount, payment_method: paymentMethod, account_id: accountId })
-      toast.success('Abono a capital registrado')
+      await createPayment.mutateAsync({ months_covered: monthsCovered, capital_amount: capitalAmount, payment_method: paymentMethod, account_id: accountId })
+      toast.success(isPayoff ? 'Contrato saldado' : 'Abono a capital registrado')
       setCapitalAmount('0.00')
     } catch (err) {
       if (err instanceof ApiError && err.code === 'CASH_SESSION_NOT_OPEN') {
         setCashDialogOpen(true)
         return
       }
-      setError(err instanceof ApiError ? err.message : 'No se pudo registrar el abono. Intenta de nuevo.')
+      setError(err instanceof ApiError ? userMessage(err) : 'No se pudo registrar el abono. Intenta de nuevo.')
     }
   }
 
@@ -95,9 +111,24 @@ function CapitalOnlyPaymentForm({ contractId }: { contractId: string }) {
         <p className="text-sm text-muted-foreground">Este contrato está al día en intereses — puedes abonar directo a capital.</p>
         <div className="flex flex-col gap-3 rounded-input border border-border p-3">
           <div>
-            <label className="text-sm font-medium text-foreground">Abono a capital</label>
-            <MoneyInput className="mt-1" value={capitalAmount} onChange={setCapitalAmount} autoFocus />
+            <div className="flex items-center justify-between gap-2">
+              <label htmlFor="capital-only-amount" className="text-sm font-medium text-foreground">
+                Abono a capital
+              </label>
+              <Button type="button" variant="ghost" size="sm" onClick={() => setCapitalAmount(capitalBalance)}>
+                Saldar el contrato
+              </Button>
+            </div>
+            <MoneyInput id="capital-only-amount" className="mt-1" value={capitalAmount} onChange={setCapitalAmount} autoFocus />
+            <p className="mt-1 text-xs text-muted-foreground">
+              Capital pendiente <Money value={capitalBalance} /> · para saldar hoy <Money value={quote.payoff_total} />
+            </p>
           </div>
+          {isPayoff && compareMoney(payoffInterest, '0.00') > 0 && (
+            <p className="rounded-input bg-warning-soft px-3 py-2 text-xs text-foreground">
+              Saldar el contrato causa como mínimo un mes de interés: se cobran <Money value={payoffInterest} /> de interés además del capital.
+            </p>
+          )}
           <PaymentMethodField value={paymentMethod} onChange={setPaymentMethod} accountId={accountId} onAccountChange={setAccountId} />
           {error && <p className="text-sm text-danger">{error}</p>}
           <Button className="w-full rounded-pill" disabled={!hasAmount || createPayment.isPending} onClick={handleConfirm}>
@@ -105,7 +136,7 @@ function CapitalOnlyPaymentForm({ contractId }: { contractId: string }) {
               'Registrando…'
             ) : (
               <>
-                Registrar abono <Money value={capitalAmount} className="ml-1" />
+                Registrar abono <Money value={total} className="ml-1" />
               </>
             )}
           </Button>
@@ -151,7 +182,7 @@ export function PaymentOptionsPanel({ contractId }: { contractId: string }) {
   if (quote.months_owed === 0) {
     return (
       <Can permission="payments.create" fallback={<p className="text-sm text-muted-foreground">No tienes permiso para registrar abonos.</p>}>
-        <CapitalOnlyPaymentForm contractId={contractId} />
+        <CapitalOnlyPaymentForm contractId={contractId} quote={quote} />
       </Can>
     )
   }
@@ -193,7 +224,8 @@ export function PaymentOptionsPanel({ contractId }: { contractId: string }) {
         setCashDialogOpen(true)
         return
       }
-      setError(err instanceof ApiError ? err.message : 'No se pudo registrar el abono. Intenta de nuevo.')
+      if (err instanceof ApiError && err.code === 'PAYMENT_MINIMUM_INTEREST_REQUIRED') void refetch()
+      setError(err instanceof ApiError ? userMessage(err) : 'No se pudo registrar el abono. Intenta de nuevo.')
     }
   }
 
@@ -201,7 +233,8 @@ export function PaymentOptionsPanel({ contractId }: { contractId: string }) {
     <Can permission="payments.create" fallback={<p className="text-sm text-muted-foreground">No tienes permiso para registrar abonos.</p>}>
       <div className="flex flex-col gap-4">
         <p className="text-xs text-muted-foreground">
-          {quote.months_owed} {quote.months_owed === 1 ? 'mes adeudado' : 'meses adeudados'} · interés mensual <Money value={quote.monthly_interest} />
+          {quote.months_owed} {quote.months_owed === 1 ? 'mes adeudado' : 'meses adeudados'} · interés mensual <Money value={quote.monthly_interest} /> · para
+          saldar hoy <Money value={quote.payoff_total} />
         </p>
 
         <div className="flex flex-wrap gap-2">
