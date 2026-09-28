@@ -26,7 +26,8 @@ import type { Customer } from '@/lib/customers/search'
 import { CustomerPicker } from '@/components/shared/CustomerPicker'
 import { ContractItemsFields } from '@/features/contracts/components/ContractItemsFields'
 import { contractItemSchema, emptyContractItem } from '@/features/contracts/contractItemSchema'
-import { evaluarLtv, resolveMaxLtvPct } from '@/features/contracts/ltv'
+import { appraisalRequirement, evaluarLtv, resolveMaxLtvPct } from '@/features/contracts/ltv'
+import { usePermission } from '@/lib/permissions/usePermission'
 import { LtvHint } from '@/features/contracts/components/LtvHint'
 import { AccountPicker } from '@/components/shared/AccountPicker'
 import { PAYMENT_METHOD_LABELS } from '@/lib/paymentMethods'
@@ -115,11 +116,11 @@ export function ContractFormPage() {
   // espejar otro criterio mostraría un número y el servidor aplicaría otro.
   const appraisalValue = useWatch({ control, name: 'appraisal_value' })
   const primeraCategoria = useWatch({ control, name: 'items.0.category_id' })
-  const ltv = evaluarLtv({
-    principal,
-    appraisalValue,
-    maxLtvPct: resolveMaxLtvPct(categories, primeraCategoria || undefined),
-  })
+  const maxLtvPct = resolveMaxLtvPct(categories, primeraCategoria || undefined)
+  const ltv = evaluarLtv({ principal, appraisalValue, maxLtvPct })
+  // Con LTV en la categoría, el avalúo es obligatorio salvo override (F4-05).
+  const canOverrideLtv = usePermission('contracts.override_ltv')
+  const avaluo = appraisalRequirement({ maxLtvPct, appraisalValue, canOverride: canOverrideLtv })
 
   const blocker = useBlocker({
     shouldBlockFn: () => (isDirty || customer !== null) && !submittedRef.current,
@@ -154,6 +155,11 @@ export function ContractFormPage() {
       return
     }
     setCustomerError(null)
+    if (avaluo.error) {
+      setError('appraisal_value', { message: avaluo.error })
+      revealFirstError(['appraisal_value'])
+      return
+    }
     try {
       const contract = await createContract.mutateAsync({
         customer_id: customer.id,
@@ -187,6 +193,14 @@ export function ContractFormPage() {
     } catch (error) {
       if (error instanceof ApiError && error.code === 'CASH_SESSION_NOT_OPEN') {
         setCashDialogOpen(true)
+        return
+      }
+      // La categoría pudo ganar su LTV después de cargar el formulario: el
+      // mensaje del backend va junto al campo del avalúo, que es donde se
+      // resuelve.
+      if (error instanceof ApiError && error.code === 'CONTRACT_APPRAISAL_REQUIRED') {
+        setError('appraisal_value', { message: error.message })
+        revealFirstError(['appraisal_value'])
         return
       }
       const banner = applyServerErrors(error, setError, { fields: ['principal', 'interest_rate_pct', 'appraisal_value', 'notes', 'customer_email', 'customer_email_consent', 'items', 'items.*.category_id', 'items.*.description', 'items.*.weight_grams', 'items.*.serial_imei', 'items.*.item_appraisal'] })
@@ -309,7 +323,7 @@ export function ContractFormPage() {
             </div>
             <div>
               <label htmlFor="appraisal_value" className="text-sm font-medium text-foreground">
-                Avalúo total (opcional)
+                Avalúo total {avaluo.required ? <span className="text-danger">*</span> : <span className="text-muted-foreground">(opcional)</span>}
               </label>
               <Controller
                 control={control}
@@ -317,6 +331,14 @@ export function ContractFormPage() {
                 render={({ field }) => <MoneyInput optional id="appraisal_value" className="mt-1" value={field.value ?? ''} onChange={field.onChange} />}
               />
               {errors.appraisal_value && <p className="mt-1 text-sm text-danger">{errors.appraisal_value.message}</p>}
+              {avaluo.required && !errors.appraisal_value && (
+                <p className="mt-1 text-xs text-muted-foreground">Obligatorio: la categoría presta sobre un porcentaje del avalúo.</p>
+              )}
+              {canOverrideLtv && maxLtvPct !== null && !appraisalValue && (
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Sin avalúo no se puede comprobar el cupo: tu rol puede registrarlo igual y el contrato queda marcado.
+                </p>
+              )}
               <LtvHint estado={ltv} />
             </div>
             <div>

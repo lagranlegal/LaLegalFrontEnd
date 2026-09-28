@@ -89,3 +89,32 @@ export function evaluarLtv(input: {
     ? { kind: 'dentro', cupo, maxLtvPct, ltvPct }
     : { kind: 'excede', cupo, maxLtvPct, ltvPct, exceso: subtractMoney(monto, cupo) }
 }
+
+/**
+ * ¿El avalúo es obligatorio para este contrato, y falta?
+ *
+ * F4-05 del backend (27/09/2026): con LTV en la categoría de la primera
+ * prenda, un contrato sin avalúo (o con avalúo 0) es 422
+ * `CONTRACT_APPRAISAL_REQUIRED`, salvo que quien lo registra tenga
+ * `contracts.override_ltv` — en ese caso se presta sin tasar y el contrato
+ * queda marcado. Antes "sin avalúo no hay nada que comparar" dejaba prestar
+ * cualquier monto.
+ *
+ * A diferencia del cupo (`evaluarLtv`), esto SÍ bloquea el envío: no hay
+ * redondeo que pueda hacerlo divergir del backend, es un campo vacío.
+ */
+export function appraisalRequirement(input: {
+  maxLtvPct: number | null
+  appraisalValue: string | undefined
+  canOverride: boolean
+}): { required: boolean; error: string | null } {
+  const { maxLtvPct, appraisalValue, canOverride } = input
+  if (maxLtvPct === null || canOverride) return { required: false, error: null }
+  const tasado = !!appraisalValue && compareMoney(appraisalValue, '0.00') > 0
+  return {
+    required: true,
+    error: tasado
+      ? null
+      : `El avalúo es obligatorio: la categoría presta hasta el ${maxLtvPct}% del avalúo y sin él no se puede calcular el cupo.`,
+  }
+}
