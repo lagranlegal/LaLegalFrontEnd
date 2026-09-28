@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { normalizeDecimalInput } from '@/lib/money'
+import { quantityField } from '@/lib/forms/rules'
 
 /**
  * Una línea del formulario de ingreso. Vive aparte de `EntryFormPage` para
@@ -20,10 +20,9 @@ export const entryLineSchema = z.object({
   // `Number` NaN y el mensaje decía "debe ser mayor a cero", que es falso. El
   // `transform` hace que lo validado sea exactamente lo que viaja — el
   // formulario recibe "1.5" en `onSubmit`, igual que el peso del contrato.
-  quantity: z
-    .string()
-    .transform((v) => normalizeDecimalInput(v.trim()))
-    .refine((v) => Number(v) > 0, 'La cantidad debe ser mayor a cero'),
+  // Hasta tres decimales (`Quantity` del backend desde el 27/09/2026): con
+  // más, 422 en vez de un redondeo callado.
+  quantity: quantityField,
   unit: z.enum(['unit', 'gram', 'kilogram', 'meter', 'liter']),
   // `true` cuando la línea salió del buscador de productos, o sea que el
   // producto YA EXISTE. Su unidad manda y el backend ignora la que mandemos,

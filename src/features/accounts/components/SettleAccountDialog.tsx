@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { subtractMoney } from '@/lib/money'
 import { useAccounts } from '@/lib/accounts/list'
 import { useSettleAccount, type Account } from '@/features/accounts/api'
+import { positiveMoneyError } from '@/lib/forms/rules'
 
 const inputClass =
   'mt-1 w-full rounded-input border border-border bg-background px-3 py-2 text-sm text-foreground outline-none focus:border-primary'
@@ -58,8 +59,10 @@ export function SettleAccountDialog({
       setError('Elige a qué cuenta entró la plata.')
       return
     }
-    if (!amountSettled || !amountReceived) {
-      setError('Falta indicar cuánto se liquidó y cuánto entró.')
+    // `PositiveMoney` en los dos (27/09/2026): "0.00" es un string no vacío
+    // y pasaba este chequeo hasta el 422 del backend.
+    if (positiveMoneyError(amountSettled) || positiveMoneyError(amountReceived)) {
+      setError('Falta indicar cuánto se liquidó y cuánto entró: los dos tienen que ser mayores a cero.')
       return
     }
     settle.mutate(

@@ -51,7 +51,9 @@ export function QuantityInput({
   }
 
   function handleChange(raw: string) {
-    if (!/^\d*[.,]?\d*$/.test(raw)) return
+    // Hasta tres decimales, los de `numeric(14,3)`: con un cuarto el backend
+    // responde 422 (`Quantity`, 27/09/2026) en vez de redondear callado.
+    if (!/^\d*[.,]?\d{0,3}$/.test(raw)) return
     setText(raw)
     if (!/\d$/.test(raw)) return
     const pedida = Number(raw.replace(',', '.'))

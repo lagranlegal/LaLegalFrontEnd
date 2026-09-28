@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { Controller, useForm, useWatch } from 'react-hook-form'
 import { z } from 'zod'
+import { positiveMoneyField, reasonField } from '@/lib/forms/rules'
 import { toast } from 'sonner'
 import { AppDialog } from '@/components/shared/AppDialog'
 import { MoneyInput } from '@/components/shared/MoneyInput'
@@ -19,8 +20,10 @@ import { preventImplicitSubmit } from '@/lib/forms/preventImplicitSubmit'
 
 const expenseSchema = z.object({
   category_id: z.string().min(1, 'Selecciona una categoría'),
-  description: z.string().min(1, 'La descripción es obligatoria'),
-  amount: z.string().refine((v) => Number(v) > 0, 'El monto debe ser mayor a cero'),
+  // `Reason` y `PositiveMoney` del backend (27/09/2026): una descripción de
+  // puros espacios y un gasto de $0 son 422.
+  description: reasonField('La descripción es obligatoria'),
+  amount: positiveMoneyField('El monto debe ser mayor a cero'),
   payment_method: z.enum(['cash', 'transfer', 'other']),
   account_id: z.string().nullable(),
   module: z.enum(['pawn', 'store', 'general']),

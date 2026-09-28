@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { Controller, useForm } from 'react-hook-form'
 import { z } from 'zod'
+import { ltvPctField, termMonthsField } from '@/lib/forms/rules'
 import { AppDialog } from '@/components/shared/AppDialog'
 import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
@@ -37,9 +38,11 @@ const categorySchema = z.object({
   // la categoría de la prenda no las tiene configuradas. Se piden en
   // cualquier nivel igual: no sabemos el nivel hasta guardar (lo calcula el
   // backend a partir del padre), y no cuesta nada tenerlas de una vez.
-  default_term_months: z.string().optional(),
-  arrears_window_months: z.string().optional(),
-  max_ltv_pct: z.string().optional(),
+  // Rangos del backend desde el 27/09/2026 (`TermMonths`, `LtvPct`): vacío
+  // hereda del padre; escrito, plazo y ventana ≥ 1 y LTV en (0, 100].
+  default_term_months: termMonthsField,
+  arrears_window_months: termMonthsField,
+  max_ltv_pct: ltvPctField,
   active: z.boolean(),
 })
 
@@ -119,7 +122,7 @@ export function CategoryFormDialog({
       ...values,
       default_term_months: values.default_term_months ? Number(values.default_term_months) : null,
       arrears_window_months: values.arrears_window_months ? Number(values.arrears_window_months) : null,
-      max_ltv_pct: values.max_ltv_pct || null,
+      max_ltv_pct: values.max_ltv_pct?.trim() ? normalizeDecimalInput(values.max_ltv_pct.trim()) : null,
     }
     try {
       if (mode === 'create') {
@@ -130,7 +133,7 @@ export function CategoryFormDialog({
       onOpenChange(false)
     } catch (error) {
       const banner = applyServerErrors(error, setError, {
-        fields: ['name', 'code_letter'],
+        fields: ['name', 'code_letter', 'default_term_months', 'arrears_window_months', 'max_ltv_pct'],
         conflictField: 'code_letter',
         conflictMessage: 'Ya existe una categoría con esa letra de código.',
       })
@@ -219,6 +222,7 @@ export function CategoryFormDialog({
               placeholder={heredado.default_term_months != null ? `${heredado.default_term_months} (heredado)` : undefined}
               {...register('default_term_months')}
             />
+            {errors.default_term_months && <p className="mt-1 text-xs text-danger">{errors.default_term_months.message}</p>}
           </div>
           <div>
             <label htmlFor="cat-arrears" className="text-sm font-medium text-foreground">
@@ -231,6 +235,7 @@ export function CategoryFormDialog({
               placeholder={heredado.arrears_window_months != null ? `${heredado.arrears_window_months} (heredado)` : undefined}
               {...register('arrears_window_months')}
             />
+            {errors.arrears_window_months && <p className="mt-1 text-xs text-danger">{errors.arrears_window_months.message}</p>}
           </div>
           <div>
             <label htmlFor="cat-ltv" className="text-sm font-medium text-foreground">
@@ -243,6 +248,7 @@ export function CategoryFormDialog({
               placeholder={heredado.max_ltv_pct != null ? `${heredado.max_ltv_pct} (heredado)` : undefined}
               {...register('max_ltv_pct')}
             />
+            {errors.max_ltv_pct && <p className="mt-1 text-xs text-danger">{errors.max_ltv_pct.message}</p>}
           </div>
         </div>
 

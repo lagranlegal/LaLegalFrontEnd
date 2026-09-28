@@ -3,6 +3,7 @@ import { useNavigate, useBlocker } from '@tanstack/react-router'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { Controller, useForm, useWatch, type FieldErrors } from 'react-hook-form'
 import { z } from 'zod'
+import { positiveMoneyField } from '@/lib/forms/rules'
 import { toast } from 'sonner'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { BackLink } from '@/components/shared/BackLink'
@@ -33,7 +34,7 @@ import { customerNoticePayload, customerNoticeState } from '@/features/contracts
 import { preventImplicitSubmit } from '@/lib/forms/preventImplicitSubmit'
 
 const contractSchema = z.object({
-  principal: z.string().refine((v) => Number(v) > 0, 'El monto del préstamo debe ser mayor a cero'),
+  principal: positiveMoneyField('El monto del préstamo debe ser mayor a cero'),
   // `normalizeDecimalInput` antes del `Number`: sin eso, "5,5" da NaN y el
   // usuario recibe "debe ser mayor a cero" por haber escrito una coma.
   interest_rate_pct: z.string().refine((v) => Number(normalizeDecimalInput(v)) > 0, 'La tasa de interés debe ser mayor a cero'),

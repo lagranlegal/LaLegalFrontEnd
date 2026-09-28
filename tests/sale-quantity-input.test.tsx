@@ -123,3 +123,13 @@ describe('clampQuantity', () => {
     expect(clampQuantity(CADENA.unit, Number(CADENA.quantity), 9)).toBe(5)
   })
 })
+
+describe('QuantityInput — hasta tres decimales (Quantity del backend, 27/09/2026)', () => {
+  it('un cuarto decimal no se deja escribir: el backend respondería 422', () => {
+    render(<Carrito />)
+    fireEvent.change(campo(), { target: { value: '1,125' } })
+    fireEvent.change(campo(), { target: { value: '1,1255' } })
+    expect(campo().value).toBe('1,125')
+    expect(screen.getByTestId('carrito').textContent).toBe('1.125')
+  })
+})
