@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { ApiError } from '@/lib/api/client'
 import { useAccounts } from '@/lib/accounts/list'
 import { accountTypeLabel } from '@/lib/accounts/types'
+import { capitalEligibleAccounts } from '@/features/capital/eligibleAccounts'
 import { subtractMoney } from '@/lib/money'
 import {
   useCreateContribution,
@@ -53,11 +54,10 @@ export function CapitalMovementDialog({
   const [error, setError] = useState<string | null>(null)
   const [cashDialogOpen, setCashDialogOpen] = useState(false)
 
-  // Una cuenta POR COBRAR no sirve para esto: representa plata que un
-  // convenio todavía te debe, no un saldo del que se pueda meter o sacar
-  // dinero. El backend la rechaza; acá ni se ofrece, para que nadie llegue
-  // al error después de llenar el formulario.
-  const elegibles = (accounts ?? []).filter((a) => a.type !== 'settlement' && a.active)
+  // Ni cuentas POR COBRAR ni la caja fuerte: el backend las rechaza, y acá
+  // ni se ofrecen para que nadie llegue al error después de llenar el
+  // formulario (regla en `capitalEligibleAccounts`).
+  const elegibles = capitalEligibleAccounts(accounts ?? [])
   const cuenta = elegibles.find((a) => a.id === accountId)
 
   const montoValido = !!amount && Number(amount) > 0
