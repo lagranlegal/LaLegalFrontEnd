@@ -79,14 +79,15 @@ export function useExitsList(filters: ExitFilters = {}) {
   )
 }
 
+/**
+ * Con `Idempotency-Key` desde F6-11 del backend (27/09/2026): sin ella, un
+ * doble envío daba de baja dos veces.
+ */
 export function useCreateExit() {
-  const queryClient = useQueryClient()
-  return useMutation({
-    mutationFn: (body: ExitCreateIn) => unwrap(api.POST('/api/v1/inventory/exits', { body })),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['inventory'] })
-      queryClient.invalidateQueries({ queryKey: ['dashboard'] })
-    },
+  return useMoneyMutation({
+    mutationFn: (body: ExitCreateIn, idempotencyKey: string) =>
+      unwrap(api.POST('/api/v1/inventory/exits', { params: { header: { 'Idempotency-Key': idempotencyKey } }, body })),
+    invalidateKeys: [['inventory'], ['dashboard']],
   })
 }
 

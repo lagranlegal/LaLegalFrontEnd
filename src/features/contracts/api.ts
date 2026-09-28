@@ -149,16 +149,25 @@ export function useCreatePayment(contractId: string) {
 
 // ---- Rematar: sin cuerpo, no mueve dinero directamente (crea borradores de inventario) ----
 
+/**
+ * Con `Idempotency-Key` desde F4-04 del backend (27/09/2026): el doble remate
+ * ya lo impedía el bloqueo del contrato, pero el reintento de una respuesta
+ * perdida recibía un 409 en vez del remate hecho. Con la clave recibe la
+ * respuesta original. `useMoneyMutation` y no `useMutation` por eso, aunque
+ * no mueva caja.
+ */
 export function useAuctionContract() {
   const queryClient = useQueryClient()
-  return useMutation({
-    mutationFn: (contractId: string) => unwrap(api.POST('/api/v1/contracts/{contract_id}/auction', { params: { path: { contract_id: contractId } } })),
+  return useMoneyMutation({
+    mutationFn: (contractId: string, idempotencyKey: string) =>
+      unwrap(
+        api.POST('/api/v1/contracts/{contract_id}/auction', {
+          params: { path: { contract_id: contractId }, header: { 'Idempotency-Key': idempotencyKey } },
+        }),
+      ),
+    invalidateKeys: [['contracts', 'list'], ['contracts', 'ready-for-auction'], ['dashboard'], ['inventory']],
     onSuccess: (_data, contractId) => {
-      queryClient.invalidateQueries({ queryKey: ['contracts', contractId] })
-      queryClient.invalidateQueries({ queryKey: ['contracts', 'list'] })
-      queryClient.invalidateQueries({ queryKey: ['contracts', 'ready-for-auction'] })
-      queryClient.invalidateQueries({ queryKey: ['dashboard'] })
-      queryClient.invalidateQueries({ queryKey: ['inventory'] })
+      void queryClient.invalidateQueries({ queryKey: ['contracts', contractId] })
     },
   })
 }

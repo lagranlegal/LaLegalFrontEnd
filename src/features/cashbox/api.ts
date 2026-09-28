@@ -2,6 +2,7 @@ import { queryOptions, useMutation, useQuery, useQueryClient } from '@tanstack/r
 import { api, ApiError, unwrap } from '@/lib/api/client'
 import { userMessage } from '@/lib/api/errors'
 import { useCursorInfiniteQuery } from '@/lib/api/pagination'
+import { useMoneyMutation } from '@/lib/api/useMoneyMutation'
 import { todayBogota } from '@/lib/dates'
 import type { components } from '@/types/api'
 
@@ -257,16 +258,17 @@ export function useExpensesList(sessionId: string | undefined) {
   )
 }
 
+/**
+ * Con `Idempotency-Key` desde F5-03 del backend (27/09/2026): sin ella, un
+ * reintento tras una respuesta perdida registraba el gasto dos veces.
+ */
 export function useCreateExpense() {
-  const queryClient = useQueryClient()
-  return useMutation({
-    mutationFn: (body: ExpenseCreateIn) => unwrap(api.POST('/api/v1/cashbox/expenses', { body })),
-    onSuccess: () => {
-      // No cambia si la sesión está abierta/cerrada — no hace falta tocar
-      // ['cashbox','current'] (ver nota de consistencia en useCloseSession).
-      queryClient.invalidateQueries({ queryKey: ['cashbox', 'expenses'] })
-      queryClient.invalidateQueries({ queryKey: ['dashboard'] })
-    },
+  return useMoneyMutation({
+    mutationFn: (body: ExpenseCreateIn, idempotencyKey: string) =>
+      unwrap(api.POST('/api/v1/cashbox/expenses', { params: { header: { 'Idempotency-Key': idempotencyKey } }, body })),
+    // No cambia si la sesión está abierta/cerrada — no hace falta tocar
+    // ['cashbox','current'] (ver nota de consistencia en useCloseSession).
+    invalidateKeys: [['cashbox', 'expenses'], ['dashboard']],
   })
 }
 
