@@ -224,6 +224,20 @@ export function UserDetailDialog({ open, onOpenChange, user, isSelf }: { open: b
             <span className="text-foreground">{formatDateTime(user.created_at)}</span>
           </div>
 
+          {/* NADIE SE CAMBIA SU PROPIO ROL (G-03). El backend lo rechaza
+              siempre desde el 27/09/2026 (`CANNOT_CHANGE_OWN_ROLE`): ni subir
+              los propios permisos ni quitarse los de administrador por error.
+              Mismo criterio que desactivarse: no se ofrece lo que siempre
+              falla, y se dice a quién pedírselo. */}
+          {isSelf ? (
+            <div className="flex flex-col gap-1 text-sm">
+              <div className="flex items-center justify-between">
+                <span className="text-muted-foreground">Rol</span>
+                <span className="text-foreground">{roles?.find((role) => role.id === user.role_id)?.name ?? '—'}</span>
+              </div>
+              <p className="text-xs text-muted-foreground">No puedes cambiar tu propio rol. Pídeselo a otra persona que gestione usuarios.</p>
+            </div>
+          ) : (
           <div>
             <label htmlFor="user-role" className="text-sm font-medium text-foreground">
               Rol
@@ -241,6 +255,7 @@ export function UserDetailDialog({ open, onOpenChange, user, isSelf }: { open: b
               </SelectContent>
             </Select>
           </div>
+          )}
 
           {error && <p className="rounded-input bg-danger-soft px-3 py-2 text-sm text-danger">{error}</p>}
         </div>
