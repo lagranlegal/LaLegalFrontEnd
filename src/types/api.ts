@@ -981,7 +981,12 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Auction Contract */
+        /**
+         * Auction Contract
+         * @description `Idempotency-Key` opcional (F4-04): el front todavía no la manda. El
+         *     doble remate lo impide el bloqueo del contrato; la clave solo convierte
+         *     el 409 del reintento en la respuesta original.
+         */
         post: operations["auction_contract_api_v1_contracts__contract_id__auction_post"];
         delete?: never;
         options?: never;
@@ -1174,7 +1179,11 @@ export interface paths {
         /** List Expenses */
         get: operations["list_expenses_api_v1_cashbox_expenses_get"];
         put?: never;
-        /** Create Expense */
+        /**
+         * Create Expense
+         * @description `Idempotency-Key` OPCIONAL (F5-03): si viene, un reintento no
+         *     registra el gasto dos veces. Pasa a obligatoria cuando el front la mande.
+         */
         post: operations["create_expense_api_v1_cashbox_expenses_post"];
         delete?: never;
         options?: never;
@@ -1407,7 +1416,11 @@ export interface paths {
         /** List Exits */
         get: operations["list_exits_api_v1_inventory_exits_get"];
         put?: never;
-        /** Create Exit */
+        /**
+         * Create Exit
+         * @description `Idempotency-Key` OPCIONAL (F6-11): si viene, un doble clic no da de
+         *     baja dos veces. Pasa a obligatoria cuando el front la mande.
+         */
         post: operations["create_exit_api_v1_inventory_exits_post"];
         delete?: never;
         options?: never;
@@ -2142,14 +2155,27 @@ export interface paths {
          *     escáneres de correo y las vistas previas abren cada enlace apenas llega
          *     (03/09/2026); si este GET escribiera, un cliente quedaría fuera sin haber
          *     abierto el correo. La baja es el `POST`.
+         *
+         *     **Un navegador que llega acá directo se va a la página del front.** Pasa
+         *     con la cabecera `List-Unsubscribe` (§17-bis), que apunta a esta URL: un
+         *     cliente de correo que no sabe hacer el POST de un clic la abre en el
+         *     navegador, y mostrarle a un cliente de la compraventa un JSON crudo sería
+         *     un callejón sin salida. Se distingue por `Accept: text/html`, que manda un
+         *     navegador al navegar y nunca el `fetch` de la página (`*\/*`). Redirigir
+         *     tampoco escribe: la baja sigue siendo el clic en la página.
          */
         get: operations["get_unsubscribe_api_v1_public_unsubscribe__token__get"];
         put?: never;
         /**
          * Confirm Unsubscribe
          * @description Confirma la baja. Idempotente: repetirla devuelve la fecha original.
-         *     Ignora el cuerpo, así que también sirve de destino de un
-         *     `List-Unsubscribe-Post` el día que se agreguen esas cabeceras.
+         *
+         *     **Es también el destino del POST de un clic (RFC 8058, §17-bis):** Gmail o
+         *     Yahoo lo mandan desde su servidor con el cuerpo
+         *     `List-Unsubscribe=One-Click` (form-urlencoded) y esperan la baja hecha, sin
+         *     página intermedia. El cuerpo se ignora —no hay nada en él que decida algo—,
+         *     así que el mismo endpoint sirve a la página del front (que no manda
+         *     cuerpo) y al proveedor de correo.
          */
         post: operations["confirm_unsubscribe_api_v1_public_unsubscribe__token__post"];
         delete?: never;
@@ -3448,6 +3474,8 @@ export interface components {
             updated_at: string;
             /** Legal Basis */
             legal_basis?: ("contract" | "consent") | null;
+            /** Deferred At */
+            deferred_at?: string | null;
         };
         /** DigestRecipientOut */
         DigestRecipientOut: {
@@ -3913,7 +3941,7 @@ export interface components {
             /** Cat1 Name */
             cat1_name: string;
             /** Units */
-            units: number;
+            units: string;
             /** Cost Value */
             cost_value: string;
             /** Retail Value */
@@ -3939,7 +3967,7 @@ export interface components {
              */
             as_of: string;
             /** Units */
-            units: number;
+            units: string;
             /** Lot Count */
             lot_count: number;
             /** Cost Value */
@@ -4514,6 +4542,12 @@ export interface components {
             monthly_interest: string;
             /** Options */
             options: components["schemas"]["PaymentOptionOut"][];
+            /** Payoff Months */
+            payoff_months: number;
+            /** Payoff Interest */
+            payoff_interest: string;
+            /** Payoff Total */
+            payoff_total: string;
         };
         /** PermissionOut */
         PermissionOut: {
@@ -4692,7 +4726,7 @@ export interface components {
             /** Sale Count */
             sale_count: number;
             /** Units Sold */
-            units_sold: number;
+            units_sold: string;
             /** Gross Revenue */
             gross_revenue: string;
             /** Discounts */
@@ -5173,7 +5207,7 @@ export interface components {
             /** Product Name */
             product_name: string;
             /** Units */
-            units: number;
+            units: string;
             /** Cost Value */
             cost_value: string;
             /** Days In Stock */
@@ -7834,7 +7868,9 @@ export interface operations {
     auction_contract_api_v1_contracts__contract_id__auction_post: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                "Idempotency-Key"?: string | null;
+            };
             path: {
                 contract_id: string;
             };
@@ -8188,7 +8224,9 @@ export interface operations {
     create_expense_api_v1_cashbox_expenses_post: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                "Idempotency-Key"?: string | null;
+            };
             path?: never;
             cookie?: never;
         };
@@ -8569,7 +8607,9 @@ export interface operations {
     create_exit_api_v1_inventory_exits_post: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                "Idempotency-Key"?: string | null;
+            };
             path?: never;
             cookie?: never;
         };

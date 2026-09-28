@@ -7,6 +7,8 @@ import { EmptyState } from '@/components/shared/EmptyState'
 import { DateRangePicker, type DateRangeValue } from '@/components/shared/DateRangePicker'
 import { Button } from '@/components/ui/button'
 import { exportSheetsToExcel } from '@/lib/export/xlsx'
+import { unitsSoldText } from '@/features/reports/units'
+import { formatQuantity } from '@/lib/inventory/units'
 import { ContractsStatusChart, type StatusDatum } from '@/components/shared/charts/ContractsStatusChart'
 import { DailyTrendChart } from '@/components/shared/charts/DailyTrendChart'
 import { MonthlyTrendChart } from '@/components/shared/charts/MonthlyTrendChart'
@@ -115,8 +117,7 @@ function ProfitCard({ range }: { range: DateRangeValue | null }) {
       </div>
       {profit.sale_count > 0 && (
         <p className="mt-3 text-xs text-muted-foreground">
-          {profit.sale_count} {profit.sale_count === 1 ? 'venta' : 'ventas'} · {profit.units_sold}{' '}
-          {profit.units_sold === 1 ? 'artículo' : 'artículos'}
+          {profit.sale_count} {profit.sale_count === 1 ? 'venta' : 'ventas'} · {unitsSoldText(profit.units_sold)}
           {Number(profit.discounts) > 0 && (
             <>
               {' '}
@@ -201,7 +202,7 @@ function RankingList({ rows, unit }: { rows: { key: string; label: string; quant
           <div className="flex items-center justify-between gap-2 text-sm">
             <span className="text-foreground">{row.label}</span>
             <span className="tnum text-muted-foreground">
-              {row.quantity} {unit}
+              {formatQuantity(row.quantity)} {unit}
             </span>
           </div>
           <div className="h-1.5 w-full overflow-hidden rounded-pill bg-border">

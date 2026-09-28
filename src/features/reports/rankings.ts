@@ -32,6 +32,16 @@ export interface CategoryRanking {
  * un request por artículo (evita N+1 sobre potencialmente cientos de
  * artículos distintos vendidos a través del tiempo).
  */
+/**
+ * Suma de cantidades redondeada a milésimas, la escala de `numeric(14,3)`.
+ * Las cantidades llegan como string (`"1.100"`) y se suman como número
+ * solo para ordenar y graficar; sin el redondeo, 1,1 + 0,2 daba
+ * 1.3000000000000003 en la pantalla y en la columna del Excel.
+ */
+function addQuantity(a: number, b: number): number {
+  return Math.round((a + b) * 1000) / 1000
+}
+
 export function aggregateItemRanking(sales: Sale[], items: Item[], categories: Category[]): { topItems: ItemRanking[]; topCategories: CategoryRanking[] } {
   const itemById = new Map(items.map((item) => [item.id, item]))
   const categoryById = new Map(categories.map((category) => [category.id, category]))
@@ -42,7 +52,7 @@ export function aggregateItemRanking(sales: Sale[], items: Item[], categories: C
     if (sale.status === 'voided') continue
     for (const line of sale.lines) {
       const existing = itemTotals.get(line.item_id) ?? { quantity: 0, revenue: '0.00' }
-      itemTotals.set(line.item_id, { quantity: existing.quantity + Number(line.quantity), revenue: sumMoney(existing.revenue, line.subtotal) })
+      itemTotals.set(line.item_id, { quantity: addQuantity(existing.quantity, Number(line.quantity)), revenue: sumMoney(existing.revenue, line.subtotal) })
     }
   }
 
@@ -59,7 +69,7 @@ export function aggregateItemRanking(sales: Sale[], items: Item[], categories: C
     const cat3Id = itemById.get(itemId)?.cat3_id
     const key = cat3Id ?? 'sin-categoria'
     const existing = categoryTotals.get(key) ?? { quantity: 0, revenue: '0.00' }
-    categoryTotals.set(key, { quantity: existing.quantity + totals.quantity, revenue: sumMoney(existing.revenue, totals.revenue) })
+    categoryTotals.set(key, { quantity: addQuantity(existing.quantity, totals.quantity), revenue: sumMoney(existing.revenue, totals.revenue) })
   }
 
   const topCategories: CategoryRanking[] = [...categoryTotals.entries()]

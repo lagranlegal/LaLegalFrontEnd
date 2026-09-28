@@ -6,6 +6,7 @@ import { EmptyState } from '@/components/shared/EmptyState'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { formatDate } from '@/lib/dates'
+import { formatQuantity } from '@/lib/inventory/units'
 import { usePayables, useInventoryValuation, useStaleInventory } from '@/features/reports/api'
 
 const STALE_THRESHOLDS = [60, 90, 180, 365]
@@ -147,7 +148,7 @@ function ValuationCard() {
           label="Valor al costo"
           value={<Money value={data.cost_value} />}
           tone="brand"
-          hint={`${data.units} unidad(es) en ${data.lot_count} lote(s)`}
+          hint={`${formatQuantity(data.units)} unidad(es) en ${data.lot_count} lote(s)`}
         />
         <KpiCard label="A precio de venta" value={<Money value={data.retail_value} />} hint="Referencia, no valorización" />
         <KpiCard
@@ -175,7 +176,7 @@ function ValuationCard() {
               {data.by_category.map((c) => (
                 <tr key={c.cat1_id ?? 'sin-categoria'} className="border-b border-border/60 last:border-0">
                   <td className="px-3 py-2 text-foreground">{c.cat1_name}</td>
-                  <td className="px-3 py-2 text-right tnum text-muted-foreground">{c.units}</td>
+                  <td className="px-3 py-2 text-right tnum text-muted-foreground">{formatQuantity(c.units)}</td>
                   <td className="px-3 py-2 text-right">
                     <Money value={c.cost_value} className="font-medium text-foreground" />
                   </td>
@@ -272,7 +273,7 @@ function StaleCard() {
                       <span className="text-foreground">{p.product_name}</span>
                       {p.product_code && <span className="ml-2 font-mono text-xs text-muted-foreground">{p.product_code}</span>}
                     </td>
-                    <td className="px-3 py-2 text-right tnum text-muted-foreground">{p.units}</td>
+                    <td className="px-3 py-2 text-right tnum text-muted-foreground">{formatQuantity(p.units)}</td>
                     <td className="px-3 py-2 text-right tnum font-medium text-warning">{p.days_in_stock}</td>
                     <td className="px-3 py-2 text-right">
                       <Money value={p.cost_value} className="font-medium text-foreground" />
