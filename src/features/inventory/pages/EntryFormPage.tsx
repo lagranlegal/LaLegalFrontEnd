@@ -785,7 +785,8 @@ export function EntryFormPage() {
                           control={control}
                           name={`lines.${index}.sale_price`}
                           render={({ field: priceField }) => (
-                            <MoneyInput className="mt-1" value={priceField.value || '0.00'} onChange={priceField.onChange} />
+                            // `optional`: borrado queda vacío (= borrador), no "0.00" (2d405cd).
+                            <MoneyInput optional className="mt-1" ariaLabel={`Precio de venta de la línea ${index + 1}`} value={priceField.value ?? ''} onChange={priceField.onChange} />
                           )}
                         />
                         <p className="mt-1 text-xs text-muted-foreground">Aplica a todos los lotes de este producto.</p>

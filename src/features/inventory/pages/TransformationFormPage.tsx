@@ -433,7 +433,8 @@ export function TransformationFormPage() {
 
                 <div>
                   <label className="text-sm font-medium text-foreground">Precio de venta (opcional)</label>
-                  <MoneyInput className="mt-1" value={salida.sale_price || '0.00'} onChange={(v) => actualizarSalida(salida.key, { sale_price: v })} />
+                  {/* `optional`: borrado queda vacío, no "0.00" (2d405cd). */}
+                  <MoneyInput optional className="mt-1" ariaLabel="Precio de venta" value={salida.sale_price} onChange={(v) => actualizarSalida(salida.key, { sale_price: v })} />
                 </div>
 
                 {salidas.length > 1 && (
