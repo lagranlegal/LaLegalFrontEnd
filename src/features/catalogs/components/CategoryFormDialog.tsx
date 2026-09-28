@@ -270,7 +270,11 @@ export function CategoryFormDialog({
           ) : (
             <>Referencia habitual: oro 70%, plata 60%, tecnología 40%.</>
           )}{' '}
-          Solo <span className="font-medium text-foreground">advierte</span> al crear el contrato — nunca lo impide.
+          {/* Decía «solo advierte… nunca lo impide» (G-01): falso desde
+              00051, y más desde F4-05 del backend (27/09/2026). Es un tope. */}
+          Es un tope: al crear el contrato, pasarse del cupo lo{' '}
+          <span className="font-medium text-foreground">bloquea</span> y el avalúo es obligatorio, salvo para quien tenga permiso
+          de autorizarlo.
         </p>
 
         {/* Tres mensajes distintos según lo que de verdad pasa, en vez del
