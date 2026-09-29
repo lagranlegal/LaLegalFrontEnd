@@ -15,7 +15,7 @@ import { Can } from '@/components/shared/Can'
 import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { ApiError } from '@/lib/api/client'
-import { userMessage } from '@/lib/api/errors'
+import { belowCostLines, userMessage } from '@/lib/api/errors'
 import { compareMoney, formatCOP, multiplyMoney, subtractMoney, sumMoney } from '@/lib/money'
 import { usePermission } from '@/lib/permissions/usePermission'
 import { belowPriceDiscount } from '@/lib/sales/discount'
@@ -66,6 +66,14 @@ export function SaleFormPage() {
    * que venda es decisión del cajero.
    */
   const [serverPriceDiscount, setServerPriceDiscount] = useState<string | null>(null)
+  /**
+   * Artículos que el backend rechazó por quedar bajo el COSTO del lote
+   * (403 `SALE_BELOW_COST_REQUIRES_PERMISSION`). Cubre lo que la pantalla no
+   * pudo prever: un costo que cambió con el carrito armado.
+   */
+  const [serverBelowCost, setServerBelowCost] = useState<ReadonlySet<string>>(new Set())
+  /** Confirmación explícita de vender con pérdida en alguna pieza. */
+  const [belowCostConfirmed, setBelowCostConfirmed] = useState(false)
   const submittedRef = useRef(false)
 
   // Perder un carrito armado sin aviso era el hueco más agudo de navegación
@@ -127,6 +135,12 @@ export function SaleFormPage() {
   const total = hasDiscount ? subtractMoney(subtotal, discountAmount) : subtotal
   const hasCreditNote = !!creditNoteId && Number(creditNoteAmount) > 0
   const cashAmount = hasCreditNote ? subtractMoney(total, creditNoteAmount) : total
+  // Vender por debajo del costo del lote (decisión del dueño, auditoría fase
+  // 7): el backend lo exige con `sales.apply_discount`. Acá se avisa en la
+  // línea y se pide confirmarlo; `item.cost` es el mismo costo del lote con
+  // el que compara el backend. Al costo exacto es libre.
+  const isBelowCost = (line: CartLine) => compareMoney(line.unitPrice, line.item.cost) < 0 || serverBelowCost.has(line.item.id)
+  const hasBelowCost = cart.some(isBelowCost)
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -139,6 +153,10 @@ export function SaleFormPage() {
       setFormError(
         hasDiscount ? 'El descuento necesita un motivo.' : 'Vender por debajo del precio publicado es un descuento: necesita un motivo.',
       )
+      return
+    }
+    if (hasBelowCost && !belowCostConfirmed) {
+      setFormError('Hay artículos por debajo del costo: confirma que quieres venderlos con pérdida.')
       return
     }
     try {
@@ -159,6 +177,9 @@ export function SaleFormPage() {
       if (error instanceof ApiError && error.code === 'CASH_SESSION_NOT_OPEN') {
         setCashDialogOpen(true)
         return
+      }
+      if (error instanceof ApiError && error.code === 'SALE_BELOW_COST_REQUIRES_PERMISSION') {
+        setServerBelowCost(new Set(belowCostLines(error).map((l) => l.item_id)))
       }
       if (error instanceof ApiError && typeof error.details?.price_discount === 'string') {
         setServerPriceDiscount(error.details.price_discount)
@@ -188,8 +209,10 @@ export function SaleFormPage() {
               <p className="p-card text-center text-sm text-muted-foreground">El carrito está vacío — busca un artículo arriba.</p>
             ) : (
               <div className="divide-y divide-border">
-                {cart.map(({ item, quantity, unitPrice }) => {
+                {cart.map((line) => {
+                  const { item, quantity, unitPrice } = line
                   const belowPublished = item.sale_price !== null && compareMoney(unitPrice, item.sale_price) < 0
+                  const belowCost = isBelowCost(line)
                   return (
                   <div key={item.id} className="flex flex-wrap items-center justify-between gap-3 p-4">
                     <div>
@@ -210,6 +233,11 @@ export function SaleFormPage() {
                       )}
                       {belowPublished && (
                         <p className="mt-1 text-xs text-warning">Por debajo del precio publicado: cuenta como descuento y necesita motivo.</p>
+                      )}
+                      {belowCost && (
+                        <p className="mt-1 text-xs font-medium text-danger">
+                          Por debajo del costo (<Money value={item.cost} />): esta pieza se vende con pérdida.
+                        </p>
                       )}
                     </div>
                     <div className="flex items-center gap-3">
@@ -382,6 +410,13 @@ export function SaleFormPage() {
               </>
             )}
           </div>
+
+          {hasBelowCost && (
+            <label className="flex items-start gap-2 rounded-input bg-danger-soft px-3 py-2 text-sm text-danger">
+              <input type="checkbox" className="mt-0.5" checked={belowCostConfirmed} onChange={(e) => setBelowCostConfirmed(e.target.checked)} />
+              <span>Confirmo que vendo por debajo del costo: la venta pierde plata en esas piezas.</span>
+            </label>
+          )}
 
           {formError && <p className="rounded-input bg-danger-soft px-3 py-2 text-sm text-danger">{formError}</p>}
 
