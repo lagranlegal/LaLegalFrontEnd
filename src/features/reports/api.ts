@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query'
 import { api, unwrap } from '@/lib/api/client'
 import { fetchAllPages } from '@/lib/api/pagination'
+import { compareMoney } from '@/lib/money'
 import { fetchAllClosingsInRange, type ClosingHistory } from '@/lib/cashbox/closings'
 import { usePermission } from '@/lib/permissions/usePermission'
 import type { DateRangeValue } from '@/components/shared/DateRangePicker'
@@ -129,7 +130,13 @@ export function useItemSales(range: DateRangeValue | null) {
         ),
         fetchAllPages<Item>((cursor) => unwrap(api.GET('/api/v1/inventory/items', { params: { query: { cursor, limit: 100 } } }))),
       ])
-      return { sales, items }
+      // F7-11: las devoluciones restan del ranking. Solo se piden las de las
+      // ventas que tienen alguna (`returned_amount > 0`), no una por venta.
+      const conDevolucion = sales.filter((sale) => sale.status !== 'voided' && compareMoney(sale.returned_amount, '0') > 0)
+      const returns = (
+        await Promise.all(conDevolucion.map((sale) => unwrap(api.GET('/api/v1/sales/{sale_id}/returns', { params: { path: { sale_id: sale.id } } }))))
+      ).flat()
+      return { sales, items, returns }
     },
   })
 }

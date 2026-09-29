@@ -1,4 +1,5 @@
-import { sumMoney } from '@/lib/money'
+import { multiplyMoney, subtractMoney, sumMoney } from '@/lib/money'
+import type { SaleReturn } from '@/lib/sales/returns'
 import type { Sale } from '@/lib/sales/void'
 import type { Item } from '@/lib/inventory/items'
 import type { Category } from '@/lib/catalogs/categories'
@@ -9,13 +10,21 @@ export interface ItemRanking {
   code: string | null
   quantity: number
   revenue: string
+  /** Unidad del artículo (`unit`, p. ej. `g`): una cantidad sin unidad no se lee. */
+  unit: string
 }
 
+/**
+ * Una categoría POR UNIDAD (F7-11): «3 uds» que en realidad son 2 anillos y
+ * 1,1 g de cadena no es una cantidad, es una suma de peras con manzanas. Si
+ * una categoría vende en unidades y en gramos, aparece dos veces.
+ */
 export interface CategoryRanking {
   categoryId: string
   name: string
   quantity: number
   revenue: string
+  unit: string
 }
 
 /**
@@ -42,38 +51,61 @@ function addQuantity(a: number, b: number): number {
   return Math.round((a + b) * 1000) / 1000
 }
 
-export function aggregateItemRanking(sales: Sale[], items: Item[], categories: Category[]): { topItems: ItemRanking[]; topCategories: CategoryRanking[] } {
+/**
+ * `returns` son las devoluciones de esas ventas (F7-11): lo devuelto se
+ * RESTA por `sale_line_id` —cantidad y `precio × cantidad devuelta`—, porque
+ * una pieza que volvió no es una pieza «más vendida». Sin ellas el ranking
+ * premiaba justo lo que los clientes devuelven.
+ */
+export function aggregateItemRanking(
+  sales: Sale[],
+  items: Item[],
+  categories: Category[],
+  returns: SaleReturn[] = [],
+): { topItems: ItemRanking[]; topCategories: CategoryRanking[] } {
   const itemById = new Map(items.map((item) => [item.id, item]))
   const categoryById = new Map(categories.map((category) => [category.id, category]))
+
+  const returnedByLine = new Map<string, number>()
+  for (const ret of returns) {
+    for (const line of ret.lines) returnedByLine.set(line.sale_line_id, addQuantity(returnedByLine.get(line.sale_line_id) ?? 0, Number(line.quantity)))
+  }
 
   const itemTotals = new Map<string, { quantity: number; revenue: string }>()
 
   for (const sale of sales) {
     if (sale.status === 'voided') continue
     for (const line of sale.lines) {
+      const devuelto = returnedByLine.get(line.id) ?? 0
+      const quantity = addQuantity(Number(line.quantity), -devuelto)
+      const revenue = devuelto > 0 ? subtractMoney(line.subtotal, multiplyMoney(line.unit_price, devuelto)) : line.subtotal
       const existing = itemTotals.get(line.item_id) ?? { quantity: 0, revenue: '0.00' }
-      itemTotals.set(line.item_id, { quantity: addQuantity(existing.quantity, Number(line.quantity)), revenue: sumMoney(existing.revenue, line.subtotal) })
+      itemTotals.set(line.item_id, { quantity: addQuantity(existing.quantity, quantity), revenue: sumMoney(existing.revenue, revenue) })
     }
   }
+  // Devuelto del todo: no se vendió.
+  for (const [itemId, totals] of itemTotals) if (totals.quantity <= 0) itemTotals.delete(itemId)
 
   const topItems: ItemRanking[] = [...itemTotals.entries()]
     .map(([itemId, totals]) => {
       const item = itemById.get(itemId)
-      return { itemId, name: item?.name ?? 'Artículo eliminado', code: item?.code ?? null, ...totals }
+      return { itemId, name: item?.name ?? 'Artículo eliminado', code: item?.code ?? null, unit: item?.unit ?? 'unit', ...totals }
     })
     .sort((a, b) => b.quantity - a.quantity)
     .slice(0, 10)
 
-  const categoryTotals = new Map<string, { quantity: number; revenue: string }>()
+  const categoryTotals = new Map<string, { categoryId: string; unit: string; quantity: number; revenue: string }>()
   for (const [itemId, totals] of itemTotals) {
-    const cat3Id = itemById.get(itemId)?.cat3_id
-    const key = cat3Id ?? 'sin-categoria'
-    const existing = categoryTotals.get(key) ?? { quantity: 0, revenue: '0.00' }
-    categoryTotals.set(key, { quantity: addQuantity(existing.quantity, totals.quantity), revenue: sumMoney(existing.revenue, totals.revenue) })
+    const item = itemById.get(itemId)
+    const categoryId = item?.cat3_id ?? 'sin-categoria'
+    const unit = item?.unit ?? 'unit'
+    const key = `${categoryId}|${unit}`
+    const existing = categoryTotals.get(key) ?? { categoryId, unit, quantity: 0, revenue: '0.00' }
+    categoryTotals.set(key, { ...existing, quantity: addQuantity(existing.quantity, totals.quantity), revenue: sumMoney(existing.revenue, totals.revenue) })
   }
 
-  const topCategories: CategoryRanking[] = [...categoryTotals.entries()]
-    .map(([categoryId, totals]) => ({ categoryId, name: categoryId === 'sin-categoria' ? 'Sin categoría' : (categoryById.get(categoryId)?.name ?? 'Categoría eliminada'), ...totals }))
+  const topCategories: CategoryRanking[] = [...categoryTotals.values()]
+    .map(({ categoryId, ...totals }) => ({ categoryId, name: categoryId === 'sin-categoria' ? 'Sin categoría' : (categoryById.get(categoryId)?.name ?? 'Categoría eliminada'), ...totals }))
     .sort((a, b) => b.quantity - a.quantity)
     .slice(0, 6)
 

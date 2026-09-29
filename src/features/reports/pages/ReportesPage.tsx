@@ -7,7 +7,7 @@ import { EmptyState } from '@/components/shared/EmptyState'
 import { DateRangePicker, type DateRangeValue } from '@/components/shared/DateRangePicker'
 import { Button } from '@/components/ui/button'
 import { exportSheetsToExcel } from '@/lib/export/xlsx'
-import { formatQuantity } from '@/lib/inventory/units'
+import { formatQuantity, unitAbbr } from '@/lib/inventory/units'
 import { ContractsStatusChart, type StatusDatum } from '@/components/shared/charts/ContractsStatusChart'
 import { DailyTrendChart } from '@/components/shared/charts/DailyTrendChart'
 import { MonthlyTrendChart } from '@/components/shared/charts/MonthlyTrendChart'
@@ -73,7 +73,7 @@ function CardShell({ title, subtitle, children }: { title: string; subtitle?: st
   )
 }
 
-function RankingList({ rows, unit }: { rows: { key: string; label: string; quantity: number; revenue: string }[]; unit: string }) {
+function RankingList({ rows }: { rows: { key: string; label: string; quantity: number; revenue: string; unit: string }[] }) {
   if (rows.length === 0) return <p className="text-sm text-muted-foreground">Sin ventas registradas todavía.</p>
   const max = rows[0]?.quantity ?? 1
   return (
@@ -83,7 +83,7 @@ function RankingList({ rows, unit }: { rows: { key: string; label: string; quant
           <div className="flex items-center justify-between gap-2 text-sm">
             <span className="text-foreground">{row.label}</span>
             <span className="tnum text-muted-foreground">
-              {formatQuantity(row.quantity)} {unit}
+              {formatQuantity(row.quantity)} {unitAbbr(row.unit)}
             </span>
           </div>
           <div className="h-1.5 w-full overflow-hidden rounded-pill bg-border">
@@ -272,7 +272,7 @@ export function ReportesPage() {
     [filteredExpenses, expenseCategories],
   )
   const ranking = useMemo(
-    () => (itemSales && categories ? aggregateItemRanking(itemSales.sales, itemSales.items, categories) : { topItems: [], topCategories: [] }),
+    () => (itemSales && categories ? aggregateItemRanking(itemSales.sales, itemSales.items, categories, itemSales.returns) : { topItems: [], topCategories: [] }),
     [itemSales, categories],
   )
 
@@ -320,8 +320,8 @@ export function ReportesPage() {
       }))
 
       const rankings = [
-        ...ranking.topItems.map((i) => ({ Tipo: 'Prenda', Nombre: i.code ? `${i.name} (${i.code})` : i.name, Cantidad: i.quantity, Ingresos: Number(i.revenue) })),
-        ...ranking.topCategories.map((c) => ({ Tipo: 'Categoría', Nombre: c.name, Cantidad: c.quantity, Ingresos: Number(c.revenue) })),
+        ...ranking.topItems.map((i) => ({ Tipo: 'Prenda', Nombre: i.code ? `${i.name} (${i.code})` : i.name, Cantidad: i.quantity, Unidad: unitAbbr(i.unit), Ingresos: Number(i.revenue) })),
+        ...ranking.topCategories.map((c) => ({ Tipo: 'Categoría', Nombre: c.name, Cantidad: c.quantity, Unidad: unitAbbr(c.unit), Ingresos: Number(c.revenue) })),
       ]
 
       await exportSheetsToExcel(`reportes-${range?.from ?? todayBogota()}-a-${range?.to ?? todayBogota()}.xlsx`, [
@@ -619,10 +619,10 @@ export function ReportesPage() {
         <p className="-mt-3 text-xs text-muted-foreground">Del mismo rango de fechas elegido arriba.</p>
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
           <CardShell title="Prendas más vendidas">
-            <RankingList rows={ranking.topItems.map((i) => ({ key: i.itemId, label: i.code ? `${i.name} (${i.code})` : i.name, quantity: i.quantity, revenue: i.revenue }))} unit="uds" />
+            <RankingList rows={ranking.topItems.map((i) => ({ key: i.itemId, label: i.code ? `${i.name} (${i.code})` : i.name, quantity: i.quantity, revenue: i.revenue, unit: i.unit }))} />
           </CardShell>
           <CardShell title="Categorías más movidas">
-            <RankingList rows={ranking.topCategories.map((c) => ({ key: c.categoryId, label: c.name, quantity: c.quantity, revenue: c.revenue }))} unit="uds" />
+            <RankingList rows={ranking.topCategories.map((c) => ({ key: `${c.categoryId}|${c.unit}`, label: c.name, quantity: c.quantity, revenue: c.revenue, unit: c.unit }))} />
           </CardShell>
         </div>
       </div>

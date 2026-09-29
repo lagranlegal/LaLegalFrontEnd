@@ -586,5 +586,65 @@
         ]
       }
     }
+  },
+  "venta_devuelta": {
+    "_test": "test_reports.py::test_estado_de_resultados_muestra_las_devoluciones_en_linea_propia (POST /sales y POST /sales/{id}/returns)",
+    "status": 201,
+    "body": {
+      "sale": {
+        "id": "edb48aad-a28f-4ad3-8f06-385c81b76d3c",
+        "number": 1,
+        "sold_at": "2026-09-29T00:38:17.213071Z",
+        "customer_id": null,
+        "discount_amount": "0.00",
+        "total": "500000.00",
+        "payment_method": "cash",
+        "status": "completed",
+        "void_reason": null,
+        "created_at": "2026-09-29T00:38:17.213071Z",
+        "lines": [
+          {
+            "id": "acc7260e-4493-45c5-af5b-a02387028960",
+            "item_id": "ec084674-a6cd-403e-8070-7cfcd3e47761",
+            "quantity": "1.000",
+            "unit_price": "500000.00",
+            "unit_cost": "300000.00",
+            "subtotal": "500000.00",
+            "list_price": "500000.00",
+            "price_discount": "0.00"
+          }
+        ],
+        "account_id": "ba057c06-6128-4370-89bb-9dca57ecd531",
+        "credit_note_redeemed_amount": null,
+        "returned_amount": "0.00"
+      },
+      "return": {
+        "id": "d3bff416-d20f-4039-8e12-4652057898d6",
+        "number": 1,
+        "sale_id": "edb48aad-a28f-4ad3-8f06-385c81b76d3c",
+        "customer_id": null,
+        "reason": "defect",
+        "settlement_method": "cash",
+        "notes": null,
+        "return_date": "2026-09-28",
+        "created_at": "2026-09-29T00:38:17.261693Z",
+        "lines": [
+          {
+            "id": "02dc3d5f-f603-4691-96f2-ca0a5d641993",
+            "sale_line_id": "acc7260e-4493-45c5-af5b-a02387028960",
+            "item_id": "ec084674-a6cd-403e-8070-7cfcd3e47761",
+            "quantity": "1.000",
+            "unit_cost": "300000.00",
+            "restock": true
+          }
+        ],
+        "credit_note_id": null,
+        "total_amount": "500000.00",
+        "refunded_amount": "500000.00",
+        "credit_note_amount": "0.00",
+        "credit_note_number": null,
+        "time_limit_warning": false
+      }
+    }
   }
 }
