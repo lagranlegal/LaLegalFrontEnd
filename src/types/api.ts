@@ -2467,6 +2467,26 @@ export interface components {
             total_capital: string;
             /** Distributable */
             distributable: string;
+            /**
+             * Accounts Payable
+             * @default 0.00
+             */
+            accounts_payable: string;
+            /**
+             * Credit Notes Outstanding
+             * @default 0.00
+             */
+            credit_notes_outstanding: string;
+            /**
+             * Total Liabilities
+             * @default 0.00
+             */
+            total_liabilities: string;
+            /**
+             * Net Worth
+             * @default 0.00
+             */
+            net_worth: string;
         };
         /** CashboxKpisOut */
         CashboxKpisOut: {
@@ -2607,6 +2627,7 @@ export interface components {
         ClosingsBreakdownOut: {
             /** Lines */
             lines: components["schemas"]["ClosingsBreakdownLineOut"][];
+            sales_flow?: components["schemas"]["SalesCashFlowOut"] | null;
         };
         /** CompanyCreateIn */
         CompanyCreateIn: {
@@ -3877,8 +3898,11 @@ export interface components {
          *     de utilidad. Para una tienda eso sobreestima la ganancia por todo el costo
          *     de la mercancía.
          *
-         *     Sale de los DOCUMENTOS (`sale`, `contract_payment`, `expense`) y no de los
-         *     movimientos de caja. Dos razones, y las dos importan:
+         *     Sale de los DOCUMENTOS (`sale`, `contract_payment`, `expense`, y desde la
+         *     fase 7 `inventory_exit` y `account_settlement`) y no de los movimientos de
+         *     caja — con dos excepciones nombradas: los ajustes de arqueo, que no tienen
+         *     otro documento, y las liquidaciones anteriores a 00061. Dos razones, y las
+         *     dos importan:
          *
          *       · El desglose de caja solo cubre sesiones CERRADAS: lo de hoy faltaría.
          *       · Una venta con Sistecrédito ES ingreso aunque no haya entrado plata —
@@ -3912,18 +3936,58 @@ export interface components {
             operating_expenses: string;
             /** Expense Count */
             expense_count: number;
+            /**
+             * Inventory Shrinkage
+             * @default 0.00
+             */
+            inventory_shrinkage: string;
+            /**
+             * Shrinkage Exit Count
+             * @default 0
+             */
+            shrinkage_exit_count: number;
+            /**
+             * Settlement Commissions
+             * @default 0.00
+             */
+            settlement_commissions: string;
+            /**
+             * Cash Differences
+             * @default 0.00
+             */
+            cash_differences: string;
             /** Operating Profit */
             operating_profit: string;
             /** Margin Pct */
             margin_pct: string | null;
             /** Interest Discounts */
             interest_discounts: string;
+            /**
+             * Sales Discounts
+             * @default 0.00
+             */
+            sales_discounts: string;
+            /**
+             * Auction Interest Realized
+             * @default 0.00
+             */
+            auction_interest_realized: string;
             /** Capital Disbursed */
             capital_disbursed: string;
             /** Capital Recovered */
             capital_recovered: string;
             /** Inventory Purchased */
             inventory_purchased: string;
+            /**
+             * Inventory Purchases Paid
+             * @default 0.00
+             */
+            inventory_purchases_paid: string;
+            /**
+             * Transformation Costs Paid
+             * @default 0.00
+             */
+            transformation_costs_paid: string;
         };
         /** InventoryKpisOut */
         InventoryKpisOut: {
@@ -4422,6 +4486,11 @@ export interface components {
             interest_collected: string;
             /** Interest Discounts */
             interest_discounts: string;
+            /**
+             * Interest Revenue
+             * @default 0.00
+             */
+            interest_revenue: string;
             /** Capital Recovered */
             capital_recovered: string;
             /** Capital Disbursed */
@@ -4436,6 +4505,8 @@ export interface components {
             open_contracts: number;
             /** Yield On Current Portfolio Pct */
             yield_on_current_portfolio_pct: string | null;
+            /** Net Yield On Current Portfolio Pct */
+            net_yield_on_current_portfolio_pct?: string | null;
         };
         /**
          * PayablesOut
@@ -4731,6 +4802,21 @@ export interface components {
             gross_revenue: string;
             /** Discounts */
             discounts: string;
+            /**
+             * Price Discounts
+             * @default 0.00
+             */
+            price_discounts: string;
+            /**
+             * Total Discounts
+             * @default 0.00
+             */
+            total_discounts: string;
+            /**
+             * Auction Interest Realized
+             * @default 0.00
+             */
+            auction_interest_realized: string;
             /** Sales Returns */
             sales_returns: string;
             /** Return Count */
@@ -4878,6 +4964,13 @@ export interface components {
             unit_cost: string;
             /** Subtotal */
             subtotal: string;
+            /** List Price */
+            list_price?: string | null;
+            /**
+             * Price Discount
+             * @default 0.00
+             */
+            price_discount: string;
         };
         /** SaleOut */
         SaleOut: {
@@ -5024,7 +5117,47 @@ export interface components {
             /** Time Limit Warning */
             time_limit_warning: boolean;
         };
-        /** SalesKpisOut */
+        /**
+         * SalesCashFlowOut
+         * @description Ventas vistas desde la CAJA (F7-05): es FLUJO, no ingreso contable.
+         *
+         *     El KPI de ventas de la pantalla Reportes se armaba sumando `sale/in` del
+         *     desglose y nunca restaba la anulación (`sale/out`) ni la devolución en
+         *     efectivo (`sale_return/out`): con una venta anulada de 1.200.000 decía
+         *     «Ventas» 6.120.250 contra 5.120.250 del estado de resultados.
+         *
+         *     Sigue siendo flujo: lo que se pagó con nota crédito no entró a caja y no
+         *     está; lo vendido por Sistecrédito está el día de la venta, en la cuenta
+         *     `settlement`. Para el INGRESO del período la fuente es
+         *     `/reports/income-statement`.
+         */
+        SalesCashFlowOut: {
+            /**
+             * Kind
+             * @default cash_flow
+             */
+            kind: string;
+            /**
+             * Description
+             * @default Flujo de caja por ventas: cobros de venta menos anulaciones y devoluciones pagadas. No es el ingreso contable (ver /reports/income-statement).
+             */
+            description: string;
+            /** Sales In */
+            sales_in: string;
+            /** Voided Out */
+            voided_out: string;
+            /** Returns Out */
+            returns_out: string;
+            /** Net Sales Flow */
+            net_sales_flow: string;
+        };
+        /**
+         * SalesKpisOut
+         * @description Ventas del dashboard (F7-07). `today_total`/`month_total` son NETAS de
+         *     devoluciones —la misma cifra que `income-statement.sales_revenue −
+         *     sales_returns` para ese día o mes—; una venta anulada nunca cuenta. El
+         *     bruto y las devoluciones van aparte para poder explicar la resta.
+         */
         SalesKpisOut: {
             /** Today Total */
             today_total: string;
@@ -5032,6 +5165,26 @@ export interface components {
             today_count: number;
             /** Month Total */
             month_total: string;
+            /**
+             * Today Gross
+             * @default 0.00
+             */
+            today_gross: string;
+            /**
+             * Today Returns
+             * @default 0.00
+             */
+            today_returns: string;
+            /**
+             * Month Gross
+             * @default 0.00
+             */
+            month_gross: string;
+            /**
+             * Month Returns
+             * @default 0.00
+             */
+            month_returns: string;
         };
         /** SessionCloseIn */
         SessionCloseIn: {
