@@ -27,7 +27,7 @@ import { aggregateCashDifferences, aggregateFinancialSummary, salesCashFlow, agg
 import { aggregateItemRanking } from '@/features/reports/rankings'
 import { ModuleSplitBar } from '@/features/reports/components/ModuleSplitBar'
 import { PawnCard, ProfitCard } from '@/features/reports/components/PerformanceCards'
-import { incomeStatementRows, incomeStatementSheetRows } from '@/features/reports/incomeStatement'
+import { incomeStatementCascade, incomeStatementRows, incomeStatementSheetRows } from '@/features/reports/incomeStatement'
 
 type ModuleFilter = 'all' | 'pawn' | 'store'
 
@@ -113,9 +113,12 @@ function IncomeStatementCard({ range }: { range: DateRangeValue | null }) {
   if (isPending) return <div className="h-56 animate-pulse rounded-card border border-border bg-border" />
   if (isError || !data) return null
 
-  const perdida = Number(data.operating_profit) < 0
+  // Subtotales derivados de los renglones mostrados, con centavos si los
+  // hay: lo que se ve se puede sumar a mano (ver `incomeStatementCascade`).
+  const { rows: cascada, fractionDigits } = incomeStatementCascade(data)
+  const utilidad = cascada.find((r) => r.kind === 'result')?.value ?? data.operating_profit
+  const perdida = compareMoney(utilidad, '0') < 0
   const rows = incomeStatementRows(data)
-  const cascada = rows.filter((r) => r.kind !== 'info' && r.kind !== 'outside')
   const informativas = rows.filter((r) => r.kind === 'info')
   const fuera = rows.filter((r) => r.kind === 'outside')
 
@@ -135,7 +138,7 @@ function IncomeStatementCard({ range }: { range: DateRangeValue | null }) {
                 {data.margin_pct !== null && (
                   <span className={cn('text-xs font-medium', perdida ? 'text-danger' : 'text-success')}>{Number(data.margin_pct)}% de margen</span>
                 )}
-                <Money value={fila.value} className={cn('tnum text-lg font-semibold', perdida ? 'text-danger' : 'text-success')} />
+                <Money value={fila.value} maximumFractionDigits={fractionDigits} className={cn('tnum text-lg font-semibold', perdida ? 'text-danger' : 'text-success')} />
               </div>
             </div>
           ) : fila.kind === 'subtotal' ? (
@@ -143,7 +146,7 @@ function IncomeStatementCard({ range }: { range: DateRangeValue | null }) {
             // utilidad bruta sale de restar el costo es media explicación.
             <div key={fila.key} className="flex items-center justify-between gap-3 border-t border-border py-1.5">
               <span className="font-medium text-foreground">{fila.label}</span>
-              <Money value={fila.value} className="tnum font-medium text-foreground" />
+              <Money value={fila.value} maximumFractionDigits={fractionDigits} className="tnum font-medium text-foreground" />
             </div>
           ) : (
             <div key={fila.key} className="flex items-center justify-between gap-3 py-1">
@@ -157,6 +160,7 @@ function IncomeStatementCard({ range }: { range: DateRangeValue | null }) {
                   y en rojo, un sobrante positivo. */}
               <Money
                 value={fila.value}
+                maximumFractionDigits={fractionDigits}
                 tone={fila.kind === 'subtract' || (fila.kind === 'signed' && compareMoney(fila.value, '0') < 0) ? 'out' : undefined}
                 className="tnum"
               />

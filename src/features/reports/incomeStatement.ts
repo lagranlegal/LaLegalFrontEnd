@@ -1,4 +1,4 @@
-import { subtractMoney } from '@/lib/money'
+import { subtractMoney, sumMoney } from '@/lib/money'
 import type { components } from '@/types/api'
 
 export type IncomeStatement = components['schemas']['IncomeStatementOut']
@@ -74,6 +74,48 @@ export function incomeStatementRows(data: IncomeStatement): IncomeStatementRow[]
 /** El monto con el signo con que entra a la utilidad (las restas en negativo). */
 export function signedValue(row: IncomeStatementRow): string {
   return row.kind === 'subtract' ? subtractMoney('0.00', row.value) : row.value
+}
+
+const ENTRA_AL_RESULTADO: ReadonlySet<IncomeStatementRowKind> = new Set(['add', 'subtract', 'signed'])
+
+function hasCents(value: string): boolean {
+  const [, dec = ''] = value.split('.')
+  return /[1-9]/.test(dec)
+}
+
+/**
+ * La cascada tal como se MUESTRA en la tarjeta: los renglones que entran al
+ * resultado, con los subtotales y la utilidad calculados de esos mismos
+ * renglones, y los centavos a la vista si algún renglón los trae.
+ *
+ * Por qué (verificación de la tanda F/G): los valores traen centavos y la
+ * pantalla redondeaba cada renglón a pesos por separado —3.976.916,67 se
+ * veía 3.976.917 y 3.488.458,46 se veía 3.488.458—, así que la utilidad
+ * bruta mostrada no era la resta de lo mostrado: 1 peso de diferencia para
+ * quien suma a mano. Mostrar centavos solo arregla eso si el subtotal
+ * también sale de los renglones: el backend desplegado antes de d96d2d1
+ * calcula sus subtotales con los valores sin redondear y puede diferir en
+ * un centavo; el nuevo ya los deriva igual, y ahí coinciden. Es una suma
+ * de presentación, no una regla de negocio: cada renglón sigue siendo el
+ * del backend.
+ *
+ * Una línea que el backend todavía no manda (una respuesta anterior a la
+ * tanda F1) entra en cero.
+ */
+export function incomeStatementCascade(data: IncomeStatement): { rows: IncomeStatementRow[]; fractionDigits: 0 | 2 } {
+  const cascade = incomeStatementRows(data)
+    .filter((r) => r.kind !== 'info' && r.kind !== 'outside')
+    .map((r) => ({ ...r, value: r.value ?? '0.00' }))
+  let acumulado = '0.00'
+  const rows = cascade.map((row) => {
+    if (ENTRA_AL_RESULTADO.has(row.kind)) {
+      acumulado = sumMoney(acumulado, signedValue(row))
+      return row
+    }
+    return { ...row, value: acumulado }
+  })
+  const fractionDigits = rows.some((r) => ENTRA_AL_RESULTADO.has(r.kind) && hasCents(r.value)) ? 2 : 0
+  return { rows, fractionDigits }
 }
 
 const KIND_LABEL: Record<IncomeStatementRowKind, string> = {

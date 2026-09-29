@@ -484,5 +484,27 @@
    ],
    "alert_recipients": []
   }
+ },
+ "estado_resultados_centavos_dev": {
+  "_origen": "Respuesta REAL del backend DESPLEGADO en dev (GET /reports/income-statement, empresa de laboratorio de la fase 7, 28/09/2026), guardada por la auditoría. Anterior a la tanda F1: no trae las líneas nuevas, que se leen con fallback. Es el caso de la verificación F/G: redondeando cada renglón a pesos, 3.976.917 − 3.488.458 = 488.459 y la pantalla mostraba 488.458.",
+  "status": 200,
+  "body": {
+   "from_date": "2026-09-01",
+   "to_date": "2026-09-28",
+   "sales_revenue": "5120250.00",
+   "sales_returns": "1383333.33",
+   "interest_revenue": "240000.00",
+   "total_revenue": "3976916.67",
+   "cost_of_goods_sold": "3488458.46",
+   "gross_profit": "488458.21",
+   "operating_expenses": "465000.00",
+   "expense_count": 3,
+   "operating_profit": "23458.21",
+   "margin_pct": "0.59",
+   "interest_discounts": "10000.00",
+   "capital_disbursed": "3200000.00",
+   "capital_recovered": "900000.00",
+   "inventory_purchased": "4575666.67"
+  }
  }
 }
