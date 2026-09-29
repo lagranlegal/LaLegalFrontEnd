@@ -33,6 +33,7 @@ vi.mock('@/components/shared/confirmStore', () => ({
 // `Can` sin permisos reales: lo que se prueba es la ruta del error, no el gate.
 vi.mock('@/components/shared/Can', () => ({ Can: ({ children }: { children: React.ReactNode }) => children }))
 vi.mock('@/components/shared/PrintLayout', () => ({ PrintLayout: () => null }))
+vi.mock('@/components/shared/CompanyDataNotice', () => ({ CompanyDataNotice: () => null }))
 vi.mock('@/components/shared/ReturnFormDialog', () => ({ ReturnFormDialog: () => null }))
 vi.mock('@/components/shared/CashSessionRequiredDialog', () => ({
   CashSessionRequiredDialog: ({ open }: { open: boolean }) => (open ? <div>MODAL_ABRIR_CAJA</div> : null),

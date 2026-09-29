@@ -52,6 +52,7 @@ vi.mock('sonner', () => ({ toast: { error: vi.fn(), success: (...a: unknown[]) =
 vi.mock('@/lib/sales/void', () => ({ useVoidSale: () => ({ mutateAsync: vi.fn(), isPending: false }) }))
 vi.mock('@/components/shared/Can', () => ({ Can: ({ children }: { children: React.ReactNode }) => children }))
 vi.mock('@/components/shared/PrintLayout', () => ({ PrintLayout: () => null }))
+vi.mock('@/components/shared/CompanyDataNotice', () => ({ CompanyDataNotice: () => null }))
 vi.mock('@/components/shared/CashSessionRequiredDialog', () => ({ CashSessionRequiredDialog: () => null }))
 vi.mock('@/components/shared/CustomerPicker', () => ({ CustomerPicker: () => null }))
 vi.mock('@/lib/customers/search', () => ({ useCustomer: () => ({ data: undefined }) }))
