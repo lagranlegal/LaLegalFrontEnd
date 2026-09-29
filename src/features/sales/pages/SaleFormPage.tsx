@@ -353,7 +353,7 @@ export function SaleFormPage() {
               <label htmlFor="sale-account" className="text-sm font-medium text-foreground">
                 ¿A dónde entra?
               </label>
-              <AccountPicker id="sale-account" paymentMethod={paymentMethod} value={accountId} onChange={setAccountId} />
+              <AccountPicker id="sale-account" paymentMethod={paymentMethod} value={accountId} onChange={setAccountId} warnNegativeBalance />
             </div>
 
             <Can permission="sales.apply_discount">

@@ -3,6 +3,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Money } from '@/components/shared/Money'
 import { useAccounts } from '@/lib/accounts/list'
 import { isPermissionError } from '@/lib/api/isPermissionError'
+import { compareMoney } from '@/lib/money'
 import { accountTypeLabel, defaultAccountTypeFor } from '@/lib/accounts/types'
 
 /**
@@ -27,6 +28,7 @@ export function AccountPicker({
   onChange,
   id,
   disabled,
+  warnNegativeBalance = false,
 }: {
   /** `cash` | `transfer` | `other` — decide qué cuentas se ofrecen. */
   paymentMethod: string
@@ -46,6 +48,13 @@ export function AccountPicker({
   onChange: (accountId: string | null) => void
   id?: string
   disabled?: boolean
+  /**
+   * Avisa si la cuenta elegida tiene saldo NEGATIVO. Un cajón en negativo es
+   * imposible en la realidad —no se sacan billetes que no hay—: el sistema
+   * dice algo que el cajón no, y cobrar encima esconde el descuadre en vez
+   * de resolverlo.
+   */
+  warnNegativeBalance?: boolean
 }) {
   const { data: accounts, isPending, error } = useAccounts()
   const wantedType = defaultAccountTypeFor(paymentMethod)
@@ -93,24 +102,34 @@ export function AccountPicker({
     )
   }
 
+  const negative = warnNegativeBalance && selected !== null && compareMoney(selected.balance, '0') < 0
+
   return (
-    <Select value={selected?.id ?? ''} onValueChange={onChange} disabled={disabled}>
-      <SelectTrigger id={id} className="mt-1 w-full">
-        <SelectValue placeholder="Elegir cuenta…" />
-      </SelectTrigger>
-      <SelectContent>
-        {options.map((account) => (
-          <SelectItem key={account.id} value={account.id}>
-            <span className="flex w-full items-center justify-between gap-3">
-              <span>
-                {account.name}
-                <span className="ml-2 text-xs text-muted-foreground">{accountTypeLabel(account.type)}</span>
+    <>
+      <Select value={selected?.id ?? ''} onValueChange={onChange} disabled={disabled}>
+        <SelectTrigger id={id} className="mt-1 w-full">
+          <SelectValue placeholder="Elegir cuenta…" />
+        </SelectTrigger>
+        <SelectContent>
+          {options.map((account) => (
+            <SelectItem key={account.id} value={account.id}>
+              <span className="flex w-full items-center justify-between gap-3">
+                <span>
+                  {account.name}
+                  <span className="ml-2 text-xs text-muted-foreground">{accountTypeLabel(account.type)}</span>
+                </span>
+                <Money value={account.balance} maximumFractionDigits={0} className="text-xs text-muted-foreground" />
               </span>
-              <Money value={account.balance} maximumFractionDigits={0} className="text-xs text-muted-foreground" />
-            </span>
-          </SelectItem>
-        ))}
-      </SelectContent>
-    </Select>
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+      {negative && selected && (
+        <p role="alert" className="mt-1 rounded-input bg-warning-soft px-3 py-2 text-xs text-warning">
+          «{selected.name}» tiene saldo negativo (<Money value={selected.balance} />): el sistema registra menos plata de la que puede haber. Revisa el
+          arqueo o los últimos movimientos antes de seguir cobrando ahí.
+        </p>
+      )}
+    </>
   )
 }
