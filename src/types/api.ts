@@ -3953,6 +3953,7 @@ export interface components {
             settlement_commissions: string;
             /**
              * Cash Differences
+             * @description Descuadres de caja del período, con signo (sobrante suma, faltante resta). Incluye los ajustes del conteo de APERTURA y del arqueo de CIERRE, y la reversa al reabrir un turno; por eso no coincide con la diferencia de los cierres, que solo cuenta el arqueo.
              * @default 0.00
              */
             cash_differences: string;
