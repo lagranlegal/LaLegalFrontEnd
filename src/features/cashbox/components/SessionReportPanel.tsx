@@ -1,6 +1,6 @@
 import { Money } from '@/components/shared/Money'
 import { PAYMENT_METHOD_LABELS } from '@/lib/paymentMethods'
-import { MODULE_LABELS, conceptLabel } from '@/lib/modules'
+import { MODULE_LABELS, movementLabel } from '@/lib/modules'
 import type { SessionReport } from '@/features/cashbox/api'
 
 /** Desglose módulo×concepto×medio de una sesión (CLAUDE.md paso 6) — usado en la vista previa antes de cerrar y en el acta de un cierre ya hecho. */
@@ -25,7 +25,7 @@ export function SessionReportPanel({ report }: { report: SessionReport }) {
             {report.lines.map((line, index) => (
               <tr key={index}>
                 <td className="px-3 py-2 text-foreground">{MODULE_LABELS[line.module as keyof typeof MODULE_LABELS] ?? line.module}</td>
-                <td className="px-3 py-2 text-foreground">{conceptLabel(line.concept)}</td>
+                <td className="px-3 py-2 text-foreground">{movementLabel(line.concept, line.direction)}</td>
                 <td className="px-3 py-2 text-foreground">{PAYMENT_METHOD_LABELS[line.payment_method as keyof typeof PAYMENT_METHOD_LABELS] ?? line.payment_method}</td>
                 <td className="px-3 py-2 text-right">
                   <Money value={line.total} tone={line.direction === 'out' ? 'out' : 'in'} />

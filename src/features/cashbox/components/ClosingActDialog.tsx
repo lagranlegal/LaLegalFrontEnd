@@ -4,7 +4,7 @@ import { PrintField, PrintSection, PrintTable, PrintTd, PrintTh } from '@/compon
 import { Money } from '@/components/shared/Money'
 import { Button } from '@/components/ui/button'
 import { formatDate, formatDateTime } from '@/lib/dates'
-import { conceptLabel, MODULE_LABELS } from '@/lib/modules'
+import { movementLabel, MODULE_LABELS } from '@/lib/modules'
 import { PAYMENT_METHOD_LABELS } from '@/lib/paymentMethods'
 import { useSessionReport } from '@/features/cashbox/api'
 import type { ClosingHistory } from '@/lib/cashbox/closings'
@@ -121,6 +121,7 @@ export function ClosingActDialog({ open, onOpenChange, closing }: { open: boolea
                   <PrintTh>Módulo</PrintTh>
                   <PrintTh>Concepto</PrintTh>
                   <PrintTh>Medio</PrintTh>
+                  <PrintTh>Movimiento</PrintTh>
                   <PrintTh align="right">Total</PrintTh>
                 </>
               }
@@ -128,9 +129,13 @@ export function ClosingActDialog({ open, onOpenChange, closing }: { open: boolea
               {report.lines.map((line, index) => (
                 <tr key={index}>
                   <PrintTd>{MODULE_LABELS[line.module as keyof typeof MODULE_LABELS] ?? line.module}</PrintTd>
-                  <PrintTd>{conceptLabel(line.concept)}</PrintTd>
+                  {/* F8-12: el concepto se lee con su dirección — una venta anulada es
+                      `sale/out` y se imprime como anulación, no como «Venta». */}
+                  <PrintTd>{movementLabel(line.concept, line.direction)}</PrintTd>
                   <PrintTd>{PAYMENT_METHOD_LABELS[line.payment_method as keyof typeof PAYMENT_METHOD_LABELS] ?? line.payment_method}</PrintTd>
+                  <PrintTd>{line.direction === 'out' ? 'Salida' : 'Entrada'}</PrintTd>
                   <PrintTd align="right">
+                    {line.direction === 'out' && '− '}
                     <Money value={line.total} />
                   </PrintTd>
                 </tr>

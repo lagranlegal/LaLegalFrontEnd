@@ -12,7 +12,7 @@ import { ContractsStatusChart, type StatusDatum } from '@/components/shared/char
 import { DailyTrendChart } from '@/components/shared/charts/DailyTrendChart'
 import { MonthlyTrendChart } from '@/components/shared/charts/MonthlyTrendChart'
 import { DonutChart, type DonutDatum } from '@/components/shared/charts/DonutChart'
-import { MODULE_LABELS, conceptLabel } from '@/lib/modules'
+import { MODULE_LABELS, movementLabel } from '@/lib/modules'
 import { PAYMENT_METHOD_LABELS } from '@/lib/paymentMethods'
 import { todayBogota } from '@/lib/dates'
 import { compareMoney, subtractMoney } from '@/lib/money'
@@ -313,7 +313,7 @@ export function ReportesPage() {
 
       const desglose = summary.totalsByConcept.map((line) => ({
         Módulo: MODULE_LABELS[line.module as keyof typeof MODULE_LABELS] ?? line.module,
-        Concepto: conceptLabel(line.concept),
+        Concepto: movementLabel(line.concept, line.direction),
         Medio: PAYMENT_METHOD_LABELS[line.paymentMethod as keyof typeof PAYMENT_METHOD_LABELS] ?? line.paymentMethod,
         Dirección: line.direction === 'in' ? 'Entrada' : 'Salida',
         Total: Number(line.total),
@@ -589,7 +589,7 @@ export function ReportesPage() {
                   {summary.totalsByConcept.map((line, index) => (
                     <tr key={index}>
                       <td className="px-3 py-2 text-foreground">{MODULE_LABELS[line.module as keyof typeof MODULE_LABELS] ?? line.module}</td>
-                      <td className="px-3 py-2 text-foreground">{conceptLabel(line.concept)}</td>
+                      <td className="px-3 py-2 text-foreground">{movementLabel(line.concept, line.direction)}</td>
                       <td className="px-3 py-2 text-foreground">{PAYMENT_METHOD_LABELS[line.paymentMethod as keyof typeof PAYMENT_METHOD_LABELS] ?? line.paymentMethod}</td>
                       <td className="px-3 py-2 text-right">
                         <Money value={line.total} tone={line.direction === 'out' ? 'out' : 'in'} />

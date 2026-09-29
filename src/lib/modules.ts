@@ -58,3 +58,25 @@ export const CONCEPT_LABELS: Record<string, string> = {
 export function conceptLabel(concept: string): string {
   return CONCEPT_LABELS[concept] ?? concept
 }
+
+/**
+ * Conceptos que en su sentido NORMAL son una entrada. Uno de estos con
+ * `direction: 'out'` es su contra-movimiento: la anulación de una venta
+ * sale como `sale/out`, y la reversa de un abono como `interest_payment/out`.
+ */
+const NATURALLY_IN = new Set(['interest_payment', 'capital_payment', 'sale', 'settlement_in', 'transfer_in', 'owner_contribution'])
+/** Y al revés: estos son salidas; con `direction: 'in'` son una reversa. */
+const NATURALLY_OUT = new Set(['loan_disbursed', 'expense', 'purchase', 'sale_return', 'settlement_out', 'transfer_out', 'owner_withdrawal'])
+
+/**
+ * El concepto de una línea de caja LEYENDO su dirección (F8-12). El acta de
+ * cierre imprimía `conceptLabel(concept)` solo, y una venta anulada —que es
+ * `sale` con `direction: 'out'`— salía como «Venta», en un documento que se
+ * firma: parecía que se había vendido dos veces.
+ */
+export function movementLabel(concept: string, direction: string): string {
+  if (concept === 'sale' && direction === 'out') return 'Anulación de venta'
+  if (NATURALLY_IN.has(concept) && direction === 'out') return `Reversa: ${conceptLabel(concept).toLowerCase()}`
+  if (NATURALLY_OUT.has(concept) && direction === 'in') return `Reversa: ${conceptLabel(concept).toLowerCase()}`
+  return conceptLabel(concept)
+}

@@ -646,5 +646,70 @@
         "time_limit_warning": false
       }
     }
+  },
+  "acta_con_anulacion": {
+    "_test": "test_reports.py::test_F7_05_07_* (GET /cashbox/sessions/{id}/report, con venta anulada y devolución) y test_dashboard_and_closing_history (GET /reports/closings)",
+    "status": 200,
+    "body": {
+      "report": {
+        "session_id": "02c6d05c-e7d1-4380-9cbc-59b9b793ca34",
+        "status": "open",
+        "opening_balance": "0.00",
+        "expected_cash": "200000.00",
+        "lines": [
+          {
+            "module": "store",
+            "direction": "in",
+            "concept": "sale",
+            "payment_method": "cash",
+            "account_id": "f3782bf9-97e4-4fca-b857-c3a12f40625c",
+            "account_name": "Caja principal",
+            "account_type": "cash",
+            "total": "1000000.00"
+          },
+          {
+            "module": "store",
+            "direction": "out",
+            "concept": "sale",
+            "payment_method": "cash",
+            "account_id": "f3782bf9-97e4-4fca-b857-c3a12f40625c",
+            "account_name": "Caja principal",
+            "account_type": "cash",
+            "total": "200000.00"
+          },
+          {
+            "module": "store",
+            "direction": "out",
+            "concept": "purchase",
+            "payment_method": "cash",
+            "account_id": "f3782bf9-97e4-4fca-b857-c3a12f40625c",
+            "account_name": "Caja principal",
+            "account_type": "cash",
+            "total": "300000.00"
+          },
+          {
+            "module": "store",
+            "direction": "out",
+            "concept": "sale_return",
+            "payment_method": "cash",
+            "account_id": "f3782bf9-97e4-4fca-b857-c3a12f40625c",
+            "account_name": "Caja principal",
+            "account_type": "cash",
+            "total": "300000.00"
+          }
+        ]
+      },
+      "closing": {
+        "session_id": "e1864a01-d3dc-486e-939b-4674ee456619",
+        "session_date": "2026-09-28",
+        "opening_balance": "2000000.00",
+        "expected_cash": "950000.00",
+        "counted_cash": "950000.00",
+        "difference": "0.00",
+        "difference_reason": null,
+        "closed_by": "5fe87bd1-78fb-4fda-96d8-4c356fa154c1",
+        "closed_at": "2026-09-29T00:38:15.738653Z"
+      }
+    }
   }
 }
