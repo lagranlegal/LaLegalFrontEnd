@@ -7,6 +7,7 @@ import { Money } from '@/components/shared/Money'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { Button } from '@/components/ui/button'
 import { formatDate, todayBogota } from '@/lib/dates'
+import { compareMoney } from '@/lib/money'
 import { CapitalMovementDialog } from '@/features/capital/components/CapitalMovementDialog'
 import {
   useCapitalMovements,
@@ -60,7 +61,7 @@ function Dato({
  * antes de venderla es el error clásico, y acá alimentaría directamente una
  * decisión de sacar dinero.
  */
-function PositionCard({ position }: { position: CapitalPosition }) {
+export function PositionCard({ position }: { position: CapitalPosition }) {
   const sinRepartir = Number(position.distributable) < 0
   return (
     <div className="rounded-card border border-border bg-card p-card shadow-card">
@@ -72,12 +73,31 @@ function PositionCard({ position }: { position: CapitalPosition }) {
         <Dato label="Capital total" value={position.total_capital} hint="La suma de los tres" />
       </div>
 
+      {/* F7-13: el capital total son los ACTIVOS. Lo que se le debe a
+          proveedores y a clientes (notas crédito) no es del dueño: sin
+          restarlo, un retiro «dentro del capital» podía estar sacando plata
+          ajena. El patrimonio neto es la cifra que responde «qué es mío». */}
+      <div className="mt-5 border-t border-border pt-4">
+        <h3 className="text-sm font-medium text-foreground">Lo que se debe, hoy</h3>
+        <div className="mt-3 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <Dato label="Cuentas por pagar" value={position.accounts_payable} hint="Compras a crédito sin pagar" />
+          <Dato label="Notas crédito por redimir" value={position.credit_notes_outstanding} hint="Mercancía que se les debe a clientes" />
+          <Dato label="Total pasivos" value={position.total_liabilities} hint="La suma de las dos" />
+          <Dato
+            label="Patrimonio neto"
+            value={position.net_worth}
+            tone={compareMoney(position.net_worth, '0') < 0 ? 'warning' : 'normal'}
+            hint="Capital total − pasivos: lo que es del dueño"
+          />
+        </div>
+      </div>
+
       <div className="mt-5 border-t border-border pt-4">
         <h3 className="text-sm font-medium text-foreground">
           En el período ({formatDate(position.from_date)} — {formatDate(position.to_date)})
         </h3>
         <div className="mt-3 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <Dato label="Utilidad" value={position.operating_profit} hint="Ingresos − costo − gastos" />
+          <Dato label="Utilidad" value={position.operating_profit} hint="La del estado de resultados" />
           <Dato label="Aportes del dueño" value={position.contributions} />
           <Dato label="Retiros del dueño" value={position.withdrawals} />
           <Dato
