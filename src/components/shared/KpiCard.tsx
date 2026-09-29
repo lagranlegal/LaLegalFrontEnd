@@ -37,9 +37,11 @@ export function KpiCard({
   hint?: ReactNode
 }) {
   return (
-    <div className="flex flex-col gap-1 lg:px-4 lg:first:pl-0 lg:last:pr-0">
+    <div className="flex min-w-0 flex-col gap-1 lg:px-4 lg:first:pl-0 lg:last:pr-0">
       <span className="text-xs text-muted-foreground">{label}</span>
-      <span className={cn('tnum text-2xl font-semibold', TONE_CLASSES[tone])}>{value}</span>
+      {/* F9-06: `min-w-0` + `wrap-anywhere` — una cifra larga baja de línea
+          DENTRO de su celda en vez de invadir la de al lado («$ 6.000.000$ 0»). */}
+      <span className={cn('tnum min-w-0 text-2xl font-semibold wrap-anywhere', TONE_CLASSES[tone])}>{value}</span>
       {delta && (
         <span className={cn('text-xs font-medium', delta.pct === null ? 'text-muted-foreground' : delta.favorable ? 'text-success' : 'text-danger')}>
           {delta.pct === null ? '— vs período anterior' : `${delta.pct >= 0 ? '▲' : '▼'} ${Math.abs(Math.round(delta.pct))}% vs período anterior`}
@@ -52,7 +54,9 @@ export function KpiCard({
 
 export function KpiRow({ children }: { children: ReactNode }) {
   return (
-    <div className="enter-up grid grid-cols-2 gap-4 rounded-card border border-border bg-card p-card shadow-card sm:grid-cols-3 lg:flex lg:gap-0 lg:divide-x lg:divide-border">
+    // Una columna por debajo de 400 px (F9-06): a 360 px dos cifras de
+    // dinero en text-2xl no caben lado a lado y se leían como una sola.
+    <div className="enter-up grid grid-cols-1 gap-4 min-[400px]:grid-cols-2 rounded-card border border-border bg-card p-card shadow-card sm:grid-cols-3 lg:flex lg:gap-0 lg:divide-x lg:divide-border">
       {children}
     </div>
   )
