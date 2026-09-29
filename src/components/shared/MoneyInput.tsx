@@ -33,7 +33,11 @@ export function MoneyInput({
   /** Nombre accesible cuando el `<label>` visible no alcanza a distinguirlo (una fila de varias). */
   ariaLabel?: string
 }) {
-  const display = maskMoneyInput(value.split('.')[0] ?? '')
+  const masked = maskMoneyInput(value.split('.')[0] ?? '')
+  // F9-24: un obligatorio en cero se muestra VACÍO (placeholder «0»). Con el
+  // «0» escrito, el cursor antes del cero convertía 500000 en 5.000.000. En
+  // uno opcional, «0» es un dato distinto de «sin dato» y se sigue viendo.
+  const display = !optional && masked === '0' ? '' : masked
 
   function handleChange(raw: string) {
     if (optional && !/\d/.test(raw)) return onChange('')
@@ -68,10 +72,13 @@ export function MoneyInput({
         type="text"
         inputMode="numeric"
         autoFocus={autoFocus}
-        placeholder={placeholder}
+        placeholder={placeholder ?? (optional ? undefined : '0')}
         value={display}
         onChange={(e) => handleChange(e.target.value)}
         onPaste={handlePaste}
+        // Enfocar selecciona todo: lo que se escribe reemplaza la cifra en
+        // vez de pegarse a un lado de ella (F9-24).
+        onFocus={(e) => e.currentTarget.select()}
         className="w-full bg-transparent px-2 py-2 text-sm text-foreground outline-none"
       />
     </div>
