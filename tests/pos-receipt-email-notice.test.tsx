@@ -2,7 +2,8 @@ import { afterEach, describe, expect, it } from 'vitest'
 import { cleanup, render } from '@testing-library/react'
 import fixtures from './fixtures/backend-g2.json'
 import type { Customer } from '@/lib/customers/search'
-import { ReceiptEmailNotice, receiptEmailBlockedByConsent } from '@/features/sales/components/ReceiptEmailNotice'
+import { ReceiptEmailNotice } from '@/features/sales/components/ReceiptEmailNotice'
+import { receiptEmailBlockedByConsent } from '@/features/sales/receiptEmail'
 
 /**
  * F8-07 (sin decisión legal todavía): el comprobante de venta solo le llega
