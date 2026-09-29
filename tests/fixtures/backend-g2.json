@@ -1,0 +1,141 @@
+{
+ "_origen": "Respuestas REALES del backend local (backend-starter HEAD d96d2d1, commits 93f95e0..d96d2d1 sin desplegar), capturadas el 29/09/2026 envolviendo el TestClient de sus tests de integración (plugin de pytest que vuelca cada respuesta). No editar a mano: se regeneran corriendo esos tests.",
+ "contrato_recargo": {
+  "_test": "tests/integration/test_contracts.py::test_el_recargo_deja_su_propia_fecha_y_su_monto",
+  "_request": "POST /api/v1/contracts/e1f4c8e0-32c8-4782-9642-da2075d3df63/extend-loan",
+  "status": 201,
+  "body": {
+   "id": "b3d6d8aa-a9db-4dc0-8fd9-0fbb4b88fc65",
+   "number": 2,
+   "legacy_code": null,
+   "customer_id": "6ba6e8b4-e699-46f0-be99-7da706f8e6bb",
+   "principal": "1400000.00",
+   "capital_balance": "1400000.00",
+   "appraisal_value": "2000000.00",
+   "interest_rate_pct": "5.00",
+   "term_months": 4,
+   "arrears_window_months": 4,
+   "extension_months": 1,
+   "start_date": "2026-09-05",
+   "due_date": "2027-01-05",
+   "interest_paid_until": "2026-09-05",
+   "status": "active",
+   "extension_ends_at": null,
+   "ltv_warning": false,
+   "notes": null,
+   "signed_photo_url": null,
+   "created_at": "2026-09-29T13:38:43.772473Z",
+   "extension_window_days": 28,
+   "extension_interest_policy": "keep_anchor",
+   "parent_contract_id": "e1f4c8e0-32c8-4782-9642-da2075d3df63",
+   "root_contract_id": "e1f4c8e0-32c8-4782-9642-da2075d3df63",
+   "extended_on": "2026-09-29",
+   "extension_amount": "400000.00",
+   "items": [
+    {
+     "id": "2b536495-4116-4a3b-beea-99a85a653a33",
+     "category_id": "49f640d3-5853-414a-be82-973b9452d07e",
+     "description": "Cadena de oro 10g",
+     "weight_grams": null,
+     "serial_imei": null,
+     "item_appraisal": null,
+     "status": "in_custody",
+     "photos": [],
+     "inventory_item_id": null
+    }
+   ]
+  }
+ },
+ "contrato_recargo_cadena": {
+  "_test": "tests/integration/test_contracts.py::test_una_cadena_de_recargos_conserva_la_fecha_de_la_RAIZ",
+  "_request": "POST /api/v1/contracts/1fba4660-88b3-4ccd-abc5-ab7278ef3d73/extend-loan",
+  "status": 201,
+  "body": {
+   "id": "62ea45a3-28ed-4d2b-8f88-be94bcd741a4",
+   "number": 3,
+   "legacy_code": null,
+   "customer_id": "e2eed28e-2875-4e46-8490-452896f73b35",
+   "principal": "1400000.00",
+   "capital_balance": "1400000.00",
+   "appraisal_value": "2000000.00",
+   "interest_rate_pct": "5.00",
+   "term_months": 4,
+   "arrears_window_months": 4,
+   "extension_months": 1,
+   "start_date": "2026-09-09",
+   "due_date": "2027-01-09",
+   "interest_paid_until": "2026-09-09",
+   "status": "active",
+   "extension_ends_at": null,
+   "ltv_warning": false,
+   "notes": null,
+   "signed_photo_url": null,
+   "created_at": "2026-09-29T13:38:44.470510Z",
+   "extension_window_days": 28,
+   "extension_interest_policy": "keep_anchor",
+   "parent_contract_id": "1fba4660-88b3-4ccd-abc5-ab7278ef3d73",
+   "root_contract_id": "4f7831e0-15ed-4e45-b303-f7719f587045",
+   "extended_on": "2026-09-29",
+   "extension_amount": "200000.00",
+   "items": [
+    {
+     "id": "9eabe41e-d4c5-43bf-b016-eb1e62023a7e",
+     "category_id": "35d79532-27cb-4675-82d5-a9d092934f69",
+     "description": "Cadena de oro 10g",
+     "weight_grams": null,
+     "serial_imei": null,
+     "item_appraisal": null,
+     "status": "in_custody",
+     "photos": [],
+     "inventory_item_id": null
+    }
+   ]
+  }
+ },
+ "contrato_nuevo": {
+  "_test": "tests/integration/test_contracts.py::test_el_recargo_deja_su_propia_fecha_y_su_monto",
+  "_request": "POST /api/v1/contracts",
+  "status": 201,
+  "body": {
+   "id": "e1f4c8e0-32c8-4782-9642-da2075d3df63",
+   "number": 1,
+   "legacy_code": null,
+   "customer_id": "6ba6e8b4-e699-46f0-be99-7da706f8e6bb",
+   "principal": "1000000.00",
+   "capital_balance": "1000000.00",
+   "appraisal_value": "2000000.00",
+   "interest_rate_pct": "5.00",
+   "term_months": 4,
+   "arrears_window_months": 4,
+   "extension_months": 1,
+   "start_date": "2026-09-29",
+   "due_date": "2027-01-29",
+   "interest_paid_until": "2026-09-29",
+   "status": "active",
+   "extension_ends_at": null,
+   "ltv_warning": false,
+   "notes": null,
+   "signed_photo_url": null,
+   "created_at": "2026-09-29T13:38:43.664769Z",
+   "extension_window_days": 28,
+   "extension_interest_policy": "keep_anchor",
+   "parent_contract_id": null,
+   "root_contract_id": null,
+   "extended_on": null,
+   "extension_amount": null,
+   "items": [
+    {
+     "id": "c0a882dc-76b9-47d3-aa93-6770f58db9ff",
+     "category_id": "49f640d3-5853-414a-be82-973b9452d07e",
+     "description": "Cadena de oro 10g",
+     "weight_grams": null,
+     "serial_imei": null,
+     "item_appraisal": null,
+     "status": "in_custody",
+     "photos": [],
+     "inventory_item_id": null
+    }
+   ]
+  }
+ }
+}

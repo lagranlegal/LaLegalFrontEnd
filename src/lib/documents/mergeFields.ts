@@ -29,6 +29,14 @@ export const MERGE_FIELDS: Record<DocumentType, MergeFieldDef[]> = {
     { key: 'contrato.codigo_anterior', label: 'Código anterior' },
     { key: 'contrato.fecha_inicio', label: 'Fecha de inicio' },
     { key: 'contrato.vencimiento', label: 'Fecha de vencimiento' },
+    // F8-09 (legal): un contrato que nace de un recargo conserva la fecha
+    // del contrato RAÍZ y se firma el día del recargo. Sin estos campos, una
+    // plantilla propia no tenía cómo decirlo. `fecha_original` es la misma
+    // fecha de inicio —desde 00053 el sucesor hereda la de la raíz—, con un
+    // nombre que dice para qué sirve junto a `fecha_recargo`.
+    { key: 'contrato.fecha_original', label: 'Fecha del contrato original' },
+    { key: 'contrato.fecha_recargo', label: 'Fecha del recargo' },
+    { key: 'contrato.monto_recargo', label: 'Monto del recargo' },
     { key: 'contrato.capital', label: 'Capital prestado' },
     { key: 'contrato.tasa', label: 'Tasa de interés mensual' },
     { key: 'contrato.plazo', label: 'Plazo' },
@@ -89,6 +97,13 @@ function empresaContext(company: Me['company'] | undefined): MergeFieldContext {
   }
 }
 
+/**
+ * En un contrato que no es un recargo, los campos del recargo dicen «no
+ * aplica»: vacíos dejarían «Recargo entregado el » en un papel firmado
+ * (F8-10: nunca vacío en silencio).
+ */
+const NO_APLICA = 'no aplica'
+
 /** Contexto de datos reales — usado por `ContractPrintView` al imprimir de verdad. */
 export function buildContractContext(
   contract: Contract,
@@ -108,6 +123,9 @@ export function buildContractContext(
     'contrato.codigo_anterior': contract.legacy_code ? `(código anterior ${contract.legacy_code})` : '',
     'contrato.fecha_inicio': formatDate(contract.start_date),
     'contrato.vencimiento': formatDate(contract.due_date),
+    'contrato.fecha_original': formatDate(contract.start_date),
+    'contrato.fecha_recargo': contract.extended_on ? formatDate(contract.extended_on) : NO_APLICA,
+    'contrato.monto_recargo': contract.extension_amount ? formatCOP(contract.extension_amount) : NO_APLICA,
     'contrato.capital': formatCOP(contract.principal),
     'contrato.tasa': `${contract.interest_rate_pct}%`,
     'contrato.plazo': `${contract.term_months} ${contract.term_months === 1 ? 'mes' : 'meses'}`,
@@ -130,6 +148,9 @@ export function buildSampleContractContext(company: Me['company'] | undefined): 
     'contrato.codigo_anterior': '',
     'contrato.fecha_inicio': formatDate(todayBogota()),
     'contrato.vencimiento': formatDate(todayBogota()),
+    'contrato.fecha_original': formatDate(todayBogota()),
+    'contrato.fecha_recargo': formatDate(todayBogota()),
+    'contrato.monto_recargo': formatCOP('200000'),
     'contrato.capital': formatCOP('1000000'),
     'contrato.tasa': '5%',
     'contrato.plazo': '4 meses',

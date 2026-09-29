@@ -54,6 +54,38 @@ function printableItems(contract: Contract, categories: Category[] | undefined):
   }))
 }
 
+/**
+ * LAS DOS FECHAS, y no es un detalle de formato.
+ * Desde 00053 un contrato que nace de un recargo conserva la fecha del
+ * contrato original —para que la fecha de cobro del cliente no se mueva—,
+ * así que "Fecha: 1 de septiembre" queda arriba en un papel que se firma el
+ * 25. Sin esta leyenda, el documento está antedatado y nada en él lo
+ * explica: es un problema legal, no de UI.
+ *
+ * Por eso va FUERA de la plantilla, en los dos caminos: una plantilla propia
+ * que no la incluya no puede quitarla (F8-09, auditoría de QA: con plantilla
+ * activa el papel del 28/09 decía solo «Fecha 10/09/2026»). La empresa puede
+ * además citar las fechas en su texto con `contrato.fecha_original`,
+ * `contrato.fecha_recargo` y `contrato.monto_recargo`.
+ */
+function ExtensionDatesNotice({ contract }: { contract: Contract }) {
+  if (!contract.extended_on || contract.extended_on === contract.start_date) return null
+  return (
+    <section className="print-keep mt-6 border-l-2 border-paper-accent bg-paper-accent-soft px-4 py-3 text-sm">
+      <p>
+        Este contrato <strong>amplía el préstamo</strong> del contrato anterior de la misma
+        garantía. Conserva la fecha de aquel ({formatDate(contract.start_date)}) porque el
+        interés se sigue liquidando en el mismo ciclo mensual.
+      </p>
+      <p className="mt-1">
+        El recargo de <strong><Money value={contract.extension_amount ?? '0'} /></strong> se
+        entregó el <strong>{formatDate(contract.extended_on)}</strong>, fecha en que se firma
+        este documento.
+      </p>
+    </section>
+  )
+}
+
 function months(count: number): string {
   return `${count} ${count === 1 ? 'mes' : 'meses'}`
 }
@@ -95,6 +127,7 @@ export function ContractPrintView({ contract, customer, categories }: { contract
     const items = printableItems(contract, categories)
     return (
       <PrintLayout title="Contrato de empeño" number={contract.number} layout={activeTemplate.layout}>
+        <ExtensionDatesNotice contract={contract} />
         <Suspense fallback={null}>
           <LazyTemplateRenderer
             body={activeTemplate.body as JSONContent}
@@ -132,26 +165,7 @@ export function ContractPrintView({ contract, customer, categories }: { contract
         </PrintField>
       </section>
 
-      {/* LAS DOS FECHAS, y no es un detalle de formato.
-          Desde 00053 un contrato que nace de un recargo conserva la fecha del
-          contrato original —para que la fecha de cobro del cliente no se
-          mueva—, así que "Fecha: 1 de septiembre" queda arriba en un papel
-          que se firma el 25. Sin esta línea, el documento está antedatado y
-          nada en él lo explica: es un problema legal, no de UI. */}
-      {contract.extended_on && contract.extended_on !== contract.start_date && (
-        <section className="print-keep mt-6 border-l-2 border-paper-accent bg-paper-accent-soft px-4 py-3 text-sm">
-          <p>
-            Este contrato <strong>amplía el préstamo</strong> del contrato anterior de la misma
-            garantía. Conserva la fecha de aquel ({formatDate(contract.start_date)}) porque el
-            interés se sigue liquidando en el mismo ciclo mensual.
-          </p>
-          <p className="mt-1">
-            El recargo de <strong><Money value={contract.extension_amount ?? '0'} /></strong> se
-            entregó el <strong>{formatDate(contract.extended_on)}</strong>, fecha en que se firma
-            este documento.
-          </p>
-        </section>
-      )}
+      <ExtensionDatesNotice contract={contract} />
 
       <PrintSection title="Condiciones del préstamo">
         <div className="grid grid-cols-4 gap-4 tnum">
