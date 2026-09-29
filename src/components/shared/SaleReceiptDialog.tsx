@@ -24,6 +24,48 @@ import type { components } from '@/types/api'
 
 type SaleLine = components['schemas']['SaleLineOut']
 
+/**
+ * La línea se vendió por debajo del precio PUBLICADO (F7-08, 00063): el
+ * backend congela `list_price` y el descuento de la línea (`price_discount`,
+ * ya × cantidad). El `subtotal` viene rebajado: esto se muestra para que el
+ * cliente vea el precio que se le rebajó, no se resta otra vez. Una venta
+ * anterior a 00063 no tiene `list_price` y se muestra como siempre.
+ */
+function linePriceDiscount(line: SaleLine): { listPrice: string; discount: string } | null {
+  if (!line.list_price || !line.price_discount || compareMoney(line.price_discount, '0') <= 0) return null
+  return { listPrice: line.list_price, discount: line.price_discount }
+}
+
+/** Precio publicado tachado encima del precio final, si hubo rebaja. */
+function LinePrice({ line, mutedClass }: { line: SaleLine; mutedClass: string }) {
+  const rebaja = linePriceDiscount(line)
+  return (
+    <>
+      {rebaja && (
+        <span className={`block text-xs line-through ${mutedClass}`} aria-label="Precio publicado">
+          <Money value={rebaja.listPrice} />
+        </span>
+      )}
+      <Money value={line.unit_price} />
+    </>
+  )
+}
+
+/** Subtotal y, si hubo rebaja sobre el precio publicado, cuánto fue. */
+function LineSubtotal({ line, mutedClass }: { line: SaleLine; mutedClass: string }) {
+  const rebaja = linePriceDiscount(line)
+  return (
+    <>
+      <Money value={line.subtotal} />
+      {rebaja && (
+        <span className={`block text-xs ${mutedClass}`}>
+          Descuento − <Money value={rebaja.discount} />
+        </span>
+      )}
+    </>
+  )
+}
+
 function SaleLineRow({ line, item }: { line: SaleLine; item: Item | undefined }) {
   return (
     <tr>
@@ -32,10 +74,10 @@ function SaleLineRow({ line, item }: { line: SaleLine; item: Item | undefined })
       </td>
       <td className="px-3 py-2 text-right text-foreground">{formatQuantity(line.quantity, item?.unit)}</td>
       <td className="px-3 py-2 text-right">
-        <Money value={line.unit_price} />
+        <LinePrice line={line} mutedClass="text-muted-foreground" />
       </td>
       <td className="px-3 py-2 text-right">
-        <Money value={line.subtotal} />
+        <LineSubtotal line={line} mutedClass="text-muted-foreground" />
       </td>
     </tr>
   )
@@ -111,10 +153,10 @@ function SaleReceiptPrint({
                 </PrintTd>
                 <PrintTd align="right">{formatQuantity(line.quantity, item?.unit)}</PrintTd>
                 <PrintTd align="right">
-                  <Money value={line.unit_price} />
+                  <LinePrice line={line} mutedClass="text-paper-muted" />
                 </PrintTd>
                 <PrintTd align="right">
-                  <Money value={line.subtotal} />
+                  <LineSubtotal line={line} mutedClass="text-paper-muted" />
                 </PrintTd>
               </tr>
             )
