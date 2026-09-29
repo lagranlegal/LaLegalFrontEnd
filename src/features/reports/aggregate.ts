@@ -409,3 +409,19 @@ export function salesCashFlow(lines: ClosingsBreakdownLine[], salesFlow: SalesCa
   }
   return { cobrado, anulaciones, devolucionesPagadas, neto: subtractMoney(subtractMoney(cobrado, anulaciones), devolucionesPagadas) }
 }
+
+/** Tope de días de `/reports/profit` y `/reports/pawn-performance` (backend `_MAX_PROFIT_RANGE_DAYS`). */
+export const MAX_PROFIT_RANGE_DAYS = 366
+
+/**
+ * Por qué un rango no se puede pedir, o `null` si se puede — el espejo de
+ * `reports/service.py::_validate_range`: al revés es INVALID_DATE_RANGE y,
+ * con tope, `(to − from).days > max` es DATE_RANGE_TOO_LONG. Ojo: el backend
+ * cuenta la DIFERENCIA de días, no los días inclusivos, así que un año
+ * bisiesto completo (366 días inclusivos, diferencia 365) entra.
+ */
+export function reportRangeProblem(range: { from: string; to: string }, maxDays?: number): string | null {
+  if (range.from > range.to) return 'La fecha inicial no puede ser posterior a la final.'
+  if (maxDays !== undefined && daysBetweenDateOnly(range.from, range.to) - 1 > maxDays) return `Este reporte admite rangos de hasta ${maxDays} días. Elige un rango más corto.`
+  return null
+}

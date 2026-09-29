@@ -3,6 +3,30 @@ import { Money } from '@/components/shared/Money'
 import type { DateRangeValue } from '@/components/shared/DateRangePicker'
 import { unitsSoldText } from '@/features/reports/units'
 import { usePawnPerformance, useProfitSummary } from '@/features/reports/api'
+import { MAX_PROFIT_RANGE_DAYS, reportRangeProblem } from '@/features/reports/aggregate'
+import { ApiError, userMessage } from '@/lib/api/errors'
+
+/** El rango no se puede pedir (o el backend lo rechazó): se dice por qué en vez de esconder la tarjeta. */
+function RangeNotice({ title, message }: { title: string; message: string }) {
+  return (
+    <div className="rounded-card border border-border bg-card p-card shadow-card">
+      <h2 className="text-sm font-medium text-foreground">{title}</h2>
+      <p role="status" className="mt-2 text-sm text-warning">
+        {message}
+      </p>
+    </div>
+  )
+}
+
+/** El problema del rango, visto antes de pedir o en el 422 del backend. */
+function rangeMessage(range: DateRangeValue | null, error: unknown): string | null {
+  if (range) {
+    const problema = reportRangeProblem(range, MAX_PROFIT_RANGE_DAYS)
+    if (problema) return problema
+  }
+  if (error instanceof ApiError && (error.code === 'INVALID_DATE_RANGE' || error.code === 'DATE_RANGE_TOO_LONG')) return userMessage(error)
+  return null
+}
 
 /**
  * Utilidad BRUTA de la tienda: lo que entró por ventas menos lo que costó la
@@ -20,8 +44,10 @@ import { usePawnPerformance, useProfitSummary } from '@/features/reports/api'
  * al momento de vender.
  */
 export function ProfitCard({ range }: { range: DateRangeValue | null }) {
-  const { data: profit, isPending, isError } = useProfitSummary(range)
+  const { data: profit, isPending, isError, error } = useProfitSummary(range)
+  const problemaRango = rangeMessage(range, error)
 
+  if (problemaRango) return <RangeNotice title="Utilidad bruta de tienda" message={problemaRango} />
   if (isPending) return <div className="h-28 animate-pulse rounded-card border border-border bg-border" />
   if (isError || !profit) return null
 
@@ -85,8 +111,10 @@ export function ProfitCard({ range }: { range: DateRangeValue | null }) {
  * cobrados" por esa razón, y es correcto que difiera.
  */
 export function PawnCard({ range }: { range: DateRangeValue | null }) {
-  const { data: pawn, isPending, isError } = usePawnPerformance(range)
+  const { data: pawn, isPending, isError, error } = usePawnPerformance(range)
+  const problemaRango = rangeMessage(range, error)
 
+  if (problemaRango) return <RangeNotice title="Rentabilidad del empeño" message={problemaRango} />
   if (isPending) return <div className="h-28 animate-pulse rounded-card border border-border bg-border" />
   if (isError || !pawn) return null
   // Sobre el interés neto, igual que la cifra de al lado. Un backend anterior

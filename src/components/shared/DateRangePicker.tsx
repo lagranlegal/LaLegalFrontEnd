@@ -109,7 +109,10 @@ export function DateRangePicker({
             disabled={{ after: dateOnlyToLocalDate(todayBogota())! }}
             onSelect={(range) => {
               if (!range?.from || !range?.to) return
-              onChange({ from: localDateToDateOnly(range.from), to: localDateToDateOnly(range.to) })
+              // Nunca un rango al revés (422 INVALID_DATE_RANGE en los
+              // reportes): el calendario ya los ordena, esto lo garantiza.
+              const [from, to] = [localDateToDateOnly(range.from), localDateToDateOnly(range.to)].sort()
+              onChange({ from: from!, to: to! })
               setOpen(false)
             }}
           />

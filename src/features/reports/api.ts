@@ -5,7 +5,7 @@ import { compareMoney } from '@/lib/money'
 import { fetchAllClosingsInRange, type ClosingHistory } from '@/lib/cashbox/closings'
 import { usePermission } from '@/lib/permissions/usePermission'
 import type { DateRangeValue } from '@/components/shared/DateRangePicker'
-import { daysBetweenDateOnly } from '@/features/reports/aggregate'
+import { daysBetweenDateOnly, MAX_PROFIT_RANGE_DAYS, reportRangeProblem } from '@/features/reports/aggregate'
 import type { Expense } from '@/features/cashbox/api'
 import type { Sale } from '@/lib/sales/void'
 import type { components } from '@/types/api'
@@ -178,7 +178,8 @@ export function useProfitSummary(range: { from: string; to: string } | null) {
           params: { query: { from_date: range!.from, to_date: range!.to } },
         }),
       ),
-    enabled: !!range,
+    // 422 INVALID_DATE_RANGE / DATE_RANGE_TOO_LONG: no se pide lo que el backend va a rechazar.
+    enabled: !!range && reportRangeProblem(range, MAX_PROFIT_RANGE_DAYS) === null,
   })
 }
 
@@ -202,7 +203,8 @@ export function usePawnPerformance(range: { from: string; to: string } | null) {
           params: { query: { from_date: range!.from, to_date: range!.to } },
         }),
       ),
-    enabled: !!range,
+    // 422 INVALID_DATE_RANGE / DATE_RANGE_TOO_LONG: no se pide lo que el backend va a rechazar.
+    enabled: !!range && reportRangeProblem(range, MAX_PROFIT_RANGE_DAYS) === null,
   })
 }
 
