@@ -29,6 +29,14 @@ export function ProfilePage() {
   const [photos, setPhotos] = useState<string[]>(me?.user.photo_url ? [me.user.photo_url] : [])
   const [formError, setFormError] = useState<string | null>(null)
 
+  // F8-14 (00065 del backend): en `perfil/` cada usuario escribe SOLO su
+  // carpeta, `{empresa}/perfil/{user_id}/…`; la ruta de tres partes la
+  // política nueva la rechaza. La vieja también acepta esta ruta, así que
+  // sirve antes y después del deploy del backend. Una foto guardada con la
+  // ruta vieja queda fuera de la carpeta y no se borra al cambiarla: el
+  // borrado ya no está permitido ahí y un huérfano no rompe nada.
+  const photoFolder = `perfil/${me?.user.id ?? ''}`
+
   const nameMissing = !fullName.trim()
   const dirty = fullName.trim() !== (me?.user.full_name ?? '') || (photos[0] ?? null) !== (me?.user.photo_url ?? null)
 
@@ -39,7 +47,7 @@ export function ProfilePage() {
     try {
       await updateMe.mutateAsync({ full_name: fullName.trim(), photo_url: photos[0] ?? null })
       // La foto anterior se borra de Storage solo con el perfil ya guardado (QA 03 H-04).
-      deleteDetachedPhotos([me?.user.photo_url], photos, 'perfil')
+      deleteDetachedPhotos([me?.user.photo_url], photos, photoFolder)
       toast.success('Perfil actualizado.')
     } catch (error) {
       setFormError(error instanceof ApiError ? error.message : 'No se pudo guardar. Intenta de nuevo.')
@@ -63,7 +71,7 @@ export function ProfilePage() {
         <div>
           <span className="text-sm font-medium text-foreground">Foto</span>
           <div className="mt-1">
-            <PhotoUploader value={photos} onChange={setPhotos} folder="perfil" maxPhotos={1} />
+            <PhotoUploader value={photos} onChange={setPhotos} folder={photoFolder} maxPhotos={1} disabled={!me} />
           </div>
         </div>
 
