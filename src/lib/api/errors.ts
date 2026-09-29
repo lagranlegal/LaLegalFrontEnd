@@ -363,6 +363,9 @@ function messageWithDetails(error: ApiError): string | null {
     if (!faltan) return null
     return `A esta plantilla le falta ${faltan}. Un contrato de empeño tiene que decir a quién se le prestó, sobre qué prendas y llevar la firma del cliente.`
   }
+  if (error.code === 'CONTACT_LIMITS_BELOW_LEGAL_FLOOR') {
+    return `${error.message}${legalFloorFields(details.fields)}${legalFloorText(details.floor)}`
+  }
   if (error.code === 'PAYMENT_MINIMUM_INTEREST_REQUIRED') {
     const total = details.payoff_total
     const interes = details.payoff_interest
@@ -370,6 +373,37 @@ function messageWithDetails(error: ApiError): string | null {
     return `${error.message} Para saldarlo hoy son ${formatCOP(total)} (incluye ${formatCOP(interes)} de interés).`
   }
   return null
+}
+
+/** Los campos de `customer_contact_limits` con las palabras de la pantalla de Notificaciones. */
+const LEGAL_FLOOR_FIELD_LABELS: Record<string, string> = {
+  enabled: 'apagar los límites',
+  max_per_week: 'el máximo por semana',
+  weekday_hours: 'el horario de lunes a viernes',
+  saturday_hours: 'el horario de los sábados',
+  sundays_and_holidays: 'los domingos y festivos',
+}
+
+function legalFloorFields(fields: unknown): string {
+  if (!Array.isArray(fields)) return ''
+  const labels = fields.map((f) => (typeof f === 'string' ? LEGAL_FLOOR_FIELD_LABELS[f] : undefined)).filter((l): l is string => !!l)
+  return labels.length > 0 ? ` Revisa ${labels.join(', ')}.` : ''
+}
+
+function isHours(v: unknown): v is [string, string] {
+  return Array.isArray(v) && v.length === 2 && v.every((x) => typeof x === 'string')
+}
+
+/** El piso vigente, tal como lo manda el backend en `details.floor`. */
+function legalFloorText(floor: unknown): string {
+  if (typeof floor !== 'object' || floor === null) return ''
+  const f = floor as Record<string, unknown>
+  const parts: string[] = []
+  if (isHours(f.weekday_hours)) parts.push(`lunes a viernes de ${f.weekday_hours[0]} a ${f.weekday_hours[1]}`)
+  if (isHours(f.saturday_hours)) parts.push(`sábados de ${f.saturday_hours[0]} a ${f.saturday_hours[1]}`)
+  if (f.sundays_and_holidays === false) parts.push('sin domingos ni festivos')
+  if (typeof f.max_per_week === 'number') parts.push(`como máximo ${f.max_per_week} por semana`)
+  return parts.length > 0 ? ` El mínimo legal: ${parts.join(', ')}.` : ''
 }
 
 export interface BelowCostLine {

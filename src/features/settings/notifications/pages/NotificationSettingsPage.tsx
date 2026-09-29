@@ -29,6 +29,7 @@ import {
   draftFromSettings,
   enableConfirmDescription,
   groupEvents,
+  storedBelowLegalFloor,
   validateDraft,
   type ParamsDraft,
   type ParamsErrors,
@@ -286,6 +287,19 @@ function AlertRecipients({ settings }: { settings: NotificationSettings }) {
   )
 }
 
+const FLOOR_MSG = 'Por debajo del mínimo legal.'
+
+/** `details.fields` de CONTACT_LIMITS_BELOW_LEGAL_FLOOR → errores del formulario. */
+function floorFieldErrors(fields: unknown[]): ParamsErrors {
+  const errors: ParamsErrors = {}
+  for (const f of fields) {
+    if (f === 'max_per_week') errors.max_per_week = FLOOR_MSG
+    if (f === 'weekday_hours') errors.weekday_end = FLOOR_MSG
+    if (f === 'saturday_hours') errors.saturday_end = FLOOR_MSG
+  }
+  return errors
+}
+
 function ParamsForm({ settings }: { settings: NotificationSettings }) {
   const update = useUpdateNotificationSettings()
   const [draft, setDraft] = useState<ParamsDraft>(() => draftFromSettings(settings))
@@ -309,8 +323,14 @@ function ParamsForm({ settings }: { settings: NotificationSettings }) {
       toast.success('Parámetros guardados.')
     } catch (error) {
       setFormError(errorText(error, 'No se pudo guardar. Intenta de nuevo.'))
+      // El backend dice QUÉ campo afloja el piso: se marca junto al campo.
+      if (error instanceof ApiError && error.code === 'CONTACT_LIMITS_BELOW_LEGAL_FLOOR' && Array.isArray(error.details?.fields)) {
+        setErrors(floorFieldErrors(error.details.fields))
+      }
     }
   }
+
+  const belowFloor = storedBelowLegalFloor(settings)
 
   return (
     <form onSubmit={onSubmit} noValidate className="flex flex-col gap-6">
@@ -346,32 +366,38 @@ function ParamsForm({ settings }: { settings: NotificationSettings }) {
 
       <Section
         title="Límites de contacto al cliente (Ley 2300)"
-        description="Solo aplican a los avisos al cliente, nunca al resumen de la empresa. Los valores de fábrica son una lectura conservadora de la ley, no un concepto legal."
+        description="Es un mínimo legal: la empresa lo puede endurecer, pero no relajar. Solo aplica a los avisos al cliente, nunca al resumen de la empresa."
       >
+        {belowFloor && (
+          <div className="rounded-input bg-warning-soft px-4 py-2 text-sm text-warning">
+            Lo guardado quedaba por debajo del mínimo legal y abajo se ve ajustado. Dale <strong>Guardar parámetros</strong> para dejarlo así.
+          </div>
+        )}
+        {/* Siempre encendido (F8-05): apagarlo quitaba la ventana horaria y
+            los topes de un golpe. Se deja a la vista, deshabilitado, para
+            que se vea que existe y por qué no se toca. */}
         <label className="flex items-start gap-3">
-          <Checkbox
-            checked={draft.limits_enabled}
-            onCheckedChange={(v) => set('limits_enabled', v === true)}
-            aria-label="Aplicar los límites de contacto"
-            className="mt-0.5"
-          />
-          <span className="text-sm text-foreground">Aplicar los límites de contacto</span>
+          <Checkbox checked disabled aria-label="Aplicar los límites de contacto" className="mt-0.5" />
+          <span className="text-sm text-foreground">
+            Aplicar los límites de contacto
+            <span className="block text-xs text-muted-foreground">Siempre encendido: la ley aplica a todos los avisos al cliente.</span>
+          </span>
         </label>
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-          <Field label="Máximo por semana" htmlFor="max_per_week" error={errors.max_per_week}>
+          <Field label="Máximo por semana" htmlFor="max_per_week" hint="0 o 1: la ley permite un contacto de cobranza por semana." error={errors.max_per_week}>
             <input id="max_per_week" inputMode="numeric" className={inputClass} value={draft.max_per_week} onChange={(e) => set('max_per_week', e.target.value)} />
           </Field>
           <Field label="Máximo por día" htmlFor="max_per_day" error={errors.max_per_day}>
             <input id="max_per_day" inputMode="numeric" className={inputClass} value={draft.max_per_day} onChange={(e) => set('max_per_day', e.target.value)} />
           </Field>
-          <Field label="Lunes a viernes" error={errors.weekday_end}>
+          <Field label="Lunes a viernes" hint="Dentro de 07:00 a 19:00." error={errors.weekday_start ?? errors.weekday_end}>
             <div className="flex items-center gap-2">
               <input type="time" aria-label="Lunes a viernes, desde" className={inputClass} value={draft.weekday_start} onChange={(e) => set('weekday_start', e.target.value)} />
               <span className="mt-1 text-sm text-muted-foreground">a</span>
               <input type="time" aria-label="Lunes a viernes, hasta" className={inputClass} value={draft.weekday_end} onChange={(e) => set('weekday_end', e.target.value)} />
             </div>
           </Field>
-          <Field label="Sábados" error={errors.saturday_end}>
+          <Field label="Sábados" hint="Dentro de 08:00 a 15:00." error={errors.saturday_start ?? errors.saturday_end}>
             <div className="flex items-center gap-2">
               <input type="time" aria-label="Sábados, desde" className={inputClass} value={draft.saturday_start} onChange={(e) => set('saturday_start', e.target.value)} />
               <span className="mt-1 text-sm text-muted-foreground">a</span>
@@ -380,13 +406,11 @@ function ParamsForm({ settings }: { settings: NotificationSettings }) {
           </Field>
         </div>
         <label className="flex items-start gap-3">
-          <Checkbox
-            checked={draft.sundays_and_holidays}
-            onCheckedChange={(v) => set('sundays_and_holidays', v === true)}
-            aria-label="Permitir domingos y festivos"
-            className="mt-0.5"
-          />
-          <span className="text-sm text-foreground">Permitir domingos y festivos</span>
+          <Checkbox checked={false} disabled aria-label="Permitir domingos y festivos" className="mt-0.5" />
+          <span className="text-sm text-foreground">
+            Permitir domingos y festivos
+            <span className="block text-xs text-muted-foreground">La ley no permite contactar domingos ni festivos.</span>
+          </span>
         </label>
       </Section>
 

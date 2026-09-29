@@ -20,7 +20,31 @@ export interface ParamsDraft {
   sundays_and_holidays: boolean
 }
 
-export function draftFromSettings(s: NotificationSettings): ParamsDraft {
+/**
+ * El PISO de la Ley 2300 de 2023 (NOTIFICACIONES §12.3-1; backend d185e38,
+ * `preferences.LEGAL_FLOOR`, auditoría de QA F8-05): lunes a viernes de 7:00
+ * a 19:00, sábados de 8:00 a 15:00, sin domingos ni festivos, un contacto
+ * de cobranza por semana y el control siempre encendido. La empresa puede
+ * ser MÁS estricta; menos, no.
+ *
+ * El backend nuevo lo exige (422 `CONTACT_LIMITS_BELOW_LEGAL_FLOOR`, con el
+ * piso vigente en `details.floor`) y sujeta al leer lo guardado antes. El
+ * desplegado antes de ese commit acepta cualquier cosa, así que la pantalla
+ * lo aplica por su cuenta: sujeta al cargar (igual que el backend) y valida
+ * al guardar. Si una revisión legal cambia el piso, cambia en los dos lados.
+ * El tope DIARIO no tiene piso: es de producto, no de la ley.
+ */
+export const LEGAL_FLOOR = {
+  max_per_week: 1,
+  weekday_hours: ['07:00', '19:00'],
+  saturday_hours: ['08:00', '15:00'],
+} as const
+
+const later = (a: string, b: string) => (a > b ? a : b)
+const earlier = (a: string, b: string) => (a < b ? a : b)
+
+/** Lo guardado, sin sujetar. */
+function storedDraft(s: NotificationSettings): ParamsDraft {
   const l = s.customer_contact_limits
   return {
     discount_amount: s.thresholds.discount_amount,
@@ -37,10 +61,39 @@ export function draftFromSettings(s: NotificationSettings): ParamsDraft {
   }
 }
 
-/** Mismos rangos que `NotificationSettingsUpdateIn` / `ContactLimitsIn` del backend. */
+export function draftFromSettings(s: NotificationSettings): ParamsDraft {
+  const l = s.customer_contact_limits
+  const [wdFrom, wdTo] = LEGAL_FLOOR.weekday_hours
+  const [satFrom, satTo] = LEGAL_FLOOR.saturday_hours
+  return {
+    discount_amount: s.thresholds.discount_amount,
+    cash_difference_amount: s.thresholds.cash_difference_amount,
+    stale_after_days: String(s.stale_after_days),
+    // Sujetado al piso, como `clamp_to_legal_floor` del backend: lo que ya
+    // era más estricto queda igual; lo que no, se muestra en el piso y el
+    // formulario queda con cambios para guardarlo así.
+    limits_enabled: true,
+    max_per_week: String(Math.min(l.max_per_week, LEGAL_FLOOR.max_per_week)),
+    max_per_day: String(l.max_per_day),
+    weekday_start: later(l.weekday_hours[0], wdFrom),
+    weekday_end: earlier(l.weekday_hours[1], wdTo),
+    saturday_start: later(l.saturday_hours[0], satFrom),
+    saturday_end: earlier(l.saturday_hours[1], satTo),
+    sundays_and_holidays: false,
+  }
+}
+
+/** ¿Lo guardado estaba por debajo del piso? (solo con el backend anterior a d185e38) */
+export function storedBelowLegalFloor(s: NotificationSettings): boolean {
+  const stored = storedDraft(s)
+  const clamped = draftFromSettings(s)
+  return (Object.keys(stored) as (keyof ParamsDraft)[]).some((k) => stored[k] !== clamped[k])
+}
+
+/** Mismos rangos que `NotificationSettingsUpdateIn` / `ContactLimitsIn` del backend, con el piso legal en el semanal. */
 const INT_RANGES = {
   stale_after_days: [0, 30],
-  max_per_week: [0, 50],
+  max_per_week: [0, LEGAL_FLOOR.max_per_week],
   max_per_day: [0, 20],
 } as const
 
@@ -63,6 +116,13 @@ export function validateDraft(d: ParamsDraft): ParamsErrors {
   // justo como lo compara el backend (`start >= end` sobre strings).
   if (d.weekday_start >= d.weekday_end) errors.weekday_end = 'Tiene que ser después de la hora de inicio.'
   if (d.saturday_start >= d.saturday_end) errors.saturday_end = 'Tiene que ser después de la hora de inicio.'
+  // El piso legal: dentro de la ventana, sí; por fuera, no.
+  const [wdFrom, wdTo] = LEGAL_FLOOR.weekday_hours
+  const [satFrom, satTo] = LEGAL_FLOOR.saturday_hours
+  if (d.weekday_start < wdFrom) errors.weekday_start = `No antes de las ${wdFrom} (Ley 2300).`
+  if (d.weekday_end > wdTo) errors.weekday_end = `No después de las ${wdTo} (Ley 2300).`
+  if (d.saturday_start < satFrom) errors.saturday_start = `No antes de las ${satFrom} (Ley 2300).`
+  if (d.saturday_end > satTo) errors.saturday_end = `No después de las ${satTo} (Ley 2300).`
   return errors
 }
 
@@ -73,7 +133,9 @@ export function validateDraft(d: ParamsDraft): ParamsErrors {
  * nada que guardar.
  */
 export function buildParamsPatch(server: NotificationSettings, d: ParamsDraft): NotificationSettingsUpdateIn | null {
-  const base = draftFromSettings(server)
+  // Contra lo GUARDADO tal cual, no contra lo sujetado: si el servidor tiene
+  // algo por debajo del piso (backend anterior a d185e38), guardar lo corrige.
+  const base = storedDraft(server)
   const body: NotificationSettingsUpdateIn = {}
 
   const thresholds: NonNullable<NotificationSettingsUpdateIn['thresholds']> = {}
