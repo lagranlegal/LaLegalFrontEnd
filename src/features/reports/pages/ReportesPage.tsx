@@ -7,7 +7,6 @@ import { EmptyState } from '@/components/shared/EmptyState'
 import { DateRangePicker, type DateRangeValue } from '@/components/shared/DateRangePicker'
 import { Button } from '@/components/ui/button'
 import { exportSheetsToExcel } from '@/lib/export/xlsx'
-import { unitsSoldText } from '@/features/reports/units'
 import { formatQuantity } from '@/lib/inventory/units'
 import { ContractsStatusChart, type StatusDatum } from '@/components/shared/charts/ContractsStatusChart'
 import { DailyTrendChart } from '@/components/shared/charts/DailyTrendChart'
@@ -16,17 +15,19 @@ import { DonutChart, type DonutDatum } from '@/components/shared/charts/DonutCha
 import { MODULE_LABELS, conceptLabel } from '@/lib/modules'
 import { PAYMENT_METHOD_LABELS } from '@/lib/paymentMethods'
 import { todayBogota } from '@/lib/dates'
-import { compareMoney } from '@/lib/money'
+import { compareMoney, subtractMoney } from '@/lib/money'
 import { cn } from '@/lib/utils'
 import { useCategories } from '@/lib/catalogs/categories'
 import { usePermission } from '@/lib/permissions/usePermission'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { ContablesSection } from '@/features/reports/components/ContablesSection'
 import { useExpenseCategories } from '@/features/cashbox/api'
-import { useIncomeStatement, useClosingsBreakdown, useClosingsInRange, useCarteraActual, useExpensesByCategory, useItemSales, useMonthlySeries, useProfitSummary, usePawnPerformance, MAX_RANGE_DAYS } from '@/features/reports/api'
-import { aggregateCashDifferences, aggregateFinancialSummary, aggregateExpensesByCategory, computeDelta, daysBetweenDateOnly, previousRangeFor } from '@/features/reports/aggregate'
+import { useIncomeStatement, useClosingsBreakdown, useClosingsInRange, useCarteraActual, useExpensesByCategory, useItemSales, useMonthlySeries, MAX_RANGE_DAYS } from '@/features/reports/api'
+import { aggregateCashDifferences, aggregateFinancialSummary, salesCashFlow, aggregateExpensesByCategory, computeDelta, daysBetweenDateOnly, previousRangeFor } from '@/features/reports/aggregate'
 import { aggregateItemRanking } from '@/features/reports/rankings'
 import { ModuleSplitBar } from '@/features/reports/components/ModuleSplitBar'
+import { PawnCard, ProfitCard } from '@/features/reports/components/PerformanceCards'
+import { incomeStatementRows, incomeStatementSheetRows } from '@/features/reports/incomeStatement'
 
 type ModuleFilter = 'all' | 'pawn' | 'store'
 
@@ -72,126 +73,6 @@ function CardShell({ title, subtitle, children }: { title: string; subtitle?: st
   )
 }
 
-/**
- * Utilidad BRUTA de la tienda: lo que entró por ventas menos lo que costó la
- * mercancía vendida. Es la respuesta a "¿cuánto gané con lo que vendí?", que
- * hasta ahora no existía en ninguna pantalla.
- *
- * NO es lo mismo que la "utilidad operativa" de los KPIs de arriba, y por eso
- * lleva su propia card con la aclaración: aquella es ingresos − gastos (luz,
- * arriendo, nómina) y NO descuenta el costo de la mercancía; esta descuenta el
- * costo pero no los gastos. Mezclarlas o presentarlas sin distinguir sería
- * dar dos "utilidades" distintas en la misma pantalla sin decir cuál es cuál.
- *
- * Se pide aparte y no sale de `aggregateFinancialSummary` porque el costo de
- * ventas no es un movimiento de caja: vive en `sale_line.unit_cost`, congelado
- * al momento de vender.
- */
-function ProfitCard({ range }: { range: DateRangeValue | null }) {
-  const { data: profit, isPending, isError } = useProfitSummary(range)
-
-  if (isPending) return <div className="h-28 animate-pulse rounded-card border border-border bg-border" />
-  if (isError || !profit) return null
-
-  const loss = Number(profit.gross_profit) < 0
-
-  return (
-    <div className="rounded-card border border-border bg-card p-card shadow-card">
-      <div className="mb-3 flex flex-wrap items-center justify-between gap-x-4 gap-y-1">
-        <h2 className="text-sm font-medium text-foreground">Utilidad bruta de tienda</h2>
-        <span className="text-xs text-muted-foreground">
-          Ventas netas de descuentos y devoluciones, menos el costo de la mercancía vendida. No descuenta gastos operativos.
-        </span>
-      </div>
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-        <KpiCard label="Ingreso por ventas" value={<Money value={profit.net_revenue} tone="in" />} />
-        <KpiCard label="Costo de lo vendido" value={<Money value={profit.cost_of_goods_sold} tone="out" />} />
-        <KpiCard label="Utilidad bruta" value={<Money value={profit.gross_profit} />} tone={loss ? 'danger' : 'success'} />
-        <KpiCard
-          label="Margen"
-          // `null` cuando no hubo ventas: un 0% afirmaría "vendí sin ganar",
-          // que es distinto de "no hay datos en el período".
-          value={<span className="tnum">{profit.margin_pct === null ? '—' : `${Number(profit.margin_pct).toFixed(1)}%`}</span>}
-          tone={profit.margin_pct === null ? undefined : loss ? 'danger' : 'success'}
-        />
-      </div>
-      {profit.sale_count > 0 && (
-        <p className="mt-3 text-xs text-muted-foreground">
-          {profit.sale_count} {profit.sale_count === 1 ? 'venta' : 'ventas'} · {unitsSoldText(profit.units_sold)}
-          {Number(profit.discounts) > 0 && (
-            <>
-              {' '}
-              · descuentos aplicados <Money value={profit.discounts} />
-            </>
-          )}
-          {/* El ingreso ya viene NETO de devoluciones: si no se nombran, la
-              cifra baja sin explicación (F21-12). */}
-          {profit.return_count > 0 && (
-            <>
-              {' '}
-              · {profit.return_count} {profit.return_count === 1 ? 'devolución' : 'devoluciones'} por{' '}
-              <Money value={profit.sales_returns} />
-            </>
-          )}
-        </p>
-      )}
-    </div>
-  )
-}
-
-/**
- * Rentabilidad del EMPEÑO. Deliberadamente distinta de la card de tienda: no
- * hay costo de ventas, así que no hay margen — lo que se mide es el
- * rendimiento de los intereses cobrados sobre el capital que está prestado.
- *
- * Los intereses salen del documento (`contract_payment`) y no del desglose de
- * caja que alimenta los KPIs de arriba, así que ESTE número incluye los abonos
- * de hoy aunque la caja siga abierta. Puede diferir del KPI "Intereses
- * cobrados" por esa razón, y es correcto que difiera.
- */
-function PawnCard({ range }: { range: DateRangeValue | null }) {
-  const { data: pawn, isPending, isError } = usePawnPerformance(range)
-
-  if (isPending) return <div className="h-28 animate-pulse rounded-card border border-border bg-border" />
-  if (isError || !pawn) return null
-
-  return (
-    <div className="rounded-card border border-border bg-card p-card shadow-card">
-      <div className="mb-3 flex flex-wrap items-center justify-between gap-x-4 gap-y-1">
-        <h2 className="text-sm font-medium text-foreground">Rentabilidad del empeño</h2>
-        <span className="text-xs text-muted-foreground">
-          Intereses cobrados sobre el capital prestado. Incluye los abonos de hoy, aunque la caja siga abierta.
-        </span>
-      </div>
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-        <KpiCard label="Intereses cobrados" value={<Money value={pawn.interest_collected} tone="in" />} tone="success" />
-        <KpiCard label="Cartera al corte de hoy" value={<Money value={pawn.capital_outstanding} />} />
-        <KpiCard
-          label="Rendimiento del período"
-          value={
-            <span className="tnum">
-              {pawn.yield_on_current_portfolio_pct === null ? '—' : `${Number(pawn.yield_on_current_portfolio_pct).toFixed(2)}%`}
-            </span>
-          }
-          tone={pawn.yield_on_current_portfolio_pct === null ? undefined : 'success'}
-        />
-        <KpiCard label="Contratos abiertos" value={<span className="tnum">{pawn.open_contracts}</span>} />
-      </div>
-      <p className="mt-3 text-xs text-muted-foreground">
-        {pawn.payment_count} {pawn.payment_count === 1 ? 'abono' : 'abonos'} · {pawn.contracts_opened}{' '}
-        {pawn.contracts_opened === 1 ? 'contrato nuevo' : 'contratos nuevos'}
-        {Number(pawn.interest_discounts) > 0 && (
-          <>
-            {' '}
-            · <span className="text-warning">descuentos de interés <Money value={pawn.interest_discounts} /></span>
-          </>
-        )}
-        {' '}· el rendimiento se calcula sobre la cartera actual, no sobre la que había al inicio del rango.
-      </p>
-    </div>
-  )
-}
-
 function RankingList({ rows, unit }: { rows: { key: string; label: string; quantity: number; revenue: string }[]; unit: string }) {
   if (rows.length === 0) return <p className="text-sm text-muted-foreground">Sin ventas registradas todavía.</p>
   const max = rows[0]?.quantity ?? 1
@@ -233,22 +114,10 @@ function IncomeStatementCard({ range }: { range: DateRangeValue | null }) {
   if (isError || !data) return null
 
   const perdida = Number(data.operating_profit) < 0
-  const filas: { label: string; value: string; tone?: 'out'; sub?: boolean; hint?: string }[] = [
-    { label: 'Ventas', value: data.sales_revenue },
-    // F21-12: la devolución es CONTRA-INGRESO y tiene LÍNEA PROPIA, no se
-    // resta en silencio de «Ventas». Un número que baja sin explicación es
-    // lo que hace que nadie confíe en el reporte: si «Ventas» cayera sola,
-    // el dueño creería que el sistema perdió la venta. Acá se ven los dos
-    // hechos —hubo venta y hubo devolución— y el total cuadra.
-    // Se muestra TAMBIÉN en cero (el caso normal) y no se esconde: un estado
-    // de resultados que cambia de forma según el mes no se puede comparar
-    // contra el mes anterior, y ver la línea en cero es la única manera de
-    // saber que el concepto existe y que el sistema lo está mirando.
-    { label: 'Devoluciones', value: data.sales_returns, tone: 'out' as const, hint: 'Devueltas en el período, no en el de la venta' },
-    { label: 'Intereses cobrados', value: data.interest_revenue },
-    { label: 'Costo de la mercancía vendida', value: data.cost_of_goods_sold, tone: 'out', hint: 'Lo que costó lo que se vendió — solo tienda' },
-    { label: 'Gastos operativos', value: data.operating_expenses, tone: 'out', hint: `${data.expense_count} gasto(s)` },
-  ]
+  const rows = incomeStatementRows(data)
+  const cascada = rows.filter((r) => r.kind !== 'info' && r.kind !== 'outside')
+  const informativas = rows.filter((r) => r.kind === 'info')
+  const fuera = rows.filter((r) => r.kind === 'outside')
 
   return (
     <div className="rounded-card border border-border bg-card p-card shadow-card">
@@ -258,68 +127,79 @@ function IncomeStatementCard({ range }: { range: DateRangeValue | null }) {
       </div>
 
       <div className="flex flex-col gap-1 text-sm">
-        {filas.map((fila, i) => (
-          <div key={fila.label}>
-            <div className="flex items-center justify-between gap-3 py-1">
+        {cascada.map((fila) =>
+          fila.kind === 'result' ? (
+            <div key={fila.key} className="mt-1 flex items-center justify-between gap-3 border-t-2 border-foreground/80 pt-2">
+              <span className="font-semibold text-foreground">{fila.label}</span>
+              <div className="flex items-center gap-3">
+                {data.margin_pct !== null && (
+                  <span className={cn('text-xs font-medium', perdida ? 'text-danger' : 'text-success')}>{Number(data.margin_pct)}% de margen</span>
+                )}
+                <Money value={fila.value} className={cn('tnum text-lg font-semibold', perdida ? 'text-danger' : 'text-success')} />
+              </div>
+            </div>
+          ) : fila.kind === 'subtotal' ? (
+            // Los subtotales van DONDE corresponden, no al final: ver que la
+            // utilidad bruta sale de restar el costo es media explicación.
+            <div key={fila.key} className="flex items-center justify-between gap-3 border-t border-border py-1.5">
+              <span className="font-medium text-foreground">{fila.label}</span>
+              <Money value={fila.value} className="tnum font-medium text-foreground" />
+            </div>
+          ) : (
+            <div key={fila.key} className="flex items-center justify-between gap-3 py-1">
               <span className="text-muted-foreground">
-                {fila.tone === 'out' && <span className="mr-1">−</span>}
+                {fila.kind === 'subtract' && <span className="mr-1">−</span>}
+                {fila.kind === 'signed' && <span className="mr-1">±</span>}
                 {fila.label}
                 {fila.hint && <span className="ml-2 text-xs text-muted-foreground/70">{fila.hint}</span>}
               </span>
-              <Money value={fila.value} tone={fila.tone} className="tnum" />
+              {/* Los descuadres traen su signo: un faltante se pinta negativo
+                  y en rojo, un sobrante positivo. */}
+              <Money
+                value={fila.value}
+                tone={fila.kind === 'subtract' || (fila.kind === 'signed' && compareMoney(fila.value, '0') < 0) ? 'out' : undefined}
+                className="tnum"
+              />
             </div>
-            {/* Los subtotales van DONDE corresponden, no al final: ver que la
-                utilidad bruta sale de restar el costo es media explicación. */}
-            {i === 2 && (
-              <div className="flex items-center justify-between gap-3 border-t border-border py-1.5">
-                <span className="font-medium text-foreground">Ingresos totales</span>
-                <Money value={data.total_revenue} className="tnum font-medium text-foreground" />
-              </div>
-            )}
-            {i === 3 && (
-              <div className="flex items-center justify-between gap-3 border-t border-border py-1.5">
-                <span className="font-medium text-foreground">Utilidad bruta</span>
-                <Money value={data.gross_profit} className="tnum font-medium text-foreground" />
-              </div>
-            )}
+          ),
+        )}
+      </div>
+
+      {/* Lo que ya está contado en otra línea: se nombra para explicar la
+          cifra, no se suma otra vez. */}
+      <dl className="mt-3 grid grid-cols-1 gap-x-6 gap-y-1 border-t border-border pt-2 text-xs sm:grid-cols-2">
+        {informativas.map((fila) => (
+          <div key={fila.key} className="flex items-center justify-between gap-3">
+            <dt className="text-muted-foreground">
+              {fila.label}
+              {fila.hint && <span className="ml-1 text-muted-foreground/70">({fila.hint.toLowerCase()})</span>}
+            </dt>
+            <dd>
+              <Money value={fila.value} className="text-foreground" />
+            </dd>
           </div>
         ))}
-
-        <div className="mt-1 flex items-center justify-between gap-3 border-t-2 border-foreground/80 pt-2">
-          <span className="font-semibold text-foreground">Utilidad</span>
-          <div className="flex items-center gap-3">
-            {data.margin_pct !== null && (
-              <span className={cn('text-xs font-medium', perdida ? 'text-danger' : 'text-success')}>{Number(data.margin_pct)}% de margen</span>
-            )}
-            <Money value={data.operating_profit} className={cn('tnum text-lg font-semibold', perdida ? 'text-danger' : 'text-success')} />
-          </div>
-        </div>
-      </div>
+      </dl>
 
       {/* Lo que NO es resultado, dicho explícitamente. Sin esta nota, alguien
           que compró mucho este mes buscaría esas compras en los gastos y
           concluiría que el reporte está mal. */}
-      <p className="mt-3 border-t border-border pt-2 text-xs text-muted-foreground">
-        Fuera del resultado, porque no son ingreso ni gasto:{' '}
-        <strong className="text-foreground">
-          <Money value={data.inventory_purchased} />
-        </strong>{' '}
-        en mercancía comprada (se vuelve costo al venderse),{' '}
-        <strong className="text-foreground">
-          <Money value={data.capital_disbursed} />
-        </strong>{' '}
-        prestado y{' '}
-        <strong className="text-foreground">
-          <Money value={data.capital_recovered} />
-        </strong>{' '}
-        recuperado.
-        {Number(data.interest_discounts) > 0 && (
-          <>
-            {' '}
-            Se otorgaron <Money value={data.interest_discounts} /> en descuentos de interés.
-          </>
-        )}
-      </p>
+      <div className="mt-3 border-t border-border pt-2 text-xs">
+        <p className="mb-1 text-muted-foreground">Fuera del resultado, porque no son ingreso ni gasto (la mercancía se vuelve costo al venderse):</p>
+        <dl className="grid grid-cols-1 gap-x-6 gap-y-1 sm:grid-cols-2">
+          {fuera.map((fila) => (
+            <div key={fila.key} className="flex items-center justify-between gap-3">
+              <dt className="text-muted-foreground">
+                {fila.label}
+                {fila.hint && <span className="ml-1 text-muted-foreground/70">({fila.hint.toLowerCase()})</span>}
+              </dt>
+              <dd>
+                <Money value={fila.value} className="text-foreground" />
+              </dd>
+            </div>
+          ))}
+        </dl>
+      </div>
     </div>
   )
 }
@@ -357,6 +237,7 @@ export function ReportesPage() {
   // Mismo hook que ya usa `IncomeStatementCard` — misma query key, mismo
   // cache: no dispara un segundo request, solo lee lo que ya está pedido.
   const { data: incomeStatement } = useIncomeStatement(range)
+  const { data: previousIncomeStatement } = useIncomeStatement(previousRange)
   const [isExporting, setIsExporting] = useState(false)
 
   const moduleParam = moduleFilter === 'all' ? undefined : moduleFilter
@@ -366,12 +247,22 @@ export function ReportesPage() {
     () => aggregateFinancialSummary(breakdown?.lines ?? [], sessionDates, moduleParam),
     [breakdown, sessionDates, moduleParam],
   )
+  // F7-05: las ventas del KPI son FLUJO (cobrado − anulado − devuelto), no
+  // el ingreso contable, que es el del estado de resultados.
+  const ventasFlujo = useMemo(() => salesCashFlow(breakdown?.lines ?? [], breakdown?.sales_flow, moduleParam), [breakdown, moduleParam])
+  const previousVentasFlujo = useMemo(
+    () => (previousBreakdown ? salesCashFlow(previousBreakdown.lines, previousBreakdown.sales_flow, moduleParam) : null),
+    [previousBreakdown, moduleParam],
+  )
+  const menosVentas = (s: typeof summary, v: typeof ventasFlujo) => subtractMoney(subtractMoney(s.ingresosOperativos, v.anulaciones), v.devolucionesPagadas)
+  const cobrosOperativos = menosVentas(summary, ventasFlujo)
   // F21-14: `difference` ya venía en cada cierre y se descartaba.
   const cashDifferences = useMemo(() => aggregateCashDifferences(closings ?? []), [closings])
   const previousSummary = useMemo(
     () => (previousBreakdown ? aggregateFinancialSummary(previousBreakdown.lines, previousSessionDates, moduleParam) : null),
     [previousBreakdown, previousSessionDates, moduleParam],
   )
+  const previousCobrosOperativos = previousSummary && previousVentasFlujo ? menosVentas(previousSummary, previousVentasFlujo) : undefined
 
   // Filtrado por el mismo módulo que el resto de la página — `ExpenseOut.module`
   // usa el mismo enum pawn|store|general que `BreakdownLineOut.module`.
@@ -417,18 +308,8 @@ export function ReportesPage() {
   async function handleExportReport() {
     setIsExporting(true)
     try {
-      const resumen = incomeStatement
-        ? [
-            { Concepto: 'Ventas', Monto: Number(incomeStatement.sales_revenue) },
-            { Concepto: 'Devoluciones', Monto: -Number(incomeStatement.sales_returns) },
-            { Concepto: 'Intereses cobrados', Monto: Number(incomeStatement.interest_revenue) },
-            { Concepto: 'Ingresos totales', Monto: Number(incomeStatement.total_revenue) },
-            { Concepto: 'Costo de la mercancía vendida', Monto: Number(incomeStatement.cost_of_goods_sold) },
-            { Concepto: 'Utilidad bruta', Monto: Number(incomeStatement.gross_profit) },
-            { Concepto: 'Gastos operativos', Monto: Number(incomeStatement.operating_expenses) },
-            { Concepto: 'Utilidad', Monto: Number(incomeStatement.operating_profit) },
-          ]
-        : []
+      // F7-12: con signo y con las líneas nuevas, ver `incomeStatementSheetRows`.
+      const resumen = incomeStatement ? incomeStatementSheetRows(incomeStatement) : []
 
       const desglose = summary.totalsByConcept.map((line) => ({
         Módulo: MODULE_LABELS[line.module as keyof typeof MODULE_LABELS] ?? line.module,
@@ -537,11 +418,16 @@ export function ReportesPage() {
       ) : (
         <>
           <KpiRow>
+            {/* F7-05: estas tarjetas salen de los cierres de caja — son
+                FLUJO, y por eso no dicen «ingresos»: el ingreso del período
+                es el del estado de resultados de abajo, y dos cifras
+                distintas con el mismo nombre en la misma pantalla es lo que
+                hace que nadie le crea a ninguna. */}
             <KpiCard
-              label="Ingresos operativos"
-              value={<Money value={summary.ingresosOperativos} tone="in" />}
+              label="Cobros operativos, netos"
+              value={<Money value={cobrosOperativos} tone="in" />}
               tone="success"
-              delta={delta(summary.ingresosOperativos, previousSummary?.ingresosOperativos, 'up')}
+              delta={delta(cobrosOperativos, previousCobrosOperativos, 'up')}
             />
             <KpiCard
               label="Gastos operativos"
@@ -557,8 +443,17 @@ export function ReportesPage() {
                 restaba. Dos cifras contradiciéndose.
                 Ahora sale del backend, en su propia tarjeta abajo. */}
             <KpiCard label="Intereses cobrados" value={<Money value={summary.intereses} />} delta={delta(summary.intereses, previousSummary?.intereses, 'up')} />
-            <KpiCard label="Ventas" value={<Money value={summary.ventas} />} tone="brand" delta={delta(summary.ventas, previousSummary?.ventas, 'up')} />
+            <KpiCard
+              label="Ventas cobradas, netas"
+              value={<Money value={ventasFlujo.neto} />}
+              tone="brand"
+              delta={delta(ventasFlujo.neto, previousVentasFlujo?.neto, 'up')}
+            />
           </KpiRow>
+          <p className="-mt-3 text-xs text-muted-foreground">
+            Flujo de caja de los cierres del período: lo cobrado menos anulaciones y devoluciones pagadas. No es el ingreso contable — ese es el del
+            estado de resultados.
+          </p>
 
           <IncomeStatementCard range={range} />
 
@@ -581,10 +476,14 @@ export function ReportesPage() {
                   </>
                 )}
                 {showCapitalTienda && (
+                  // F7-16: lo PAGADO a proveedores en el período, por la fecha
+                  // del pago — del estado de resultados, no de la caja. Lo
+                  // causado (compras a crédito incluidas) está en el estado
+                  // de resultados como «Compras causadas».
                   <KpiCard
-                    label="Compras a proveedor (inversión en inventario)"
-                    value={<Money value={summary.comprasInventario} tone="out" />}
-                    delta={delta(summary.comprasInventario, previousSummary?.comprasInventario, 'down')}
+                    label="Pagos de compras (inversión en inventario)"
+                    value={<Money value={incomeStatement?.inventory_purchases_paid ?? '0.00'} tone="out" />}
+                    delta={incomeStatement ? delta(incomeStatement.inventory_purchases_paid, previousIncomeStatement?.inventory_purchases_paid, 'down') : undefined}
                   />
                 )}
               </div>

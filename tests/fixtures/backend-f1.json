@@ -1,0 +1,416 @@
+{
+  "_origen": "Respuestas REALES del backend local (backend-starter HEAD 717452d, tanda F1 9cb3324..f03b2f2, sin desplegar), capturadas el 28/09/2026 envolviendo el TestClient de sus tests de integración. No editar a mano: se regeneran corriendo esos tests.",
+  "income_statement_mermas": {
+    "_test": "test_F7_01_las_mermas_y_bajas_restan_del_resultado_al_costo",
+    "status": 200,
+    "body": {
+      "from_date": "2026-09-28",
+      "to_date": "2026-09-28",
+      "sales_revenue": "0.00",
+      "sales_returns": "0.00",
+      "interest_revenue": "0.00",
+      "total_revenue": "0.00",
+      "cost_of_goods_sold": "0.00",
+      "gross_profit": "0.00",
+      "operating_expenses": "0.00",
+      "expense_count": 0,
+      "inventory_shrinkage": "95000.00",
+      "shrinkage_exit_count": 2,
+      "settlement_commissions": "0.00",
+      "cash_differences": "0.00",
+      "operating_profit": "-95000.00",
+      "margin_pct": null,
+      "interest_discounts": "0.00",
+      "sales_discounts": "0.00",
+      "auction_interest_realized": "0.00",
+      "capital_disbursed": "0.00",
+      "capital_recovered": "0.00",
+      "inventory_purchased": "0.00",
+      "inventory_purchases_paid": "0.00",
+      "transformation_costs_paid": "0.00"
+    }
+  },
+  "income_statement_comision": {
+    "_test": "test_F7_02_la_comision_del_convenio_es_gasto_del_dia_de_la_liquidacion",
+    "status": 200,
+    "body": {
+      "from_date": "2026-09-28",
+      "to_date": "2026-09-28",
+      "sales_revenue": "0.00",
+      "sales_returns": "0.00",
+      "interest_revenue": "0.00",
+      "total_revenue": "0.00",
+      "cost_of_goods_sold": "0.00",
+      "gross_profit": "0.00",
+      "operating_expenses": "0.00",
+      "expense_count": 0,
+      "inventory_shrinkage": "0.00",
+      "shrinkage_exit_count": 0,
+      "settlement_commissions": "65000.00",
+      "cash_differences": "0.00",
+      "operating_profit": "-65000.00",
+      "margin_pct": null,
+      "interest_discounts": "0.00",
+      "sales_discounts": "0.00",
+      "auction_interest_realized": "0.00",
+      "capital_disbursed": "0.00",
+      "capital_recovered": "0.00",
+      "inventory_purchased": "0.00",
+      "inventory_purchases_paid": "0.00",
+      "transformation_costs_paid": "0.00"
+    }
+  },
+  "income_statement_descuadre": {
+    "_test": "test_F7_03_los_descuadres_de_arqueo_entran_al_resultado",
+    "status": 200,
+    "body": {
+      "from_date": "2026-09-28",
+      "to_date": "2026-09-28",
+      "sales_revenue": "0.00",
+      "sales_returns": "0.00",
+      "interest_revenue": "0.00",
+      "total_revenue": "0.00",
+      "cost_of_goods_sold": "0.00",
+      "gross_profit": "0.00",
+      "operating_expenses": "0.00",
+      "expense_count": 0,
+      "inventory_shrinkage": "0.00",
+      "shrinkage_exit_count": 0,
+      "settlement_commissions": "0.00",
+      "cash_differences": "50000.00",
+      "operating_profit": "50000.00",
+      "margin_pct": null,
+      "interest_discounts": "0.00",
+      "sales_discounts": "0.00",
+      "auction_interest_realized": "0.00",
+      "capital_disbursed": "0.00",
+      "capital_recovered": "0.00",
+      "inventory_purchased": "0.00",
+      "inventory_purchases_paid": "0.00",
+      "transformation_costs_paid": "0.00"
+    }
+  },
+  "income_statement_remate": {
+    "_test": "test_F7_04_el_interes_capitalizado_en_el_remate_no_es_costo_de_ventas",
+    "status": 200,
+    "body": {
+      "from_date": "2026-09-28",
+      "to_date": "2026-09-28",
+      "sales_revenue": "1300000.00",
+      "sales_returns": "0.00",
+      "interest_revenue": "0.00",
+      "total_revenue": "1300000.00",
+      "cost_of_goods_sold": "800000.00",
+      "gross_profit": "500000.00",
+      "operating_expenses": "0.00",
+      "expense_count": 0,
+      "inventory_shrinkage": "0.00",
+      "shrinkage_exit_count": 0,
+      "settlement_commissions": "0.00",
+      "cash_differences": "0.00",
+      "operating_profit": "500000.00",
+      "margin_pct": "38.46",
+      "interest_discounts": "0.00",
+      "sales_discounts": "0.00",
+      "auction_interest_realized": "320000.00",
+      "capital_disbursed": "800000.00",
+      "capital_recovered": "0.00",
+      "inventory_purchased": "0.00",
+      "inventory_purchases_paid": "0.00",
+      "transformation_costs_paid": "0.00"
+    }
+  },
+  "income_statement_ventas_devolucion": {
+    "_test": "test_F7_05_07_ventas_netas_en_el_dashboard_y_flujo_de_caja_sin_anuladas",
+    "status": 200,
+    "body": {
+      "from_date": "2026-09-28",
+      "to_date": "2026-09-28",
+      "sales_revenue": "800000.00",
+      "sales_returns": "300000.00",
+      "interest_revenue": "0.00",
+      "total_revenue": "500000.00",
+      "cost_of_goods_sold": "100000.00",
+      "gross_profit": "400000.00",
+      "operating_expenses": "0.00",
+      "expense_count": 0,
+      "inventory_shrinkage": "0.00",
+      "shrinkage_exit_count": 0,
+      "settlement_commissions": "0.00",
+      "cash_differences": "0.00",
+      "operating_profit": "400000.00",
+      "margin_pct": "80.00",
+      "interest_discounts": "0.00",
+      "sales_discounts": "0.00",
+      "auction_interest_realized": "0.00",
+      "capital_disbursed": "0.00",
+      "capital_recovered": "0.00",
+      "inventory_purchased": "300000.00",
+      "inventory_purchases_paid": "300000.00",
+      "transformation_costs_paid": "0.00"
+    }
+  },
+  "income_statement_compras": {
+    "_test": "test_F7_16_compras_causadas_y_pagos_de_compras_por_separado",
+    "status": 200,
+    "body": {
+      "from_date": "2026-09-28",
+      "to_date": "2026-09-28",
+      "sales_revenue": "0.00",
+      "sales_returns": "0.00",
+      "interest_revenue": "0.00",
+      "total_revenue": "0.00",
+      "cost_of_goods_sold": "0.00",
+      "gross_profit": "0.00",
+      "operating_expenses": "0.00",
+      "expense_count": 0,
+      "inventory_shrinkage": "0.00",
+      "shrinkage_exit_count": 0,
+      "settlement_commissions": "0.00",
+      "cash_differences": "0.00",
+      "operating_profit": "0.00",
+      "margin_pct": null,
+      "interest_discounts": "0.00",
+      "sales_discounts": "0.00",
+      "auction_interest_realized": "0.00",
+      "capital_disbursed": "0.00",
+      "capital_recovered": "0.00",
+      "inventory_purchased": "150000.00",
+      "inventory_purchases_paid": "100000.00",
+      "transformation_costs_paid": "0.00"
+    }
+  },
+  "profit_descuentos": {
+    "_test": "test_F7_08_vender_bajo_el_precio_publicado_figura_como_descuento",
+    "status": 200,
+    "body": {
+      "from_date": "2026-09-28",
+      "to_date": "2026-09-28",
+      "sale_count": 2,
+      "units_sold": "2.000",
+      "gross_revenue": "1200000.00",
+      "discounts": "55000.00",
+      "price_discounts": "50000.00",
+      "total_discounts": "105000.00",
+      "auction_interest_realized": "0.00",
+      "sales_returns": "0.00",
+      "return_count": 0,
+      "net_revenue": "1145000.00",
+      "cost_of_goods_sold": "900000.00",
+      "returns_cost": "0.00",
+      "gross_profit": "245000.00",
+      "margin_pct": "21.40"
+    }
+  },
+  "pawn_performance": {
+    "_test": "test_pawn_performance_reports_interest_over_portfolio",
+    "status": 200,
+    "body": {
+      "from_date": "2026-09-28",
+      "to_date": "2026-09-28",
+      "interest_collected": "50000.00",
+      "interest_discounts": "0.00",
+      "interest_revenue": "50000.00",
+      "capital_recovered": "200000.00",
+      "capital_disbursed": "1000000.00",
+      "payment_count": 1,
+      "contracts_opened": 1,
+      "capital_outstanding": "800000.00",
+      "open_contracts": 1,
+      "yield_on_current_portfolio_pct": "6.25",
+      "net_yield_on_current_portfolio_pct": "6.25"
+    }
+  },
+  "closings_breakdown_anulada": {
+    "_test": "test_F7_05_07_ventas_netas_en_el_dashboard_y_flujo_de_caja_sin_anuladas",
+    "status": 200,
+    "body": {
+      "lines": [
+        {
+          "module": "store",
+          "direction": "in",
+          "concept": "sale",
+          "payment_method": "cash",
+          "account_id": "f3782bf9-97e4-4fca-b857-c3a12f40625c",
+          "account_name": "Caja principal",
+          "account_type": "cash",
+          "session_date": "2026-09-28",
+          "total": "1000000.00"
+        },
+        {
+          "module": "store",
+          "direction": "out",
+          "concept": "sale",
+          "payment_method": "cash",
+          "account_id": "f3782bf9-97e4-4fca-b857-c3a12f40625c",
+          "account_name": "Caja principal",
+          "account_type": "cash",
+          "session_date": "2026-09-28",
+          "total": "200000.00"
+        },
+        {
+          "module": "store",
+          "direction": "out",
+          "concept": "purchase",
+          "payment_method": "cash",
+          "account_id": "f3782bf9-97e4-4fca-b857-c3a12f40625c",
+          "account_name": "Caja principal",
+          "account_type": "cash",
+          "session_date": "2026-09-28",
+          "total": "300000.00"
+        },
+        {
+          "module": "store",
+          "direction": "out",
+          "concept": "sale_return",
+          "payment_method": "cash",
+          "account_id": "f3782bf9-97e4-4fca-b857-c3a12f40625c",
+          "account_name": "Caja principal",
+          "account_type": "cash",
+          "session_date": "2026-09-28",
+          "total": "300000.00"
+        }
+      ],
+      "sales_flow": {
+        "kind": "cash_flow",
+        "description": "Flujo de caja por ventas: cobros de venta menos anulaciones y devoluciones pagadas. No es el ingreso contable (ver /reports/income-statement).",
+        "sales_in": "1000000.00",
+        "voided_out": "200000.00",
+        "returns_out": "300000.00",
+        "net_sales_flow": "500000.00"
+      }
+    }
+  },
+  "dashboard_devolucion": {
+    "_test": "test_F7_05_07_ventas_netas_en_el_dashboard_y_flujo_de_caja_sin_anuladas",
+    "status": 200,
+    "body": {
+      "as_of": "2026-09-28",
+      "contracts": {
+        "active_count": 0,
+        "in_arrears_count": 0,
+        "in_extension_count": 0,
+        "ready_for_auction_count": 0,
+        "auctioned_count": 0,
+        "capital_outstanding": "0.00"
+      },
+      "sales": {
+        "today_total": "500000.00",
+        "today_count": 2,
+        "month_total": "500000.00",
+        "today_gross": "800000.00",
+        "today_returns": "300000.00",
+        "month_gross": "800000.00",
+        "month_returns": "300000.00"
+      },
+      "inventory": {
+        "available_count": 2,
+        "available_value": "200000.00",
+        "draft_count": 0
+      },
+      "cashbox": {
+        "session_open": true,
+        "session_id": "02c6d05c-e7d1-4380-9cbc-59b9b793ca34",
+        "opened_at": "2026-09-29T00:38:22.522610Z",
+        "opening_balance": "0.00"
+      }
+    }
+  },
+  "capital_position_pasivos": {
+    "_test": "test_F7_13_la_posicion_resta_pasivos_y_da_el_patrimonio_neto",
+    "status": 200,
+    "body": {
+      "from_date": "2026-09-28",
+      "to_date": "2026-09-28",
+      "operating_profit": "0.00",
+      "contributions": "0.00",
+      "withdrawals": "0.00",
+      "net_capital_movement": "0.00",
+      "cash_and_bank": "200000.00",
+      "loan_portfolio": "0.00",
+      "inventory_at_cost": "300000.00",
+      "total_capital": "500000.00",
+      "distributable": "0.00",
+      "accounts_payable": "200000.00",
+      "credit_notes_outstanding": "300000.00",
+      "total_liabilities": "500000.00",
+      "net_worth": "0.00"
+    }
+  },
+  "sale_bajo_precio_publicado": {
+    "_test": "test_F7_08_vender_bajo_el_precio_publicado_figura_como_descuento",
+    "status": 201,
+    "body": {
+      "id": "aa25ee09-4150-4b37-8ce3-0ffe558d01ea",
+      "number": 1,
+      "sold_at": "2026-09-29T00:38:21.809450Z",
+      "customer_id": null,
+      "discount_amount": "0.00",
+      "total": "400000.00",
+      "payment_method": "cash",
+      "status": "completed",
+      "void_reason": null,
+      "created_at": "2026-09-29T00:38:21.809450Z",
+      "lines": [
+        {
+          "id": "aca4b832-cb57-4b8b-b415-3c89c74aeb82",
+          "item_id": "a8e29aac-a6ee-4444-bd10-1561960fede0",
+          "quantity": "1.000",
+          "unit_price": "400000.00",
+          "unit_cost": "300000.00",
+          "subtotal": "400000.00",
+          "list_price": "450000.00",
+          "price_discount": "50000.00"
+        }
+      ],
+      "account_id": "73f78dc8-ad5b-4f68-8ba8-f9973fdf29d3",
+      "credit_note_redeemed_amount": null,
+      "returned_amount": "0.00"
+    }
+  },
+  "sale_error_bajo_costo": {
+    "_test": "test_vender_bajo_costo_exige_permiso_y_queda_auditado",
+    "status": 403,
+    "body": {
+      "code": "SALE_BELOW_COST_REQUIRES_PERMISSION",
+      "message": "Vender por debajo del costo requiere el permiso 'sales.apply_discount'.",
+      "details": {
+        "permission": "sales.apply_discount",
+        "below_cost_lines": [
+          {
+            "item_id": "74c744c8-d293-4f8f-8362-122ad0a6fe31",
+            "unit_cost": "300000.00",
+            "unit_price": "250000.00",
+            "quantity": "1.000",
+            "loss": "50000.00"
+          }
+        ]
+      }
+    }
+  },
+  "error_rango_invertido": {
+    "_test": "test_profit_summary_rejects_inverted_and_huge_ranges",
+    "status": 422,
+    "body": {
+      "code": "INVALID_DATE_RANGE",
+      "message": "La fecha inicial no puede ser posterior a la final.",
+      "details": {
+        "from_date": "2026-08-10",
+        "to_date": "2026-08-01"
+      }
+    }
+  },
+  "error_rango_largo": {
+    "_test": "test_profit_summary_rejects_inverted_and_huge_ranges",
+    "status": 422,
+    "body": {
+      "code": "DATE_RANGE_TOO_LONG",
+      "message": "El rango no puede superar 366 días.",
+      "details": {
+        "from_date": "2020-01-01",
+        "to_date": "2026-01-01",
+        "max_days": 366
+      }
+    }
+  }
+}

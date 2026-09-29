@@ -366,3 +366,46 @@ export function aggregateCashDifferences(closings: Pick<ClosingHistory, 'differe
     neto: subtractMoney(sobrantes, faltantes),
   }
 }
+
+export type SalesCashFlow = components['schemas']['SalesCashFlowOut']
+
+export interface SalesCashFlowKpi {
+  /** Cobros de venta (`sale/in`), en todas las cuentas. */
+  cobrado: string
+  /** Contra-movimientos de ventas anuladas (`sale/out`). */
+  anulaciones: string
+  /** Devoluciones pagadas (`sale_return/out`). */
+  devolucionesPagadas: string
+  /** `cobrado − anulaciones − devolucionesPagadas`: «Ventas cobradas, netas». */
+  neto: string
+}
+
+/**
+ * El KPI de ventas de /reportes visto como lo que es: FLUJO DE CAJA (F7-05).
+ *
+ * Antes sumaba solo `sale/in` y nunca restaba la anulación (`sale/out`) ni la
+ * devolución en efectivo (`sale_return/out`): con una venta anulada de
+ * 1.200.000 decía «Ventas» 6.120.250 contra 5.120.250 del estado de
+ * resultados, y las dos tarjetas decían «ingresos».
+ *
+ * La cifra sale de `closings-breakdown.sales_flow` cuando el backend la manda
+ * (desde la tanda F1). Si no viene —un backend anterior—, se arma con las
+ * MISMAS tres sumas sobre las líneas, que es exactamente su definición. Con
+ * el filtro de Empeño no hay ventas: todo en cero.
+ */
+export function salesCashFlow(lines: ClosingsBreakdownLine[], salesFlow: SalesCashFlow | null | undefined, moduleFilter?: Module): SalesCashFlowKpi {
+  if (moduleFilter === 'pawn') return { cobrado: '0.00', anulaciones: '0.00', devolucionesPagadas: '0.00', neto: '0.00' }
+  if (salesFlow) {
+    return { cobrado: salesFlow.sales_in, anulaciones: salesFlow.voided_out, devolucionesPagadas: salesFlow.returns_out, neto: salesFlow.net_sales_flow }
+  }
+  let cobrado = '0.00'
+  let anulaciones = '0.00'
+  let devolucionesPagadas = '0.00'
+  for (const line of lines) {
+    if (moduleFilter && line.module !== moduleFilter) continue
+    if (line.concept === 'sale' && line.direction === 'in') cobrado = sumMoney(cobrado, line.total)
+    else if (line.concept === 'sale' && line.direction === 'out') anulaciones = sumMoney(anulaciones, line.total)
+    else if (line.concept === 'sale_return' && line.direction === 'out') devolucionesPagadas = sumMoney(devolucionesPagadas, line.total)
+  }
+  return { cobrado, anulaciones, devolucionesPagadas, neto: subtractMoney(subtractMoney(cobrado, anulaciones), devolucionesPagadas) }
+}
