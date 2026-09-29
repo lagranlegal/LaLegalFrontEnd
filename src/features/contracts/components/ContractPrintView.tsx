@@ -6,6 +6,7 @@ import { useMe } from '@/lib/auth/me'
 import { PrintContractItemsTable, PrintField, PrintSection, PrintSignature } from '@/components/shared/PrintBlocks'
 import { LazyTemplateRenderer, preloadTemplateRenderer } from '@/components/shared/documentTemplate/lazy'
 import { useActiveDocumentTemplate } from '@/features/settings/documentTemplates/api'
+import { hasPrintableContent } from '@/lib/documents/templateRequirements'
 import { buildContractContext } from '@/lib/documents/mergeFields'
 import { noticeConsentClauseBlocks } from '@/lib/documents/noticeConsentClause'
 import type { PrintableContractItem } from '@/lib/documents/nodes/ItemsTableBlockNode'
@@ -114,7 +115,11 @@ function months(count: number): string {
  */
 export function ContractPrintView({ contract, customer, categories }: { contract: Contract; customer: Customer | undefined; categories: Category[] | undefined }) {
   const { data: me } = useMe()
-  const { data: activeTemplate } = useActiveDocumentTemplate('contract')
+  const { data: savedTemplate } = useActiveDocumentTemplate('contract')
+  // F8-11: una activa que no imprime nada (vaciada por PATCH o con basura,
+  // posible con el backend anterior a 93f95e0) no reemplaza al formato de
+  // fábrica — el documento saldría con encabezado, título y pie, nada más.
+  const activeTemplate = savedTemplate && hasPrintableContent(savedTemplate.body) ? savedTemplate : null
 
   // `window.print()` es síncrono — precargar el chunk de Tiptap apenas se
   // sabe que hay plantilla activa, para que ya esté en caché cuando el

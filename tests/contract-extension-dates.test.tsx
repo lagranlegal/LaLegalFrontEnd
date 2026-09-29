@@ -107,3 +107,18 @@ describe('contrato impreso con plantilla propia — la leyenda de las dos fechas
     expect(baseElement.textContent).toMatch(/amplía el préstamo/)
   })
 })
+
+describe('F8-11: una plantilla activa que no imprime nada no reemplaza al formato de fábrica', () => {
+  // Con el backend desplegado antes de 93f95e0 la activa se podía vaciar por
+  // PATCH o quedar con basura: el contrato salía en 70 caracteres.
+  it.each([
+    ['{}', {}],
+    ['párrafo vacío', { type: 'doc', content: [{ type: 'paragraph' }] }],
+    ['basura', { content: [1, 2] }],
+  ])('%s → se imprime el de fábrica', (_nombre, body) => {
+    activeTemplate.current = { data: { id: 't', document_type: 'contract', name: 'Vacía', layout: 'classic', is_active: true, body }, isPending: false, isError: false }
+    const { baseElement } = wrap(<ContractPrintView contract={nuevo} customer={undefined} categories={[]} />)
+    expect(baseElement.textContent).toContain('Condiciones del préstamo')
+    expect(baseElement.textContent).toContain('Firma del cliente')
+  })
+})

@@ -4,6 +4,7 @@ import { formatDateTime } from '@/lib/dates'
 import { useMe } from '@/lib/auth/me'
 import { LazyTemplateRenderer, preloadTemplateRenderer } from '@/components/shared/documentTemplate/lazy'
 import { useActiveDocumentTemplate } from '@/features/settings/documentTemplates/api'
+import { hasPrintableContent } from '@/lib/documents/templateRequirements'
 import { buildSettlementContext } from '@/lib/documents/mergeFields'
 import type { Contract } from '@/features/contracts/api'
 import type { Customer } from '@/lib/customers/search'
@@ -20,7 +21,11 @@ import type { JSONContent } from '@tiptap/core'
  */
 export function SettlementPrintView({ contract, customer, settlement }: { contract: Contract; customer: Customer | undefined; settlement: SettlementInfo }) {
   const { data: me } = useMe()
-  const { data: activeTemplate } = useActiveDocumentTemplate('settlement')
+  const { data: savedTemplate } = useActiveDocumentTemplate('settlement')
+  // F8-11: una activa que no imprime nada (vaciada por PATCH o con basura,
+  // posible con el backend anterior a 93f95e0) no reemplaza al formato de
+  // fábrica — el documento saldría con encabezado, título y pie, nada más.
+  const activeTemplate = savedTemplate && hasPrintableContent(savedTemplate.body) ? savedTemplate : null
   const context = buildSettlementContext(contract, customer, me?.company, settlement)
 
   useEffect(() => {
