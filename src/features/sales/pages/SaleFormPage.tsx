@@ -28,6 +28,7 @@ import { useCustomerCreditNotes } from '@/lib/sales/creditNotes'
 import { minMoney } from '@/lib/money'
 import type { Item } from '@/lib/inventory/items'
 import type { Customer } from '@/lib/customers/search'
+import { ReceiptEmailNotice } from '@/features/sales/components/ReceiptEmailNotice'
 import { preventImplicitSubmit } from '@/lib/forms/preventImplicitSubmit'
 
 interface CartLine {
@@ -290,6 +291,7 @@ export function SaleFormPage() {
                 <CustomerPicker value={customer} onChange={chooseCustomer} />
               </div>
               {!customer && <p className="mt-1 text-xs text-muted-foreground">Sin seleccionar: se vende a "Consumidor final".</p>}
+              {customer && <ReceiptEmailNotice customer={customer} />}
             </div>
 
             {availableCreditNotes.length > 0 && (
