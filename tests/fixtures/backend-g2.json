@@ -506,5 +506,90 @@
    "capital_recovered": "900000.00",
    "inventory_purchased": "4575666.67"
   }
+ },
+ "categoria_arbol_0": {
+  "_test": "tests/integration/test_catalogs.py::test_category_tree_rejects_fourth_level",
+  "_request": "POST /api/v1/catalogs/categories",
+  "status": 201,
+  "body": {
+   "id": "6974483a-1259-4352-a344-87af53d2841c",
+   "parent_id": null,
+   "level": 1,
+   "name": "L1",
+   "code_letter": "A",
+   "applies_to": "both",
+   "default_term_months": null,
+   "arrears_window_months": null,
+   "max_ltv_pct": null,
+   "active": true
+  }
+ },
+ "categoria_arbol_1": {
+  "_test": "tests/integration/test_catalogs.py::test_category_tree_rejects_fourth_level",
+  "_request": "POST /api/v1/catalogs/categories",
+  "status": 201,
+  "body": {
+   "id": "46330962-d7e2-4c28-9dc2-2185c5b62053",
+   "parent_id": "6974483a-1259-4352-a344-87af53d2841c",
+   "level": 2,
+   "name": "L2",
+   "code_letter": "B",
+   "applies_to": "both",
+   "default_term_months": null,
+   "arrears_window_months": null,
+   "max_ltv_pct": null,
+   "active": true
+  }
+ },
+ "categoria_arbol_2": {
+  "_test": "tests/integration/test_catalogs.py::test_category_tree_rejects_fourth_level",
+  "_request": "POST /api/v1/catalogs/categories",
+  "status": 201,
+  "body": {
+   "id": "55d566bc-812f-4d12-8da6-1508253d54d7",
+   "parent_id": "46330962-d7e2-4c28-9dc2-2185c5b62053",
+   "level": 3,
+   "name": "L3",
+   "code_letter": "C",
+   "applies_to": "both",
+   "default_term_months": null,
+   "arrears_window_months": null,
+   "max_ltv_pct": null,
+   "active": true
+  }
+ },
+ "categoria_joyeria": {
+  "_test": "tests/integration/test_catalogs.py::test_create_child_category_increments_level",
+  "_request": "POST /api/v1/catalogs/categories",
+  "status": 201,
+  "body": {
+   "id": "9ef2b198-ce1d-44ae-8e5d-846baf86ba14",
+   "parent_id": null,
+   "level": 1,
+   "name": "Joyería",
+   "code_letter": "J",
+   "applies_to": "both",
+   "default_term_months": null,
+   "arrears_window_months": null,
+   "max_ltv_pct": null,
+   "active": true
+  }
+ },
+ "categoria_oro": {
+  "_test": "tests/integration/test_catalogs.py::test_create_child_category_increments_level",
+  "_request": "POST /api/v1/catalogs/categories",
+  "status": 201,
+  "body": {
+   "id": "5d186af4-7381-4e5d-9af8-4155daab9ac2",
+   "parent_id": "9ef2b198-ce1d-44ae-8e5d-846baf86ba14",
+   "level": 2,
+   "name": "Oro",
+   "code_letter": "O",
+   "applies_to": "both",
+   "default_term_months": null,
+   "arrears_window_months": null,
+   "max_ltv_pct": null,
+   "active": true
+  }
  }
 }

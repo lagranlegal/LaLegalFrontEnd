@@ -325,7 +325,7 @@ export function ReportesPage() {
 
       const rankings = [
         ...ranking.topItems.map((i) => ({ Tipo: 'Prenda', Nombre: i.code ? `${i.name} (${i.code})` : i.name, Cantidad: i.quantity, Unidad: unitAbbr(i.unit), Ingresos: Number(i.revenue) })),
-        ...ranking.topCategories.map((c) => ({ Tipo: 'Categoría', Nombre: c.name, Cantidad: c.quantity, Unidad: unitAbbr(c.unit), Ingresos: Number(c.revenue) })),
+        ...ranking.topCategories.map((c) => ({ Tipo: 'Categoría', Nombre: c.path, Cantidad: c.quantity, Unidad: unitAbbr(c.unit), Ingresos: Number(c.revenue) })),
       ]
 
       await exportSheetsToExcel(`reportes-${range?.from ?? todayBogota()}-a-${range?.to ?? todayBogota()}.xlsx`, [
@@ -626,7 +626,7 @@ export function ReportesPage() {
             <RankingList rows={ranking.topItems.map((i) => ({ key: i.itemId, label: i.code ? `${i.name} (${i.code})` : i.name, quantity: i.quantity, revenue: i.revenue, unit: i.unit }))} />
           </CardShell>
           <CardShell title="Categorías más movidas">
-            <RankingList rows={ranking.topCategories.map((c) => ({ key: `${c.categoryId}|${c.unit}`, label: c.name, quantity: c.quantity, revenue: c.revenue, unit: c.unit }))} />
+            <RankingList rows={ranking.topCategories.map((c) => ({ key: `${c.categoryId}|${c.unit}`, label: c.path, quantity: c.quantity, revenue: c.revenue, unit: c.unit }))} />
           </CardShell>
         </div>
       </div>

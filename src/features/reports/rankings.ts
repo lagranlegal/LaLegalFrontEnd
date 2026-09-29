@@ -22,9 +22,26 @@ export interface ItemRanking {
 export interface CategoryRanking {
   categoryId: string
   name: string
+  /**
+   * La ruta completa, «Joyería › Oro › Cadena» (verificación F/G): dos
+   * categorías de nivel 3 con el mismo nombre bajo padres distintos se
+   * veían iguales en el ranking. Si falta un ancestro, empieza donde se sabe.
+   */
+  path: string
   quantity: number
   revenue: string
   unit: string
+}
+
+function categoryPath(categoryId: string, categoryById: Map<string, Category>): string {
+  const names: string[] = []
+  let current = categoryById.get(categoryId)
+  // Tope de 3 niveles (el árbol no tiene más); corta también un ciclo.
+  while (current && names.length < 3) {
+    names.unshift(current.name)
+    current = current.parent_id ? categoryById.get(current.parent_id) : undefined
+  }
+  return names.join(' › ')
 }
 
 /**
@@ -105,7 +122,10 @@ export function aggregateItemRanking(
   }
 
   const topCategories: CategoryRanking[] = [...categoryTotals.values()]
-    .map(({ categoryId, ...totals }) => ({ categoryId, name: categoryId === 'sin-categoria' ? 'Sin categoría' : (categoryById.get(categoryId)?.name ?? 'Categoría eliminada'), ...totals }))
+    .map(({ categoryId, ...totals }) => {
+      const name = categoryId === 'sin-categoria' ? 'Sin categoría' : (categoryById.get(categoryId)?.name ?? 'Categoría eliminada')
+      return { categoryId, name, path: categoryPath(categoryId, categoryById) || name, ...totals }
+    })
     .sort((a, b) => b.quantity - a.quantity)
     .slice(0, 6)
 
