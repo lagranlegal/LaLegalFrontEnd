@@ -10,6 +10,7 @@ import { isPermissionError } from '@/lib/api/isPermissionError'
 import { ContractsStatusChart, type StatusDatum } from '@/components/shared/charts/ContractsStatusChart'
 import { Button } from '@/components/ui/button'
 import { formatDate } from '@/lib/dates'
+import { compareMoney } from '@/lib/money'
 
 function DashboardSkeleton() {
   return (
@@ -25,6 +26,17 @@ function DashboardSkeleton() {
       </div>
       <div className="h-64 animate-pulse rounded-card border border-border bg-card" />
     </div>
+  )
+}
+
+/** «$ 800.000 vendidas − $ 300.000 devueltas», solo si hubo devoluciones. */
+function ReturnsHint({ gross, returns }: { gross?: string; returns?: string }) {
+  // Un backend anterior a F1 no manda el bruto: sin él no hay qué explicar.
+  if (!gross || !returns || compareMoney(returns, '0') <= 0) return null
+  return (
+    <>
+      <Money value={gross} /> vendidas − <Money value={returns} /> devueltas
+    </>
   )
 }
 
@@ -73,8 +85,21 @@ export function DashboardPage() {
 
       <KpiRow>
         <KpiCard label="Cartera activa" value={<Money value={data.contracts.capital_outstanding} />} tone="danger" />
-        <KpiCard label="Ventas de hoy" value={<Money value={data.sales.today_total} />} tone="brand" />
-        <KpiCard label="Ventas del mes" value={<Money value={data.sales.month_total} />} tone="brand" />
+        {/* F7-07: `today_total`/`month_total` ya vienen NETOS de
+            devoluciones. Si hubo alguna, la cifra baja sin explicación —
+            se nombran el bruto y lo devuelto debajo. */}
+        <KpiCard
+          label="Ventas de hoy"
+          value={<Money value={data.sales.today_total} />}
+          tone="brand"
+          hint={<ReturnsHint gross={data.sales.today_gross} returns={data.sales.today_returns} />}
+        />
+        <KpiCard
+          label="Ventas del mes"
+          value={<Money value={data.sales.month_total} />}
+          tone="brand"
+          hint={<ReturnsHint gross={data.sales.month_gross} returns={data.sales.month_returns} />}
+        />
         <KpiCard label="Contratos activos" value={data.contracts.active_count} />
         <KpiCard
           label="Artículos disponibles"
