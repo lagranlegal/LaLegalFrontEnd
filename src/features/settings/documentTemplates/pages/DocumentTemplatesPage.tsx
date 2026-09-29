@@ -11,6 +11,8 @@ import { LazyTemplateEditor, LazyTemplateRenderer } from '@/components/shared/do
 import { buildSampleContractContext, buildSampleSettlementContext, type DocumentType } from '@/lib/documents/mergeFields'
 import { LAYOUT_LABELS, LAYOUT_OPTIONS, type DocumentLayout } from '@/lib/documents/layouts'
 import { STARTING_TEMPLATES } from '@/lib/documents/startingTemplates'
+import { editorDocOrEmpty, templateProblem } from '@/lib/documents/templateRequirements'
+import { ApiError, userMessage } from '@/lib/api/errors'
 import type { PrintableContractItem } from '@/lib/documents/nodes/ItemsTableBlockNode'
 import {
   useActivateDocumentTemplate,
@@ -96,8 +98,9 @@ const SAMPLE_ITEMS: PrintableContractItem[] = [
 
 const inputClass = 'mt-1 w-full rounded-input border border-border bg-background px-3 py-2 text-sm text-foreground outline-none focus:border-primary'
 
-function emptyDoc(): JSONContent {
-  return { type: 'doc', content: [{ type: 'paragraph' }] }
+/** El motivo del backend si lo hay (`TEMPLATE_*`); si no, el genérico. */
+function errorText(error: unknown, fallback: string): string {
+  return error instanceof ApiError ? userMessage(error) : fallback
 }
 
 /**
@@ -119,7 +122,10 @@ function TemplateDraftPanel({
 }) {
   const { data: me } = useMe()
   const [draftName, setDraftName] = useState(template?.name ?? '')
-  const [draftBody, setDraftBody] = useState<JSONContent>((template?.body as JSONContent | undefined) ?? emptyDoc())
+  // Una plantilla vieja pudo quedar guardada con `{}`: se edita desde el
+  // documento vacío del editor, que es lo único que el backend acepta
+  // (TEMPLATE_BODY_INVALID). Crear tampoco manda nunca `{}`.
+  const [draftBody, setDraftBody] = useState<JSONContent>(() => editorDocOrEmpty(template?.body))
   const [draftLayout, setDraftLayout] = useState<DocumentLayout>(template?.layout ?? 'classic')
 
   const createTemplate = useCreateDocumentTemplate()
@@ -127,9 +133,21 @@ function TemplateDraftPanel({
   const deleteTemplate = useDeleteDocumentTemplate()
   const activateTemplate = useActivateDocumentTemplate()
 
+  // Lo que le falta a lo que se está EDITANDO para poder imprimirse como
+  // activa. Al activar cuenta el cuerpo GUARDADO (es el que activa el
+  // backend); por eso el aviso pide guardar primero si hay cambios.
+  const draftProblem = templateProblem(documentType, draftBody)
+  const savedProblem = template ? templateProblem(documentType, template.body) : null
+
   async function handleSave() {
     if (!draftName.trim()) {
       toast.error('La plantilla necesita un nombre.')
+      return
+    }
+    // La ACTIVA es la que se imprime: guardarla sin los mínimos dejaría los
+    // contratos en blanco desde este momento (F8-01).
+    if (template?.is_active && draftProblem) {
+      toast.error(`Esta plantilla es la que se imprime y así no se puede guardar. ${draftProblem}`)
       return
     }
     try {
@@ -149,18 +167,22 @@ function TemplateDraftPanel({
         })
         toast.success('Plantilla guardada.')
       }
-    } catch {
-      toast.error('No se pudo guardar la plantilla. Intenta de nuevo.')
+    } catch (error) {
+      toast.error(errorText(error, 'No se pudo guardar la plantilla. Intenta de nuevo.'))
     }
   }
 
   async function handleActivate() {
     if (!template) return
+    if (savedProblem) {
+      toast.error(`No se puede activar todavía. ${savedProblem}`)
+      return
+    }
     try {
       await activateTemplate.mutateAsync(template.id)
       toast.success('Plantilla activada — ya es la que se usa al imprimir.')
-    } catch {
-      toast.error('No se pudo activar la plantilla.')
+    } catch (error) {
+      toast.error(errorText(error, 'No se pudo activar la plantilla.'))
     }
   }
 
@@ -170,8 +192,8 @@ function TemplateDraftPanel({
       await deleteTemplate.mutateAsync(template.id)
       onSaved('')
       toast.success('Plantilla eliminada.')
-    } catch {
-      toast.error('No se pudo eliminar — si es la activa, activa otra primero.')
+    } catch (error) {
+      toast.error(errorText(error, 'No se pudo eliminar — si es la activa, activa otra primero.'))
     }
   }
 
@@ -247,6 +269,13 @@ function TemplateDraftPanel({
       {template && !template.is_active && (
         <div className="rounded-input bg-warning-soft px-4 py-2 text-sm text-warning">
           Esta plantilla no está activa — mientras tanto se sigue imprimiendo con el formato de siempre. Dale <strong>Activar</strong> arriba para que se use.
+        </div>
+      )}
+
+      {draftProblem && (
+        <div className="rounded-input bg-danger-soft px-4 py-2 text-sm text-danger">
+          {template?.is_active ? 'Así no se puede guardar, porque es la que se imprime: ' : 'Se puede guardar como borrador, pero para activarla le falta: '}
+          {draftProblem}
         </div>
       )}
 

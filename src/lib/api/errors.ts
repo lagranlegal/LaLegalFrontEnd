@@ -8,6 +8,7 @@
  * tipa el código, no reacciona por sí mismo.
  */
 import { formatCOP, sumMoney } from '@/lib/money'
+import { describeMissing } from '@/lib/documents/templateRequirements'
 
 export const API_ERROR_CODES = [
   'UNAUTHORIZED',
@@ -198,6 +199,26 @@ export const API_ERROR_CODES = [
   // es una salida — también cuenta. `details.retry_after_seconds` dice cuánto
   // esperar, y eso es lo que se agrega al mensaje.
   'INVITATIONS_RATE_LIMITED',
+  // Plantillas de documentos (backend 93f95e0, auditoría de QA F8-01/02/03).
+  // Con el backend anterior no llegan nunca; mapearlos no cambia nada ahí.
+  //
+  // Activar —o guardar la que YA está activa— con un cuerpo que no imprime
+  // nada (409). Antes solo se validaba al activar, y un PATCH vaciaba la
+  // activa con 200.
+  'TEMPLATE_IS_EMPTY',
+  // Borrar la plantilla activa (409): hay que activar otra o volver al
+  // documento de fábrica primero.
+  'TEMPLATE_IS_ACTIVE',
+  // El cuerpo no es un documento del editor (422, `details.field = 'body'`).
+  'TEMPLATE_BODY_INVALID',
+  // Un contrato sin nombre del cliente, tabla de prendas o firma del cliente
+  // (409). `details.missing` = claves de `lib/documents/templateRequirements`.
+  'TEMPLATE_MISSING_REQUIRED_FIELDS',
+  // Límites de avisos al cliente por debajo del piso de la Ley 2300 (422,
+  // backend d185e38, F8-05). `details.fields` = los campos que aflojan el
+  // piso; `details.floor` = el piso vigente, con la forma de
+  // `customer_contact_limits`.
+  'CONTACT_LIMITS_BELOW_LEGAL_FLOOR',
 ] as const
 
 export type ApiErrorCode = (typeof API_ERROR_CODES)[number]
@@ -334,6 +355,13 @@ function messageWithDetails(error: ApiError): string | null {
     const segundos = details.retry_after_seconds
     const espera = typeof segundos === 'number' && segundos > 0 ? ` Podrás volver a hacerlo en unos ${Math.ceil(segundos / 60)} minuto(s).` : ' Intenta más tarde.'
     return `Llegaste al límite de invitaciones y enlaces de acceso por hora de la empresa (generar el enlace también cuenta).${espera}`
+  }
+  if (error.code === 'TEMPLATE_MISSING_REQUIRED_FIELDS') {
+    // El texto del backend usa sus propias etiquetas («el campo "Nombre del
+    // cliente"»); se arma con las del editor, que es lo que la persona ve.
+    const faltan = Array.isArray(details.missing) ? describeMissing(details.missing) : ''
+    if (!faltan) return null
+    return `A esta plantilla le falta ${faltan}. Un contrato de empeño tiene que decir a quién se le prestó, sobre qué prendas y llevar la firma del cliente.`
   }
   if (error.code === 'PAYMENT_MINIMUM_INTEREST_REQUIRED') {
     const total = details.payoff_total

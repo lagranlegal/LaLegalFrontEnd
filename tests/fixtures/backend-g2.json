@@ -137,5 +137,352 @@
     }
    ]
   }
+ },
+ "plantilla_vacia_al_activar": {
+  "_test": "tests/integration/test_company.py::test_an_empty_template_can_be_saved_but_not_activated",
+  "_request": "POST /api/v1/company/document-templates/273d0fe0-abac-483c-8a1b-66889384b1df/activate",
+  "status": 409,
+  "body": {
+   "code": "TEMPLATE_IS_EMPTY",
+   "message": "Esta plantilla está vacía: activarla imprimiría los documentos sin su contenido. Escribe el cuerpo antes de activarla.",
+   "details": {}
+  }
+ },
+ "plantilla_activa_vaciada": {
+  "_test": "tests/integration/test_company.py::test_patch_cannot_empty_the_active_template",
+  "_request": "PATCH /api/v1/company/document-templates/3ca1dc94-4dba-4510-83e8-af5c29466244",
+  "status": 409,
+  "body": {
+   "code": "TEMPLATE_IS_EMPTY",
+   "message": "Esta plantilla está vacía: activarla imprimiría los documentos sin su contenido. Escribe el cuerpo antes de activarla.",
+   "details": {}
+  }
+ },
+ "plantilla_activa_sin_firma": {
+  "_test": "tests/integration/test_company.py::test_patch_cannot_empty_the_active_template",
+  "_request": "PATCH /api/v1/company/document-templates/3ca1dc94-4dba-4510-83e8-af5c29466244",
+  "status": 409,
+  "body": {
+   "code": "TEMPLATE_MISSING_REQUIRED_FIELDS",
+   "message": "A esta plantilla le falta la firma del cliente. Un contrato de empeño tiene que decir a quién se le prestó, sobre qué prendas y llevar la firma del cliente.",
+   "details": {
+    "missing": [
+     "signatureBlock:cliente"
+    ]
+   }
+  }
+ },
+ "plantilla_cuerpo_invalido": {
+  "_test": "tests/integration/test_company.py::test_body_that_is_not_an_editor_document_is_rejected",
+  "_request": "POST /api/v1/company/document-templates",
+  "status": 422,
+  "body": {
+   "code": "TEMPLATE_BODY_INVALID",
+   "message": "El cuerpo de la plantilla no es un documento del editor.",
+   "details": {
+    "field": "body"
+   }
+  }
+ },
+ "plantilla_sin_minimos": {
+  "_test": "tests/integration/test_company.py::test_contract_template_needs_customer_items_and_signature_to_activate",
+  "_request": "POST /api/v1/company/document-templates/c5e530df-7914-4329-912b-f9ad4095faa9/activate",
+  "status": 409,
+  "body": {
+   "code": "TEMPLATE_MISSING_REQUIRED_FIELDS",
+   "message": "A esta plantilla le falta el campo «Nombre del cliente», la tabla de prendas, la firma del cliente. Un contrato de empeño tiene que decir a quién se le prestó, sobre qué prendas y llevar la firma del cliente.",
+   "details": {
+    "missing": [
+     "cliente.nombre",
+     "itemsTableBlock",
+     "signatureBlock:cliente"
+    ]
+   }
+  }
+ },
+ "avisos_domingos": {
+  "_test": "tests/integration/test_notifications.py::test_patch_cannot_loosen_the_legal_floor",
+  "_request": "PATCH /api/v1/notifications/settings",
+  "status": 422,
+  "body": {
+   "code": "CONTACT_LIMITS_BELOW_LEGAL_FLOOR",
+   "message": "Estos límites quedan por debajo de lo que permite la Ley 2300 de 2023. La empresa puede ser más estricta, no menos.",
+   "details": {
+    "fields": [
+     "sundays_and_holidays"
+    ],
+    "floor": {
+     "enabled": true,
+     "max_per_week": 1,
+     "max_per_day": 3,
+     "weekday_hours": [
+      "07:00",
+      "19:00"
+     ],
+     "saturday_hours": [
+      "08:00",
+      "15:00"
+     ],
+     "sundays_and_holidays": false,
+     "transactional_in_weekly_cap": false
+    }
+   }
+  }
+ },
+ "avisos_mas_estricto": {
+  "_test": "tests/integration/test_notifications.py::test_patch_cannot_loosen_the_legal_floor",
+  "_request": "PATCH /api/v1/notifications/settings",
+  "status": 200,
+  "body": {
+   "enabled": false,
+   "provider_configured": false,
+   "events": [
+    {
+     "code": "contract_created",
+     "audience": "customer",
+     "purpose": "service",
+     "family": "transactional",
+     "description": "C1 · Contrato creado: número, monto y fecha de la próxima cuota",
+     "default_enabled": false,
+     "enabled": false,
+     "overridden": false,
+     "effective": false
+    },
+    {
+     "code": "payment_registered",
+     "audience": "customer",
+     "purpose": "service",
+     "family": "transactional",
+     "description": "C2 · Abono registrado: qué pagó, hasta cuándo quedó cubierto y saldo",
+     "default_enabled": false,
+     "enabled": false,
+     "overridden": false,
+     "effective": false
+    },
+    {
+     "code": "contract_paid_off",
+     "audience": "customer",
+     "purpose": "service",
+     "family": "transactional",
+     "description": "C3 · Paz y salvo: el contrato quedó saldado",
+     "default_enabled": false,
+     "enabled": false,
+     "overridden": false,
+     "effective": false
+    },
+    {
+     "code": "loan_extended",
+     "audience": "customer",
+     "purpose": "service",
+     "family": "transactional",
+     "description": "C4 · Préstamo ampliado: nace un contrato sucesor",
+     "default_enabled": false,
+     "enabled": false,
+     "overridden": false,
+     "effective": false
+    },
+    {
+     "code": "credit_note_issued",
+     "audience": "customer",
+     "purpose": "service",
+     "family": "transactional",
+     "description": "C5 · Nota crédito emitida: saldo a favor",
+     "default_enabled": false,
+     "enabled": false,
+     "overridden": false,
+     "effective": false
+    },
+    {
+     "code": "sale_receipt",
+     "audience": "customer",
+     "purpose": "service",
+     "family": "transactional",
+     "description": "C6 · Comprobante de venta (solo ventas con cliente)",
+     "default_enabled": false,
+     "enabled": false,
+     "overridden": false,
+     "effective": false
+    },
+    {
+     "code": "sale_reversed",
+     "audience": "customer",
+     "purpose": "service",
+     "family": "transactional",
+     "description": "C7 · Venta anulada o devolución",
+     "default_enabled": false,
+     "enabled": false,
+     "overridden": false,
+     "effective": false
+    },
+    {
+     "code": "installment_due_soon",
+     "audience": "customer",
+     "purpose": "service",
+     "family": "reminder",
+     "description": "R1 · Cuota por vencer (3 días antes; los días se configuran)",
+     "default_enabled": false,
+     "enabled": false,
+     "overridden": false,
+     "effective": false
+    },
+    {
+     "code": "installment_overdue",
+     "audience": "customer",
+     "purpose": "service",
+     "family": "state",
+     "description": "R2 · Cuota vencida: el contrato entró en mora",
+     "default_enabled": false,
+     "enabled": false,
+     "overridden": false,
+     "effective": false
+    },
+    {
+     "code": "extension_started",
+     "audience": "customer",
+     "purpose": "service",
+     "family": "state",
+     "description": "R3 · El contrato entró en prórroga",
+     "default_enabled": false,
+     "enabled": false,
+     "overridden": false,
+     "effective": false
+    },
+    {
+     "code": "extension_ending_soon",
+     "audience": "customer",
+     "purpose": "service",
+     "family": "reminder",
+     "description": "R4 · La prórroga vence pronto",
+     "default_enabled": false,
+     "enabled": false,
+     "overridden": false,
+     "effective": false
+    },
+    {
+     "code": "auction_ready_customer",
+     "audience": "customer",
+     "purpose": "service",
+     "family": "state",
+     "description": "R5 · Aviso al cliente de que su prenda está lista para remate",
+     "default_enabled": false,
+     "enabled": false,
+     "overridden": false,
+     "effective": false
+    },
+    {
+     "code": "company_daily_digest",
+     "audience": "company",
+     "purpose": "service",
+     "family": "digest",
+     "description": "Resumen diario a la empresa: sale solo si hubo actividad o alertas",
+     "default_enabled": true,
+     "enabled": true,
+     "overridden": false,
+     "effective": false
+    },
+    {
+     "code": "company_weekly_digest",
+     "audience": "company",
+     "purpose": "service",
+     "family": "digest",
+     "description": "Resumen semanal a la empresa (lunes): sale siempre",
+     "default_enabled": true,
+     "enabled": true,
+     "overridden": false,
+     "effective": false
+    },
+    {
+     "code": "alert_sale_voided",
+     "audience": "company",
+     "purpose": "service",
+     "family": "alert",
+     "description": "A1 · Venta anulada",
+     "default_enabled": true,
+     "enabled": true,
+     "overridden": false,
+     "effective": false
+    },
+    {
+     "code": "alert_discount",
+     "audience": "company",
+     "purpose": "service",
+     "family": "alert",
+     "description": "A2 · Descuento por encima del umbral de la empresa",
+     "default_enabled": true,
+     "enabled": true,
+     "overridden": false,
+     "effective": false
+    },
+    {
+     "code": "alert_capital_withdrawal",
+     "audience": "company",
+     "purpose": "service",
+     "family": "alert",
+     "description": "A3 · Retiro de capital del dueño",
+     "default_enabled": true,
+     "enabled": true,
+     "overridden": false,
+     "effective": false
+    },
+    {
+     "code": "alert_cash_reopened",
+     "audience": "company",
+     "purpose": "service",
+     "family": "alert",
+     "description": "A4 · Caja reabierta",
+     "default_enabled": true,
+     "enabled": true,
+     "overridden": false,
+     "effective": false
+    },
+    {
+     "code": "user_invitation",
+     "audience": "platform",
+     "purpose": "service",
+     "family": "platform",
+     "description": "P1 · Invitación de usuario",
+     "default_enabled": true,
+     "enabled": true,
+     "overridden": false,
+     "effective": true
+    }
+   ],
+   "thresholds": {
+    "discount_amount": "0.00",
+    "cash_difference_amount": "0.00"
+   },
+   "customer_contact_limits": {
+    "enabled": true,
+    "max_per_week": 0,
+    "max_per_day": 3,
+    "weekday_hours": [
+     "09:00",
+     "17:00"
+    ],
+    "saturday_hours": [
+     "09:00",
+     "12:00"
+    ],
+    "sundays_and_holidays": false,
+    "transactional_in_weekly_cap": false
+   },
+   "stale_after_days": 2,
+   "reminders": {
+    "installment_days_before": [
+     3
+    ],
+    "extension_days_before": [
+     3
+    ]
+   },
+   "digest_recipients": [
+    {
+     "user_id": "b3b2cf2e-6ebe-4ab5-84fe-2bdedda451e7",
+     "full_name": "Dueña",
+     "email": "duena-b3b2cf2e-6ebe-4ab5-84fe-2bdedda451e7@example.com"
+    }
+   ],
+   "alert_recipients": []
+  }
  }
 }
