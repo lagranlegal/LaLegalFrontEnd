@@ -5,7 +5,7 @@ import { Download } from 'lucide-react'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { DataTable } from '@/components/shared/DataTable'
 import { SearchInput } from '@/components/shared/SearchInput'
-import { StatusBadge, STATUS_LABELS, type KnownStatus } from '@/components/shared/StatusBadge'
+import { StatusBadge } from '@/components/shared/StatusBadge'
 import { LegacyCodeBadge } from '@/components/shared/LegacyCodeBadge'
 import { RecordNumber } from '@/components/shared/RecordNumber'
 import { Money } from '@/components/shared/Money'
@@ -17,6 +17,7 @@ import { fetchAllContracts, useContractsList, useContractSearch, useReadyForAuct
 import { fetchAllCustomers } from '@/features/customers/api'
 import { effectiveContractStatus } from '@/features/contracts/contractStatus'
 import { exportRowsToExcel } from '@/lib/export/xlsx'
+import { contractsExportRows } from '@/features/contracts/export'
 
 const STATUS_TABS = [
   { value: '', label: 'Todos' },
@@ -58,22 +59,8 @@ export function ContractsListPage() {
       const allContracts = isReadyTab ? (readyContracts ?? []) : await fetchAllContracts(status)
       const customers = await fetchAllCustomers()
       const customerById = new Map(customers.map((c) => [c.id, c]))
-      const rows = allContracts.map((contract) => {
-        const customer = customerById.get(contract.customer_id)
-        const effectiveStatus = effectiveContractStatus(contract) as KnownStatus
-        return {
-          Número: contract.number,
-          'Código anterior': contract.legacy_code ?? '',
-          Cliente: customer?.full_name ?? '',
-          Documento: customer ? `${customer.doc_type.toUpperCase()} ${customer.doc_number}` : '',
-          Capital: Number(contract.principal),
-          Saldo: Number(contract.capital_balance),
-          'Tasa mensual %': Number(contract.interest_rate_pct),
-          Inicio: contract.start_date,
-          Vencimiento: contract.due_date,
-          Estado: STATUS_LABELS[effectiveStatus] ?? contract.status,
-        }
-      })
+      // F7-10: saldo en 0 fuera de la cartera viva y fila de total, ver `contractsExportRows`.
+      const rows = contractsExportRows(allContracts, customerById)
       exportRowsToExcel(`contratos-${todayBogota()}.xlsx`, 'Contratos', rows)
     } finally {
       setIsExporting(false)

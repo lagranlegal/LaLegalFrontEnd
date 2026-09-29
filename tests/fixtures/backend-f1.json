@@ -412,5 +412,179 @@
         "max_days": 366
       }
     }
+  },
+  "contratos_por_estado": {
+    "_test": "test_contracts.py::test_ampliar_sucede_el_contrato_en_vez_de_modificarlo, test_reports.py::test_F7_04_* (POST /contracts, GET y POST /auction)",
+    "status": 200,
+    "body": {
+      "active": {
+        "id": "5197420c-0d8c-4ec0-b84d-6cdeefbb14f2",
+        "number": 1,
+        "legacy_code": null,
+        "customer_id": "24df5b1f-6ea1-4603-8690-4037f6fcd002",
+        "principal": "1000000.00",
+        "capital_balance": "1000000.00",
+        "appraisal_value": null,
+        "interest_rate_pct": "5.00",
+        "term_months": 4,
+        "arrears_window_months": 4,
+        "extension_months": 1,
+        "start_date": "2026-09-28",
+        "due_date": "2027-01-28",
+        "interest_paid_until": "2026-09-28",
+        "status": "active",
+        "extension_ends_at": null,
+        "ltv_warning": false,
+        "notes": null,
+        "signed_photo_url": null,
+        "created_at": "2026-09-29T00:38:15.368474Z",
+        "extension_window_days": 28,
+        "extension_interest_policy": "keep_anchor",
+        "parent_contract_id": null,
+        "root_contract_id": null,
+        "extended_on": null,
+        "extension_amount": null,
+        "items": [
+          {
+            "id": "7543b7ac-0eb6-46b4-b7a1-e507b19700e0",
+            "category_id": "6917c517-cccd-42af-b43c-6ba3c8cb652e",
+            "description": "Cadena",
+            "weight_grams": null,
+            "serial_imei": null,
+            "item_appraisal": null,
+            "status": "in_custody",
+            "photos": [],
+            "inventory_item_id": null
+          }
+        ]
+      },
+      "in_extension": {
+        "id": "3e052cde-8a96-4639-b446-1789b3d3d1e4",
+        "number": 1,
+        "legacy_code": null,
+        "customer_id": "a248d942-0c9c-4542-885a-541282768592",
+        "principal": "800000.00",
+        "capital_balance": "800000.00",
+        "appraisal_value": null,
+        "interest_rate_pct": "5.00",
+        "term_months": 4,
+        "arrears_window_months": 4,
+        "extension_months": 1,
+        "start_date": "2026-09-28",
+        "due_date": "2027-01-28",
+        "interest_paid_until": "2026-01-28",
+        "status": "in_extension",
+        "extension_ends_at": "2026-06-28",
+        "ltv_warning": false,
+        "notes": null,
+        "signed_photo_url": null,
+        "created_at": "2026-09-29T00:38:20.842683Z",
+        "extension_window_days": 28,
+        "extension_interest_policy": "keep_anchor",
+        "parent_contract_id": null,
+        "root_contract_id": null,
+        "extended_on": null,
+        "extension_amount": null,
+        "items": [
+          {
+            "id": "75f4626d-3d73-4498-a050-1b82f2d8c19a",
+            "category_id": "41d10cc3-60fe-41ab-8f86-b8b7c87a9216",
+            "description": "Reloj",
+            "weight_grams": null,
+            "serial_imei": null,
+            "item_appraisal": null,
+            "status": "in_custody",
+            "photos": [
+              "http://example.com/reloj.jpg"
+            ],
+            "inventory_item_id": null
+          }
+        ]
+      },
+      "auctioned": {
+        "id": "3e052cde-8a96-4639-b446-1789b3d3d1e4",
+        "number": 1,
+        "legacy_code": null,
+        "customer_id": "a248d942-0c9c-4542-885a-541282768592",
+        "principal": "800000.00",
+        "capital_balance": "800000.00",
+        "appraisal_value": null,
+        "interest_rate_pct": "5.00",
+        "term_months": 4,
+        "arrears_window_months": 4,
+        "extension_months": 1,
+        "start_date": "2026-09-28",
+        "due_date": "2027-01-28",
+        "interest_paid_until": "2026-01-28",
+        "status": "auctioned",
+        "extension_ends_at": null,
+        "ltv_warning": false,
+        "notes": null,
+        "signed_photo_url": null,
+        "created_at": "2026-09-29T00:38:20.842683Z",
+        "extension_window_days": 28,
+        "extension_interest_policy": "keep_anchor",
+        "parent_contract_id": null,
+        "root_contract_id": null,
+        "extended_on": null,
+        "extension_amount": null,
+        "items": [
+          {
+            "id": "75f4626d-3d73-4498-a050-1b82f2d8c19a",
+            "category_id": "41d10cc3-60fe-41ab-8f86-b8b7c87a9216",
+            "description": "Reloj",
+            "weight_grams": null,
+            "serial_imei": null,
+            "item_appraisal": null,
+            "status": "auctioned",
+            "photos": [
+              "http://example.com/reloj.jpg"
+            ],
+            "inventory_item_id": "95ab0161-d5d9-4ba4-9835-92d94c08c79f"
+          }
+        ]
+      },
+      "superseded": {
+        "id": "5ee183ad-c959-4df7-8ee3-323a70a45fce",
+        "number": 1,
+        "legacy_code": null,
+        "customer_id": "3b1d0d2e-9968-4045-9200-1997e8f4cbd4",
+        "principal": "1000000.00",
+        "capital_balance": "1000000.00",
+        "appraisal_value": "2000000.00",
+        "interest_rate_pct": "5.00",
+        "term_months": 4,
+        "arrears_window_months": 4,
+        "extension_months": 1,
+        "start_date": "2026-09-29",
+        "due_date": "2027-01-29",
+        "interest_paid_until": "2026-09-29",
+        "status": "superseded",
+        "extension_ends_at": null,
+        "ltv_warning": false,
+        "notes": null,
+        "signed_photo_url": null,
+        "created_at": "2026-09-29T12:33:00.037774Z",
+        "extension_window_days": 28,
+        "extension_interest_policy": "keep_anchor",
+        "parent_contract_id": null,
+        "root_contract_id": null,
+        "extended_on": null,
+        "extension_amount": null,
+        "items": [
+          {
+            "id": "2fda0220-3066-40cf-9024-38e4f1ed1998",
+            "category_id": "6470bb3c-ea37-496a-b834-eb6643d3393f",
+            "description": "Cadena de oro 10g",
+            "weight_grams": null,
+            "serial_imei": null,
+            "item_appraisal": null,
+            "status": "transferred",
+            "photos": [],
+            "inventory_item_id": null
+          }
+        ]
+      }
+    }
   }
 }
