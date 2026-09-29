@@ -7,7 +7,7 @@
  * los componentes que consuman estos errores — este módulo solo detecta y
  * tipa el código, no reacciona por sí mismo.
  */
-import { formatCOP } from '@/lib/money'
+import { formatCOP, sumMoney } from '@/lib/money'
 
 export const API_ERROR_CODES = [
   'UNAUTHORIZED',
@@ -180,6 +180,24 @@ export const API_ERROR_CODES = [
   'ACCOUNT_NAME_TAKEN',
   'EXPENSE_CATEGORY_NAME_TAKEN',
   'CATEGORY_NAME_TAKEN',
+  // Tanda F1 del backend (9cb3324..f03b2f2, 28/09/2026).
+  //
+  // Reportes por período con un rango al revés (422). El selector de fechas
+  // ya no deja armarlo; esto cubre lo que llegue igual.
+  'INVALID_DATE_RANGE',
+  // `/reports/profit` y `/reports/pawn-performance` topan el rango en 366
+  // días (422, `details.max_days`). La pantalla avisa antes de pedir.
+  'DATE_RANGE_TOO_LONG',
+  // Una línea por debajo del COSTO de su lote sin `sales.apply_discount`
+  // (403, pero NO `PERMISSION_DENIED`: el rol está bien, lo que pasa es que
+  // la venta pierde plata). `details.below_cost_lines` = [{item_id,
+  // unit_cost, unit_price, quantity, loss}].
+  'SALE_BELOW_COST_REQUIRES_PERMISSION',
+  // Tope por empresa de invitaciones Y enlaces de acceso (429, backend
+  // 6cb2368): las dos rutas comparten el cupo, así que «genera el enlace» NO
+  // es una salida — también cuenta. `details.retry_after_seconds` dice cuánto
+  // esperar, y eso es lo que se agrega al mensaje.
+  'INVITATIONS_RATE_LIMITED',
 ] as const
 
 export type ApiErrorCode = (typeof API_ERROR_CODES)[number]
@@ -306,6 +324,17 @@ function messageWithDetails(error: ApiError): string | null {
     const resto = faltan.length - MAX_PERMISOS_NOMBRADOS
     return `${error.message} Te ${faltan.length === 1 ? 'falta' : 'faltan'}: ${nombrados}${resto > 0 ? ` y ${resto} más` : ''}.`
   }
+  if (error.code === 'SALE_BELOW_COST_REQUIRES_PERMISSION') {
+    const lineas = belowCostLines(error)
+    if (lineas.length === 0) return null
+    const perdida = lineas.reduce((acc, l) => sumMoney(acc, l.loss), '0.00')
+    return `${error.message} ${lineas.length === 1 ? 'Una línea queda' : `${lineas.length} líneas quedan`} por debajo del costo: la venta perdería ${formatCOP(perdida)}. Sube el precio o pídele a alguien con permiso de descuentos que la registre.`
+  }
+  if (error.code === 'INVITATIONS_RATE_LIMITED') {
+    const segundos = details.retry_after_seconds
+    const espera = typeof segundos === 'number' && segundos > 0 ? ` Podrás volver a hacerlo en unos ${Math.ceil(segundos / 60)} minuto(s).` : ' Intenta más tarde.'
+    return `Llegaste al límite de invitaciones y enlaces de acceso por hora de la empresa (generar el enlace también cuenta).${espera}`
+  }
   if (error.code === 'PAYMENT_MINIMUM_INTEREST_REQUIRED') {
     const total = details.payoff_total
     const interes = details.payoff_interest
@@ -313,6 +342,24 @@ function messageWithDetails(error: ApiError): string | null {
     return `${error.message} Para saldarlo hoy son ${formatCOP(total)} (incluye ${formatCOP(interes)} de interés).`
   }
   return null
+}
+
+export interface BelowCostLine {
+  item_id: string
+  unit_cost: string
+  unit_price: string
+  quantity: string
+  loss: string
+}
+
+/** Las líneas bajo costo de un `SALE_BELOW_COST_REQUIRES_PERMISSION`; `[]` si no es ese código o no las trae. */
+export function belowCostLines(error: ApiError): BelowCostLine[] {
+  if (error.code !== 'SALE_BELOW_COST_REQUIRES_PERMISSION') return []
+  const raw = error.details?.below_cost_lines
+  if (!Array.isArray(raw)) return []
+  return raw.filter(
+    (l): l is BelowCostLine => typeof l === 'object' && l !== null && typeof (l as BelowCostLine).item_id === 'string' && typeof (l as BelowCostLine).loss === 'string',
+  )
 }
 
 export function parseApiError(status: number, body: unknown): ApiError {
