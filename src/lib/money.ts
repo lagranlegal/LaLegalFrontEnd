@@ -61,6 +61,56 @@ export function parseMoneyInput(maskedInput: string): string {
   return `${digits || '0'}.00`
 }
 
+/**
+ * Cuántos dígitos enteros acepta un campo de dinero: hasta $ 999.999.999.999.
+ * El campo aceptaba 20 (F9-23); más de 12 no es un monto de esta operación,
+ * es un error de pegado o de dedo.
+ */
+export const MAX_MONEY_DIGITS = 12
+
+/**
+ * Un texto de dinero en cualquiera de los formatos en que llega pegado → el
+ * string decimal de la API, en pesos. `null` si pasa de `MAX_MONEY_DIGITS`.
+ *
+ * POR QUÉ (auditoría de QA, F9-23, ALTO): `parseMoneyInput` quita todo lo que
+ * no es dígito, incluida la coma decimal, así que pegar «$ 1.234.567,00»
+ * —el formato en que Excel y la banca en línea copian una cifra
+ * colombiana— daba 123.456.700: cien veces más, en un préstamo o un abono.
+ *
+ * Reglas:
+ *  - El ÚLTIMO separador (coma o punto) es el decimal si lo siguen 1 o 2
+ *    dígitos: «1.234.567,00» (Colombia) y «$1,234,567.00» (EE. UU.) dan lo
+ *    mismo. Seguido de 3 o más dígitos es de miles: «1,234» son mil
+ *    doscientos treinta y cuatro. Todo separador anterior es de miles.
+ *  - Los montos son en PESOS (el campo no muestra centavos): los centavos
+ *    se redondean al peso más cercano, ,50 hacia arriba. «1.234.567,50» →
+ *    1.234.568. Redondear y no truncar: es el peso más cercano a lo que
+ *    dice el papel.
+ *
+ * Solo para lo PEGADO. Al escribir tecla por tecla el campo sigue siendo de
+ * dígitos (`parseMoneyInput`): la máscara pone los puntos, y borrar el último
+ * dígito de «1.234» deja «1.23», que acá se leería como decimal.
+ */
+export function parseMoneyText(text: string): string | null {
+  const clean = text.replace(/[^\d.,]/g, '')
+  const lastSep = Math.max(clean.lastIndexOf('.'), clean.lastIndexOf(','))
+  let intPart = clean
+  let decPart = ''
+  if (lastSep >= 0) {
+    const tail = clean.slice(lastSep + 1)
+    if (/^\d{1,2}$/.test(tail)) {
+      intPart = clean.slice(0, lastSep)
+      decPart = tail
+    }
+  }
+  const digits = intPart.replace(/\D/g, '').replace(/^0+(?=\d)/, '') || '0'
+  if (digits.length > MAX_MONEY_DIGITS) return null
+  const roundUp = decPart !== '' && Number(decPart.padEnd(2, '0')) >= 50
+  const pesos = roundUp ? String(Number(digits) + 1) : digits
+  if (pesos.length > MAX_MONEY_DIGITS) return null
+  return `${pesos}.00`
+}
+
 function toCents(decimal: string): number {
   const negative = decimal.trim().startsWith('-')
   const [wholeRaw = '0', decimalRaw = '00'] = decimal.split('.')

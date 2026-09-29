@@ -1,4 +1,4 @@
-import { maskMoneyInput, parseMoneyInput } from '@/lib/money'
+import { MAX_MONEY_DIGITS, maskMoneyInput, parseMoneyInput, parseMoneyText } from '@/lib/money'
 import { cn } from '@/lib/utils'
 
 /**
@@ -34,6 +34,31 @@ export function MoneyInput({
   ariaLabel?: string
 }) {
   const display = maskMoneyInput(value.split('.')[0] ?? '')
+
+  function handleChange(raw: string) {
+    if (optional && !/\d/.test(raw)) return onChange('')
+    const next = parseMoneyInput(raw)
+    // Tope de dígitos (F9-23): el que pasa del tope no entra.
+    if ((next.split('.')[0] ?? '').length > MAX_MONEY_DIGITS) return
+    onChange(next)
+  }
+
+  // Lo PEGADO se interpreta entero, con sus separadores (F9-23): «$ 1.234.567,00»
+  // es un millón doscientos treinta y cuatro mil, no 123 millones. Se arma
+  // el texto como quedaría —lo de antes y después de la selección, más lo
+  // pegado— y se lee con `parseMoneyText`. Si no cabe, el pegado no entra.
+  function handlePaste(e: React.ClipboardEvent<HTMLInputElement>) {
+    const pasted = e.clipboardData.getData('text')
+    e.preventDefault()
+    const input = e.currentTarget
+    const start = input.selectionStart ?? input.value.length
+    const end = input.selectionEnd ?? input.value.length
+    const combined = input.value.slice(0, start) + pasted + input.value.slice(end)
+    if (optional && !/\d/.test(combined)) return onChange('')
+    const next = parseMoneyText(combined)
+    if (next !== null) onChange(next)
+  }
+
   return (
     <div className={cn('flex items-center rounded-input border border-border bg-background px-3 focus-within:border-primary', className)}>
       <span className="text-sm text-muted-foreground">$</span>
@@ -45,7 +70,8 @@ export function MoneyInput({
         autoFocus={autoFocus}
         placeholder={placeholder}
         value={display}
-        onChange={(e) => onChange(optional && !/\d/.test(e.target.value) ? '' : parseMoneyInput(e.target.value))}
+        onChange={(e) => handleChange(e.target.value)}
+        onPaste={handlePaste}
         className="w-full bg-transparent px-2 py-2 text-sm text-foreground outline-none"
       />
     </div>
