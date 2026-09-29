@@ -16,6 +16,11 @@ import type { Contract } from '@/features/contracts/api'
  */
 const LIVE_STATUSES = new Set(['active', 'in_arrears', 'in_extension'])
 
+/** ¿Su saldo es cartera? La misma regla en la lista de la pantalla y en el Excel. */
+export function isInPortfolio(contract: Pick<Contract, 'status'>): boolean {
+  return LIVE_STATUSES.has(contract.status)
+}
+
 export interface CustomerRef {
   full_name: string
   doc_type: string
@@ -31,7 +36,7 @@ export function contractsExportRows(contracts: Contract[], customerById: Map<str
   const rows: Record<string, string | number>[] = contracts.map((contract) => {
     const customer = customerById.get(contract.customer_id)
     const effectiveStatus = effectiveContractStatus(contract) as KnownStatus
-    const vivo = LIVE_STATUSES.has(contract.status)
+    const vivo = isInPortfolio(contract)
     if (vivo) cartera = sumMoney(cartera, contract.capital_balance)
     return {
       Número: contract.number,

@@ -9,6 +9,7 @@ import { StatusBadge } from '@/components/shared/StatusBadge'
 import { LegacyCodeBadge } from '@/components/shared/LegacyCodeBadge'
 import { RecordNumber } from '@/components/shared/RecordNumber'
 import { Money } from '@/components/shared/Money'
+import { PortfolioBalanceCell } from '@/features/contracts/components/PortfolioBalanceCell'
 import { Can } from '@/components/shared/Can'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
@@ -79,7 +80,7 @@ export function ContractsListPage() {
       ),
     },
     { accessorKey: 'principal', header: 'Capital', cell: (info) => <Money value={info.getValue<string>()} /> },
-    { accessorKey: 'capital_balance', header: 'Saldo', cell: (info) => <Money value={info.getValue<string>()} /> },
+    { accessorKey: 'capital_balance', header: 'Saldo en cartera', cell: (info) => <PortfolioBalanceCell contract={info.row.original} /> },
     { accessorKey: 'due_date', header: 'Vencimiento', cell: (info) => formatDate(info.getValue<string>()) },
     { accessorKey: 'status', header: 'Estado', cell: (info) => <StatusBadge status={effectiveContractStatus(info.row.original)} /> },
   ]
