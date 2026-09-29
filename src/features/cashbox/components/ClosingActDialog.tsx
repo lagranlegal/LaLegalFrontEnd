@@ -1,5 +1,6 @@
 import { AppDialog } from '@/components/shared/AppDialog'
 import { PrintLayout } from '@/components/shared/PrintLayout'
+import { CompanyDataNotice } from '@/components/shared/CompanyDataNotice'
 import { PrintField, PrintSection, PrintTable, PrintTd, PrintTh } from '@/components/shared/PrintBlocks'
 import { Money } from '@/components/shared/Money'
 import { Button } from '@/components/ui/button'
@@ -49,9 +50,12 @@ export function ClosingActDialog({ open, onOpenChange, closing }: { open: boolea
         // Sin el desglose cargado el acta saldría incompleta: el botón se
         // deshabilita en vez de imprimir media hoja.
         footer={
-          <Button type="button" className="w-full rounded-pill" disabled={!report} onClick={() => window.print()}>
-            {report ? 'Imprimir' : 'Cargando desglose…'}
-          </Button>
+          <div className="flex w-full flex-col gap-2">
+            <CompanyDataNotice />
+            <Button type="button" className="w-full rounded-pill" disabled={!report} onClick={() => window.print()}>
+              {report ? 'Imprimir' : 'Cargando desglose…'}
+            </Button>
+          </div>
         }
       >
         <div className="flex flex-col gap-4">

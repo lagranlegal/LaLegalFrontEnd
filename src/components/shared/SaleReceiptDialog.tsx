@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { toast } from 'sonner'
 import { AppDialog } from '@/components/shared/AppDialog'
 import { PrintLayout } from '@/components/shared/PrintLayout'
+import { CompanyDataNotice } from '@/components/shared/CompanyDataNotice'
 import { PrintField, PrintSection, PrintTable, PrintTd, PrintTh } from '@/components/shared/PrintBlocks'
 import { Money } from '@/components/shared/Money'
 import { RecordNumber } from '@/components/shared/RecordNumber'
@@ -295,6 +296,7 @@ export function SaleReceiptDialog({ open, onOpenChange, sale }: { open: boolean;
         size="lg"
         footer={
           <div className="flex w-full flex-col gap-2">
+            <CompanyDataNotice />
             <Button type="button" className="w-full rounded-pill" onClick={() => window.print()}>
               Imprimir comprobante
             </Button>

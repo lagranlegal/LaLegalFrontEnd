@@ -5,6 +5,7 @@ import type { ColumnDef } from '@tanstack/react-table'
 import { toast } from 'sonner'
 import { BackLink } from '@/components/shared/BackLink'
 import { PageHeader } from '@/components/shared/PageHeader'
+import { CompanyDataNotice } from '@/components/shared/CompanyDataNotice'
 import { ExtendLoanPanel } from '@/features/contracts/components/ExtendLoanPanel'
 import { ContractChainPanel } from '@/features/contracts/components/ContractChainPanel'
 import { StatusBadge } from '@/components/shared/StatusBadge'
@@ -206,6 +207,9 @@ export function ContractDetailPage() {
           </div>
         }
       />
+
+      {/* F8-10: el contrato y el paz y salvo se imprimen desde acá. */}
+      <CompanyDataNotice className="print:hidden" />
 
       {/* La cadena de ampliaciones: a cuál pasó la deuda, de cuál viene, y la
           historia completa si hay varias (RECARGOS §6). */}
