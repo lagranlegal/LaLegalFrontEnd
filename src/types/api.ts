@@ -2387,6 +2387,12 @@ export interface components {
             account_type: string;
             /** Total */
             total: string;
+            /** Counterpart Account Id */
+            counterpart_account_id?: string | null;
+            /** Counterpart Account Name */
+            counterpart_account_name?: string | null;
+            /** Counterpart Account Type */
+            counterpart_account_type?: string | null;
         };
         /** CapitalMovementOut */
         CapitalMovementOut: {
@@ -3494,7 +3500,9 @@ export interface components {
              */
             updated_at: string;
             /** Legal Basis */
-            legal_basis?: ("contract" | "consent") | null;
+            legal_basis?: ("contract" | "consent" | "request") | null;
+            /** Requested By */
+            requested_by?: string | null;
             /** Deferred At */
             deferred_at?: string | null;
         };
@@ -4553,6 +4561,8 @@ export interface components {
             discount_amount?: number | string | null;
             /** Discount Reason */
             discount_reason?: string | null;
+            /** Send Receipt Email */
+            send_receipt_email?: boolean | null;
         };
         /** PaymentOptionOut */
         PaymentOptionOut: {
@@ -4932,6 +4942,8 @@ export interface components {
             credit_note_id?: string | null;
             /** Credit Note Amount */
             credit_note_amount?: number | string | null;
+            /** Send Receipt Email */
+            send_receipt_email?: boolean | null;
         };
         /** SaleLineIn */
         SaleLineIn: {
@@ -8087,7 +8099,10 @@ export interface operations {
     };
     get_current_session_api_v1_cashbox_sessions_current_get: {
         parameters: {
-            query?: never;
+            query?: {
+                /** @description `true`: sin caja abierta responde `200` con `null` en vez del `404 CASH_SESSION_NOT_OPEN`. */
+                allow_empty?: boolean;
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -8100,7 +8115,16 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["SessionOut"];
+                    "application/json": components["schemas"]["SessionOut"] | null;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };

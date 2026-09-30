@@ -9,7 +9,7 @@
  *                               (detecta drift de la API en CI antes del deploy)
  *
  * Fuente del schema, en orden:
- *   1. $VITE_API_URL/openapi.json (o https://compraventa-backend-dev.fly.dev por defecto)
+ *   1. $VITE_API_URL/openapi.json (o https://api-dev.prendo.com.co por defecto)
  *   2. ./openapi.json local, si existe (fallback sin red)
  */
 import { existsSync, readFileSync, writeFileSync } from 'node:fs'
@@ -27,7 +27,7 @@ try {
   // .env es opcional (no existe en CI ni en checkout limpio)
 }
 
-const apiUrl = process.env.VITE_API_URL ?? 'https://compraventa-backend-dev.fly.dev'
+const apiUrl = process.env.VITE_API_URL ?? 'https://api-dev.prendo.com.co'
 
 async function loadSchema() {
   if (existsSync(localSpecPath)) {

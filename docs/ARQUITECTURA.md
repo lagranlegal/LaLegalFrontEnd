@@ -285,6 +285,15 @@ Vitest + Testing Library sobre jsdom (`tests/setup.ts` simula `matchMedia`). Las
 - **CI** (`.github/workflows/ci.yml`, en cada push a `dev`/`main` y en cada PR): `npm ci --legacy-peer-deps`, lint,
   typecheck, tests y build; y un job aparte, `gen:api:check`, que falla si `src/types/api.ts` no coincide con el
   `/openapi.json` del backend (detecta un cambio de contrato antes del deploy).
+- **Los tests no leen el `.env`**: `vite.config.ts` fija `test.env` (`VITE_API_URL`, `VITE_SUPABASE_URL`,
+  `VITE_SUPABASE_ANON_KEY`) a dominios `.invalid`. En CI no hay `.env`: sin esto `src/lib/auth/supabase.ts`
+  revienta al importarse ("supabaseUrl is required") y 27 archivos de test fallaban al cargar, mientras en local
+  pasaban solo porque el `.env` apunta a dev (la CI estuvo roja por eso hasta el 30/09/2026).
+- `tests/label-catalogs.test.ts` compara contra el código de `../backend-starter/`; en CI ese repo no está y sus 5
+  casos se saltan. Corren en local.
+- El job de drift descarga de `vars.VITE_API_URL` o, si no está definida, de `https://api-dev.prendo.com.co`.
+  Compara contra el backend de dev **desplegado**: tras desplegar un cambio de contrato en el backend, el siguiente
+  push del front falla hasta regenerar y commitear `api.ts` — es su trabajo.
 
 ## 11. Entornos y despliegue
 

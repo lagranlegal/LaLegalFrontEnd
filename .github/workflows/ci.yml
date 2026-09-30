@@ -47,4 +47,4 @@ jobs:
       - name: Verifica que src/types/api.ts está al día con /openapi.json
         run: npm run gen:api:check
         env:
-          VITE_API_URL: ${{ vars.VITE_API_URL || 'https://compraventa-backend-dev.fly.dev' }}
+          VITE_API_URL: ${{ vars.VITE_API_URL || 'https://api-dev.prendo.com.co' }}
