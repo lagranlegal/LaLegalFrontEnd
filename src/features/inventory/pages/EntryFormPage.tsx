@@ -277,6 +277,7 @@ export function EntryFormPage() {
     watch,
     setValue,
     setError,
+    resetField,
     formState: { errors, isDirty },
   } = useForm<EntryFormValues>({
     resolver: zodResolver(entrySchema),
@@ -536,6 +537,7 @@ export function EntryFormPage() {
                       direction="out"
                       value={field.value ?? null}
                       onChange={field.onChange}
+                      onAutoSelect={(accountId) => resetField('account_id', { defaultValue: accountId })}
                     />
                   )}
                 />

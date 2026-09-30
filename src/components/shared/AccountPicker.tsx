@@ -26,6 +26,7 @@ export function AccountPicker({
   direction = 'in',
   value,
   onChange,
+  onAutoSelect,
   id,
   disabled,
   warnNegativeBalance = false,
@@ -46,6 +47,14 @@ export function AccountPicker({
   direction?: 'in' | 'out'
   value: string | null
   onChange: (accountId: string | null) => void
+  /**
+   * Recibe la PRESELECCIÓN (la predeterminada del tipo), que no es algo que la
+   * persona eligió. Sin él va a `onChange`. Un formulario de React Hook Form
+   * pasa `resetField(name, { defaultValue })`: por `field.onChange` el campo
+   * quedaba sucio y «Nuevo gasto» pedía confirmar el descarte sin haber
+   * escrito nada (issue #3).
+   */
+  onAutoSelect?: (accountId: string | null) => void
   id?: string
   disabled?: boolean
   /**
@@ -76,11 +85,12 @@ export function AccountPicker({
   const selected = options.find((account) => account.id === value) ?? null
   const fallback = options.find((account) => account.is_default && account.type === wantedType) ?? options[0] ?? null
 
+  const autoSelect = onAutoSelect ?? onChange
   useEffect(() => {
     if (isPending) return
     if (selected) return
-    onChange(fallback?.id ?? null)
-  }, [isPending, selected, fallback?.id, onChange])
+    autoSelect(fallback?.id ?? null)
+  }, [isPending, selected, fallback?.id, autoSelect])
 
   if (isPending) {
     return <div className="mt-1 h-10 w-full animate-pulse rounded-input bg-border" aria-hidden />

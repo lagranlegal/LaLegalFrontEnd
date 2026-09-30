@@ -107,6 +107,7 @@ export function ExpenseFormDialog({ open, onOpenChange }: { open: boolean; onOpe
     handleSubmit,
     control,
     setError,
+    resetField,
     formState: { errors, isDirty },
   } = useForm<ExpenseFormValues>({
     resolver: zodResolver(expenseSchema),
@@ -214,6 +215,7 @@ export function ExpenseFormDialog({ open, onOpenChange }: { open: boolean; onOpe
                   direction="out"
                   value={field.value}
                   onChange={field.onChange}
+                  onAutoSelect={(accountId) => resetField('account_id', { defaultValue: accountId })}
                 />
               )}
             />

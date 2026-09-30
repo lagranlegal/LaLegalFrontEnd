@@ -84,6 +84,7 @@ export function ContractFormPage() {
     control,
     setError,
     setValue,
+    resetField,
     watch,
     formState: { errors, isDirty },
   } = useForm<ContractFormValues>({
@@ -400,6 +401,7 @@ export function ContractFormPage() {
                     direction="out"
                     value={field.value}
                     onChange={field.onChange}
+                    onAutoSelect={(accountId) => resetField('account_id', { defaultValue: accountId })}
                   />
                 )}
               />
