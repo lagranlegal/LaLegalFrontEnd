@@ -1,114 +1,124 @@
-# CLAUDE.md — Frontend Plataforma SaaS para Compraventas
+# CLAUDE.md — Frontend de Prendo
 
-Guía de implementación para Claude Code. Leer COMPLETO antes de escribir código.
-Arquitectura técnica del front: `docs/ARCHITECTURE.md`. Sistema de diseño (referencia visual, tokens, componentes): `docs/DESIGN_SYSTEM.md`. Contrato de la API del backend: **`../backend-starter/docs/API_GUIDE.md`** (vive en el repo backend, junto al código que describe — el shape exacto siempre sale de `/openapi.json`, ver abajo).
+Reglas obligatorias para escribir código en este repo. Leer completo antes de tocar algo.
 
-## Qué es este proyecto
+- **Qué es Prendo, las piezas y el mapa de documentos:** `../backend-starter/docs/README.md`. El estado del día:
+  `../backend-starter/docs/ESTADO.md`.
+- **Cómo está construido el front y por qué:** `docs/ARQUITECTURA.md`. **Sistema de diseño:** `docs/DESIGN_SYSTEM.md`.
+- **Reglas de negocio:** `../backend-starter/docs/DOMINIO.md`. **Endpoints, permisos y catálogo de errores:**
+  `../backend-starter/docs/API_GUIDE.md` (el shape exacto siempre sale de `/openapi.json`).
+- **Desplegar y trampas del entorno:** `../backend-starter/docs/OPERACION.md`. **Método de QA y bugs abiertos:**
+  `../backend-starter/docs/QA.md`.
 
-Frontend (React SPA) de la plataforma SaaS **multi-tenant** para compraventas (casas de empeño + tienda). El backend (FastAPI en Fly.io + Supabase) **ya está terminado y desplegado en dev**: `https://compraventa-backend-dev.fly.dev`. Este repo consume esa API — no reimplementa ninguna regla de negocio: intereses, estados de contrato, stock, caja y códigos los calcula SIEMPRE el backend; el front muestra, guía y valida forma (no negocio).
+## Qué es este repo
 
-> **Estado real:** los 10 pasos del orden de implementación de abajo (más el 5b, import de contratos) ya están construidos y probados en vivo contra el backend dev — este documento sigue siendo la referencia de arquitectura/reglas, ya no un plan pendiente. Detalle de qué se construyó, decisiones no obvias y huecos conocidos: `docs/IMPLEMENTATION.md` (registro vivo, un bloque nuevo por sesión de trabajo) y `docs/PENDIENTES_BACKEND_INFRA.md` (lo que falta del lado del backend).
+La SPA de **Prendo**, un SaaS multi-tenant para compraventas colombianas (empeño + tienda). Consume la API del
+backend (FastAPI en Fly, `https://api-dev.prendo.com.co`) y usa Supabase solo para Auth y Storage. **No
+reimplementa ninguna regla de negocio**: intereses, estados, stock, caja, códigos y saldos los calcula el backend;
+el front muestra, guía y valida forma.
 
-- Stack: **Vite + React 19 + TypeScript estricto**, Tailwind CSS v4 + **shadcn/ui** (Radix), TanStack Query v5, TanStack Router, TanStack Table v8, React Hook Form + Zod, Zustand (estado de UI), Recharts, `supabase-js` (SOLO auth y storage), `openapi-fetch` + tipos generados con `openapi-typescript`.
-- Deploy: **Vercel** (SPA, rewrites a `index.html`, headers de seguridad en `vercel.json`).
-- Idioma de la UI: **español (Colombia)**. Moneda: **COP con puntos de miles** (`$ 2.664.500`). Zona horaria: **America/Bogota SIEMPRE** (regla dura, ver abajo).
+- Stack: Vite + React 19 + TypeScript estricto, Tailwind CSS v4 + shadcn/ui (Radix), TanStack Query v5 / Router /
+  Table v8, React Hook Form + Zod, Zustand (solo UI), Recharts, Tiptap (plantillas), `supabase-js` (solo auth y
+  storage), `openapi-fetch` + tipos generados con `openapi-typescript`.
+- Deploy: Vercel, desde la rama `dev` (`dev.prendo.com.co`). Landing pública en `/`, la app en `/inicio`.
+- UI en **español de Colombia**. Dinero en **COP con puntos de miles** (`$ 2.664.500`). Fechas en la **zona de la
+  empresa** (America/Bogota).
 
-## Reglas de arquitectura (obligatorias)
+## Reglas obligatorias
 
-1. **Tipos desde OpenAPI, nunca a mano:** `npm run gen:api` regenera `src/types/api.ts` desde el `/openapi.json` del backend. Todo request/response usa esos tipos vía `openapi-fetch`. Si un shape no cuadra, se regenera — jamás se "corrige" el tipo a mano.
-2. **Una sola puerta a la API:** `src/lib/api/client.ts` es el único lugar que conoce `Authorization`, `Idempotency-Key`, el formato de error `{code, message, details}` y la paginación por cursor. Ninguna feature hace `fetch` directo.
-3. **Features aisladas:** `src/features/<modulo>/` (espejo de los módulos del backend). Una feature NO importa internals de otra; lo compartido vive en `src/components/shared/` o `src/lib/`. Igual que la regla de `integration.py` del backend, pero en el front.
-4. **Diseño 100% centralizado:** todo color, radio, sombra, espaciado y tipografía sale de `src/styles/tokens.css` (CSS variables) referenciadas por Tailwind. **Prohibido** un color hex, un radio arbitrario o una clase de color con hex literal suelta en una feature (los ejemplos no se escriben acá con su sintaxis real: Tailwind v4 escanea este archivo y **emitiría la clase de verdad** — pasó el 20/09/2026: el ejemplo con el hex del teal que estaba escrito en esta línea vivía como CSS muerto en el bundle desplegado). Cambiar la marca completa = editar UN archivo. **Y ojo con `text-primary`:** es el RELLENO del primario, que en la paleta de oro es claro; para texto y bordes en color de marca va `text-brand` / `border-brand`. Detalle en `docs/DESIGN_SYSTEM.md` §1-bis.
-5. **Dinero:** el backend manda y recibe strings decimales (`"1000000.00"`). En el front el dinero NUNCA pasa por `parseFloat` para aritmética — se muestra con `lib/money.ts` (`formatCOP`) y se captura con `<MoneyInput>` (máscara con puntos de miles). El front no suma intereses ni saldos: los pide al backend (`payment-options`).
-6. **Fechas = zona horaria de la empresa (`/me.company.timezone`, default America/Bogota), sin excepciones:** toda fecha se muestra, interpreta y envía en la zona de la empresa vía `lib/dates.ts` (`todayBogota()`, `formatDate`, `formatDateTime`) — el mismo valor con el que el backend calcula "hoy". **Prohibido** `new Date().toISOString().slice(0,10)`, `toLocaleDateString()` sin tz explícita, o `dayjs()` pelado en una feature. El backend ya sufrió este bug (ventana de 5 horas diarias, 7pm–medianoche) — el front no lo repite.
-7. **Permisos en la UI = ocultar, backend = autoridad:** los permisos efectivos vienen de **`GET /api/v1/me`** (llamarlo tras login y en cada recarga, ANTES de renderizar el shell — trae `permissions`, `company.timezone`, `role`, `subscription`, `plan`). `usePermission('modulo.accion')` / `<Can permission="...">` leen de ahí y ocultan botones y rutas, pero todo 403 del backend se maneja igual (la UI oculta, no protege; ante `PERMISSION_DENIED` se invalida `['me']`). Deny-by-default: una pantalla nueva sin gate de permiso es un bug de revisión.
-8. **Idempotencia:** toda mutación de dinero (abonos, ventas, contratos) genera **un UUID por acción de usuario** (al abrir el formulario/confirmación, no por request); los reintentos de red reusan el mismo. Lo resuelve el helper `useMoneyMutation` — las features no manejan el header a mano. Botones de dinero: deshabilitados mientras la mutación está en vuelo (sin doble click posible).
-9. **Errores por `code`, nunca por `message`:** mapa central en `lib/api/errors.ts` (ver tabla en `docs/ARCHITECTURE.md` §6): `CASH_SESSION_NOT_OPEN` → modal de abrir caja; `SUBSCRIPTION_EXPIRED` → pantalla de bloqueo; `VALIDATION_ERROR` → errores por campo en el form; `LAST_ADMIN_SAFEGUARD` → modal explicativo (no reintentar); 401 → refresh y si falla logout.
-10. **Estados de UI completos:** toda vista con datos tiene loading (skeleton), vacío (empty state con CTA), error (con retry) y éxito. Nada de spinners de pantalla completa ni pantallas en blanco.
-11. **Nada de optimistic updates en dinero ni stock.** Solo se permiten en UI trivial (renombrar, notas). Tras una mutación: invalidar queries afectadas (contrato + dashboard + caja, etc.).
-12. **Seguridad:** ver `docs/ARCHITECTURE.md` §8. Nunca la `service_role` key en este repo (solo la publishable/anon). Sin `dangerouslySetInnerHTML`. CSP estricta en `vercel.json`. Fotos (cédulas, prendas, contratos firmados) SIEMPRE a buckets privados de Supabase Storage con URLs firmadas — nunca públicas (Habeas Data, Ley 1581).
+1. **Tipos desde OpenAPI, nunca a mano.** `npm run gen:api` regenera `src/types/api.ts`. Si un shape no cuadra, se
+   regenera; jamás se corrige el tipo. Un tipo escrito desde la suposición es una mentira que el compilador
+   defiende. Por defecto lee el backend de dev desplegado; para uno local sin desplegar, ARQUITECTURA §13.
+2. **Una sola puerta a la API:** `src/lib/api/client.ts` (`api` + `unwrap`). Ninguna feature hace `fetch` directo.
+3. **Features aisladas:** `src/features/<modulo>/` (`api.ts` → `components/` → `pages/`). Una feature no importa
+   internals de otra; lo compartido sube a `src/components/shared/` o `src/lib/`.
+4. **Diseño 100% centralizado:** todo color, radio, sombra, espaciado, tipografía y duración sale de
+   `src/styles/tokens.css`. Prohibido un hex, un radio arbitrario o un color de paleta fija de Tailwind en una
+   feature. **Relleno no es texto**: el color `primary` es el relleno del botón (oro claro); para texto y bordes en
+   color de marca va el color `brand` (`--brand-700`). DESIGN_SYSTEM §1.
+5. **Tailwind v4 escanea los `.md` y `.html` del repo**: una clase escrita en un documento se emite en el bundle
+   (pasó con un ejemplo con el hex del teal viejo en este archivo). **En la documentación no se escribe la sintaxis
+   real de una clase**; se nombra el token. En el código, las clases de estado van completas y estáticas, nunca
+   interpoladas. ARQUITECTURA §16.
+6. **Dinero** (`lib/money.ts`): la API usa strings decimales (`"1000000.00"`). Nunca `parseFloat` para hacer
+   cuentas: aritmética de presentación en centavos enteros (`sumMoney`, `multiplyMoney` en `bigint`,
+   `percentOfMoney`, nunca `multiplyMoney(x, pct / 100)`), `formatCOP` para mostrar y `<MoneyInput>` para capturar
+   (`optional` si el campo puede quedar sin dato). Intereses y saldos los pide al backend (`payment-options`). La
+   coma decimal se acepta (`normalizeDecimalInput`). ARQUITECTURA §7.
+7. **Fechas en la zona de la empresa, sin excepciones:** `lib/dates.ts` (`todayBogota()`, `formatDate`,
+   `formatDateTime`). Prohibido `new Date().toISOString().slice(0, 10)`, `toLocaleDateString()` sin zona o `dayjs()`
+   pelado.
+8. **Permisos: la UI oculta, el backend protege.** Salen de `GET /api/v1/me`. Toda ruta de módulo lleva guard
+   (`beforeLoad` + `redirect` a `/inicio`) **y** su ítem de menú lleva `anyPermission`: las dos cosas. Botones con
+   `usePermission`/`<Can>`. **Un 403 no es una falla**: nunca "no se pudo cargar" por un permiso faltante
+   (`isPermissionError`). Una pantalla nueva sin gate es un bug de revisión.
+9. **Idempotencia:** toda mutación de dinero usa `useMoneyMutation` (una `Idempotency-Key` por acción del usuario,
+   reusada en los reintentos; botón deshabilitado mientras vuela). Tras la mutación, invalidar lo afectado
+   (documento, listado, `['dashboard']`, `['cashbox', 'current']` si movió caja). **Sin updates optimistas en dinero
+   ni stock.**
+10. **Errores por `code`, nunca por `message`.** Todo código nuevo del backend se agrega a `API_ERROR_CODES`
+    (`lib/api/errors.ts`) copiado de la línea que lo emite, con su test de contrato. `CASH_SESSION_NOT_OPEN` abre el
+    diálogo de caja, no un toast. ARQUITECTURA §6.
+11. **Formularios:** Zod para la forma; `applyServerErrors(error, setError, { fields })` con la lista de los campos
+    que el formulario **pinta** (lo demás cae al banner: un 422 nunca queda invisible); `revealFirstError` para
+    llevar el error a la vista. **Todo `<form>` que mueve dinero lleva `onKeyDown={preventImplicitSubmit}`: Enter no
+    registra plata.** ARQUITECTURA §12.
+12. **Estados de UI completos:** carga (esqueleto con la forma del contenido), vacío (`EmptyState` con CTA), error
+    (con reintento, salvo 403) y éxito. Un solo modal (`AppDialog`), un solo calendario (`DatePicker`), una sola
+    tabla (`DataTable`).
+13. **Seguridad:** solo la key anon/publishable de Supabase (nunca la `service_role`: todo `VITE_*` queda en el
+    JavaScript público). Sin `dangerouslySetInnerHTML`. Fotos solo en el bucket privado por URL firmada, y se borran
+    de Storage **al guardar**, no al quitarlas (ARQUITECTURA §15). Nunca datos de clientes reales en tests, capturas
+    ni documentos (Ley 1581).
+14. **Plantillas e impresos:** un campo nuevo de plantilla va en `lib/documents/mergeFields.ts` (catálogo único); si
+    el backend cambia qué exige una plantilla activa, se cambia `templateRequirements.ts`. Lo que tiene que salir
+    siempre en el papel (la leyenda de las dos fechas del recargo) va fuera de la plantilla. ARQUITECTURA §14.
 
-## Autenticación (el backend NO tiene login propio)
+## Autenticación
 
-`supabase-js` habla directo con Supabase Auth: `signInWithPassword`, refresh automático, `onAuthStateChange`. El `access_token` resultante va como `Bearer` al backend en cada request (lo inyecta el client central). Justo después del login (y en cada recarga): **`GET /api/v1/me`** para hidratar permisos, empresa, timezone, rol y suscripción antes de renderizar (regla 7). Signups públicos desactivados — el alta es SOLO por invitación (correo de Supabase → el usuario crea contraseña → login normal). El JWT trae `company_id` y `role_id` como claims. Super-admin de plataforma = claim `app_metadata.platform_role == "super_admin"` (rutas `/platform` separadas del resto). Flujo completo: `../backend-starter/docs/API_GUIDE.md` §2.
+El backend no tiene login propio. `supabase-js` hace `signInWithPassword` y el refresh; el cliente HTTP pone el
+`Bearer` y ante un 401 refresca y reintenta una vez. Alta **solo por invitación**: el enlace llega a
+`/auth/callback` y se canjea con `verifyOtp` (POST) al tocar «Continuar», nunca al cargar (las vistas previas
+queman los enlaces de un solo uso). Tras el login y en cada recarga, `GET /me` antes de pintar el shell. Super-admin =
+claim `app_metadata.platform_role == "super_admin"` (rutas `/platform`). ARQUITECTURA §4.
 
-## Estructura del proyecto (crear así)
-
-```
-src/
-  app/                # bootstrap: providers (Query, Router, Auth, Theme), rutas, layouts (AppShell, AuthLayout, PlatformLayout)
-  components/
-    ui/               # shadcn/ui generado — se themea vía tokens, no se edita el diseño a mano por componente
-    shared/           # compuestos reutilizables: DataTable, Money, MoneyInput, DatePicker,
-                      # AppDialog + ConfirmDialog, PageHeader, KpiCard, EmptyState, StatusBadge,
-                      # PhotoUploader (Storage + compresión), Can, CashSessionBanner
-  features/
-    auth/             # login, recuperar contraseña, callback de invitación
-    dashboard/        # KPIs de /reports/dashboard (pantalla de inicio, en /inicio — / es la landing)
-    landing/          # la página pública de venta de Prendo en /, sin sesión ni AppShell (DESIGN_SYSTEM.md §7)
-    customers/
-    catalogs/         # árbol de categorías (3 niveles) + proveedores
-    contracts/        # crear contrato, detalle, abonos vía payment-options, listos para remate, rematar
-    cashbox/          # sesión diaria, gastos, cierre con desglose, reapertura, histórico
-    inventory/        # ingresos, borradores, publicar (emite código), egresos
-    sales/            # venta tipo POS, listado, anulación
-    identity/         # usuarios, invitaciones, roles, matriz de permisos
-    audit/
-    reports/          # /reportes — centro de información financiera: filtro por módulo, comparación de período, gastos por categoría, rankings (dashboard vive en features/dashboard)
-    platform/         # panel super-admin: empresas, suscripciones, planes
-  lib/
-    api/              # client.ts (openapi-fetch + auth + errores), errors.ts, pagination.ts, idempotency.ts
-    auth/             # supabase client, sesión, claims, guards
-    permissions/      # usePermission, catálogo de códigos de permiso
-    money.ts          # formatCOP, parseMoneyInput → string decimal para la API
-    dates.ts          # BOGOTA_TZ, todayBogota, formatDate, formatDateTime
-  styles/
-    tokens.css        # ÚNICA fuente de verdad del diseño (ver DESIGN_SYSTEM.md)
-    globals.css
-  types/
-    api.ts            # GENERADO — no editar a mano
-tests/  (Vitest + Testing Library + MSW — sin suite E2E de Playwright commiteada todavía, ver docs/ARCHITECTURE.md §10)
-```
-
-Dentro de cada feature: `api.ts` (hooks de Query/mutations de ese módulo) → `components/` → `pages/`. Sin `services` duplicando al backend: la regla vive allá.
-
-## Orden de implementación (no saltarse pasos)
-
-1. **Fundaciones:** scaffold Vite+TS estricto, Tailwind + `tokens.css` + shadcn init con el tema (DESIGN_SYSTEM.md aplicado desde el día 1), `gen:api`, client central + manejo de errores, CI (lint, `tsc --noEmit`, tests, `gen:api --check` de drift).
-2. **Auth + shell:** login, refresh, callback de invitación, bootstrap con `GET /me` (permisos + timezone + empresa), guards de ruta, `usePermission`, AppShell responsive (sidebar colapsable → drawer en mobile), pantalla de bloqueo por suscripción. Con esto, cualquier feature siguiente ya nace protegida.
-3. **Dashboard + caja mínima:** `/reports/dashboard` con KPIs + `CashSessionBanner` global (estado de caja visible en toda la app) + abrir sesión. La caja va temprano porque contratos y ventas dependen de ella.
-4. **customers + catalogs:** CRUD, búsqueda `?q=`, fotos del documento (`doc_photos`, en orden `[frente, reverso]` desde 00050 — el orden ES la semántica, no dos campos con nombre), ficha con historial cruzado de contratos + compras (`/clientes/$customerId`), árbol de categorías (armar desde lista plana con `id`/`parent_id`), letras de código con sus validaciones de 409.
-5. **contracts:** crear (varias prendas con foto cada una, categorías nivel 3, snapshot), detalle con estado, documento imprimible con firma en blanco (cliente + empresa — el backend no tiene dónde guardar la firma/sello de la empresa todavía, ver `docs/RECOMENDACIONES.md` §1.8) + foto del contrato ya firmado (`signed_photo_url`), buscador (client-side, sin `?q=` en el backend), **abonos SOLO desde `payment-options`** (botones con montos exactos — jamás un campo libre de interés), historial, listos-para-remate (`GET /contracts/ready-for-auction` — "ready_for_auction" NO es un `status` real) acción Rematar (lleva a los borradores de inventario creados) y **Ampliar el préstamo** (`POST /contracts/{id}/extend-loan`, 00051): el "recargo" NO modifica el contrato, **devuelve uno nuevo** — el viejo queda `superseded` y la pantalla navega al sucesor. El panel vive junto a "Registrar abono" (abonar y ampliar son las dos direcciones de lo mismo) y **explica cuándo NO se puede** en vez de desaparecer, que es para lo que `GET /extension-options` responde siempre. Ver `docs/IMPLEMENTATION.md` y `../backend-starter/docs/RECARGOS.md`.
-   - **5b. Import de contratos preexistentes** (`POST /contracts/import`, permiso `contracts.import`, confirmado — no inferido): pantalla separada "Registrar contrato existente" para migrar un contrato vivo del sistema anterior de la compraventa con su saldo real (foto financiera al corte, no el historial de abonos). A diferencia de crear un contrato: NO exige caja abierta ni genera movimiento de caja (el préstamo ya se entregó afuera), y tasa/plazo/ventana de mora/prórroga se digitan a mano en vez de salir de la categoría del artículo. Badge de `legacy_code` en lista y detalle de contratos. Contrato de API completo, catálogo de errores (`CONTRACT_LEGACY_CODE_EXISTS`, `IMPORT_CAPITAL_EXCEEDS_PRINCIPAL`, `IMPORT_DATES_MISALIGNED`) y detalle de implementación: `docs/RECOMENDACIONES.md` §1.6. **Implementado** (pantalla "Registrar contrato existente" construida y probada en vivo — ver `docs/IMPLEMENTATION.md` "Paso 5b").
-6. **cashbox completo:** gastos, cierre con desglose módulo×concepto×medio (vista previa desde `/report`), justificación obligatoria de descuadre (sin tolerancia), reapertura con motivo, histórico, **acta imprimible (print CSS)** mientras el backend no genera PDFs.
-7. **inventory + sales:** ingresos multi-línea, editar borrador, publicar (precio + ≥1 foto, muestra el código emitido), egresos; venta tipo POS (buscar artículo → carrito → medio de pago → vender), anulación con motivo, comprobante imprimible. `PhotoUploader` (docs/DESIGN_SYSTEM.md §3) sube al bucket `company-files` de Supabase Storage (privado, RLS por empresa) — configurado y verificado el 18/08/2026, ver `docs/STORAGE_PENDIENTE.md` §6.
-8. **identity:** usuarios, invitar, cambiar rol, des/reactivar, roles + matriz de permisos (checkboxes desde `GET /identity/permissions`), manejo explícito de `LAST_ADMIN_SAFEGUARD`.
-9. **audit + reports:** log con filtros combinables. `reports` (`/reportes`) terminó siendo más que "histórico de cierres" — es el centro de información financiera de la app: KPIs operativos (ingresos/gastos/utilidad, separados del movimiento de capital de la cartera de empeño), filtro Todo/Empeño/Tienda, comparación % vs período anterior, gastos por categoría y medio de pago en donas, tendencia diaria, y rankings de prendas más vendidas/categorías más movidas sobre el histórico completo. Detalle completo en `docs/IMPLEMENTATION.md`.
-10. **platform:** panel super-admin (crear empresa, suspender, extender suscripción) bajo `require super_admin`, layout propio.
-
-## Definición de Hecho por PR
-
-- `tsc --noEmit` y ESLint limpios; sin `any` nuevos en código de features; tipos regenerados si cambió la API.
-- Toda vista nueva: gate de permiso + estados loading/vacío/error + responsive verificado (360px y 1280px).
-- Todo dinero formateado con `formatCOP` y toda fecha con `lib/dates.ts` — grep de `toLocaleDateString|parseFloat|toISOString` en el diff como checklist.
-- Mutaciones de dinero con `useMoneyMutation` (idempotencia + botón deshabilitado) y sus invalidaciones de Query.
-- Componentes nuevos usan tokens (cero hex sueltos) y los compartidos de `components/shared` (un solo modal, un solo calendario, una sola tabla).
-- Tests: unidad para `money.ts`/`dates.ts`/mapeo de errores; componente para flujos críticos (abono, cierre, venta) con MSW.
-
-## Variables de entorno (`.env.example` — crearlo)
+## Estructura
 
 ```
-VITE_API_URL=https://compraventa-backend-dev.fly.dev
-VITE_SUPABASE_URL=            # proyecto Supabase dev
-VITE_SUPABASE_ANON_KEY=       # publishable/anon — la ÚNICA key que existe en este repo
+src/app/                router, query client, store de UI, layouts, páginas de bloqueo/404/error
+src/components/ui/      shadcn/ui generado (se themea por tokens)
+src/components/shared/  los compartidos (DESIGN_SYSTEM §3), charts/, documentTemplate/
+src/features/           accounts audit auth capital cashbox catalogs contracts customers dashboard identity
+                        inventory landing platform reports sales settings unsubscribe
+src/lib/                api/ auth/ permissions/ forms/ documents/ storage/ export/ money.ts dates.ts y helpers
+src/styles/             tokens.css (única fuente del diseño) y globals.css
+src/types/api.ts        GENERADO, no se edita
+tests/                  Vitest + Testing Library; fixtures/ con respuestas reales del backend
 ```
 
-## Comandos
+## Definición de hecho
+
+- `npm run lint` y `npm run typecheck` limpios; sin `any` nuevos; tipos regenerados si cambió la API (y el backend
+  desplegado primero si el cambio toca los dos repos).
+- Vista nueva: guard + ítem de menú con permiso, estados completos, verificada a 360 px y 1280 px.
+- En el diff, buscar `toLocaleDateString|parseFloat|toISOString` como checklist.
+- Tests: los de la lógica tocada, **vistos fallar sin el arreglo**; aserciones de error contra el `code`; fixtures
+  **copiados de respuestas reales** del backend, nunca escritos de memoria (ARQUITECTURA §10).
+- "Pusheado" no es "servido": lo que se entrega se verifica contra el bundle desplegado (OPERACION §4.1).
+- Documentar en el mismo cambio: la regla de código en `docs/ARQUITECTURA.md`, lo visual en `docs/DESIGN_SYSTEM.md`,
+  el estado en `../backend-starter/docs/ESTADO.md`. Sin bitácora: el porqué en una o dos líneas, el relato en el
+  commit.
+
+## Entorno y comandos
+
+`.env` (copiar de `.env.example`): `VITE_API_URL=https://api-dev.prendo.com.co`, `VITE_SUPABASE_URL` y
+`VITE_SUPABASE_ANON_KEY` (la anon). Nunca las URLs viejas `*.fly.dev`: el CSP de la app servida las bloquea.
 
 ```bash
-npm run dev                    # Vite dev server
-npm run gen:api                # regenera src/types/api.ts desde $VITE_API_URL/openapi.json (o openapi.json local)
+npm install --legacy-peer-deps   # un bug de npm con los peer-deps opcionales de vitest; la CI usa lo mismo
+npm run dev
+npm run gen:api                  # tipos desde $VITE_API_URL/openapi.json (o ./openapi.json si existe)
 npm run lint && npm run typecheck
-npm run test                   # Vitest
-npm run build && npm run preview
+npm run test                     # Vitest (en el agente, con tope: perl -e 'alarm 280; exec @ARGV' npx vitest run …)
+npm run build
 ```
