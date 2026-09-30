@@ -162,6 +162,11 @@ agrega como prop al compartido, no se clona. **Un solo modal, un solo calendario
     texto sobre los fondos donde viven, el texto del botón primario sobre sus dos rellenos y los pares de la landing,
     en los dos temas; se comprobó que falla al invertir la regla. Navegable por teclado, `aria-label` en íconos
     solos, objetivos táctiles de 44 px en celular.
+    **Foco de un campo**: anillo sólido de 2 px en el token de foco (`--color-ring`), puesto una vez en `globals.css`
+    para todos los `input`/`textarea`/`select` (por sombra, porque las copias de `inputClass` llevan la utilidad que
+    quita el contorno); un campo compuesto marca su contenedor con `data-focus-ring`. **Campo con error**:
+    `aria-invalid` (borde de peligro) y `MoneyInput` con `invalid` y `ref={field.ref}` para que el foco llegue al
+    primer error (F9-25, F9-26). Pendiente: un `Input` compartido que reemplace las 27 copias de `inputClass`.
 11. **Responsive real**: 360 / 768 / 1024 / 1280. La operación diaria (abonos, ventas, consultar un contrato) tiene
     que servir en un celular de gama media: el mostrador puede ser un celular. Al medir, **el bug es que el
     documento desborde** (`scrollWidth > clientWidth` del `<html>`); un elemento más ancho que la ventana dentro de

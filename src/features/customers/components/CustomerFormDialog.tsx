@@ -182,7 +182,7 @@ export function CustomerFormDialog({ open, onOpenChange, customer }: { open: boo
           <label htmlFor="full_name" className="text-sm font-medium text-foreground">
             Nombre completo
           </label>
-          <input id="full_name" className={inputClass} {...register('full_name')} />
+          <input id="full_name" className={inputClass} aria-invalid={!!errors.full_name} {...register('full_name')} />
           {errors.full_name && <p className="mt-1 text-sm text-danger">{errors.full_name.message}</p>}
         </div>
 
@@ -214,7 +214,7 @@ export function CustomerFormDialog({ open, onOpenChange, customer }: { open: boo
             <label htmlFor="doc_number" className="text-sm font-medium text-foreground">
               Número de documento
             </label>
-            <input id="doc_number" className={inputClass} disabled={mode === 'edit'} {...register('doc_number')} />
+            <input id="doc_number" className={inputClass} disabled={mode === 'edit'} aria-invalid={!!errors.doc_number} {...register('doc_number')} />
             {errors.doc_number && <p className="mt-1 text-sm text-danger">{errors.doc_number.message}</p>}
           </div>
         </div>
@@ -231,14 +231,14 @@ export function CustomerFormDialog({ open, onOpenChange, customer }: { open: boo
             <label htmlFor="phone" className="text-sm font-medium text-foreground">
               Teléfono
             </label>
-            <input id="phone" className={inputClass} {...register('phone')} />
+            <input id="phone" className={inputClass} aria-invalid={!!errors.phone} {...register('phone')} />
             {errors.phone && <p className="mt-1 text-sm text-danger">{errors.phone.message}</p>}
           </div>
           <div>
             <label htmlFor="email" className="text-sm font-medium text-foreground">
               Correo
             </label>
-            <input id="email" type="email" className={inputClass} {...register('email')} />
+            <input id="email" type="email" className={inputClass} aria-invalid={!!errors.email} {...register('email')} />
             {errors.email && <p className="mt-1 text-sm text-danger">{errors.email.message}</p>}
             {savedEmailIsInvalid && !errors.email && (
               <p className="mt-1 text-xs text-warning">El correo guardado no tiene forma de correo. Se puede dejar así, pero conviene corregirlo.</p>

@@ -1,3 +1,4 @@
+import type { Ref } from 'react'
 import { MAX_MONEY_DIGITS, maskMoneyInput, parseMoneyInput, parseMoneyText } from '@/lib/money'
 import { cn } from '@/lib/utils'
 
@@ -16,6 +17,8 @@ export function MoneyInput({
   className,
   optional,
   ariaLabel,
+  invalid,
+  ref,
 }: {
   value: string
   onChange: (decimalValue: string) => void
@@ -32,6 +35,11 @@ export function MoneyInput({
   optional?: boolean
   /** Nombre accesible cuando el `<label>` visible no alcanza a distinguirlo (una fila de varias). */
   ariaLabel?: string
+  /** El campo tiene un error a la vista: `aria-invalid` para el lector de pantalla y borde de peligro (F9-25). */
+  invalid?: boolean
+  /** React 19: `ref` es una prop. Con `field.ref` de un `Controller`, React Hook Form puede llevar el foco al
+   *  campo cuando es el primer error (F9-25: el foco saltaba al tercer error porque este no lo recibía). */
+  ref?: Ref<HTMLInputElement>
 }) {
   const masked = maskMoneyInput(value.split('.')[0] ?? '')
   // F9-24: un obligatorio en cero se muestra VACÍO (placeholder «0»). Con el
@@ -64,11 +72,14 @@ export function MoneyInput({
   }
 
   return (
-    <div className={cn('flex items-center rounded-input border border-border bg-background px-3 focus-within:border-primary', className)}>
+    <div data-focus-ring="within" className={cn('flex items-center rounded-input border border-border bg-background px-3 focus-within:border-primary', className)}>
       <span className="text-sm text-muted-foreground">$</span>
       <input
+        ref={ref}
         id={id}
         aria-label={ariaLabel}
+        aria-invalid={invalid || undefined}
+        data-focus-ring="none"
         type="text"
         inputMode="numeric"
         autoFocus={autoFocus}

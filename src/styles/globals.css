@@ -166,11 +166,32 @@
   html {
     @apply font-sans;
   }
+  /* Foco visible en los campos (F9-26). Las copias locales de `inputClass`
+     llevan `outline-none` y solo cambiaban el borde a oro (2,5:1, bajo el 3:1
+     de WCAG 1.4.11). Un anillo sólido de 2 px en `--color-ring` (`--brand-700`,
+     ~6:1 sobre marfil) para todos a la vez: con `box-shadow` y no `outline`
+     porque la utilidad `outline-none` gana a esta capa. Un campo compuesto
+     (`MoneyInput`) marca su contenedor con `data-focus-ring="within"` y su
+     `<input>` interno con `data-focus-ring="none"`, para que el anillo
+     envuelva el «$» y no quede adentro. */
+  :where(input:not([type='checkbox'], [type='radio'], [type='range'], [type='file'], [data-focus-ring='none']), textarea, select):focus-visible,
+  [data-focus-ring='within']:focus-within {
+    box-shadow: 0 0 0 2px var(--color-ring);
+  }
   /* Cifras (KPIs, dinero) con tabular numbers — Money/KpiCard lo heredan. */
   .tnum {
     font-feature-settings: 'tnum' 1;
     font-variant-numeric: tabular-nums;
   }
+}
+
+/* Campo con error (`aria-invalid`, F9-25): borde en el color de peligro; el
+   lector de pantalla lo anuncia por el atributo, no por el color. Fuera de
+   `@layer` a propósito: la utilidad `border-border` de cada campo ganaría a
+   cualquier capa, y este estado tiene que ganarle a ella. */
+:where(input, textarea, select)[aria-invalid='true'],
+[data-focus-ring='within']:has([aria-invalid='true']) {
+  border-color: var(--danger);
 }
 
 /* Estado seleccionado de un nodo atómico de Tiptap (campo dinámico, tabla de

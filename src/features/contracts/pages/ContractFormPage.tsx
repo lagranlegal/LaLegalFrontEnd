@@ -255,7 +255,7 @@ export function ContractFormPage() {
                   <label htmlFor="customer_email" className="text-sm font-medium text-foreground">
                     Correo del cliente (opcional)
                   </label>
-                  <input id="customer_email" type="email" inputMode="email" className={inputClass} {...register('customer_email')} />
+                  <input id="customer_email" type="email" inputMode="email" className={inputClass} aria-invalid={!!errors.customer_email} {...register('customer_email')} />
                   {errors.customer_email ? (
                     <p className="mt-1 text-sm text-danger">{errors.customer_email.message}</p>
                   ) : (
@@ -313,14 +313,14 @@ export function ContractFormPage() {
               <label htmlFor="principal" className="text-sm font-medium text-foreground">
                 Monto del préstamo
               </label>
-              <Controller control={control} name="principal" render={({ field }) => <MoneyInput id="principal" className="mt-1" value={field.value} onChange={field.onChange} />} />
+              <Controller control={control} name="principal" render={({ field }) => <MoneyInput ref={field.ref} invalid={!!errors.principal} id="principal" className="mt-1" value={field.value} onChange={field.onChange} />} />
               {errors.principal && <p className="mt-1 text-sm text-danger">{errors.principal.message}</p>}
             </div>
             <div>
               <label htmlFor="interest_rate_pct" className="text-sm font-medium text-foreground">
                 Tasa de interés mensual (%)
               </label>
-              <input id="interest_rate_pct" inputMode="decimal" className={inputClass} {...register('interest_rate_pct')} />
+              <input id="interest_rate_pct" inputMode="decimal" className={inputClass} aria-invalid={!!errors.interest_rate_pct} {...register('interest_rate_pct')} />
               {errors.interest_rate_pct && <p className="mt-1 text-sm text-danger">{errors.interest_rate_pct.message}</p>}
             </div>
             <div>
@@ -330,7 +330,7 @@ export function ContractFormPage() {
               <Controller
                 control={control}
                 name="appraisal_value"
-                render={({ field }) => <MoneyInput optional id="appraisal_value" className="mt-1" value={field.value ?? ''} onChange={field.onChange} />}
+                render={({ field }) => <MoneyInput ref={field.ref} invalid={!!errors.appraisal_value} optional id="appraisal_value" className="mt-1" value={field.value ?? ''} onChange={field.onChange} />}
               />
               {errors.appraisal_value && <p className="mt-1 text-sm text-danger">{errors.appraisal_value.message}</p>}
               {avaluo.required && !errors.appraisal_value && (
@@ -419,7 +419,7 @@ export function ContractFormPage() {
           <label htmlFor="notes" className="text-sm font-medium text-foreground">
             Notas (opcional)
           </label>
-          <textarea id="notes" rows={2} className={inputClass} {...register('notes')} />
+          <textarea id="notes" rows={2} className={inputClass} aria-invalid={!!errors.notes} {...register('notes')} />
           {errors.notes && <p className="mt-1 text-sm text-danger">{errors.notes.message}</p>}
         </section>
 

@@ -835,6 +835,7 @@ export function EntryFormPage() {
             rows={2}
             className={inputClass}
             placeholder={originType === 'other' ? '¿De dónde salió esta mercancía?' : undefined}
+            aria-invalid={!!errors.notes}
             {...register('notes')}
           />
           {errors.notes && <p className="mt-1 text-sm text-danger">{errors.notes.message}</p>}

@@ -162,7 +162,7 @@ export function ExpenseFormDialog({ open, onOpenChange }: { open: boolean; onOpe
             <label htmlFor="expense-description" className="text-sm font-medium text-foreground">
               Descripción
             </label>
-            <input id="expense-description" className={inputClass} {...register('description')} />
+            <input id="expense-description" className={inputClass} aria-invalid={!!errors.description} {...register('description')} />
             {errors.description && <p className="mt-1 text-sm text-danger">{errors.description.message}</p>}
           </div>
           <div className="grid grid-cols-2 gap-3">
@@ -170,7 +170,7 @@ export function ExpenseFormDialog({ open, onOpenChange }: { open: boolean; onOpe
               <label htmlFor="expense-amount" className="text-sm font-medium text-foreground">
                 Monto
               </label>
-              <Controller control={control} name="amount" render={({ field }) => <MoneyInput id="expense-amount" className="mt-1" value={field.value} onChange={field.onChange} autoFocus />} />
+              <Controller control={control} name="amount" render={({ field }) => <MoneyInput ref={field.ref} invalid={!!errors.amount} id="expense-amount" className="mt-1" value={field.value} onChange={field.onChange} autoFocus />} />
               {errors.amount && <p className="mt-1 text-sm text-danger">{errors.amount.message}</p>}
             </div>
             <div>
