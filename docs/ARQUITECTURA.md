@@ -289,6 +289,9 @@ Vitest + Testing Library sobre jsdom (`tests/setup.ts` simula `matchMedia`). Las
   `VITE_SUPABASE_ANON_KEY`) a dominios `.invalid`. En CI no hay `.env`: sin esto `src/lib/auth/supabase.ts`
   revienta al importarse ("supabaseUrl is required") y 27 archivos de test fallaban al cargar, mientras en local
   pasaban solo porque el `.env` apunta a dev (la CI estuvo roja por eso hasta el 30/09/2026).
+- El **build** de la CI necesita `VITE_API_URL` y `VITE_SUPABASE_URL` (el plugin del CSP aborta sin ellas): toma
+  `vars.VITE_*` del repo si existen y, si no, el API de dev y un Supabase de relleno. Solo verifica que compila; lo
+  servido lo construye Vercel con sus variables.
 - `tests/label-catalogs.test.ts` compara contra el código de `../backend-starter/`; en CI ese repo no está y sus 5
   casos se saltan. Corren en local.
 - El job de drift descarga de `vars.VITE_API_URL` o, si no está definida, de `https://api-dev.prendo.com.co`.

@@ -29,6 +29,14 @@ jobs:
 
       - name: Build
         run: npm run build
+        # El plugin del CSP (vite.config.ts) aborta el build sin estas dos
+        # variables, a propósito. Este build solo verifica que compila: lo que
+        # se sirve lo construye Vercel con sus propias variables. Si el repo
+        # define `vars.VITE_*`, se usan; si no, el API de dev y un Supabase
+        # de relleno (la URL real del proyecto no vive en el repo).
+        env:
+          VITE_API_URL: ${{ vars.VITE_API_URL || 'https://api-dev.prendo.com.co' }}
+          VITE_SUPABASE_URL: ${{ vars.VITE_SUPABASE_URL || 'https://supabase.ci.invalid' }}
 
   api-drift:
     runs-on: ubuntu-latest
