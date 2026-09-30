@@ -21,6 +21,7 @@ import { PhotoUploader } from '@/components/shared/PhotoUploader'
 import { Money } from '@/components/shared/Money'
 import { CashSessionRequiredDialog } from '@/components/shared/CashSessionRequiredDialog'
 import { Button } from '@/components/ui/button'
+import { FieldError, Input, Textarea } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { ApiError } from '@/lib/api/client'
 import { useCategories } from '@/lib/catalogs/categories'
@@ -72,9 +73,6 @@ const entrySchema = z
   })
 
 type EntryFormValues = z.infer<typeof entrySchema>
-
-const inputClass =
-  'mt-1 w-full rounded-input border border-border bg-background px-3 py-2 text-sm text-foreground outline-none focus:border-primary disabled:bg-muted disabled:text-muted-foreground'
 
 function emptyLine(): EntryFormValues['lines'][number] {
   return { name: '', cat1_id: '', cat2_id: '', cat3_id: '', description: '', unit_cost: '0.00', quantity: '1', unit: 'unit', from_existing_product: false, sale_price: '', photos: [] }
@@ -460,13 +458,13 @@ export function EntryFormPage() {
                   </Select>
                 )}
               />
-              {errors.supplier_id && <p className="mt-1 text-sm text-danger">{errors.supplier_id.message}</p>}
+              <FieldError fieldId="supplier_id">{errors.supplier_id?.message}</FieldError>
             </div>
             <div>
               <label htmlFor="supplier_invoice" className="text-sm font-medium text-foreground">
                 Factura del proveedor (opcional)
               </label>
-              <input id="supplier_invoice" className={inputClass} {...register('supplier_invoice')} />
+              <Input id="supplier_invoice" {...register('supplier_invoice')} />
             </div>
           </div>
 
@@ -481,7 +479,7 @@ export function EntryFormPage() {
                 render={({ field }) => <DatePicker id="entry_date" value={field.value} onChange={field.onChange} maxDate={todayBogota()} />}
               />
               <p className="mt-1 text-xs text-muted-foreground">Cuándo llegó la mercancía, no cuándo la registras.</p>
-              {errors.entry_date && <p className="mt-1 text-sm text-danger">{errors.entry_date.message}</p>}
+              <FieldError fieldId="entry_date">{errors.entry_date?.message}</FieldError>
             </div>
 
             {/* El medio de pago es OPCIONAL: vacío = pendiente de pago. Ese es
@@ -631,9 +629,11 @@ export function EntryFormPage() {
 
                   <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                     <div className="sm:col-span-2">
-                      <label className="text-sm font-medium text-foreground">Nombre</label>
-                      <input className={inputClass} {...register(`lines.${index}.name`)} />
-                      {errors.lines?.[index]?.name && <p className="mt-1 text-sm text-danger">{errors.lines[index]?.name?.message}</p>}
+                      <label htmlFor={`line-${index}-name`} className="text-sm font-medium text-foreground">
+                        Nombre
+                      </label>
+                      <Input id={`line-${index}-name`} invalid={!!errors.lines?.[index]?.name} {...register(`lines.${index}.name`)} />
+                      <FieldError fieldId={`line-${index}-name`}>{errors.lines?.[index]?.name?.message}</FieldError>
                     </div>
                     <div>
                       <label className="text-sm font-medium text-foreground">Categoría</label>
@@ -716,18 +716,37 @@ export function EntryFormPage() {
                       {errors.lines?.[index]?.cat3_id && <p className="mt-1 text-sm text-danger">{errors.lines[index]?.cat3_id?.message}</p>}
                     </div>
                     <div>
-                      <label className="text-sm font-medium text-foreground">Costo unitario</label>
+                      <label htmlFor={`line-${index}-cost`} className="text-sm font-medium text-foreground">
+                        Costo unitario
+                      </label>
                       <Controller
                         control={control}
                         name={`lines.${index}.unit_cost`}
-                        render={({ field: costField }) => <MoneyInput className="mt-1" value={costField.value} onChange={costField.onChange} />}
+                        render={({ field: costField }) => (
+                          <MoneyInput
+                            ref={costField.ref}
+                            id={`line-${index}-cost`}
+                            invalid={!!errors.lines?.[index]?.unit_cost}
+                            className="mt-1"
+                            value={costField.value}
+                            onChange={costField.onChange}
+                          />
+                        )}
                       />
-                      {errors.lines?.[index]?.unit_cost && <p className="mt-1 text-sm text-danger">{errors.lines[index]?.unit_cost?.message}</p>}
+                      <FieldError fieldId={`line-${index}-cost`}>{errors.lines?.[index]?.unit_cost?.message}</FieldError>
                     </div>
                     <div>
-                      <label className="text-sm font-medium text-foreground">Cantidad</label>
+                      <label htmlFor={`line-${index}-quantity`} className="text-sm font-medium text-foreground">
+                        Cantidad
+                      </label>
                       <div className="mt-1 flex gap-2">
-                        <input inputMode="decimal" className={`${inputClass} mt-0 flex-1`} {...register(`lines.${index}.quantity`)} />
+                        <Input
+                          id={`line-${index}-quantity`}
+                          inputMode="decimal"
+                          className="mt-0 flex-1"
+                          invalid={!!errors.lines?.[index]?.quantity}
+                          {...register(`lines.${index}.quantity`)}
+                        />
                         {/* Si el producto YA EXISTE, su unidad manda y el
                             backend ignora la que mandemos — así que acá se
                             muestra como dato, no como opción. Un selector
@@ -759,7 +778,7 @@ export function EntryFormPage() {
                         )}
                       </div>
                       {errors.lines?.[index]?.quantity && (
-                        <p className="mt-1 text-sm text-danger">{errors.lines[index]?.quantity?.message}</p>
+                        <p id={`line-${index}-quantity-error`} className="mt-1 text-sm text-danger">{errors.lines[index]?.quantity?.message}</p>
                       )}
                       <p className="mt-1 text-xs text-muted-foreground">
                         {linea?.from_existing_product
@@ -770,8 +789,10 @@ export function EntryFormPage() {
                       </p>
                     </div>
                     <div className="sm:col-span-2">
-                      <label className="text-sm font-medium text-foreground">Descripción (opcional)</label>
-                      <input className={inputClass} {...register(`lines.${index}.description`)} />
+                      <label htmlFor={`line-${index}-description`} className="text-sm font-medium text-foreground">
+                        Descripción (opcional)
+                      </label>
+                      <Input id={`line-${index}-description`} {...register(`lines.${index}.description`)} />
                     </div>
                   </div>
 
@@ -832,15 +853,14 @@ export function EntryFormPage() {
           <label htmlFor="notes" className="text-sm font-medium text-foreground">
             Notas {originType === 'other' ? '' : '(opcional)'}
           </label>
-          <textarea
+          <Textarea
             id="notes"
             rows={2}
-            className={inputClass}
             placeholder={originType === 'other' ? '¿De dónde salió esta mercancía?' : undefined}
-            aria-invalid={!!errors.notes}
+            invalid={!!errors.notes}
             {...register('notes')}
           />
-          {errors.notes && <p className="mt-1 text-sm text-danger">{errors.notes.message}</p>}
+          <FieldError fieldId="notes">{errors.notes?.message}</FieldError>
         </section>
 
         {formError && <p className="rounded-input bg-danger-soft px-3 py-2 text-sm text-danger">{formError}</p>}

@@ -14,6 +14,7 @@ import { MoneyInput } from '@/components/shared/MoneyInput'
 import { CashSessionRequiredDialog } from '@/components/shared/CashSessionRequiredDialog'
 import { Can } from '@/components/shared/Can'
 import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { ApiError } from '@/lib/api/client'
 import { belowCostLines, userMessage } from '@/lib/api/errors'
@@ -44,8 +45,6 @@ interface CartLine {
    */
   unitPrice: string
 }
-
-const inputClass = 'mt-1 w-full rounded-input border border-border bg-background px-3 py-2 text-sm text-foreground outline-none focus:border-primary'
 
 export function SaleFormPage() {
   const navigate = useNavigate()
@@ -379,7 +378,7 @@ export function SaleFormPage() {
                 <label htmlFor="sale-discount-reason" className="text-sm font-medium text-foreground">
                   Motivo del descuento
                 </label>
-                <input id="sale-discount-reason" className={inputClass} value={discountReason} onChange={(e) => setDiscountReason(e.target.value)} />
+                <Input id="sale-discount-reason" value={discountReason} onChange={(e) => setDiscountReason(e.target.value)} />
               </div>
             )}
           </div>

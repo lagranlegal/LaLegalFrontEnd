@@ -142,4 +142,43 @@ describe('contraste de los tokens (WCAG AA, 4.5:1 para texto normal)', () => {
     }
     expect(malos, `por debajo de AA:\n  ${malos.join('\n  ')}`).toEqual([])
   })
+
+  // Issue #4 (WCAG 1.4.11): el anillo de foco es un indicador, pide 3:1 contra
+  // el fondo donde se dibuja. Con `ring-ring/50` (el de shadcn) el oro a media
+  // opacidad daba ≈ 2,2:1; por eso el anillo va sólido y se mide el token
+  // (`--color-ring` = `--brand-700`, globals.css).
+  it('el anillo de foco se ve (≥ 3:1) sobre los fondos de la app, en los dos temas', () => {
+    const malos: string[] = []
+    for (const [tema, vars] of [
+      ['claro', claro],
+      ['oscuro', { ...claro, ...oscuro }],
+    ] as const) {
+      for (const fondo of ['--bg-app', '--bg-surface', '--bg-muted']) {
+        const r = ratio(vars['--brand-700'], vars[fondo])
+        if (r < 3) malos.push(`${tema}: anillo sobre ${fondo} da ${r.toFixed(2)}`)
+      }
+    }
+    expect(malos, malos.join('\n')).toEqual([])
+  })
+})
+
+describe('el anillo de foco es sólido', () => {
+  // Medido a mano en Chrome: `ring-ring/50` sobre marfil ≈ 2,2:1. Un anillo o
+  // contorno de foco a media opacidad vuelve a quedar bajo 3:1 aunque el token
+  // pase; el sufijo de opacidad sobre el token de foco no se usa.
+  it('ningún componente ni la capa base usan el token de foco a media opacidad', async () => {
+    const { readdirSync, statSync } = await import('node:fs')
+    const { join } = await import('node:path')
+    const archivos: string[] = []
+    const recorrer = (dir: string) => {
+      for (const n of readdirSync(dir)) {
+        const ruta = join(dir, n)
+        if (statSync(ruta).isDirectory()) recorrer(ruta)
+        else if (/\.(tsx?|css)$/.test(n)) archivos.push(ruta)
+      }
+    }
+    recorrer(resolve(__dirname, '../src'))
+    const conOpacidad = archivos.filter((f) => /(ring|outline)-ring\/\d+/.test(readFileSync(f, 'utf8')))
+    expect(conOpacidad).toEqual([])
+  })
 })

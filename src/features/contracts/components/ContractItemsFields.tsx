@@ -1,14 +1,12 @@
 import { Controller, useFieldArray, type ArrayPath, type Control, type FieldErrors, type FieldPath, type FieldValues, type UseFormRegister } from 'react-hook-form'
 import { Plus, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { FieldError, Input, invalidFieldProps } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { MoneyInput } from '@/components/shared/MoneyInput'
 import { PhotoUploader } from '@/components/shared/PhotoUploader'
 import { categoryLabel, emptyContractItem, type ContractItemFormValue } from '@/features/contracts/contractItemSchema'
 import type { Category } from '@/lib/catalogs/categories'
-
-const inputClass =
-  'mt-1 w-full rounded-input border border-border bg-background px-3 py-2 text-sm text-foreground outline-none focus:border-primary disabled:bg-muted disabled:text-muted-foreground'
 
 /**
  * Sección "Prendas" compartida entre `ContractFormPage` y `ContractImportPage`
@@ -53,13 +51,19 @@ export function ContractItemsFields<TFieldValues extends FieldValues & { items: 
             </div>
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <div>
-                <label className="text-sm font-medium text-foreground">Categoría</label>
+                <label htmlFor={`item-${index}-category`} className="text-sm font-medium text-foreground">
+                  Categoría
+                </label>
                 <Controller
                   control={control}
                   name={`items.${index}.category_id` as FieldPath<TFieldValues>}
                   render={({ field: categoryField }) => (
                     <Select value={categoryField.value} onValueChange={categoryField.onChange}>
-                      <SelectTrigger className="mt-1 w-full">
+                      <SelectTrigger
+                        id={`item-${index}-category`}
+                        className="mt-1 w-full"
+                        {...invalidFieldProps(`item-${index}-category`, !!itemErrors?.[index]?.category_id)}
+                      >
                         <SelectValue placeholder="Selecciona…" />
                       </SelectTrigger>
                       <SelectContent>
@@ -73,12 +77,18 @@ export function ContractItemsFields<TFieldValues extends FieldValues & { items: 
                   )}
                 />
                 {pawnCategories.length === 0 && <p className="mt-1 text-xs text-muted-foreground">No hay categorías de nivel 3 para empeño todavía — créalas en Catálogos.</p>}
-                {itemErrors?.[index]?.category_id && <p className="mt-1 text-sm text-danger">{itemErrors[index]?.category_id?.message}</p>}
+                <FieldError fieldId={`item-${index}-category`}>{itemErrors?.[index]?.category_id?.message}</FieldError>
               </div>
               <div>
-                <label className="text-sm font-medium text-foreground">Descripción</label>
-                <input className={inputClass} {...register(`items.${index}.description` as FieldPath<TFieldValues>)} />
-                {itemErrors?.[index]?.description && <p className="mt-1 text-sm text-danger">{itemErrors[index]?.description?.message}</p>}
+                <label htmlFor={`item-${index}-description`} className="text-sm font-medium text-foreground">
+                  Descripción
+                </label>
+                <Input
+                  id={`item-${index}-description`}
+                  invalid={!!itemErrors?.[index]?.description}
+                  {...register(`items.${index}.description` as FieldPath<TFieldValues>)}
+                />
+                <FieldError fieldId={`item-${index}-description`}>{itemErrors?.[index]?.description?.message}</FieldError>
               </div>
               {/* Los tres campos de abajo NO mostraban su error. Daba igual
                   mientras nadie los marcara, pero el backend sí: un peso con
@@ -87,23 +97,48 @@ export function ContractItemsFields<TFieldValues extends FieldValues & { items: 
                   formulario volvía a su estado inicial sin decir nada.
                   "Opcional" es sobre llenarlo, no sobre llenarlo mal. */}
               <div>
-                <label className="text-sm font-medium text-foreground">Peso (gramos, opcional)</label>
-                <input inputMode="decimal" className={inputClass} {...register(`items.${index}.weight_grams` as FieldPath<TFieldValues>)} />
-                {itemErrors?.[index]?.weight_grams && <p className="mt-1 text-sm text-danger">{itemErrors[index]?.weight_grams?.message}</p>}
+                <label htmlFor={`item-${index}-weight`} className="text-sm font-medium text-foreground">
+                  Peso (gramos, opcional)
+                </label>
+                <Input
+                  id={`item-${index}-weight`}
+                  inputMode="decimal"
+                  invalid={!!itemErrors?.[index]?.weight_grams}
+                  {...register(`items.${index}.weight_grams` as FieldPath<TFieldValues>)}
+                />
+                <FieldError fieldId={`item-${index}-weight`}>{itemErrors?.[index]?.weight_grams?.message}</FieldError>
               </div>
               <div>
-                <label className="text-sm font-medium text-foreground">Serial / IMEI (opcional)</label>
-                <input className={inputClass} {...register(`items.${index}.serial_imei` as FieldPath<TFieldValues>)} />
-                {itemErrors?.[index]?.serial_imei && <p className="mt-1 text-sm text-danger">{itemErrors[index]?.serial_imei?.message}</p>}
+                <label htmlFor={`item-${index}-serial`} className="text-sm font-medium text-foreground">
+                  Serial / IMEI (opcional)
+                </label>
+                <Input
+                  id={`item-${index}-serial`}
+                  invalid={!!itemErrors?.[index]?.serial_imei}
+                  {...register(`items.${index}.serial_imei` as FieldPath<TFieldValues>)}
+                />
+                <FieldError fieldId={`item-${index}-serial`}>{itemErrors?.[index]?.serial_imei?.message}</FieldError>
               </div>
               <div>
-                <label className="text-sm font-medium text-foreground">Avalúo de la prenda (opcional)</label>
+                <label htmlFor={`item-${index}-appraisal`} className="text-sm font-medium text-foreground">
+                  Avalúo de la prenda (opcional)
+                </label>
                 <Controller
                   control={control}
                   name={`items.${index}.item_appraisal` as FieldPath<TFieldValues>}
-                  render={({ field: appraisalField }) => <MoneyInput optional className="mt-1" value={appraisalField.value ?? ''} onChange={appraisalField.onChange} />}
+                  render={({ field: appraisalField }) => (
+                    <MoneyInput
+                      ref={appraisalField.ref}
+                      id={`item-${index}-appraisal`}
+                      invalid={!!itemErrors?.[index]?.item_appraisal}
+                      optional
+                      className="mt-1"
+                      value={appraisalField.value ?? ''}
+                      onChange={appraisalField.onChange}
+                    />
+                  )}
                 />
-                {itemErrors?.[index]?.item_appraisal && <p className="mt-1 text-sm text-danger">{itemErrors[index]?.item_appraisal?.message}</p>}
+                <FieldError fieldId={`item-${index}-appraisal`}>{itemErrors?.[index]?.item_appraisal?.message}</FieldError>
               </div>
             </div>
 

@@ -4,6 +4,7 @@ import { Controller, useForm, useWatch } from 'react-hook-form'
 import { z } from 'zod'
 import { AppDialog } from '@/components/shared/AppDialog'
 import { Button } from '@/components/ui/button'
+import { FieldError, Input, Textarea } from '@/components/ui/input'
 import { Checkbox } from '@/components/ui/checkbox'
 import { PhotoUploader } from '@/components/shared/PhotoUploader'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
@@ -48,8 +49,6 @@ function customerSchema(savedEmail: string) {
 }
 
 type CustomerFormValues = z.infer<ReturnType<typeof customerSchema>>
-
-const inputClass = 'mt-1 w-full rounded-input border border-border bg-background px-3 py-2 text-sm text-foreground outline-none focus:border-primary disabled:bg-muted disabled:text-muted-foreground'
 
 function emptyValues(): CustomerFormValues {
   return {
@@ -183,8 +182,8 @@ export function CustomerFormDialog({ open, onOpenChange, customer }: { open: boo
           <label htmlFor="full_name" className="text-sm font-medium text-foreground">
             Nombre completo
           </label>
-          <input id="full_name" className={inputClass} aria-invalid={!!errors.full_name} {...register('full_name')} />
-          {errors.full_name && <p className="mt-1 text-sm text-danger">{errors.full_name.message}</p>}
+          <Input id="full_name" invalid={!!errors.full_name} {...register('full_name')} />
+          <FieldError fieldId="full_name">{errors.full_name?.message}</FieldError>
         </div>
 
         <div className="grid grid-cols-2 gap-3">
@@ -215,8 +214,8 @@ export function CustomerFormDialog({ open, onOpenChange, customer }: { open: boo
             <label htmlFor="doc_number" className="text-sm font-medium text-foreground">
               Número de documento
             </label>
-            <input id="doc_number" className={inputClass} disabled={mode === 'edit'} aria-invalid={!!errors.doc_number} {...register('doc_number')} />
-            {errors.doc_number && <p className="mt-1 text-sm text-danger">{errors.doc_number.message}</p>}
+            <Input id="doc_number" disabled={mode === 'edit'} invalid={!!errors.doc_number} {...register('doc_number')} />
+            <FieldError fieldId="doc_number">{errors.doc_number?.message}</FieldError>
           </div>
         </div>
 
@@ -224,7 +223,7 @@ export function CustomerFormDialog({ open, onOpenChange, customer }: { open: boo
           <label htmlFor="doc_issue_place" className="text-sm font-medium text-foreground">
             Lugar de expedición
           </label>
-          <input id="doc_issue_place" className={inputClass} {...register('doc_issue_place')} />
+          <Input id="doc_issue_place" {...register('doc_issue_place')} />
         </div>
 
         <div className="grid grid-cols-2 gap-3">
@@ -232,15 +231,15 @@ export function CustomerFormDialog({ open, onOpenChange, customer }: { open: boo
             <label htmlFor="phone" className="text-sm font-medium text-foreground">
               Teléfono
             </label>
-            <input id="phone" className={inputClass} aria-invalid={!!errors.phone} {...register('phone')} />
-            {errors.phone && <p className="mt-1 text-sm text-danger">{errors.phone.message}</p>}
+            <Input id="phone" invalid={!!errors.phone} {...register('phone')} />
+            <FieldError fieldId="phone">{errors.phone?.message}</FieldError>
           </div>
           <div>
             <label htmlFor="email" className="text-sm font-medium text-foreground">
               Correo
             </label>
-            <input id="email" type="email" className={inputClass} aria-invalid={!!errors.email} {...register('email')} />
-            {errors.email && <p className="mt-1 text-sm text-danger">{errors.email.message}</p>}
+            <Input id="email" type="email" invalid={!!errors.email} {...register('email')} />
+            <FieldError fieldId="email">{errors.email?.message}</FieldError>
             {savedEmailIsInvalid && !errors.email && (
               <p className="mt-1 text-xs text-warning">El correo guardado no tiene forma de correo. Se puede dejar así, pero conviene corregirlo.</p>
             )}
@@ -311,14 +310,14 @@ export function CustomerFormDialog({ open, onOpenChange, customer }: { open: boo
           <label htmlFor="address" className="text-sm font-medium text-foreground">
             Dirección
           </label>
-          <input id="address" className={inputClass} {...register('address')} />
+          <Input id="address" {...register('address')} />
         </div>
 
         <div>
           <label htmlFor="notes" className="text-sm font-medium text-foreground">
             Notas
           </label>
-          <textarea id="notes" rows={2} className={inputClass} {...register('notes')} />
+          <Textarea id="notes" rows={2} {...register('notes')} />
         </div>
 
         <div>

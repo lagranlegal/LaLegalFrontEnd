@@ -1,6 +1,7 @@
 import type { Ref } from 'react'
 import { MAX_MONEY_DIGITS, maskMoneyInput, parseMoneyInput, parseMoneyText } from '@/lib/money'
 import { cn } from '@/lib/utils'
+import { invalidFieldProps } from '@/components/ui/input'
 
 /**
  * Enmascara con puntos de miles mientras se escribe y emite el string
@@ -35,7 +36,8 @@ export function MoneyInput({
   optional?: boolean
   /** Nombre accesible cuando el `<label>` visible no alcanza a distinguirlo (una fila de varias). */
   ariaLabel?: string
-  /** El campo tiene un error a la vista: `aria-invalid` para el lector de pantalla y borde de peligro (F9-25). */
+  /** El campo tiene un error a la vista: `aria-invalid` para el lector de pantalla y borde de peligro (F9-25); con `id`, además
+   * `aria-describedby` al `<FieldError>` del mismo `id` (issue #4). */
   invalid?: boolean
   /** React 19: `ref` es una prop. Con `field.ref` de un `Controller`, React Hook Form puede llevar el foco al
    *  campo cuando es el primer error (F9-25: el foco saltaba al tercer error porque este no lo recibía). */
@@ -78,7 +80,7 @@ export function MoneyInput({
         ref={ref}
         id={id}
         aria-label={ariaLabel}
-        aria-invalid={invalid || undefined}
+        {...invalidFieldProps(id, invalid)}
         data-focus-ring="none"
         type="text"
         inputMode="numeric"

@@ -341,6 +341,8 @@ Vitest + Testing Library sobre jsdom (`tests/setup.ts` simula `matchMedia`). Las
   con su botón explícito. Va en el `<form>` y no en cada campo porque el eslabón débil es el campo que alguien
   agregue mañana. No toca `<textarea>` ni botones, y un campo que ya decidió qué hace Enter (el buscador agrega el
   artículo) lo resuelve antes.
+- **Un campo nuevo es `Input`/`Textarea` con `FieldError`** (`components/ui/input.tsx`), no otra copia de
+  `inputClass`: el enlace del error con `aria-describedby` y el `label` por `id` salen de ahí (DESIGN_SYSTEM §4.10).
 - Los CTA de dinero muestran el monto dentro del botón (`DESIGN_SYSTEM.md` §4).
 
 ## 13. Tipos desde OpenAPI

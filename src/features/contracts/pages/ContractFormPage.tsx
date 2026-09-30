@@ -13,6 +13,7 @@ import { MoneyInput } from '@/components/shared/MoneyInput'
 import { Money } from '@/components/shared/Money'
 import { CashSessionRequiredDialog } from '@/components/shared/CashSessionRequiredDialog'
 import { Button } from '@/components/ui/button'
+import { FieldError, Input, Textarea } from '@/components/ui/input'
 import { Checkbox } from '@/components/ui/checkbox'
 import { formatDateTime } from '@/lib/dates'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
@@ -63,9 +64,6 @@ const contractSchema = z.object({
 })
 
 type ContractFormValues = z.infer<typeof contractSchema>
-
-const inputClass =
-  'mt-1 w-full rounded-input border border-border bg-background px-3 py-2 text-sm text-foreground outline-none focus:border-primary disabled:bg-muted disabled:text-muted-foreground'
 
 export function ContractFormPage() {
   const navigate = useNavigate()
@@ -256,9 +254,9 @@ export function ContractFormPage() {
                   <label htmlFor="customer_email" className="text-sm font-medium text-foreground">
                     Correo del cliente (opcional)
                   </label>
-                  <input id="customer_email" type="email" inputMode="email" className={inputClass} aria-invalid={!!errors.customer_email} {...register('customer_email')} />
+                  <Input id="customer_email" type="email" inputMode="email" invalid={!!errors.customer_email} {...register('customer_email')} />
                   {errors.customer_email ? (
-                    <p className="mt-1 text-sm text-danger">{errors.customer_email.message}</p>
+                    <FieldError fieldId="customer_email">{errors.customer_email.message}</FieldError>
                   ) : (
                     <p className="mt-1 text-xs text-muted-foreground">
                       Sin correo no recibe avisos de sus cuotas ni de sus abonos. Si lo da, queda guardado en su ficha.
@@ -315,14 +313,14 @@ export function ContractFormPage() {
                 Monto del préstamo
               </label>
               <Controller control={control} name="principal" render={({ field }) => <MoneyInput ref={field.ref} invalid={!!errors.principal} id="principal" className="mt-1" value={field.value} onChange={field.onChange} />} />
-              {errors.principal && <p className="mt-1 text-sm text-danger">{errors.principal.message}</p>}
+              <FieldError fieldId="principal">{errors.principal?.message}</FieldError>
             </div>
             <div>
               <label htmlFor="interest_rate_pct" className="text-sm font-medium text-foreground">
                 Tasa de interés mensual (%)
               </label>
-              <input id="interest_rate_pct" inputMode="decimal" className={inputClass} aria-invalid={!!errors.interest_rate_pct} {...register('interest_rate_pct')} />
-              {errors.interest_rate_pct && <p className="mt-1 text-sm text-danger">{errors.interest_rate_pct.message}</p>}
+              <Input id="interest_rate_pct" inputMode="decimal" invalid={!!errors.interest_rate_pct} {...register('interest_rate_pct')} />
+              <FieldError fieldId="interest_rate_pct">{errors.interest_rate_pct?.message}</FieldError>
             </div>
             <div>
               <label htmlFor="appraisal_value" className="text-sm font-medium text-foreground">
@@ -333,7 +331,7 @@ export function ContractFormPage() {
                 name="appraisal_value"
                 render={({ field }) => <MoneyInput ref={field.ref} invalid={!!errors.appraisal_value} optional id="appraisal_value" className="mt-1" value={field.value ?? ''} onChange={field.onChange} />}
               />
-              {errors.appraisal_value && <p className="mt-1 text-sm text-danger">{errors.appraisal_value.message}</p>}
+              <FieldError fieldId="appraisal_value">{errors.appraisal_value?.message}</FieldError>
               {avaluo.required && !errors.appraisal_value && (
                 <p className="mt-1 text-xs text-muted-foreground">Obligatorio: la categoría presta sobre un porcentaje del avalúo.</p>
               )}
@@ -348,10 +346,9 @@ export function ContractFormPage() {
               <label htmlFor="extension_window_days" className="text-sm font-medium text-foreground">
                 Días para ampliar (opcional)
               </label>
-              <input
+              <Input
                 id="extension_window_days"
                 inputMode="numeric"
-                className={inputClass}
                 placeholder="Política de la empresa"
                 {...register('extension_window_days')}
               />
@@ -410,7 +407,7 @@ export function ContractFormPage() {
               <label htmlFor="extension_months" className="text-sm font-medium text-foreground">
                 Meses de prórroga permitidos
               </label>
-              <input id="extension_months" type="number" min={0} className={inputClass} {...register('extension_months', { valueAsNumber: true })} />
+              <Input id="extension_months" type="number" min={0} {...register('extension_months', { valueAsNumber: true })} />
             </div>
           </div>
         </section>
@@ -421,8 +418,8 @@ export function ContractFormPage() {
           <label htmlFor="notes" className="text-sm font-medium text-foreground">
             Notas (opcional)
           </label>
-          <textarea id="notes" rows={2} className={inputClass} aria-invalid={!!errors.notes} {...register('notes')} />
-          {errors.notes && <p className="mt-1 text-sm text-danger">{errors.notes.message}</p>}
+          <Textarea id="notes" rows={2} invalid={!!errors.notes} {...register('notes')} />
+          <FieldError fieldId="notes">{errors.notes?.message}</FieldError>
         </section>
 
         {formError && <p className="rounded-input bg-danger-soft px-3 py-2 text-sm text-danger">{formError}</p>}

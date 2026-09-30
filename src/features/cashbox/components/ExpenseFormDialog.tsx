@@ -10,6 +10,7 @@ import { MoneyInput } from '@/components/shared/MoneyInput'
 import { PhotoUploader } from '@/components/shared/PhotoUploader'
 import { CashSessionRequiredDialog } from '@/components/shared/CashSessionRequiredDialog'
 import { Button } from '@/components/ui/button'
+import { FieldError, Input, invalidFieldProps } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { applyServerErrors } from '@/lib/forms/applyServerErrors'
 import { ApiError } from '@/lib/api/client'
@@ -33,9 +34,7 @@ const expenseSchema = z.object({
 
 type ExpenseFormValues = z.infer<typeof expenseSchema>
 
-const inputClass = 'mt-1 w-full rounded-input border border-border bg-background px-3 py-2 text-sm text-foreground outline-none focus:border-primary'
-
-function ExpenseCategoryField({ value, onChange }: { value: string; onChange: (categoryId: string) => void }) {
+function ExpenseCategoryField({ value, onChange, invalid }: { value: string; onChange: (categoryId: string) => void; invalid?: boolean }) {
   const { data: categories } = useExpenseCategories()
   const createCategory = useCreateExpenseCategory()
   const [creating, setCreating] = useState(false)
@@ -52,7 +51,7 @@ function ExpenseCategoryField({ value, onChange }: { value: string; onChange: (c
   if (creating) {
     return (
       <div className="mt-1 flex gap-2">
-        <input autoFocus className={inputClass + ' mt-0'} value={newName} onChange={(e) => setNewName(e.target.value)} placeholder="Nombre de la categoría" />
+        <Input id="expense-new-category" aria-label="Nombre de la categoría nueva" autoFocus className="mt-0" value={newName} onChange={(e) => setNewName(e.target.value)} placeholder="Nombre de la categoría" />
         <Button type="button" size="sm" onClick={handleCreate} disabled={createCategory.isPending}>
           Agregar
         </Button>
@@ -71,7 +70,7 @@ function ExpenseCategoryField({ value, onChange }: { value: string; onChange: (c
         else onChange(v)
       }}
     >
-      <SelectTrigger className="mt-1 w-full">
+      <SelectTrigger id="expense-category" className="mt-1 w-full" {...invalidFieldProps('expense-category', invalid)}>
         <SelectValue placeholder="Selecciona…" />
       </SelectTrigger>
       <SelectContent>
@@ -156,16 +155,22 @@ export function ExpenseFormDialog({ open, onOpenChange }: { open: boolean; onOpe
         <form onKeyDown={preventImplicitSubmit} id="expense-form" onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-4" noValidate>
           <CashClosedNotice paymentMethod={selectedMethod} />
           <div>
-            <label className="text-sm font-medium text-foreground">Categoría</label>
-            <Controller control={control} name="category_id" render={({ field }) => <ExpenseCategoryField value={field.value} onChange={field.onChange} />} />
-            {errors.category_id && <p className="mt-1 text-sm text-danger">{errors.category_id.message}</p>}
+            <label htmlFor="expense-category" className="text-sm font-medium text-foreground">
+              Categoría
+            </label>
+            <Controller
+              control={control}
+              name="category_id"
+              render={({ field }) => <ExpenseCategoryField value={field.value} onChange={field.onChange} invalid={!!errors.category_id} />}
+            />
+            <FieldError fieldId="expense-category">{errors.category_id?.message}</FieldError>
           </div>
           <div>
             <label htmlFor="expense-description" className="text-sm font-medium text-foreground">
               Descripción
             </label>
-            <input id="expense-description" className={inputClass} aria-invalid={!!errors.description} {...register('description')} />
-            {errors.description && <p className="mt-1 text-sm text-danger">{errors.description.message}</p>}
+            <Input id="expense-description" invalid={!!errors.description} {...register('description')} />
+            <FieldError fieldId="expense-description">{errors.description?.message}</FieldError>
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
@@ -173,7 +178,7 @@ export function ExpenseFormDialog({ open, onOpenChange }: { open: boolean; onOpe
                 Monto
               </label>
               <Controller control={control} name="amount" render={({ field }) => <MoneyInput ref={field.ref} invalid={!!errors.amount} id="expense-amount" className="mt-1" value={field.value} onChange={field.onChange} autoFocus />} />
-              {errors.amount && <p className="mt-1 text-sm text-danger">{errors.amount.message}</p>}
+              <FieldError fieldId="expense-amount">{errors.amount?.message}</FieldError>
             </div>
             <div>
               <label htmlFor="expense-method" className="text-sm font-medium text-foreground">

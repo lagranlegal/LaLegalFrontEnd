@@ -164,10 +164,19 @@ agrega como prop al compartido, no se clona. **Un solo modal, un solo calendario
     en los dos temas; se comprobó que falla al invertir la regla. Navegable por teclado, `aria-label` en íconos
     solos, objetivos táctiles de 44 px en celular.
     **Foco de un campo**: anillo sólido de 2 px en el token de foco (`--color-ring`), puesto una vez en `globals.css`
-    para todos los `input`/`textarea`/`select` (por sombra, porque las copias de `inputClass` llevan la utilidad que
-    quita el contorno); un campo compuesto marca su contenedor con `data-focus-ring`. **Campo con error**:
-    `aria-invalid` (borde de peligro) y `MoneyInput` con `invalid` y `ref={field.ref}` para que el foco llegue al
-    primer error (F9-25, F9-26). Pendiente: un `Input` compartido que reemplace las 27 copias de `inputClass`.
+    para todos los `input`/`textarea`/`select` (por sombra, porque las copias de `inputClass` que quedan llevan la
+    utilidad que quita el contorno); un campo compuesto marca su contenedor con `data-focus-ring`. **Foco de un
+    control** (botón, select de Radix, pestaña, casilla, día del calendario, fila de tabla): el anillo o contorno en
+    el token de foco **sólido**, nunca con sufijo de opacidad: a media opacidad daba ≈ 2,2:1, bajo el 3:1 de WCAG
+    1.4.11 (issue #4). `tests/token-contrast.test.ts` mide el token contra los tres fondos en los dos temas y falla si
+    reaparece la opacidad. **Campo con error**: `invalid` pone `aria-invalid` (borde de peligro) y
+    `aria-describedby` al mensaje, que va en `FieldError` con el mismo `id`: el lector de pantalla dice «inválido» y
+    por qué. `MoneyInput` hace lo mismo con su `id`, y con `ref={field.ref}` el foco llega al primer error (F9-25,
+    F9-26).
+    **Campo de texto: `Input` / `Textarea` / `FieldError`** (`components/ui/input.tsx`). `id` obligatorio (el que
+    nombra el `label` y enlaza el error). Migrados: nuevo contrato y sus prendas, venta, gasto, cliente e ingreso de
+    inventario. Quedan 21 copias locales de `inputClass` en diálogos de configuración, caja, cuentas y plataforma:
+    se migran al tocarlos, no se agregan nuevas.
 11. **Responsive real**: 360 / 768 / 1024 / 1280. La operación diaria (abonos, ventas, consultar un contrato) tiene
     que servir en un celular de gama media: el mostrador puede ser un celular. Al medir, **el bug es que el
     documento desborde** (`scrollWidth > clientWidth` del `<html>`); un elemento más ancho que la ventana dentro de

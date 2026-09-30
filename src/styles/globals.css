@@ -157,8 +157,12 @@
 }
 
 @layer base {
+  /* El contorno de foco por defecto, en el token SÓLIDO: a media opacidad (lo
+     que traía shadcn) el oro daba ≈ 2,2:1, bajo el 3:1 de WCAG 1.4.11 (issue
+     #4). Lo mismo el anillo de botones, selects, pestañas y casillas en
+     `components/ui`; `tests/token-contrast.test.ts` lo vigila. */
   * {
-    @apply border-border outline-ring/50;
+    @apply border-border outline-ring;
   }
   body {
     @apply bg-background text-foreground;
