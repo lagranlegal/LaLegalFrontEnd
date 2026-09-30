@@ -59,7 +59,7 @@ export interface PaymentContext {
  * paga, total, medio y cuenta. Antes solo decía «1 mes de interés.», y es el
  * último control antes de mover plata.
  */
-export function paymentSummary({
+function paymentSummary({
   context,
   concept,
   total,
