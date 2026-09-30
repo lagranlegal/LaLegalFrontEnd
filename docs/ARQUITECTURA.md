@@ -45,7 +45,11 @@ src/
   types/api.ts    GENERADO por `npm run gen:api` (§13); no se edita
 tests/            Vitest + Testing Library (jsdom); fixtures/ con respuestas reales del backend (§10)
 scripts/          gen-api.mjs
-docs/             este documento, DESIGN_SYSTEM.md y las dos plantillas de correo de Supabase Auth
+docs/             este documento, DESIGN_SYSTEM.md y correo-invitacion.html / correo-recuperacion.html:
+                  la fuente de las plantillas «Invite user» y «Reset password» de Supabase Auth. Se aplican
+                  con un PATCH a la Management API (backend-starter/docs/PRODUCCION.md §1.8.4), nunca con
+                  `supabase config push`; Supabase las cachea unos minutos. Los correos que manda el backend
+                  por Resend copian su molde (app/modules/notifications/templates.py)
 ```
 
 Dentro de una feature: `api.ts` (hooks de Query y mutaciones, query keys, invalidaciones) → `components/` →

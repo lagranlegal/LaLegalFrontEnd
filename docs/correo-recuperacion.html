@@ -21,8 +21,8 @@
   cuatro caminos de alta y rescate de usuarios funcionan con "Generar enlace"
   pasado por WhatsApp (`identity/auth_admin.py::invite_user`, `send_email=False`).
   **El único camino que sí necesita correo es "¿Olvidaste tu contraseña?"**
-  del login (`src/features/auth/pages/LoginPage.tsx:133` →
-  `useRequestPasswordReset` en `src/features/auth/api.ts:140`). No hay
+  del login (`LoginPage.tsx` →
+  `useRequestPasswordReset` en `src/features/auth/api.ts`). No hay
   endpoint para que un admin le cambie la contraseña a alguien: si este
   correo no llega, la persona queda fuera de su propia cuenta.
 
@@ -45,11 +45,11 @@
   crawler quemaba el token al instante para armar la tarjetita de la previa, y
   la persona llegaba **sin sesión**, veía el formulario igual y al guardar
   recibía un error genérico que la mandaba a reintentar algo imposible.
-  Diagnóstico completo en `../../RUNBOOK_USUARIOS.md` §1.
+  Diagnóstico completo en `backend-starter/docs/OPERACION.md` §6.
 
   La salida es apuntar a la app y canjear con `verifyOtp`, que es un **POST**:
   un crawler que haga GET solo se baja el HTML de la SPA. El patrón, verificado
-  contra `src/features/auth/pages/AuthCallbackPage.tsx:81-82` (acepta
+  contra `src/features/auth/pages/AuthCallbackPage.tsx` (acepta
   `type === 'invite' || type === 'recovery'`) y contra el que arma el backend
   en `identity/auth_admin.py:140` (`_app_link`), es:
 
@@ -66,11 +66,12 @@
   día que exista prod, ese proyecto tendrá la suya. Si la Site URL quedara
   apuntando a otra parte, el enlace del correo llevaría al ambiente equivocado
   **sin dar ningún error**. Se cambia con un `PATCH` a la Management API,
-  **nunca** con `supabase config push` (ver `DEPLOY.md`).
+  **nunca** con `supabase config push` (ver `backend-starter/docs/OPERACION.md`
+  §4.2 y `PRODUCCION.md` §1.8).
 
   POR QUÉ `{{ .SiteURL }}` Y NO `{{ .RedirectTo }}`
   `resetPasswordForEmail` manda `redirectTo: ${window.location.origin}/auth/callback`
-  (`src/features/auth/api.ts:143-144`), así que `{{ .RedirectTo }}` traería el
+  (`useRequestPasswordReset` en `src/features/auth/api.ts`), así que `{{ .RedirectTo }}` traería el
   origen desde el que la persona pidió el cambio. Se descarta por dos razones:
   ese origen puede ser un preview de Vercel (el enlace llevaría a un ambiente
   que mañana no existe), y si la URL no está en la lista de Redirect URLs
@@ -97,7 +98,7 @@
      destinatario solo puede elegir entre asustarse y tocar el botón; con él
      sabe que ignorarlo es seguro (la contraseña no cambia sola) y qué hacer si
      se repite: cambiarla desde "Mi perfil → Cambiar contraseña"
-     (`src/features/settings/pages/ProfilePage.tsx:169`) y avisarle al
+     (`src/features/settings/pages/ProfilePage.tsx`) y avisarle al
      administrador.
   5. **Dice que el enlace sirve una sola vez y que no se reenvíe.** En la
      invitación el reenvío lo hace el admin; acá lo haría la propia persona

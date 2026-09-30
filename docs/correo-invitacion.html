@@ -28,7 +28,7 @@
 
   La salida es apuntar a la app y canjear con `verifyOtp`, que es un **POST**:
   un crawler que haga GET solo se baja el HTML de la SPA. El patrón, verificado
-  contra `src/features/auth/pages/AuthCallbackPage.tsx:73-82` y contra el que
+  contra `src/features/auth/pages/AuthCallbackPage.tsx` y contra el que
   arma el backend en `identity/auth_admin.py:140`, es:
 
       {{ .SiteURL }}/auth/callback?token_hash={{ .TokenHash }}&type=invite
