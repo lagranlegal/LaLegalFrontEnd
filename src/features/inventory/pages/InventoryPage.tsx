@@ -75,7 +75,9 @@ function FilterSelect({
 }) {
   return (
     <Select value={value || '__all__'} onValueChange={(v) => onChange(v === '__all__' ? '' : v)} disabled={disabled}>
-      <SelectTrigger className="w-auto min-w-44">
+      {/* Un combobox no toma el nombre de su contenido: sin esto se anunciaba
+          sin nombre (F9-39). «Toda categoría» → «Filtrar por categoría». */}
+      <SelectTrigger className="w-auto min-w-44" aria-label={placeholder.replace(/^Tod[oa] /, 'Filtrar por ')}>
         {/* Radix solo resuelve el texto de SelectValue desde un SelectItem ya
             montado — con un valor puesto por código el trigger se vería vacío
             sin esto (mismo hallazgo que en ItemEditDialog). */}
@@ -185,7 +187,7 @@ function ProductsTab() {
 
   return (
     <div className="flex flex-col gap-4">
-      <SearchInput value={q} onChange={setQ} placeholder="Buscar producto por código o nombre…" />
+      <SearchInput ariaLabel="Buscar productos" value={q} onChange={setQ} placeholder="Buscar producto por código o nombre…" />
 
       {/* La pestaña principal del inventario no tenía más filtro que el texto,
           así que "¿qué tengo de joyería en oro?" o "¿qué puedo vender hoy?"
@@ -390,7 +392,7 @@ function ItemsTab() {
     <div className="flex flex-col gap-4">
       {/* Buscar por código es la operación de mostrador: el vendedor lee la
           etiqueta de la vitrina. Va primero y ocupa el ancho. */}
-      <SearchInput value={q} onChange={setQ} placeholder="Buscar por código o nombre…" />
+      <SearchInput ariaLabel="Buscar artículos" value={q} onChange={setQ} placeholder="Buscar por código o nombre…" />
 
       <div className="flex flex-wrap items-center gap-2">
         {ITEM_STATUS_TABS.map((tab) => (
@@ -546,7 +548,7 @@ function EntriesTab() {
 
   return (
     <div className="flex flex-col gap-4">
-      <SearchInput value={q} onChange={setQ} placeholder="Buscar por número de ingreso o factura del proveedor…" />
+      <SearchInput ariaLabel="Buscar ingresos" value={q} onChange={setQ} placeholder="Buscar por número de ingreso o factura del proveedor…" />
 
       {/* "¿Qué compras tengo por pagar?" no tenía respuesta en la app aunque
           el dato estuviera en cada fila: había que abrir los ingresos uno por

@@ -115,7 +115,7 @@ export function LoginPage() {
         </div>
 
         {login.isError && (
-          <p className="rounded-input bg-danger-soft px-3 py-2 text-sm text-danger">Correo o contraseña incorrectos.</p>
+          <p role="alert" className="rounded-input bg-danger-soft px-3 py-2 text-sm text-danger">Correo o contraseña incorrectos.</p>
         )}
 
         {/* Mismo mensaje exista o no la cuenta: confirmar cuáles correos están

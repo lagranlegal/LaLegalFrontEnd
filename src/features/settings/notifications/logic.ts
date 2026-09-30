@@ -270,7 +270,7 @@ export function groupEvents(events: NotificationEventSetting[]): EventGroup[] {
         // desde las fases 4 y 6. Lo que sigue sin disparo son los recordatorios.
         'Le llegan solo al cliente que tiene correo, tiene base legal (un contrato vivo, o la autorización marcada en su ficha) y no se dio de baja; ' +
         'a los demás se les registra sin mandar nada. Los comprobantes (contrato, abono, paz y salvo, ampliación, nota crédito, venta, anulación) ya se envían; ' +
-        'los recordatorios de cuota, mora y prórroga (R1–R4) todavía no.',
+        'los recordatorios de cuota, mora y prórroga todavía no.',
       events: events.filter((e) => e.audience === 'customer'),
     },
   ].filter((g) => g.events.length > 0) as EventGroup[]

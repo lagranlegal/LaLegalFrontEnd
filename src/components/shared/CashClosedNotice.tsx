@@ -21,11 +21,25 @@ import { Button } from '@/components/ui/button'
  * Solo afirma "cerrada" cuando lo sabe: cargando, sin `cashbox.view` o con la
  * consulta en error, no muestra nada (DESIGN_SYSTEM §4, regla 8).
  */
-export function CashClosedNotice({ paymentMethod, className }: { paymentMethod: string | null | undefined; className?: string }) {
+export function CashClosedNotice({
+  paymentMethod,
+  className,
+  anyMethod = false,
+}: {
+  paymentMethod: string | null | undefined
+  className?: string
+  /**
+   * La operación exige la caja abierta con CUALQUIER medio. Hoy es el gasto:
+   * el backend pide el turno abierto aunque se pague por transferencia
+   * (`cashbox/service.py::create_expense`), y el aviso de siempre prometía
+   * lo contrario.
+   */
+  anyMethod?: boolean
+}) {
   const { data: session, isPending, error } = useCashboxCurrent()
   const [openDialog, setOpenDialog] = useState(false)
 
-  if (paymentMethod !== 'cash' || isPending || error || session !== null) return null
+  if ((!anyMethod && paymentMethod !== 'cash') || isPending || error || session !== null) return null
 
   return (
     <>
@@ -42,7 +56,11 @@ export function CashClosedNotice({ paymentMethod, className }: { paymentMethod: 
           </Can>
         }
       >
-        <p>Para registrar esta operación en efectivo hay que abrir la caja primero. Por transferencia u otro medio sí se puede sin abrirla.</p>
+        {anyMethod ? (
+          <p>Para registrar un gasto hay que abrir la caja primero, también por transferencia u otro medio.</p>
+        ) : (
+          <p>Para registrar esta operación en efectivo hay que abrir la caja primero. Por transferencia u otro medio sí se puede sin abrirla.</p>
+        )}
       </Callout>
       <OpenSessionDialog open={openDialog} onOpenChange={setOpenDialog} />
     </>

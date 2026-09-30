@@ -58,14 +58,18 @@ export function CashSessionBanner() {
             : 'flex h-9 items-center justify-center gap-1.5 bg-success-soft px-4 text-sm text-success'
         }
       >
-        <span>Caja abierta</span>
+        {/* Un solo texto cuando es de otro día: con «Caja abierta» y «desde…»
+            en dos elementos, el hueco entre ellos se leía como doble espacio. */}
         {deOtroDia ? (
           <span>
-            desde el {formatDate(session.session_date)} a las {formatTime(session.opened_at)} — ciérrala
+            Caja abierta desde el {formatDate(session.session_date)} a las {formatTime(session.opened_at)} — ciérrala
             para empezar el turno de hoy
           </span>
         ) : (
-          <span className="text-success/70">· desde las {formatTime(session.opened_at)}</span>
+          <>
+            <span>Caja abierta</span>
+            <span className="text-success/70">· desde las {formatTime(session.opened_at)}</span>
+          </>
         )}
       </div>
     )

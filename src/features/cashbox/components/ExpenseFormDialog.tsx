@@ -153,7 +153,7 @@ export function ExpenseFormDialog({ open, onOpenChange }: { open: boolean; onOpe
         }
       >
         <form onKeyDown={preventImplicitSubmit} id="expense-form" onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-4" noValidate>
-          <CashClosedNotice paymentMethod={selectedMethod} />
+          <CashClosedNotice paymentMethod={selectedMethod} anyMethod />
           <div>
             <label htmlFor="expense-category" className="text-sm font-medium text-foreground">
               Categoría

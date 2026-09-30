@@ -109,7 +109,7 @@ export function ContractsListPage() {
         }
       />
 
-      <SearchInput value={q} onChange={setQ} placeholder="Buscar por número o código anterior…" className="max-w-sm" />
+      <SearchInput ariaLabel="Buscar contratos" value={q} onChange={setQ} placeholder="Buscar por número o código anterior…" className="max-w-sm" />
 
       {/* Las pestañas se ocultan al buscar porque el buscador cruza TODOS los
           estados: dejarlas visibles sugeriría que el resultado está acotado a
