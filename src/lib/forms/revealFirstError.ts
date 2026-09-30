@@ -17,13 +17,25 @@ import type { FieldErrors } from 'react-hook-form'
  * el cliente ni siquiera vive en el schema (es estado aparte), así que RHF no
  * sabe que existe.
  *
+ * Y es el ÚNICO que mueve el foco: los formularios que lo usan crean
+ * `useForm` con `shouldFocusError: false`. React Hook Form enfoca su propio
+ * primer error DESPUÉS de `onInvalid` y pisaba esta elección: en «Nuevo
+ * contrato» vacío el foco caía en la tasa y no en el cliente (issue #5).
+ *
  * Se elige el que esté MÁS ARRIBA en el documento, no el primero de la lista:
  * así da igual en qué orden vengan los errores de RHF y se pueden mezclar con
  * los de estado propio (el cliente) sin pensarlo dos veces.
  */
 export function revealFirstError(names: string[]): boolean {
   const elementos = names
-    .map((name) => document.getElementById(name) ?? document.querySelector<HTMLElement>(`[name="${name}"]`))
+    .map(
+      (name) =>
+        document.getElementById(name) ??
+        document.querySelector<HTMLElement>(`[name="${name}"]`) ??
+        // Un select de Radix es un botón sin `name`: se marca con el campo
+        // que controla (`data-field`), que es como RHF nombra el error.
+        document.querySelector<HTMLElement>(`[data-field="${name}"]`),
+    )
     .filter((el): el is HTMLElement => el !== null)
   if (elementos.length === 0) return false
 

@@ -334,7 +334,11 @@ Vitest + Testing Library sobre jsdom (`tests/setup.ts` simula `matchMedia`). Las
   de pintar un campo y nadie actualiza la lista, el error sale duplicado en el banner, nunca desaparece. Traduce el
   `msg` de Pydantic por `type`, que es estable (`decimal_parsing` → "Escribe un número…").
 - **`revealFirstError`** lleva a la vista el error que impide enviar (el más arriba en el documento): con el
-  botón al final de un formulario largo, el único mensaje quedaba 800 px arriba y "el botón no hacía nada".
+  botón al final de un formulario largo, el único mensaje quedaba 800 px arriba y "el botón no hacía nada". Es
+  **el único que mueve el foco**: el formulario que lo usa crea `useForm` con `shouldFocusError: false`, porque
+  React Hook Form enfoca su propio primer error después de `onInvalid` y lo pisaba (issue #5: «Nuevo contrato»
+  vacío enfocaba la tasa y no el cliente). Encuentra el campo por `id`, por `name` o, en un select de Radix (un
+  botón sin `name`), por `data-field` con el nombre del campo de RHF; al trigger se le pasa además `field.ref`.
 - **`preventImplicitSubmit` en el `<form>` de todo formulario de dinero: Enter no registra plata.** HTML envía el
   formulario con Enter en cualquier input; en el punto de venta, buscar un código y pulsar Enter cobró el carrito
   armado (y un lector de código de barras manda Enter tras cada lectura). Una operación de dinero se registra solo

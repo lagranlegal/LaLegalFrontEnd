@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Search } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { invalidFieldProps } from '@/components/ui/input'
 
 /** Búsqueda con debounce (300ms) conectada a `?q=` de la API (docs/DESIGN_SYSTEM.md §3). */
 export function SearchInput({
@@ -10,6 +11,8 @@ export function SearchInput({
   className,
   id,
   onEnter,
+  ariaLabel,
+  invalid,
 }: {
   value: string
   onChange: (value: string) => void
@@ -23,6 +26,10 @@ export function SearchInput({
    * el mismo instante).
    */
   onEnter?: (term: string) => void
+  /** Nombre accesible. Sin él, el placeholder (que el lector no siempre anuncia) era lo único que lo nombraba (F9-15). */
+  ariaLabel?: string
+  /** Falta llenarlo: `aria-invalid` y, con `id`, `aria-describedby` a su `FieldError` (issue #5). */
+  invalid?: boolean
 }) {
   const [draft, setDraft] = useState(value)
   // Ajusta `draft` durante el render si `value` cambió por fuera (ej. un
@@ -47,6 +54,8 @@ export function SearchInput({
       <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
       <input
         id={id}
+        aria-label={ariaLabel ?? placeholder}
+        {...invalidFieldProps(id, invalid)}
         type="search"
         value={draft}
         onChange={(e) => setDraft(e.target.value)}

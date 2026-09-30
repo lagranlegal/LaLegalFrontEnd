@@ -10,6 +10,7 @@ import { AppDialog } from '@/components/shared/AppDialog'
 import { MoneyInput } from '@/components/shared/MoneyInput'
 import { DatePicker } from '@/components/shared/DatePicker'
 import { Button } from '@/components/ui/button'
+import { FieldError } from '@/components/ui/input'
 import { useCategories } from '@/lib/catalogs/categories'
 import { normalizeDecimalInput } from '@/lib/money'
 import { applyServerErrors } from '@/lib/forms/applyServerErrors'
@@ -75,6 +76,9 @@ export function ContractImportPage() {
     formState: { errors, isDirty },
   } = useForm<ImportFormValues>({
     resolver: zodResolver(importSchema),
+    // El foco lo lleva `revealFirstError` al error más arriba; el de RHF
+    // llegaba después y lo pisaba (issue #5).
+    shouldFocusError: false,
     defaultValues: {
       legacy_code: '',
       principal: '0.00',
@@ -185,13 +189,16 @@ export function ContractImportPage() {
           </div>
           <CustomerPicker
             id="customer-picker"
+            invalid={!!customerError}
             value={customer}
             onChange={(next) => {
               setCustomer(next)
               if (next) setCustomerError(null)
             }}
           />
-          {customerError && <p className="text-sm text-danger">{customerError}</p>}
+          <FieldError fieldId="customer-picker" className="mt-0">
+            {customerError}
+          </FieldError>
         </section>
 
         <section className="flex flex-col gap-4 rounded-card border border-border bg-card p-card shadow-card">

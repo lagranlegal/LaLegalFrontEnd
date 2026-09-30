@@ -60,7 +60,9 @@ export function ContractItemsFields<TFieldValues extends FieldValues & { items: 
                   render={({ field: categoryField }) => (
                     <Select value={categoryField.value} onValueChange={categoryField.onChange}>
                       <SelectTrigger
+                        ref={categoryField.ref}
                         id={`item-${index}-category`}
+                        data-field={categoryField.name}
                         className="mt-1 w-full"
                         {...invalidFieldProps(`item-${index}-category`, !!itemErrors?.[index]?.category_id)}
                       >

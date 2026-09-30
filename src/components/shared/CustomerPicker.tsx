@@ -10,7 +10,20 @@ import { MIN_SEARCH_CHARS, hasEnoughToSearch } from '@/lib/search'
  * otra pantalla) — dropdown simple sobre `SearchInput` + `useCustomerSearch`
  * (8 resultados, no es un listado paginado).
  */
-export function CustomerPicker({ value, onChange, placeholder = 'Buscar cliente por nombre o documento…', id }: { value: Customer | null; onChange: (customer: Customer | null) => void; placeholder?: string; id?: string }) {
+export function CustomerPicker({
+  value,
+  onChange,
+  placeholder = 'Buscar cliente por nombre o documento…',
+  id,
+  invalid,
+}: {
+  value: Customer | null
+  onChange: (customer: Customer | null) => void
+  placeholder?: string
+  id?: string
+  /** Falta elegirlo (contratos): se anuncia y enlaza el mensaje, como cualquier campo con error. */
+  invalid?: boolean
+}) {
   const [q, setQ] = useState('')
   const { data, isFetching } = useCustomerSearch(q)
 
@@ -32,7 +45,7 @@ export function CustomerPicker({ value, onChange, placeholder = 'Buscar cliente 
 
   return (
     <div className="relative">
-      <SearchInput id={id} value={q} onChange={setQ} placeholder={placeholder} />
+      <SearchInput id={id} ariaLabel="Buscar cliente" invalid={invalid} value={q} onChange={setQ} placeholder={placeholder} />
       {q.trim() && (
         <div className="absolute z-10 mt-1 w-full overflow-hidden rounded-input border border-border bg-card shadow-card">
           {/* "Sin resultados" con una letra se lee como "ese cliente no

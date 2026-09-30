@@ -21,7 +21,7 @@ import { PhotoUploader } from '@/components/shared/PhotoUploader'
 import { Money } from '@/components/shared/Money'
 import { CashSessionRequiredDialog } from '@/components/shared/CashSessionRequiredDialog'
 import { Button } from '@/components/ui/button'
-import { FieldError, Input, Textarea } from '@/components/ui/input'
+import { FieldError, Input, Textarea, invalidFieldProps } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { ApiError } from '@/lib/api/client'
 import { useCategories } from '@/lib/catalogs/categories'
@@ -279,6 +279,9 @@ export function EntryFormPage() {
     formState: { errors, isDirty },
   } = useForm<EntryFormValues>({
     resolver: zodResolver(entrySchema),
+    // El foco lo lleva `revealFirstError` al error más arriba; el de RHF
+    // llegaba después y lo pisaba (issue #5).
+    shouldFocusError: false,
     defaultValues: {
       origin_type: 'purchase',
       supplier_id: '',
@@ -442,7 +445,7 @@ export function EntryFormPage() {
                 name="supplier_id"
                 render={({ field }) => (
                   <Select value={field.value || '__none__'} onValueChange={(v) => field.onChange(v === '__none__' ? '' : v)}>
-                    <SelectTrigger id="supplier_id" className="mt-1 w-full">
+                    <SelectTrigger ref={field.ref} id="supplier_id" data-field={field.name} className="mt-1 w-full" {...invalidFieldProps('supplier_id', !!errors.supplier_id)}>
                       <SelectValue placeholder="Sin proveedor" />
                     </SelectTrigger>
                     <SelectContent>
@@ -636,7 +639,9 @@ export function EntryFormPage() {
                       <FieldError fieldId={`line-${index}-name`}>{errors.lines?.[index]?.name?.message}</FieldError>
                     </div>
                     <div>
-                      <label className="text-sm font-medium text-foreground">Categoría</label>
+                      <label htmlFor={`line-${index}-cat1`} className="text-sm font-medium text-foreground">
+                        Categoría
+                      </label>
                       <Controller
                         control={control}
                         name={`lines.${index}.cat1_id`}
@@ -649,7 +654,13 @@ export function EntryFormPage() {
                               setValue(`lines.${index}.cat3_id`, '')
                             }}
                           >
-                            <SelectTrigger className="mt-1 w-full">
+                            <SelectTrigger
+                              ref={cat1Field.ref}
+                              id={`line-${index}-cat1`}
+                              data-field={cat1Field.name}
+                              className="mt-1 w-full"
+                              {...invalidFieldProps(`line-${index}-cat1`, !!errors.lines?.[index]?.cat1_id)}
+                            >
                               <SelectValue placeholder="Selecciona…" />
                             </SelectTrigger>
                             <SelectContent>
@@ -662,10 +673,12 @@ export function EntryFormPage() {
                           </Select>
                         )}
                       />
-                      {errors.lines?.[index]?.cat1_id && <p className="mt-1 text-sm text-danger">{errors.lines[index]?.cat1_id?.message}</p>}
+                      <FieldError fieldId={`line-${index}-cat1`}>{errors.lines?.[index]?.cat1_id?.message}</FieldError>
                     </div>
                     <div>
-                      <label className="text-sm font-medium text-foreground">Subcategoría</label>
+                      <label htmlFor={`line-${index}-cat2`} className="text-sm font-medium text-foreground">
+                        Subcategoría
+                      </label>
                       <Controller
                         control={control}
                         name={`lines.${index}.cat2_id`}
@@ -678,7 +691,13 @@ export function EntryFormPage() {
                             }}
                             disabled={!cat1}
                           >
-                            <SelectTrigger className="mt-1 w-full">
+                            <SelectTrigger
+                              ref={cat2Field.ref}
+                              id={`line-${index}-cat2`}
+                              data-field={cat2Field.name}
+                              className="mt-1 w-full"
+                              {...invalidFieldProps(`line-${index}-cat2`, !!errors.lines?.[index]?.cat2_id)}
+                            >
                               <SelectValue placeholder={cat1 ? 'Selecciona…' : 'Elige categoría primero'} />
                             </SelectTrigger>
                             <SelectContent>
@@ -691,16 +710,24 @@ export function EntryFormPage() {
                           </Select>
                         )}
                       />
-                      {errors.lines?.[index]?.cat2_id && <p className="mt-1 text-sm text-danger">{errors.lines[index]?.cat2_id?.message}</p>}
+                      <FieldError fieldId={`line-${index}-cat2`}>{errors.lines?.[index]?.cat2_id?.message}</FieldError>
                     </div>
                     <div>
-                      <label className="text-sm font-medium text-foreground">Categoría final</label>
+                      <label htmlFor={`line-${index}-cat3`} className="text-sm font-medium text-foreground">
+                        Categoría final
+                      </label>
                       <Controller
                         control={control}
                         name={`lines.${index}.cat3_id`}
                         render={({ field: cat3Field }) => (
                           <Select value={cat3Field.value} onValueChange={cat3Field.onChange} disabled={!cat2}>
-                            <SelectTrigger className="mt-1 w-full">
+                            <SelectTrigger
+                              ref={cat3Field.ref}
+                              id={`line-${index}-cat3`}
+                              data-field={cat3Field.name}
+                              className="mt-1 w-full"
+                              {...invalidFieldProps(`line-${index}-cat3`, !!errors.lines?.[index]?.cat3_id)}
+                            >
                               <SelectValue placeholder={cat2 ? 'Selecciona…' : 'Elige subcategoría primero'} />
                             </SelectTrigger>
                             <SelectContent>
@@ -713,7 +740,7 @@ export function EntryFormPage() {
                           </Select>
                         )}
                       />
-                      {errors.lines?.[index]?.cat3_id && <p className="mt-1 text-sm text-danger">{errors.lines[index]?.cat3_id?.message}</p>}
+                      <FieldError fieldId={`line-${index}-cat3`}>{errors.lines?.[index]?.cat3_id?.message}</FieldError>
                     </div>
                     <div>
                       <label htmlFor={`line-${index}-cost`} className="text-sm font-medium text-foreground">

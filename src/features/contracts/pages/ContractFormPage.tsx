@@ -87,6 +87,9 @@ export function ContractFormPage() {
     formState: { errors, isDirty },
   } = useForm<ContractFormValues>({
     resolver: zodResolver(contractSchema),
+    // El foco lo lleva `revealFirstError` al error más arriba; el de RHF
+    // llegaba después y lo pisaba (issue #5).
+    shouldFocusError: false,
     defaultValues: {
       principal: '0.00',
       interest_rate_pct: '',
@@ -223,6 +226,7 @@ export function ContractFormPage() {
           <h2 className="text-sm font-medium text-foreground">Cliente</h2>
           <CustomerPicker
             id="customer-picker"
+            invalid={!!customerError}
             value={customer}
             onChange={(next) => {
               setCustomer(next)
@@ -233,7 +237,9 @@ export function ContractFormPage() {
               if (next) setCustomerError(null)
             }}
           />
-          {customerError && <p className="text-sm text-danger">{customerError}</p>}
+          <FieldError fieldId="customer-picker" className="mt-0">
+            {customerError}
+          </FieldError>
 
           {/* backend-starter/docs/DOMINIO.md §9.2: la autorización EXPRESA se pregunta donde
               se firma el contrato, en una casilla aparte y con su texto. Nunca
