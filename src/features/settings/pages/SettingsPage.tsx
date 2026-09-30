@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { cloneElement, isValidElement, useId, useState } from 'react'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { Controller, useForm } from 'react-hook-form'
 import { z } from 'zod'
@@ -32,6 +32,14 @@ type SettingsFormValues = z.infer<typeof settingsSchema>
 const inputClass =
   'mt-1 w-full rounded-input border border-border bg-background px-3 py-2 text-sm text-foreground outline-none focus:border-primary'
 
+/**
+ * Label arriba, ayuda o error abajo. Si el hijo es un campo nativo (input,
+ * textarea, select), el label queda ASOCIADO por `id` (F9-54: los 9 campos de
+ * Configuración no tenían: tocar la etiqueta no enfocaba el campo y el lector
+ * de pantalla no los nombraba) y el campo lleva `aria-invalid` y
+ * `aria-describedby` al mensaje. Un hijo compuesto (el cargador de fotos)
+ * queda con el label como título, sin asociación.
+ */
 function Field({
   label,
   hint,
@@ -43,12 +51,32 @@ function Field({
   error?: string
   children: React.ReactNode
 }) {
+  const id = useId()
+  const messageId = `${id}-msg`
+  const native = isValidElement<Record<string, unknown>>(children) && typeof children.type === 'string'
+  const control = native
+    ? cloneElement(children, {
+        id,
+        'aria-invalid': error ? true : undefined,
+        'aria-describedby': hint || error ? messageId : undefined,
+      })
+    : children
   return (
     <div>
-      <label className="text-sm font-medium text-foreground">{label}</label>
-      {children}
-      {hint && !error && <p className="mt-1 text-xs text-muted-foreground">{hint}</p>}
-      {error && <p className="mt-1 text-sm text-danger">{error}</p>}
+      <label htmlFor={native ? id : undefined} className="text-sm font-medium text-foreground">
+        {label}
+      </label>
+      {control}
+      {hint && !error && (
+        <p id={messageId} className="mt-1 text-xs text-muted-foreground">
+          {hint}
+        </p>
+      )}
+      {error && (
+        <p id={messageId} className="mt-1 text-sm text-danger">
+          {error}
+        </p>
+      )}
     </div>
   )
 }
