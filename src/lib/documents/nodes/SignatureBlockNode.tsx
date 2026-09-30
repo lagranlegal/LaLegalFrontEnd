@@ -10,7 +10,7 @@ export interface SignatureBlockOptions {
 /**
  * Bloque atómico, variante `cliente`/`empresa`. En edición, placeholder. En
  * impresión: `cliente` siempre es la línea en blanco (fase 1, sin firma en
- * pantalla — CONTEXTO.md); `empresa` reusa la lógica que ya vivía en
+ * pantalla — backend-starter/docs/DOMINIO.md §13); `empresa` reusa la lógica que ya vivía en
  * `ContractPrintView` — imagen si hay firma cargada en /configuracion, si
  * no, línea en blanco igual (el documento nunca queda peor que antes de que
  * existiera esa función). Los dos usan `PrintSignature`, así que la firma se

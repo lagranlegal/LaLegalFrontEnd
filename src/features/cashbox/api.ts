@@ -19,7 +19,7 @@ export type ExpenseCreateIn = components['schemas']['ExpenseCreateIn']
 
 /**
  * `CASH_SESSION_NOT_OPEN` acá no es un error de UI — es el estado normal
- * "no hay caja abierta hoy" (docs/ARCHITECTURE.md §6). Se normaliza a
+ * "no hay caja abierta hoy" (docs/ARQUITECTURA.md §6). Se normaliza a
  * `null` para que `CashSessionBanner` lo trate como dato, no como falla.
  */
 export function cashboxCurrentQueryOptions() {
@@ -106,7 +106,7 @@ export function useOpenSession() {
       // cerró en otra pestaña, o el día cambió). Refrescar es lo que hace
       // que el banner global y el botón "Abrir caja" se corrijan solos en
       // vez de seguir ofreciendo una acción imposible
-      // (docs/ARCHITECTURE.md §6).
+      // (docs/ARQUITECTURA.md §6).
       if (
         error instanceof ApiError &&
         (error.code === 'CASH_SESSION_ALREADY_OPEN' || error.code === 'CASH_SESSION_ALREADY_CLOSED_TODAY')
@@ -119,7 +119,7 @@ export function useOpenSession() {
 
 /**
  * La sesión de HOY, abierta o ya cerrada — para ofrecer "Reabrir" (ciclo
- * diario único, docs/ARCHITECTURE.md §6).
+ * diario único, docs/ARQUITECTURA.md §6).
  *
  * **Historia de dos rodeos, por si alguien piensa en volver atrás:**
  *
@@ -152,7 +152,7 @@ export function useTodaySession() {
   })
 }
 
-/** Vista previa del cierre (docs/ARCHITECTURE.md, CLAUDE.md paso 6): desglose módulo×concepto×medio + `expected_cash`, ANTES de confirmar. */
+/** Vista previa del cierre (docs/ARQUITECTURA.md §14): desglose módulo×concepto×medio + `expected_cash`, ANTES de confirmar. */
 export function useSessionReport(sessionId: string | undefined) {
   return useQuery({
     queryKey: ['cashbox', 'session', sessionId, 'report'] as const,

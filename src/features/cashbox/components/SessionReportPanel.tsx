@@ -3,7 +3,7 @@ import { PAYMENT_METHOD_LABELS } from '@/lib/paymentMethods'
 import { MODULE_LABELS, movementLabel } from '@/lib/modules'
 import type { SessionReport } from '@/features/cashbox/api'
 
-/** Desglose módulo×concepto×medio de una sesión (CLAUDE.md paso 6) — usado en la vista previa antes de cerrar y en el acta de un cierre ya hecho. */
+/** Desglose módulo×concepto×medio de una sesión (paso 6 del plan de construcción original) — usado en la vista previa antes de cerrar y en el acta de un cierre ya hecho. */
 export function SessionReportPanel({ report }: { report: SessionReport }) {
   return (
     <div className="flex flex-col gap-3">

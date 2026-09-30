@@ -114,8 +114,7 @@ const subscriptionBlockedRoute = createRoute({
 
 // ---- /baja/$token — el enlace «Darse de baja» de los correos al cliente ----
 //
-// PÚBLICA y sin gate de permiso, a propósito (NOTIFICACIONES.md §17 del
-// backend): quien llega es un cliente de la compraventa, no un usuario de
+// PÚBLICA y sin gate de permiso, a propósito (backend-starter/docs/DOMINIO.md §9.2): quien llega es un cliente de la compraventa, no un usuario de
 // Prendo. La autoriza el token firmado, que valida el backend. Fuera de
 // `/auth` porque no tiene nada que ver con una sesión, y sin `beforeLoad`:
 // abrirla no puede hacer NADA más que leer (los escáneres abren los enlaces).
@@ -261,7 +260,7 @@ const contractNewRoute = createRoute({
 })
 
 // Guard por permiso (no solo ocultar el botón) — primera ruta que lo necesita
-// (docs/ARCHITECTURE.md §5, paso 5b): `contracts.import` es Admin-only de
+// (docs/ARQUITECTURA.md §5, paso 5b): `contracts.import` es Admin-only de
 // fábrica, a diferencia del resto de contratos que cualquier operador ve.
 // `/me` ya está en cache acá (lo aseguró `appLayoutRoute.beforeLoad` arriba
 // en la cadena) — lectura síncrona, sin otro fetch.
@@ -409,7 +408,7 @@ const identityRoute = createRoute({
 })
 
 // Guard por permiso, mismo patrón que `identityRoute` — `audit.view` es el
-// único código confirmado que gatea esta pantalla (docs/ARCHITECTURE.md §5).
+// único código confirmado que gatea esta pantalla (docs/ARQUITECTURA.md §5).
 const auditRoute = createRoute({
   getParentRoute: () => appLayoutRoute,
   path: '/auditoria',
@@ -510,7 +509,7 @@ const capitalRoute = createRoute({
   },
 })
 
-// `GET /reports/closings` (docs/ARCHITECTURE.md §5) — mismo patrón que `auditRoute`.
+// `GET /reports/closings` (docs/ARQUITECTURA.md §5) — mismo patrón que `auditRoute`.
 const reportesRoute = createRoute({
   getParentRoute: () => appLayoutRoute,
   path: '/reportes',
@@ -523,11 +522,11 @@ const reportesRoute = createRoute({
   },
 })
 
-// ---- /platform/* — layout PROPIO, NUNCA AppShell (CLAUDE.md paso 10) ----
+// ---- /platform/* — layout PROPIO, NUNCA AppShell (paso 10 del plan de construcción original) ----
 // No pasa por `/me` en absoluto: un super-admin de plataforma no
 // necesariamente pertenece a la empresa que está operando. Autorización por
 // el claim `app_metadata.platform_role` del JWT, no por `/me.permissions`
-// (docs/ARCHITECTURE.md §4: "el front los decodifica SOLO para routing
+// (docs/ARQUITECTURA.md §4: "el front los decodifica SOLO para routing
 // básico... no infiere permisos ni datos de empresa de los claims").
 
 const platformLayoutRoute = createRoute({

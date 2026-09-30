@@ -47,7 +47,7 @@ export const AUDIT_ACTION_LABELS: Record<string, string> = {
   // Clientes
   create_customer: 'Registró un cliente',
   update_customer: 'Editó un cliente',
-  // La pidió el titular desde el enlace del correo (NOTIFICACIONES §17), no un
+  // La pidió el titular desde el enlace del correo (backend-starter/docs/DOMINIO.md §9.2), no un
   // usuario: el registro llega con `user_id` nulo.
   email_opt_out: 'El cliente se dio de baja de los correos',
   // Catálogos

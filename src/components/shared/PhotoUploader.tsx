@@ -70,7 +70,7 @@ function PhotoThumbnail({
  * (`useSignedPhotoUrl`, docs/DESIGN_SYSTEM.md §3). Comprime cada foto
  * client-side (`compressImage`) antes de subirla — el bucket `company-files`
  * es privado, 8 MB máx, solo `image/jpeg|png|webp` (verificado contra el
- * backend real, `docs/STORAGE_PENDIENTE.md`).
+ * backend real; docs/ARQUITECTURA.md §15).
  *
  * La subida ocurre al instante (no se puede diferir el byte-upload al
  * "Guardar" del formulario que lo contiene); si el usuario cierra el

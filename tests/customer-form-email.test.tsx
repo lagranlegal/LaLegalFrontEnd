@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 
 /**
- * El formulario del cliente y el correo (NOTIFICACIONES §9.2-f y F21-19):
+ * El formulario del cliente y el correo (backend-starter/docs/DOMINIO.md §9.2 y F21-19):
  *
  * - La casilla de autorización expresa viaja solo marcada y con correo.
  * - En la edición, las casillas viajan solo si CAMBIARON: una casilla que

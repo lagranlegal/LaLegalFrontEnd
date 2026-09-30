@@ -65,8 +65,7 @@ function categoryName(categories: { id: string; name: string }[] | undefined, ca
 
 /**
  * Vínculo inverso prenda→artículo (`ContractItemOut.inventory_item_id`,
- * resuelto por backend 19/08/2026 — ver `docs/PENDIENTES_BACKEND_INFRA.md`
- * punto 19). Sin ruta propia de detalle de artículo en el front (se editan
+ * resuelto por backend 19/08/2026). Sin ruta propia de detalle de artículo en el front (se editan
  * desde un diálogo abierto desde la lista, no una página) — el link lleva
  * a `/inventario` sin más, el código mostrado es lo que se busca ahí.
  */
@@ -80,15 +79,15 @@ function AuctionedItemLink({ inventoryItem }: { inventoryItem: Item | undefined 
 
 export function ContractDetailPage() {
   // `from` usa el id de ruta ("/app-layout/…"), no el fullPath de la URL —
-  // mismo gotcha que useSearch en appLayoutRoute (pathless via `id`, ver
-  // docs/IMPLEMENTATION.md Paso 2). `Link`/`navigate({to:...})` sí usan el
+  // mismo gotcha que useSearch en appLayoutRoute (pathless via `id`).
+  // `Link`/`navigate({to:...})` sí usan el
   // fullPath sin prefijo, por eso en el resto del feature se ve "/contratos/…".
   const { contractId } = useParams({ from: '/app-layout/contratos/$contractId' })
   const { data: contract, isPending, isError, refetch } = useContract(contractId)
   const { data: customer } = useCustomer(contract?.customer_id ?? '')
   const { data: categories } = useCategories()
   // Un solo request para las prendas ya rematadas, en vez de uno por prenda
-  // (docs/PENDIENTES_FRONTEND.md #11). Antes de saber si `contract` cargó —
+  // (auditoría de UX del 27/08/2026, punto 11). Antes de saber si `contract` cargó —
   // los hooks no pueden ser condicionales — así que se arma con `?? []`.
   const { data: auctionedItemsById } = useItemsByIds(
     (contract?.items ?? []).map((item) => item.inventory_item_id),
@@ -212,7 +211,7 @@ export function ContractDetailPage() {
       <CompanyDataNotice className="print:hidden" />
 
       {/* La cadena de ampliaciones: a cuál pasó la deuda, de cuál viene, y la
-          historia completa si hay varias (RECARGOS §6). */}
+          historia completa si hay varias (backend-starter/docs/DOMINIO.md §3). */}
       <ContractChainPanel contract={contract} />
 
       {contract.ltv_warning && (

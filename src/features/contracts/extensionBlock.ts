@@ -2,13 +2,13 @@ import { formatDate } from '@/lib/dates'
 
 /**
  * Qué hace el panel «Ampliar el préstamo» con el motivo que devuelve
- * `GET /contracts/{id}/extension-options` (docs/RECARGOS.md).
+ * `GET /contracts/{id}/extension-options` (backend-starter/docs/DOMINIO.md §3).
  *
  * Es una función aparte, y no un `if` dentro del componente, porque acá vivió
  * F21-38 («solo se puede ampliar una vez»): el panel trataba los cinco
  * motivos como bloqueos iguales, y NO lo son.
  *
- * - **`EXTENSION_NO_HEADROOM` no es un bloqueo duro.** Por RECARGOS §8.1,
+ * - **`EXTENSION_NO_HEADROOM` no es un bloqueo duro.** Por backend-starter/docs/DOMINIO.md §3,
  *   pasarse del cupo lo gobierna `contracts.override_ltv`: quien lo tiene
  *   presta por encima del avalúo con advertencia (el backend lo acepta y
  *   marca `ltv_warning`); quien no, queda bloqueado. Como la primera

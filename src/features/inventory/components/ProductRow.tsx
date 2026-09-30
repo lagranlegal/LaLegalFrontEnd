@@ -35,8 +35,8 @@ function SupplierName({ supplierId }: { supplierId: string | null }) {
  */
 function PurchaseList({ productId }: { productId: string }) {
   const { data: purchases, isPending, isError } = useProductPurchases(productId)
-  // Mismo hueco que el historial de proveedores (docs/PENDIENTES_FRONTEND.md
-  // #2): el detalle de una compra "solo vivía en Inventario" — clic en una
+  // Mismo hueco que el historial de proveedores (auditoría de UX del 27/08/2026,
+  // punto 2): el detalle de una compra "solo vivía en Inventario" — clic en una
   // fila lo abre desde acá también.
   const [viewingEntryId, setViewingEntryId] = useState<string | null>(null)
   const {

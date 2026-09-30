@@ -3,7 +3,7 @@ import { emailNoticeStatus, isValidEmailShape } from '@/features/customers/email
 
 /**
  * Lo que la ficha dice de los avisos por correo de un cliente
- * (`../backend-starter/docs/NOTIFICACIONES.md` §9.2). El orden tiene que ser el
+ * (`backend-starter/docs/DOMINIO.md` §9.2). El orden tiene que ser el
  * del backend (`customer_gate`): sin correo, baja, rebote, y después la base.
  */
 

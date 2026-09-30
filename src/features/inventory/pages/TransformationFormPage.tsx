@@ -89,7 +89,7 @@ export function TransformationFormPage() {
 
   // Sin este resguardo, salir por el sidebar/atrás perdía la operación
   // armada sin ningún aviso — a diferencia de contratos/ingreso, que sí lo
-  // tenían (docs/PENDIENTES_FRONTEND.md #10).
+  // tenían (auditoría de UX del 27/08/2026, punto 10).
   const blocker = useBlocker({
     shouldBlockFn: () =>
       (entradas.length > 0 || reason.trim().length > 0 || salidas.some((s) => s.name.trim().length > 0)) &&

@@ -151,7 +151,7 @@ export class WrongCurrentPasswordError extends Error {
  * El correo lleva al MISMO `/auth/callback` que la invitación: Supabase crea
  * la sesión desde el link en los dos casos y la pantalla solo cambia el texto.
  * Una ruta menos que mantener, y una menos que registrar en la lista de
- * Redirect URLs permitidas del proyecto (ver docs/DEPLOY.md).
+ * Redirect URLs permitidas del proyecto (ver backend-starter/docs/OPERACION.md §4.3).
  *
  * Nunca revela si el correo existe — responde igual en ambos casos, para no
  * convertir la pantalla en un detector de cuentas.
@@ -171,7 +171,7 @@ export function useLogout() {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: () => supabase.auth.signOut(),
-    // No dejar datos de la empresa en memoria de otra sesión (ARCHITECTURE.md §8).
+    // No dejar datos de la empresa en memoria de otra sesión (ARQUITECTURA.md §8).
     onSuccess: () => queryClient.clear(),
   })
 }

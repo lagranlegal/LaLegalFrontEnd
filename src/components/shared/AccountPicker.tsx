@@ -10,8 +10,8 @@ import { accountTypeLabel, defaultAccountTypeFor } from '@/lib/accounts/types'
  * "¿A dónde entró (o de dónde salió) la plata?" — aparece en todos los
  * puntos de cobro: ventas, abonos, desembolsos, gastos y compras.
  *
- * El medio de pago y la cuenta son cosas distintas (docs/ARCHITECTURE.md
- * §12): el medio es CÓMO se cobró, la cuenta es DÓNDE quedó la plata. Por eso
+ * El medio de pago y la cuenta son cosas distintas (backend-starter/docs/DOMINIO.md
+ * §4.1): el medio es CÓMO se cobró, la cuenta es DÓNDE quedó la plata. Por eso
  * este selector acompaña al de medio de pago en vez de reemplazarlo, y se
  * filtra por el tipo que ese medio implica — elegir "Efectivo" y mandarlo a
  * una cuenta bancaria descuadraría el arqueo.

@@ -108,7 +108,7 @@ function lineIsReady(line: EntryFormValues['lines'][number] | undefined): boolea
  * escribe siempre, porque siempre cambia.
  *
  * POR QUÉ AGREGA UNA LÍNEA Y NO SUMA CANTIDAD a un lote existente: el sistema
- * costea por IDENTIFICACIÓN ESPECÍFICA (CONTEXTO.md §3, estándar joyero/NIIF).
+ * costea por IDENTIFICACIÓN ESPECÍFICA (backend-starter/docs/DOMINIO.md §13, estándar joyero/NIIF).
  * Cada lote conserva su costo real y NUNCA se promedia; fusionar dos compras a
  * costos distintos obligaría a promediar y falsearía la utilidad de cada venta.
  */

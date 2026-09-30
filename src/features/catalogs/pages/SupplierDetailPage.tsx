@@ -56,7 +56,7 @@ export function SupplierDetailPage() {
   // El historial solo trae el resumen de cada compra (`SupplierPurchaseOut`,
   // sin `items[]`) — el detalle real (`EntryDetailDialog`, compartido con
   // Inventario) necesita el ingreso completo, así que se pide por id recién
-  // al hacer click (docs/PENDIENTES_FRONTEND.md #2: antes el click no hacía
+  // al hacer click (auditoría de UX del 27/08/2026, punto 2: antes el click no hacía
   // nada, el detalle "solo vivía en Inventario").
   const [viewingEntryId, setViewingEntryId] = useState<string | null>(null)
   const {

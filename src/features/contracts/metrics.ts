@@ -57,7 +57,7 @@ export function computeContractMetrics(contract: Contract, payments: Payment[]):
     rendimientoPct: principal > 0 ? (Number(interesesCobrados) / principal) * 100 : null,
     capitalRecuperadoPct: principal > 0 ? ((principal - saldo) / principal) * 100 : null,
     // Interés del PRÓXIMO mes con el saldo de hoy: la tasa se aplica sobre el
-    // capital actual, no sobre el original (regla del contrato, CONTEXTO.md).
+    // capital actual, no sobre el original (regla del contrato, backend-starter/docs/DOMINIO.md §2.2).
     interesMensualActual: multiplyPct(contract.capital_balance, contract.interest_rate_pct),
     cantidadAbonos: payments.length,
   }

@@ -2,7 +2,7 @@ import { useEffect, useRef } from 'react'
 import { supabase } from '@/lib/auth/supabase'
 import { queryClient } from '@/app/query-client'
 
-/** Decidido con el cliente el 15/08/2026 (docs/ARCHITECTURE.md §8). */
+/** Decidido con el cliente el 15/08/2026 (docs/ARQUITECTURA.md §8). */
 export const INACTIVITY_LOGOUT_MS = 6 * 60 * 60 * 1000
 
 const ACTIVITY_EVENTS = ['mousedown', 'keydown', 'scroll', 'touchstart'] as const

@@ -2,8 +2,8 @@ import { describe, expect, it } from 'vitest'
 import { customerNoticePayload, customerNoticeState } from '@/features/contracts/customerNotice'
 
 /**
- * El correo y la casilla de avisos al crear el contrato (NOTIFICACIONES
- * §9.2-f): qué viaja en `POST /contracts`. Del lado del backend la misma
+ * El correo y la casilla de avisos al crear el contrato (backend-starter/docs/DOMINIO.md
+ * §9.2): qué viaja en `POST /contracts`. Del lado del backend la misma
  * operación los escribe en la ficha con origen `contract_form`.
  */
 const sinCorreo = { email: null, email_basis: null, email_opt_out_at: null }

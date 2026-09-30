@@ -7,11 +7,10 @@ export type ContractSummary = components['schemas']['ContractOut']
 export type SaleSummary = components['schemas']['SaleOut']
 
 /**
- * Historial de cliente (CONTEXTO.md §4: "ficha única + historial cruzado
+ * Historial de cliente (especificación original: "ficha única + historial cruzado
  * contratos+compras").
  *
- * `GET /contracts` ya acepta `?customer_id=` (resuelto 27/08/2026, ver
- * `docs/PENDIENTES_BACKEND_INFRA.md` punto 2) — filtro real del backend,
+ * `GET /contracts` ya acepta `?customer_id=` (resuelto 27/08/2026) — filtro real del backend,
  * reemplaza el parche client-side de 200 registros que tenía esta función
  * antes (mismo movimiento que ya se hizo con `useCustomerSales`).
  */
@@ -26,8 +25,7 @@ export function useCustomerContracts(customerId: string) {
 }
 
 /**
- * `GET /sales` ya acepta `?customer_id=` (resuelto 19/08/2026, ver
- * `docs/PENDIENTES_BACKEND_INFRA.md` punto 3) — filtro real del backend,
+ * `GET /sales` ya acepta `?customer_id=` (resuelto 19/08/2026) — filtro real del backend,
  * paginado por cursor como cualquier otro listado. Reemplaza el parche
  * client-side de 200 registros que tenía esta función antes.
  */

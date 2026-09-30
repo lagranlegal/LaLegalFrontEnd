@@ -44,7 +44,7 @@ function cspPlugin(env: Record<string, string>): Plugin {
         // requests morirían en el navegador, con un error difícil de rastrear.
         throw new Error(
           'Faltan VITE_API_URL y/o VITE_SUPABASE_URL: son necesarias para armar el CSP. ' +
-            'Configúralas en las variables de entorno del proyecto (ver docs/DEPLOY.md).',
+            'Configúralas en las variables de entorno del proyecto (ver docs/ARQUITECTURA.md §8).',
         )
       }
 

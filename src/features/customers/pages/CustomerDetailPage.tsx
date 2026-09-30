@@ -138,7 +138,7 @@ export function CustomerDetailPage() {
           <div>
             <p className="text-xs text-muted-foreground">Correo</p>
             <p className="text-sm text-foreground break-all">{customer.email ?? '—'}</p>
-            {/* §9.2 de NOTIFICACIONES.md: con qué base se le puede escribir. Tener
+            {/* backend-starter/docs/DOMINIO.md §9.2: con qué base se le puede escribir. Tener
                 correo no es tener autorización, y quien atiende tiene que verlo. */}
             <p
               className={`text-xs ${

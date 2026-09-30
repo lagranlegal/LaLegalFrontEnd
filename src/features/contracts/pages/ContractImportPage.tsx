@@ -50,7 +50,7 @@ const inputClass =
   'mt-1 w-full rounded-input border border-border bg-background px-3 py-2 text-sm text-foreground outline-none focus:border-primary disabled:bg-muted disabled:text-muted-foreground'
 
 /**
- * "Registrar contrato existente" (paso 5b, docs/RECOMENDACIONES.md §1.6):
+ * "Registrar contrato existente" (paso 5b, backend-starter/docs/DOMINIO.md §2.5):
  * migra un contrato vivo del sistema anterior con su saldo real. Pantalla
  * separada de `ContractFormPage` — campos distintos (trae fechas/saldos que
  * la creación normal nunca pide), sin medio de pago ni paso de caja (no

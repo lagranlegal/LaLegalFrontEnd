@@ -10,7 +10,7 @@ export type EntryPayIn = components['schemas']['EntryPayIn']
  * Ingreso por id, y saldarlo si quedó pendiente de pago — en `lib/` porque
  * `EntryDetailDialog` (components/shared/) los necesita y es compartido:
  * antes solo lo abría Inventario, ahora también el historial de un
- * proveedor (docs/PENDIENTES_FRONTEND.md #2) — mismo motivo por el que
+ * proveedor (auditoría de UX del 27/08/2026, punto 2) — mismo motivo por el que
  * `Sale`/`useVoidSale` viven en `lib/sales/void.ts`.
  */
 export function useEntry(entryId: string | undefined) {

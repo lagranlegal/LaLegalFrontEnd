@@ -53,7 +53,7 @@ export function defaultAccountTypeFor(paymentMethod: string): AccountType {
  * el usuario vería un número y recibiría otro.
  *
  * Suma sobre enteros de centavos vía `sumMoney` — nunca `parseFloat`
- * (docs/ARCHITECTURE.md §7).
+ * (docs/ARQUITECTURA.md §7).
  */
 export function cashOnHand(accounts: readonly { type: string; balance: string }[]): string {
   return accounts

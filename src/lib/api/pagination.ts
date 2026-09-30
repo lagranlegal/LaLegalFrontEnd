@@ -2,7 +2,7 @@ import { useInfiniteQuery, type QueryKey } from '@tanstack/react-query'
 
 /**
  * Todas las listas de la API paginan por cursor `{items, next_cursor}`
- * (docs/ARCHITECTURE.md §7) — no hay paginación por número de página, no
+ * (docs/ARQUITECTURA.md §7) — no hay paginación por número de página, no
  * inventarla en una feature.
  */
 export interface CursorPage<T> {

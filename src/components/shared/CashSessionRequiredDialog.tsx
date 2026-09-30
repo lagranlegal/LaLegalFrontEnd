@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button'
 import { OpenSessionDialog } from '@/features/cashbox/components/OpenSessionDialog'
 
 /**
- * `CASH_SESSION_NOT_OPEN` (docs/ARCHITECTURE.md §6): "Modal central 'Abrir
+ * `CASH_SESSION_NOT_OPEN` (docs/ARQUITECTURA.md §6): "Modal central 'Abrir
  * caja' con CTA directo a abrir sesión (si tiene `cashbox.open_close`) o
  * aviso de pedirle al responsable. Nunca un toast seco." `CashSessionBanner`
  * ya avisa permanentemente si la caja está cerrada — este modal es la

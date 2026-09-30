@@ -92,7 +92,7 @@ function PayPendingPurchase({ entry }: { entry: Entry }) {
 /**
  * Ver ingreso — solo lectura, los artículos que creó ya vienen embebidos en
  * `EntryOut.items`. Vive en `components/shared/` (movido desde
- * `features/inventory/`, docs/PENDIENTES_FRONTEND.md #2): el detalle de una
+ * `features/inventory/`, auditoría de UX del 27/08/2026, punto 2): el detalle de una
  * compra "solo vivía en Inventario" — el historial de un proveedor la abre
  * ahora también, mismo movimiento que ya se hizo una vez con el comprobante
  * de venta.

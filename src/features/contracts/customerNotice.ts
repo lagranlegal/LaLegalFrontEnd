@@ -7,7 +7,7 @@ type NoticeFields = Pick<Customer, 'email' | 'email_basis' | 'email_opt_out_at'>
 
 /**
  * El correo y la casilla de avisos del formulario de crear contrato
- * (`../backend-starter/docs/NOTIFICACIONES.md` §9.2-f).
+ * (`backend-starter/docs/DOMINIO.md` §9.2).
  *
  * - **La casilla se ofrece** solo a quien no autorizó ya (`consent`) ni pidió
  *   la baja: la baja gana sobre cualquier base y se levanta desde la ficha.

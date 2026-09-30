@@ -11,7 +11,7 @@
  * Dominio DISTINTO de `lib/modules.ts` (`MODULE_LABELS: pawn|store|general`
  * — el módulo de negocio de gastos/cierre de caja) — mismo nombre de
  * concepto, dos catálogos del backend sin relación, mapas separados a
- * propósito (ver `docs/IMPLEMENTATION.md` paso 8).
+ * propósito.
  *
  * `accounts` (00029) y `capital` (00054) llegaron después y nadie los agregó
  * acá: la matriz de permisos titulaba dos bloques `accounts` y `capital`, y

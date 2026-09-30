@@ -31,7 +31,7 @@ export function useSale(saleId: string | undefined) {
 /**
  * Venta tipo POS — desembolsa mercancía a cambio de dinero, mueve caja
  * (CLAUDE.md regla 8): `useMoneyMutation` por la `Idempotency-Key`, invalida
- * caja + dashboard igual que contratos/abonos (docs/ARCHITECTURE.md §3).
+ * caja + dashboard igual que contratos/abonos (docs/ARQUITECTURA.md §3).
  */
 export function useCreateSale() {
   return useMoneyMutation({

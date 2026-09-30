@@ -72,7 +72,7 @@ export function LoginPage() {
     <div className="w-full max-w-sm rounded-card border border-border bg-card p-card shadow-card">
       {/* Acá sí manda Prendo: es la única pantalla donde todavía no sabemos a
           qué empresa entra el usuario, así que no hay marca de inquilino que
-          mostrar (DESIGN_SYSTEM §1-bis, "dos marcas en la misma pantalla"). */}
+          mostrar (DESIGN_SYSTEM §1, "dos marcas en la misma pantalla"). */}
       <div className="mb-5 flex items-center gap-2.5">
         <img src="/prendo-mark.svg" alt="" aria-hidden="true" className="size-8" />
         <span className="text-lg font-semibold tracking-tight text-foreground">Prendo</span>

@@ -70,7 +70,7 @@ function errorText(error: unknown, fallback: string): string {
 
 /**
  * Avisos por correo de la empresa (`GET/PATCH /notifications/settings`,
- * API_GUIDE §13-ter; diseño en NOTIFICACIONES.md).
+ * API_GUIDE §13-ter; reglas en backend-starter/docs/DOMINIO.md §9).
  *
  * Dos formas de guardar, a propósito:
  *  - **Los interruptores** (el general y el de cada evento) se guardan al
@@ -265,7 +265,7 @@ function EventsSection({ settings }: { settings: NotificationSettings }) {
   )
 }
 
-/** Quién recibe hoy las alertas (A1–A4), de `alert_recipients` (NOTIFICACIONES §19). */
+/** Quién recibe hoy las alertas (A1–A4), de `alert_recipients` (backend-starter/docs/DOMINIO.md §9.1). */
 function AlertRecipients({ settings }: { settings: NotificationSettings }) {
   return (
     <div className="text-sm">

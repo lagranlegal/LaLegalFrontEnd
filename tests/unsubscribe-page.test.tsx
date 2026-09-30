@@ -5,7 +5,7 @@ import type { ReactNode } from 'react'
 
 /**
  * `/baja/$token` — el enlace «Darse de baja» de los correos al cliente
- * (`../backend-starter/docs/NOTIFICACIONES.md` §17).
+ * (`backend-starter/docs/DOMINIO.md` §9.2).
  *
  * La regla que esta página existe para cumplir: **abrirla no da de baja.**
  * Los escáneres de correo y las vistas previas abren cada enlace solos, y

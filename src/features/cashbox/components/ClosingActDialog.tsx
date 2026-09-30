@@ -12,7 +12,7 @@ import type { ClosingHistory } from '@/lib/cashbox/closings'
 import { SessionReportPanel } from '@/features/cashbox/components/SessionReportPanel'
 
 /**
- * "Acta de cierre" (CLAUDE.md paso 6: imprimible mientras el backend no
+ * "Acta de cierre" (paso 6 del plan de construcción original: imprimible mientras el backend no
  * genera PDFs). El contenido imprimible (`<PrintLayout>`) vive FUERA del
  * `<AppDialog>`, como hermano — si quedara anidado dentro del modal,
  * `print:hidden` en `DialogContent` (components/ui/dialog.tsx) lo ocultaría

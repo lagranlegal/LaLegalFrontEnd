@@ -246,7 +246,7 @@ export function CustomerFormDialog({ open, onOpenChange, customer }: { open: boo
           </div>
         </div>
 
-        {/* §9.2-f de NOTIFICACIONES.md: la autorización EXPRESA, en una casilla
+        {/* backend-starter/docs/DOMINIO.md §9.2: la autorización EXPRESA, en una casilla
             aparte y con su texto. Sin marcarla, al cliente solo se le puede
             escribir sobre un contrato vigente suyo; con ella, también lo demás.
             Nunca se marca sola ni se vuelve obligatoria: el correo es opcional

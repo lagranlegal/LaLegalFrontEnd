@@ -50,7 +50,7 @@ const contractSchema = z.object({
   extension_window_days: z.string().optional(),
   notes: z.string().optional(),
   items: z.array(contractItemSchema).min(1, 'Agrega al menos una prenda'),
-  // NOTIFICACIONES §9.2-f: el correo (solo si el cliente no tiene) y la
+  // backend-starter/docs/DOMINIO.md §9.2: el correo (solo si el cliente no tiene) y la
   // casilla de autorización, capturados donde se firma el contrato. Viven en
   // el formulario —y no como estado aparte— para que un 422 del backend con
   // `customer_email` en `loc` se pinte debajo de su campo sin traducción.
@@ -234,7 +234,7 @@ export function ContractFormPage() {
           />
           {customerError && <p className="text-sm text-danger">{customerError}</p>}
 
-          {/* NOTIFICACIONES §9.2-f: la autorización EXPRESA se pregunta donde
+          {/* backend-starter/docs/DOMINIO.md §9.2: la autorización EXPRESA se pregunta donde
               se firma el contrato, en una casilla aparte y con su texto. Nunca
               se marca sola ni vuelve obligatorio el correo: la mayoría de los
               clientes no lo tiene (§1), y eso es lo normal. */}

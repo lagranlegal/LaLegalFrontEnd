@@ -17,7 +17,7 @@ import { PAYMENT_METHOD_LABELS } from '@/lib/paymentMethods'
 
 /**
  * Medio de pago + cuenta, siempre juntos: el medio dice CÓMO pagó el cliente,
- * la cuenta DÓNDE quedó esa plata (docs/ARCHITECTURE.md §12). Van en el mismo
+ * la cuenta DÓNDE quedó esa plata (backend-starter/docs/DOMINIO.md §4.1). Van en el mismo
  * componente para que ningún punto de cobro pueda quedarse a medias.
  */
 function PaymentMethodField({ value, onChange, accountId, onAccountChange }: { value: 'cash' | 'transfer' | 'other'; onChange: (value: 'cash' | 'transfer' | 'other') => void; accountId: string | null; onAccountChange: (accountId: string | null) => void }) {
@@ -49,7 +49,7 @@ function PaymentMethodField({ value, onChange, accountId, onAccountChange }: { v
 /**
  * Contrato AL DÍA (`months_owed === 0`) — `payment-options` responde
  * `options: []` porque no hay ningún mes de interés para elegir, pero
- * CONTEXTO.md §3 es explícito: *"El capital solo se abona cuando los
+ * la regla original era explícita (hoy backend-starter/docs/DOMINIO.md §2.2): *"El capital solo se abona cuando los
  * intereses quedan al día (en el mismo pago que los salda **o después**)"*
  * — "después" es exactamente este caso. Verificado contra el backend real
  * antes de construir esto: `POST .../payments` con `months_covered: 0` +

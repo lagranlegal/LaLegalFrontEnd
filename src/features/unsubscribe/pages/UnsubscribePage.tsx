@@ -7,7 +7,7 @@ import { useConfirmUnsubscribe, useUnsubscribeInfo } from '@/features/unsubscrib
 
 /**
  * `/baja/$token` — la página a la que lleva el enlace «Darse de baja» de los
- * correos al cliente (`../backend-starter/docs/NOTIFICACIONES.md` §9.2-e, §17).
+ * correos al cliente (`backend-starter/docs/DOMINIO.md` §9.2).
  *
  * Pública y SIN gate de permiso, a propósito: quien llega no es usuario de
  * Prendo, no tiene sesión y no la va a tener. Lo que la autoriza es el token

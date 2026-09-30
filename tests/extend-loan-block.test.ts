@@ -11,7 +11,7 @@ import { extensionBlock } from '@/features/contracts/extensionBlock'
  *
  * 1. La primera ampliación casi siempre se lleva TODO el cupo, y el sucesor
  *    llega con `EXTENSION_NO_HEADROOM`. El panel escondía el formulario aun
- *    para quien tiene `contracts.override_ltv`, que por RECARGOS §8.1 sí
+ *    para quien tiene `contracts.override_ltv`, que por backend-starter/docs/DOMINIO.md §3 sí
  *    puede prestar por encima del avalúo (y el backend lo acepta).
  * 2. Con la ventana vencida decía «Pasó el plazo» sin explicar que el plazo
  *    se cuenta desde el contrato ORIGINAL y que ampliar no lo reinicia — que

@@ -196,9 +196,9 @@ export function AppShell() {
 
           {/* Acá vivía un <input type="search" disabled> que nunca estuvo
               conectado a nada. Un buscador que no busca comunica "esto está a
-              medio hacer" peor que no tener buscador: se quitó. La búsqueda
-              global real necesita `?q=` en contratos e inventario, que el
-              backend todavía no expone (docs/PENDIENTES_BACKEND_INFRA.md). */}
+              medio hacer" peor que no tener buscador: se quitó. Una búsqueda
+              global real queda como mejora propuesta
+              (backend-starter/docs/QA.md §5). */}
           <div className="flex-1" />
 
           <ThemeToggle />

@@ -3,7 +3,7 @@ import { ChevronLeft } from 'lucide-react'
 
 /**
  * "Volver" arriba de una pantalla de detalle o de un formulario de página
- * completa (docs/PENDIENTES_FRONTEND.md #9) — antes cada pantalla lo copiaba
+ * completa (auditoría de UX del 27/08/2026, punto 9) — antes cada pantalla lo copiaba
  * a mano (o no lo tenía) con implementaciones ligeramente distintas. Un solo
  * componente para que todas se vean y se comporten igual.
  */

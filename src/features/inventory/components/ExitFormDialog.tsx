@@ -16,7 +16,7 @@ import { normalizeDecimalInput } from '@/lib/money'
 
 const inputClass = 'mt-1 w-full rounded-input border border-border bg-background px-3 py-2 text-sm text-foreground outline-none focus:border-primary'
 
-/** Egreso de artículos (CLAUDE.md paso 7) — sin caja: no es dinero, es una salida de inventario (ajuste, daño, devolución, uso interno). Con `Idempotency-Key` desde F6-11 del backend (ver `useCreateExit`). */
+/** Egreso de artículos (paso 7 del plan de construcción original) — sin caja: no es dinero, es una salida de inventario (ajuste, daño, devolución, uso interno). Con `Idempotency-Key` desde F6-11 del backend (ver `useCreateExit`). */
 export function ExitFormDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (open: boolean) => void }) {
   // Tipado desde la lista compartida y no a mano: escrito a mano se quedó sin
   // `loss` cuando 00033 lo agregó, y el selector lo habría ofrecido mientras

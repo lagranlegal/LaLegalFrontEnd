@@ -19,7 +19,7 @@ import { extensionBlock } from '@/features/contracts/extensionBlock'
 import { usePermission } from '@/lib/permissions/usePermission'
 
 /**
- * "Ampliar el préstamo" — el recargo (docs/RECARGOS.md).
+ * "Ampliar el préstamo" — el recargo (backend-starter/docs/DOMINIO.md §3).
  *
  * **Vive junto a "Registrar abono" y no en el encabezado.** Abonar y ampliar
  * son las dos direcciones de lo mismo: el cliente trae plata o se lleva
@@ -45,7 +45,7 @@ export function ExtendLoanPanel({ contract }: { contract: Contract }) {
   const [error, setError] = useState<string | null>(null)
   const puedeExcederCupo = usePermission('contracts.override_ltv')
   // La cadena solo hace falta en un sucesor, para nombrar al contrato
-  // original cuando la ventana venció (se cuenta desde él, RECARGOS §3). Misma
+  // original cuando la ventana venció (se cuenta desde él, backend-starter/docs/DOMINIO.md §3). Misma
   // key que usa `ContractChainPanel`: no es un request más.
   const { data: chain } = useContractChain(contract.id, !!contract.parent_contract_id)
   const raiz = contract.parent_contract_id && chain?.[0] && chain[0].id !== contract.id ? chain[0] : null
@@ -278,7 +278,7 @@ export function ExtendLoanPanel({ contract }: { contract: Contract }) {
       </AppDialog>
 
       {/* Con la caja cerrada, el modal central con CTA a abrirla — nunca un
-          toast seco (docs/ARCHITECTURE.md §6). Si el usuario no tiene
+          toast seco (docs/ARQUITECTURA.md §6). Si el usuario no tiene
           `cashbox.open_close`, el propio diálogo le dice a quién pedírselo. */}
       <CashSessionRequiredDialog open={cashDialogOpen} onOpenChange={setCashDialogOpen} />
     </Can>

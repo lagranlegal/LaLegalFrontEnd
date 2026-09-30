@@ -1,5 +1,5 @@
 /**
- * Único lugar donde se formatea/parsea dinero (docs/ARCHITECTURE.md §7).
+ * Único lugar donde se formatea/parsea dinero (docs/ARQUITECTURA.md §7).
  * La API usa strings decimales (`"1000000.00"`). Aritmética de dinero en el
  * front: prohibida salvo sumas de presentación hechas sobre enteros, nunca
  * floats — los montos con reglas de negocio (intereses, saldos) SIEMPRE
@@ -127,7 +127,7 @@ function centsToDecimal(cents: number): string {
 }
 
 /**
- * Suma de PRESENTACIÓN (docs/ARCHITECTURE.md §7: "sumas de presentación
+ * Suma de PRESENTACIÓN (docs/ARQUITECTURA.md §7: "sumas de presentación
  * hechas sobre enteros de centavos, nunca floats") — ej. mostrar
  * interés + capital extra ANTES de enviar el abono, nunca para decidir un
  * monto que manda la API (eso siempre lo calcula el backend).

@@ -75,25 +75,25 @@ export function useContractSearch(q: string) {
  * Crear contrato desbolsa capital — mutación de dinero (CLAUDE.md regla 8):
  * pasa por `useMoneyMutation` para la `Idempotency-Key` por acción de
  * usuario. Invalida el listado + dashboard + caja (el dinero siempre mueve
- * caja, docs/ARCHITECTURE.md §3).
+ * caja, docs/ARQUITECTURA.md §3).
  */
 export function useCreateContract() {
   return useMoneyMutation({
     mutationFn: (body: ContractCreateIn, idempotencyKey: string) =>
       unwrap(api.POST('/api/v1/contracts', { params: { header: { 'Idempotency-Key': idempotencyKey } }, body })),
     // `['customers']`: el formulario puede cargar el correo del cliente y su
-    // autorización de avisos en la misma operación (NOTIFICACIONES §9.2-f).
+    // autorización de avisos en la misma operación (backend-starter/docs/DOMINIO.md §9.2).
     invalidateKeys: [['contracts'], ['dashboard'], ['cashbox', 'current'], ['customers']],
   })
 }
 
 /**
- * Import de contratos preexistentes (paso 5b, docs/RECOMENDACIONES.md §1.6):
+ * Import de contratos preexistentes (paso 5b, backend-starter/docs/DOMINIO.md §2.5):
  * migra la foto financiera al corte de un contrato del sistema anterior. A
  * diferencia de `useCreateContract`, NO desembolsa dinero (el préstamo ya se
  * entregó afuera) — usa `useMoneyMutation` solo por la `Idempotency-Key` que
  * el endpoint exige, así que `invalidateKeys` NO lleva `['cashbox','current']`
- * (docs/ARCHITECTURE.md §3).
+ * (docs/ARQUITECTURA.md §3).
  */
 export function useImportContract() {
   return useMoneyMutation({
@@ -115,7 +115,7 @@ export function useUpdateContract() {
   })
 }
 
-// ---- Abonos: SOLO desde payment-options (CLAUDE.md paso 5) ----
+// ---- Abonos: SOLO desde payment-options (paso 5 del plan de construcción original) ----
 
 export function paymentOptionsQueryOptions(contractId: string) {
   return queryOptions({
@@ -172,7 +172,7 @@ export function useAuctionContract() {
   })
 }
 
-// ---- Ampliar el préstamo, el "recargo" (00051, docs/RECARGOS.md) ----------
+// ---- Ampliar el préstamo, el "recargo" (00051, backend-starter/docs/DOMINIO.md §3) ----------
 
 export type ExtensionQuote = components['schemas']['ExtensionQuoteOut']
 export type ContractExtendIn = components['schemas']['ContractExtendIn']
@@ -200,7 +200,7 @@ export function useExtensionOptions(contractId: string, enabled = true) {
 
 /**
  * La cadena de ampliaciones del contrato, de la raíz al último
- * (`GET /contracts/{id}/chain`, RECARGOS §6). `ContractOut` solo mira hacia
+ * (`GET /contracts/{id}/chain`, backend-starter/docs/DOMINIO.md §3). `ContractOut` solo mira hacia
  * atrás (`parent_contract_id`); con esto el contrato ampliado sabe a cuál pasó
  * la deuda, cuándo y por cuánto, y una cadena larga se puede recorrer.
  *

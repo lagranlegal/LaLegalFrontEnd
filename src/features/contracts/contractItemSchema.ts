@@ -25,7 +25,7 @@ export function emptyContractItem(): ContractItemFormValue {
   return { category_id: '', description: '', weight_grams: '', serial_imei: '', item_appraisal: '', photos: [] }
 }
 
-/** Categorías nivel 3 (hoja) para "empeño" — CLAUDE.md paso 5: solo esas se ofrecen para clasificar prendas. */
+/** Categorías nivel 3 (hoja) para "empeño" — paso 5 del plan de construcción original: solo esas se ofrecen para clasificar prendas. */
 export function categoryLabel(categories: { id: string; name: string; parent_id: string | null }[], categoryId: string): string {
   const byId = new Map(categories.map((c) => [c.id, c]))
   const category = byId.get(categoryId)

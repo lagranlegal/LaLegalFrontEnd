@@ -16,7 +16,7 @@
  *
  * ⚠️ `contacto@prendo.com.co` tiene que RECIBIR: el dominio solo envía
  * (Resend, desde `notificaciones@`). Si el buzón no existe, las solicitudes
- * rebotan sin que nadie se entere — ver `docs/DEPLOY.md`.
+ * rebotan sin que nadie se entere — `backend-starter/docs/OPERACION.md` §4.4.
  */
 export const DEMO_CONTACT: string | null =
   'mailto:contacto@prendo.com.co?subject=Quiero%20una%20demostraci%C3%B3n%20de%20Prendo'

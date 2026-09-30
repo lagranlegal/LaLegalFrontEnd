@@ -9,7 +9,7 @@ import { resolveMergeField, type MergeFieldContext } from '@/lib/documents/merge
  *
  * Por qué existe: la plataforma le manda al cliente comprobantes y, pronto,
  * recordatorios de cuota. La base legal que usa el backend para escribirle es
- * «contrato» (`email_basis = 'contract'`, NOTIFICACIONES.md §17); que el
+ * «contrato» (`email_basis = 'contract'`, backend-starter/docs/DOMINIO.md §9.2); que el
  * contrato FIRMADO diga que el cliente autoriza esos avisos es lo que deja esa
  * base por escrito. Las compraventas no lo saben y no lo van a redactar solas.
  *

@@ -21,7 +21,7 @@ export interface ParamsDraft {
 }
 
 /**
- * El PISO de la Ley 2300 de 2023 (NOTIFICACIONES §12.3-1; backend d185e38,
+ * El PISO de la Ley 2300 de 2023 (backend-starter/docs/DOMINIO.md §9.2; backend d185e38,
  * `preferences.LEGAL_FLOOR`, auditoría de QA F8-05): lunes a viernes de 7:00
  * a 19:00, sábados de 8:00 a 15:00, sin domingos ni festivos, un contacto
  * de cobranza por semana y el control siempre encendido. La empresa puede
@@ -176,7 +176,7 @@ function sameMoney(a: string, b: string): boolean {
 export const AUCTION_READY_CUSTOMER = 'auction_ready_customer'
 
 /**
- * `NOTIFICACIONES.md` §2.2-c, condensado. Tiene que estar en la pantalla y
+ * `backend-starter/docs/DOMINIO.md` §9.2, condensado. Tiene que estar en la pantalla y
  * no en una conversación: el interruptor es fácil, la consecuencia no.
  */
 export const AUCTION_READY_CUSTOMER_WARNING =
@@ -215,7 +215,7 @@ export function enableConfirmDescription(s: NotificationSettings): string {
 export const ALERTS_PERMISSION_LABEL = '«Recibir por correo las alertas inmediatas»'
 
 /**
- * Quién recibe las alertas A1–A4 (`alert_recipients`, NOTIFICACIONES §19).
+ * Quién recibe las alertas A1–A4 (`alert_recipients`, backend-starter/docs/DOMINIO.md §9.1).
  * Dice también la regla que la lista sola no muestra: a quien hizo el acto no
  * le llega la suya.
  */
@@ -253,7 +253,7 @@ export function groupEvents(events: NotificationEventSetting[]): EventGroup[] {
     {
       key: 'alert',
       title: 'Alertas inmediatas',
-      // NOTIFICACIONES §2.5 y §19 (fase 7): qué las dispara y quién las
+      // backend-starter/docs/DOMINIO.md §9.1 (fase 7): qué las dispara y quién las
       // recibe. Quiénes son hoy lo lista la pantalla, de `alert_recipients`.
       note:
         'Salen apenas pasa el hecho, a cualquier hora: una venta anulada, un descuento por encima del umbral (en una venta o en un abono), ' +

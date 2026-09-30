@@ -19,7 +19,7 @@ function ContractLink({ link, label }: { link: ContractChainLink; label?: string
 
 /**
  * La cadena de ampliaciones, vista desde el contrato que se está mirando
- * (docs/RECARGOS.md §6).
+ * (backend-starter/docs/DOMINIO.md §3).
  *
  * **Por qué existe.** Hasta el 25/09/2026 un contrato ampliado decía «fue
  * ampliado… la deuda vive en el contrato que lo sucede» y nada más: ni cuál,

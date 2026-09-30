@@ -148,7 +148,7 @@ export function useUpdateItem() {
   })
 }
 
-/** Publicar exige precio + ≥1 foto (CLAUDE.md paso 7) — la foto queda bloqueada hasta que exista Storage (docs/STORAGE_PENDIENTE.md); el gate de "¿tiene fotos?" vive en el componente, no acá. */
+/** Publicar exige precio + ≥1 foto (paso 7 del plan de construcción original); el gate de "¿tiene fotos?" vive en el componente, no acá. */
 export function usePublishItem() {
   const queryClient = useQueryClient()
   return useMutation({
@@ -162,7 +162,7 @@ export function usePublishItem() {
 }
 
 // `EntryPayIn`/`useEntry`/`usePayEntry` viven en `lib/inventory/entries.ts`
-// desde que `EntryDetailDialog` pasó a ser compartido (docs/PENDIENTES_FRONTEND.md #2).
+// desde que `EntryDetailDialog` pasó a ser compartido (auditoría de UX del 27/08/2026, punto 2).
 
 // ---- Productos (00021) ----
 

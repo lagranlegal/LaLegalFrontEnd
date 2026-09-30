@@ -4,7 +4,7 @@ import type { components } from '@/types/api'
 
 /**
  * La baja de los avisos por correo desde el enlace del correo
- * (`../backend-starter/docs/NOTIFICACIONES.md` §17). Endpoints PÚBLICOS: quien
+ * (`backend-starter/docs/DOMINIO.md` §9.2). Endpoints PÚBLICOS: quien
  * abre el enlace es un cliente de la compraventa, no un usuario de Prendo.
  *
  * **El GET solo lee; la baja es el POST, y la dispara un clic.** Los escáneres

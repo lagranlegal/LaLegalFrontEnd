@@ -3,7 +3,7 @@
  * docs/DESIGN_SYSTEM.md §3 `PhotoUploader`): redimensiona al lado más largo
  * y reencoda a WebP — el bucket `company-files` solo acepta
  * `image/jpeg|png|webp` (verificado contra el backend real, ver
- * docs/STORAGE_PENDIENTE.md), WebP da el tamaño más chico de los tres a
+ * docs/ARQUITECTURA.md §15), WebP da el tamaño más chico de los tres a
  * calidad equivalente. Sin librería externa: `createImageBitmap` + canvas
  * ya cubren esto sin sumarle peso al bundle.
  */

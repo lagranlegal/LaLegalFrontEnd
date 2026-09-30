@@ -11,7 +11,7 @@ export interface AuditLogFilters {
 }
 
 /**
- * Filtros combinables (CLAUDE.md paso 9) — `module`/`entity_type`/`user_id`
+ * Filtros combinables (paso 9 del plan de construcción original) — `module`/`entity_type`/`user_id`
  * son los únicos que acepta `GET /audit-log` (sin rango de fechas, a
  * diferencia de `/reports/closings`: confirmado en `src/types/api.ts`, no
  * se inventa un filtro que el backend no tiene).

@@ -88,7 +88,7 @@ function ExpenseCategoryField({ value, onChange }: { value: string; onChange: (c
 }
 
 /**
- * "+ Nuevo gasto" (CLAUDE.md paso 6). Sin `Idempotency-Key` — el endpoint no
+ * "+ Nuevo gasto" (paso 6 del plan de construcción original). Sin `Idempotency-Key` — el endpoint no
  * la acepta (ver `features/cashbox/api.ts`) — el botón deshabilitado
  * mientras está en vuelo es la única protección contra doble submit que el
  * front puede dar acá.

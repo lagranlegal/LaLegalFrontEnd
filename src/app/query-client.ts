@@ -5,7 +5,7 @@ import { ApiError } from '@/lib/api/client'
  * `PERMISSION_DENIED` inesperado (el rol cambió por debajo, cache de 60s
  * del backend) → invalidar `['me']` además del toast de la feature que
  * disparó el error: la UI se corrige sola en el siguiente render
- * (docs/ARCHITECTURE.md §5, §6). Centralizado acá para no repetirlo en cada
+ * (docs/ARQUITECTURA.md §5, §6). Centralizado acá para no repetirlo en cada
  * `queryFn`/`mutationFn`.
  */
 export const queryClient = new QueryClient({
@@ -23,7 +23,7 @@ export const queryClient = new QueryClient({
       // inmediato, así que `refetchOnWindowFocus` (arriba) reejecuta TODO lo
       // montado en cada alt-tab — incluidos los N artículos de un comprobante
       // abierto, aunque hayan pasado dos segundos desde que se cargó
-      // (docs/PENDIENTES_FRONTEND.md #11). 15s sigue siendo "casi al
+      // (auditoría de UX del 27/08/2026, punto 11). 15s sigue siendo "casi al
       // instante" para una app operativa — otro usuario cambiando algo hace
       // efecto igual, solo no en el mismo segundo — y absorbe el caso real:
       // revisar un mensaje y volver a la pestaña.

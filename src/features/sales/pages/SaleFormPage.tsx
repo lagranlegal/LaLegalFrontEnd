@@ -78,7 +78,7 @@ export function SaleFormPage() {
   const submittedRef = useRef(false)
 
   // Perder un carrito armado sin aviso era el hueco más agudo de navegación
-  // de todo el front (docs/PENDIENTES_FRONTEND.md #10): a diferencia de los
+  // de todo el front (auditoría de UX del 27/08/2026, punto 10): a diferencia de los
   // formularios de contratos/ingreso, esta pantalla no tenía NINGÚN resguardo.
   const blocker = useBlocker({
     shouldBlockFn: () => cart.length > 0 && !submittedRef.current,
@@ -348,7 +348,7 @@ export function SaleFormPage() {
             </div>
 
             {/* El medio dice CÓMO se cobró; la cuenta, DÓNDE quedó la plata
-                (docs/ARCHITECTURE.md §12). Con Sistecrédito la diferencia es
+                (backend-starter/docs/DOMINIO.md §4.1). Con Sistecrédito la diferencia es
                 el negocio entero: el medio es "Otro" y la cuenta es el
                 convenio que todavía te la debe. */}
             <div>

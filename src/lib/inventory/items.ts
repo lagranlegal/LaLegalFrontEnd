@@ -31,8 +31,8 @@ export function useItem(itemId: string | undefined) {
  * Varios artículos puntuales, en UNA sola request — para renderizar una
  * lista de líneas (comprobante de venta, formulario de devolución, prendas
  * rematadas de un contrato) que antes llamaba `useItem` por línea y disparaba
- * un request en paralelo por cada artículo DISTINTO (docs/PENDIENTES_FRONTEND.md
- * #11). Devuelve un `Map` para que el caller busque por id con `.get()` en
+ * un request en paralelo por cada artículo DISTINTO (auditoría de UX del 27/08/2026,
+ * punto 11). Devuelve un `Map` para que el caller busque por id con `.get()` en
  * vez de tener que filtrar un array en cada fila.
  */
 export function useItemsByIds(itemIds: (string | null | undefined)[]) {

@@ -2,7 +2,7 @@ import { format } from 'date-fns'
 import { tz } from '@date-fns/tz'
 
 /**
- * Fechas = zona horaria de la empresa, sin excepciones (docs/ARCHITECTURE.md
+ * Fechas = zona horaria de la empresa, sin excepciones (docs/ARQUITECTURA.md
  * §7, CLAUDE.md regla 6). El backend ya sufrió el bug de la ventana de 5
  * horas diarias (7pm–medianoche) por calcular "hoy" en UTC — el front no lo
  * repite: toda fecha pasa por este módulo, nunca por `new Date()` pelado,
@@ -107,7 +107,7 @@ function daysInMonth(year: number, month: number): number {
  * `2026-01-31` + 1 mes → `2026-02-28`, no `2026-03-03`).
  *
  * Se construyó para el import de contratos preexistentes (paso 5b,
- * `docs/RECOMENDACIONES.md` §1.6): en vez de dos date pickers libres para
+ * backend-starter/docs/DOMINIO.md §2.5): en vez de dos date pickers libres para
  * `start_date`/`interest_paid_until` (que el backend puede rechazar con
  * `IMPORT_DATES_MISALIGNED` si no caen en un múltiplo entero de meses), el
  * form pide "N meses ya cubiertos" y calcula la segunda fecha con esto —

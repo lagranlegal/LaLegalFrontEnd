@@ -18,9 +18,9 @@ function useCurrentSessionEmail() {
 }
 
 /**
- * `/platform/*` — layout PROPIO, nunca `AppShell` (CLAUDE.md paso 10): un
+ * `/platform/*` — layout PROPIO, nunca `AppShell` (paso 10 del plan de construcción original): un
  * super-admin no pertenece necesariamente a la empresa que está operando, y
- * esta pantalla no pasa por `/me` en absoluto (docs/ARCHITECTURE.md §4). La
+ * esta pantalla no pasa por `/me` en absoluto (docs/ARQUITECTURA.md §4). La
  * banda superior usa los tokens `--platform`/`--platform-foreground`
  * (`styles/tokens.css`), deliberadamente distintos de la marca — para que
  * nunca se confunda con el contexto de un tenant normal.

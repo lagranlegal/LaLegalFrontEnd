@@ -28,8 +28,7 @@ const inputClass = 'mt-1 w-full rounded-input border border-border bg-background
  * del contrato firmado va como arreglo de 1 elemento en el form (mismo
  * componente `PhotoUploader` que el resto, `maxPhotos={1}`) y se aplana a
  * `signed_photo_url: string | null` al enviar. El caller debe pasar una
- * `key` que cambie en cada apertura, mismo patrón que `CustomerFormDialog`
- * (docs/IMPLEMENTATION.md Paso 4).
+ * `key` que cambie en cada apertura, mismo patrón que `CustomerFormDialog`.
  */
 export function ContractEditDialog({ open, onOpenChange, contract }: { open: boolean; onOpenChange: (open: boolean) => void; contract: Contract }) {
   const [formError, setFormError] = useState<string | null>(null)

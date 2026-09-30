@@ -6,7 +6,7 @@ import { describe, expect, it } from 'vitest'
  * QA F21-07: **todas** las operaciones de dinero avisan igual que la caja está
  * cerrada.
  *
- * `docs/ARCHITECTURE.md` §6 lo dice para `CASH_SESSION_NOT_OPEN`: "Modal
+ * `docs/ARQUITECTURA.md` §6 lo dice para `CASH_SESSION_NOT_OPEN`: "Modal
  * central 'Abrir caja' con CTA directo a abrir sesión… **nunca un toast
  * seco**". Once pantallas lo cumplían y el traslado entre cuentas no: pintaba
  * un texto rojo al pie de su propio diálogo, sin botón. Quien ya conocía el

@@ -4,7 +4,7 @@ import { supabase } from '@/lib/auth/supabase'
 import { ApiError, NetworkError, parseApiError } from '@/lib/api/errors'
 
 /**
- * Única puerta a la API (docs/ARCHITECTURE.md §3). Ninguna feature hace
+ * Única puerta a la API (docs/ARQUITECTURA.md §3). Ninguna feature hace
  * `fetch` directo — todas pasan por `api` (tipado desde `src/types/api.ts`,
  * generado con `npm run gen:api`) o por `unwrap()` más abajo.
  */
@@ -44,7 +44,7 @@ api.use({
     if (response.status !== 401) return response
 
     // 401 con sesión aparentemente válida: refrescar y reintentar UNA vez
-    // (docs/ARCHITECTURE.md §4.6). Si el refresh falla, cerrar sesión.
+    // (docs/ARQUITECTURA.md §4.6). Si el refresh falla, cerrar sesión.
     const { data, error } = await supabase.auth.refreshSession()
     if (error || !data.session) {
       await supabase.auth.signOut()

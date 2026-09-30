@@ -24,7 +24,7 @@ describe('defaultAccountTypeFor', () => {
     // Si esta correspondencia se desincroniza de
     // `resolve_account_for_movement`, la UI preseleccionaría una cuenta y el
     // backend usaría otra — el usuario vería un destino y la plata caería en
-    // otro. Ver docs/ARCHITECTURE.md §12.
+    // otro. Ver backend-starter/docs/DOMINIO.md §4.1.
     expect(defaultAccountTypeFor('cualquier_cosa')).toBe('bank')
   })
 })

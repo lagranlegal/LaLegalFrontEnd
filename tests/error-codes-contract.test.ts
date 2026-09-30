@@ -265,7 +265,7 @@ const BAJA_LIMITADA = {
   },
 }
 
-describe('límite de tasa del enlace de baja (NOTIFICACIONES §17-bis)', () => {
+describe('límite de tasa del enlace de baja (API_GUIDE.md §15, RATE_LIMITED)', () => {
   it('`RATE_LIMITED` se tipa en vez de caer a UNKNOWN, con su espera', () => {
     const error = parseApiError(BAJA_LIMITADA.status, BAJA_LIMITADA.body)
     expect(error.code).toBe('RATE_LIMITED')

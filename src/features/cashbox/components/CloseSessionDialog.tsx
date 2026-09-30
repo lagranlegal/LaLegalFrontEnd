@@ -15,7 +15,7 @@ import { preventImplicitSubmit } from '@/lib/forms/preventImplicitSubmit'
 const inputClass = 'mt-1 w-full rounded-input border border-border bg-background px-3 py-2 text-sm text-foreground outline-none focus:border-primary'
 
 /**
- * Cierre de caja con vista previa desde `/report` (CLAUDE.md paso 6):
+ * Cierre de caja con vista previa desde `/report` (paso 6 del plan de construcción original):
  * `expected_cash` visible, `counted_cash` se digita, la diferencia se
  * calcula al instante (docs/DESIGN_SYSTEM.md §4.2). Si ≠ 0, la
  * justificación es obligatoria y bloquea el submit — SIN tolerancia, ni un

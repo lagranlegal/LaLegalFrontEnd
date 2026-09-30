@@ -31,7 +31,7 @@ export function AppFooter() {
             </a>
           )}
           {/* La firma de la plataforma. Va acá y no en el sidebar: el sidebar es
-              del inquilino (DESIGN_SYSTEM §1-bis, "dos marcas en la misma
+              del inquilino (DESIGN_SYSTEM §1, "dos marcas en la misma
               pantalla"). Discreta, sin logo — una línea. */}
           <span>Hecho con Prendo</span>
         </span>

@@ -1,5 +1,5 @@
 /**
- * Errores por `code`, nunca por `message` (docs/ARCHITECTURE.md §6).
+ * Errores por `code`, nunca por `message` (docs/ARQUITECTURA.md §6).
  * El backend responde el envelope uniforme `{code, message, details}` en
  * todo 4xx/409/402; `parseApiError` lo normaliza a `ApiError` tipado.
  *
@@ -54,7 +54,7 @@ export const API_ERROR_CODES = [
   'MULTIPLE_REGISTERS_NOT_SUPPORTED',
   'CONFLICT',
   'BAD_REQUEST',
-  // Import de contratos preexistentes (paso 5b, docs/RECOMENDACIONES.md §1.6)
+  // Import de contratos preexistentes (paso 5b, backend-starter/docs/DOMINIO.md §2.5)
   'CONTRACT_LEGACY_CODE_EXISTS',
   'IMPORT_CAPITAL_EXCEEDS_PRINCIPAL',
   'IMPORT_DATES_MISALIGNED',
@@ -122,7 +122,7 @@ export const API_ERROR_CODES = [
   // cuando existe una; el mensaje del backend explica las dos salidas
   // (trasladar, o crear una caja fuerte).
   'CASH_ACCOUNT_ALREADY_EXISTS',
-  // Ampliar el préstamo (00051, ../backend-starter/docs/RECARGOS.md). Los
+  // Ampliar el préstamo (00051, backend-starter/docs/DOMINIO.md §3). Los
   // tres los muestra el panel ANTES de dejar intentar —`GET
   // /extension-options` los devuelve como `blocked_reason`— así que como
   // error solo aparecen en una carrera: alguien abonó o el día cambió entre
@@ -144,13 +144,13 @@ export const API_ERROR_CODES = [
   // con el mensaje del backend; `details` trae los códigos culpables.
   'NOTIFICATION_EVENT_UNKNOWN',
   'NOTIFICATION_EVENT_NOT_CONFIGURABLE',
-  // Enlace de baja del correo al cliente (00059, NOTIFICACIONES §17): firma
+  // Enlace de baja del correo al cliente (00059, backend-starter/docs/DOMINIO.md §9.2): firma
   // mala, cliente o empresa inexistente, o la plataforma sin secreto. Un solo
   // código a propósito. Lo lee SOLO la página pública `/baja/$token`, que no
   // tiene sesión: el mensaje del backend ya le dice a la persona qué hacer.
   'UNSUBSCRIBE_LINK_INVALID',
-  // Límite de tasa del mismo endpoint público (25/09/2026, NOTIFICACIONES
-  // §17-bis): 60 por minuto por IP o 10 cada 10 minutos por token. `details`
+  // Límite de tasa del mismo endpoint público (25/09/2026, `RATE_LIMITED` en
+  // backend-starter/docs/API_GUIDE.md §15): 60 por minuto por IP o 10 cada 10 minutos por token. `details`
   // trae `retry_after_seconds`. Sin trato propio a propósito: la página de
   // baja ya muestra el mensaje del backend («espere un momento…») y, en la
   // carga, su botón «Reintentar» — que es justo lo que hay que hacer.

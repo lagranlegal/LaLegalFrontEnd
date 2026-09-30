@@ -14,7 +14,7 @@ export type Account = components['schemas']['AccountOut']
  *
  * El saldo lo calcula el backend, y desde la migración 00048 **los tres
  * tipos se calculan igual**: `opening_balance` de la cuenta más sus propios
- * movimientos (docs/ARCHITECTURE.md §12).
+ * movimientos (backend-starter/docs/DOMINIO.md §4.1).
  *
  * Hasta entonces una cuenta `cash` era la excepción —su saldo salía de la
  * sesión de caja abierta—, y por eso este comentario decía que cambiaba al

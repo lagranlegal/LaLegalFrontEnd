@@ -42,7 +42,7 @@ function applyThemeToDocument(theme: Theme) {
 }
 
 /**
- * Estado de UI global mínimo (docs/ARCHITECTURE.md §3: "Zustand mínimo —
+ * Estado de UI global mínimo (docs/ARQUITECTURA.md §3: "Zustand mínimo —
  * sidebar abierta, modal manager"). Nada de datos de servidor aquí — eso es
  * TanStack Query.
  */

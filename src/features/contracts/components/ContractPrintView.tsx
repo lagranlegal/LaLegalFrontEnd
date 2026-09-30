@@ -92,7 +92,7 @@ function months(count: number): string {
 }
 
 /**
- * Documento imprimible del contrato (CONTEXTO.md: "Cliente firma el
+ * Documento imprimible del contrato (backend-starter/docs/DOMINIO.md §13: sin PDFs; "Cliente firma el
  * impreso" — fase 1, sin firma en pantalla). Mismo patrón de `PrintLayout`
  * que `ClosingActDialog` (paso 6): vive como hermano de cualquier diálogo,
  * nunca anidado (`print:hidden` en un ancestro lo taparía).

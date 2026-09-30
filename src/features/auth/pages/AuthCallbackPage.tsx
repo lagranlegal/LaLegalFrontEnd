@@ -183,7 +183,7 @@ export function AuthCallbackPage() {
   // No se ofrece reintentar: con este token no puede funcionar. Y se pide un
   // enlace, no "otra invitación": reinvitar al mismo correo responde
   // `USER_ALREADY_INVITED`; lo que sirve es «Generar enlace de activación»
-  // en la ficha de la persona (RUNBOOK_USUARIOS.md §4).
+  // en la ficha de la persona (backend-starter/docs/OPERACION.md §6).
   if (status === 'quemado') {
     return (
       <div className="w-full max-w-sm rounded-card border border-border bg-card p-card text-center shadow-card">

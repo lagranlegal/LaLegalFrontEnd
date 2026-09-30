@@ -23,7 +23,7 @@ export interface DayTotal {
 // Conceptos que SÍ son utilidad/pérdida real (P&L) — un préstamo entregado
 // no es un gasto (se convierte en cartera, un activo) y el capital recuperado
 // no es ingreso (solo reduce esa cartera) — mezclarlos con intereses/ventas/
-// gastos reales daría una "utilidad" falsa. Ver docs/IMPLEMENTATION.md.
+// gastos reales daría una "utilidad" falsa. Ver backend-starter/docs/DOMINIO.md §8.
 //
 // `purchase` (compra a proveedor) queda FUERA de los gastos por la misma
 // razón que `loan_disbursed`: comprar mercancía no es un gasto, es convertir

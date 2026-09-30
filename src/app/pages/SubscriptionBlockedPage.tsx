@@ -1,7 +1,7 @@
 /**
  * Pantalla completa de bloqueo por `SUBSCRIPTION_EXPIRED` (402) — no un
  * toast. La app no es usable con suscripción vencida
- * (docs/ARCHITECTURE.md §4.7).
+ * (docs/ARQUITECTURA.md §4.7).
  */
 export function SubscriptionBlockedPage() {
   return (

@@ -6,7 +6,7 @@ const EMAIL_SHAPE = z.string().email()
 
 /**
  * Qué dice la ficha sobre los avisos por correo de este cliente
- * (`../backend-starter/docs/NOTIFICACIONES.md` §9.2, fase 3).
+ * (`backend-starter/docs/DOMINIO.md` §9.2, fase 3).
  *
  * El orden es el MISMO del backend (`notifications/service.customer_gate`):
  * sin correo, baja, rebote, y recién después la base. Si la pantalla dijera

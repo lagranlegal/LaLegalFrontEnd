@@ -8,7 +8,7 @@ import { cleanup, fireEvent, render, screen } from '@testing-library/react'
  * los generadores de vista previa de WhatsApp/Telegram/Gmail lo queman con
  * solo pedir la URL. La persona llegaba sin sesión, veía el formulario igual,
  * y al guardar recibía "no se pudo guardar la contraseña, intenta de nuevo" —
- * un consejo imposible de seguir. Ver `RUNBOOK_USUARIOS.md` §1.
+ * un consejo imposible de seguir. Ver `backend-starter/docs/OPERACION.md` §6.
  *
  * Y el que motivó la segunda vuelta (24/09/2026): la invitación pasa a salir
  * por correo con un enlace `?token_hash=…&type=invite` a esta página. Un GET

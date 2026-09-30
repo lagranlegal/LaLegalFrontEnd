@@ -91,7 +91,7 @@ export function ReturnFormDialog({ open, onOpenChange, sale }: { open: boolean; 
   const { data: returns } = useSaleReturns(sale.id)
   const createReturn = useCreateReturn(sale.id)
   // Un solo request para todos los artículos de la venta, en vez de uno por
-  // línea (docs/PENDIENTES_FRONTEND.md #11).
+  // línea (auditoría de UX del 27/08/2026, punto 11).
   const { data: itemsById } = useItemsByIds(sale.lines.map((line) => line.item_id))
 
   const [drafts, setDrafts] = useState<Record<string, LineDraft>>({})

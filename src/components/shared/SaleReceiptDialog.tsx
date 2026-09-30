@@ -228,7 +228,7 @@ function SaleReceiptPrint({
 }
 
 /**
- * Comprobante de venta (CLAUDE.md paso 7) — ver/imprimir + anular. Mismo
+ * Comprobante de venta (paso 7 del plan de construcción original) — ver/imprimir + anular. Mismo
  * patrón que `ClosingActDialog` (paso 6): `PrintLayout` hermano del
  * `AppDialog`, nunca anidado. Al imprimir sale SOLO el comprobante —
  * `PrintLayout` se monta en un portal y oculta el resto de la página—, sin
@@ -241,7 +241,7 @@ export function SaleReceiptDialog({ open, onOpenChange, sale }: { open: boolean;
   const { data: customer } = useCustomer(sale.customer_id ?? '')
   const { data: returns } = useSaleReturns(sale.id)
   // Un solo request para TODOS los artículos de la venta, en vez de uno por
-  // línea (docs/PENDIENTES_FRONTEND.md #11) — una venta de 8 líneas pedía 8
+  // línea (auditoría de UX del 27/08/2026, punto 11) — una venta de 8 líneas pedía 8
   // artículos en paralelo solo para mostrar el comprobante.
   const { data: itemsById } = useItemsByIds(sale.lines.map((line) => line.item_id))
   const voidSale = useVoidSale()

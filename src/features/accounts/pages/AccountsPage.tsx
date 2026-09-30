@@ -76,7 +76,7 @@ function AccountCard({
  * Cuentas — dónde está la plata.
  *
  * Agrupada por tipo y no como una tabla plana a propósito: el saldo de cada
- * tipo significa algo distinto (docs/ARCHITECTURE.md §12) y sumarlos todos en
+ * tipo significa algo distinto (backend-starter/docs/DOMINIO.md §4.1) y sumarlos todos en
  * un total único mentiría — lo que Sistecrédito te debe no es plata que
  * tengas. Por eso cada grupo lleva su propio subtotal y su propia explicación,
  * y no hay un "total general" en ninguna parte.
