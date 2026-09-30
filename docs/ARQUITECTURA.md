@@ -155,7 +155,7 @@ Lo que el front hace distinto del banner genérico:
 | `SUBSCRIPTION_EXPIRED` (402) | pantalla de bloqueo (§4.7) |
 | `NOT_FOUND` (404) | estado "no encontrado" (puede ser de otra empresa: no se distingue a propósito) |
 | `VALIDATION_ERROR` (422) | cada error junto a su campo con `applyServerErrors`; lo que no se pinta, al banner (§12) |
-| `CASH_SESSION_NOT_OPEN` (409) | **diálogo central de abrir caja** (`CashSessionRequiredDialog`) con el botón si el rol puede, o a quién pedírselo. También al anular una venta. Nunca un toast seco |
+| `CASH_SESSION_NOT_OPEN` (409) | **diálogo central de abrir caja** (`CashSessionRequiredDialog`) con el botón si el rol puede, o a quién pedírselo. También al anular una venta. Nunca un toast seco. Consultar el estado no es este caso: `sessions/current` va con `allow_empty=true` (`200 null`, sin 404 en la consola) y el 404 viejo se sigue leyendo como «cerrada» |
 | `CASH_SESSION_ALREADY_OPEN`, `…_ALREADY_CLOSED_TODAY`, `…_NOT_CLOSED` | no se arreglan reintentando: el diálogo dice qué hacer (`openSessionErrorMessage`) e invalida `['cashbox']` |
 | `IDEMPOTENCY_IN_PROGRESS` (409) | el doble clic: la primera petición va a terminar bien. Banner con el mensaje del backend, sin reintentar |
 | `EXTENSION_*`, `CONTRACT_INTEREST_OVERDUE` | el panel de ampliar los muestra **antes** (`GET /extension-options` → `blocked_reason`); como error solo llegan en una carrera, y se recarga el contrato |

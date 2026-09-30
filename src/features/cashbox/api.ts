@@ -19,16 +19,19 @@ export type Expense = components['schemas']['ExpenseOut']
 export type ExpenseCreateIn = components['schemas']['ExpenseCreateIn']
 
 /**
- * `CASH_SESSION_NOT_OPEN` acá no es un error de UI — es el estado normal
- * "no hay caja abierta hoy" (docs/ARQUITECTURA.md §6). Se normaliza a
- * `null` para que `CashSessionBanner` lo trate como dato, no como falla.
+ * «No hay caja abierta» es el estado normal, no un error de UI
+ * (docs/ARQUITECTURA.md §6): `null`, para que `CashSessionBanner` lo trate como
+ * dato. Se pide con `allow_empty=true` y el backend responde `200 null`; antes
+ * era un 404 `CASH_SESSION_NOT_OPEN` en la consola de cada navegación (F9-03).
+ * El 404 se sigue normalizando: el parámetro es opt-in y un backend anterior
+ * lo ignora, así que el orden de deploy no importa.
  */
 export function cashboxCurrentQueryOptions() {
   return queryOptions({
     queryKey: ['cashbox', 'current'] as const,
     queryFn: async () => {
       try {
-        return await unwrap(api.GET('/api/v1/cashbox/sessions/current'))
+        return await unwrap(api.GET('/api/v1/cashbox/sessions/current', { params: { query: { allow_empty: true } } }))
       } catch (error) {
         if (error instanceof ApiError && error.code === 'CASH_SESSION_NOT_OPEN') {
           return null
