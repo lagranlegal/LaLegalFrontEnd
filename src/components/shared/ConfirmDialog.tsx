@@ -38,6 +38,18 @@ function ConfirmDialogInner({ options }: { options: ConfirmOptions }) {
         </div>
       }
     >
+      {options.summary && (
+        <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1.5 rounded-input bg-muted px-3 py-2.5 text-sm">
+          {options.summary
+            .filter((row) => row.value)
+            .map((row) => (
+              <div key={row.label} className="contents">
+                <dt className="text-muted-foreground">{row.label}</dt>
+                <dd className="tnum text-right font-medium text-foreground">{row.value}</dd>
+              </div>
+            ))}
+        </dl>
+      )}
       {options.requireReason && (
         <div>
           <label htmlFor="confirm-reason" className="text-sm font-medium text-foreground">

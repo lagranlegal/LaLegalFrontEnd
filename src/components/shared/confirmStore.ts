@@ -3,6 +3,10 @@ import { create } from 'zustand'
 export interface ConfirmOptions {
   title: string
   description?: string
+  /** Resumen de lo que se va a registrar, renglón por renglón (F9-18): es el
+   *  último control antes de mover plata, así que repite a quién, cuánto, cómo
+   *  y a dónde. Los renglones sin valor no se pintan. */
+  summary?: { label: string; value: string | null | undefined }[]
   tone?: 'default' | 'danger'
   confirmLabel?: string
   cancelLabel?: string

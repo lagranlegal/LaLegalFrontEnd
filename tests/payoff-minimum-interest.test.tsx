@@ -35,6 +35,7 @@ vi.mock('@/components/shared/Can', () => ({ Can: ({ children }: { children: Reac
 vi.mock('@/components/shared/AccountPicker', () => ({ AccountPicker: () => null }))
 vi.mock('@/components/shared/CashSessionRequiredDialog', () => ({ CashSessionRequiredDialog: () => null }))
 vi.mock('@/components/shared/CashClosedNotice', () => ({ CashClosedNotice: () => null }))
+vi.mock('@/lib/accounts/list', () => ({ useAccounts: () => ({ data: [] }) }))
 vi.mock('@/components/shared/confirmStore', () => ({ confirm: vi.fn(async () => ({ confirmed: true })) }))
 vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn() } }))
 

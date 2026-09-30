@@ -15,6 +15,7 @@ import { cn } from '@/lib/utils'
 import { usePaymentOptions, useCreatePayment, type PaymentOption, type PaymentQuote } from '@/features/contracts/api'
 import { AccountPicker } from '@/components/shared/AccountPicker'
 import { PAYMENT_METHOD_LABELS } from '@/lib/paymentMethods'
+import { useAccounts } from '@/lib/accounts/list'
 
 /**
  * Medio de pago + cuenta, siempre juntos: el medio dice CÓMO pagó el cliente,
@@ -47,6 +48,40 @@ function PaymentMethodField({ value, onChange, accountId, onAccountChange }: { v
   )
 }
 
+/** Quién paga qué: lo que la confirmación repite (F9-18). */
+export interface PaymentContext {
+  contractNumber?: number
+  customerName?: string
+}
+
+/**
+ * El resumen de la confirmación del abono (F9-18): contrato, cliente, qué se
+ * paga, total, medio y cuenta. Antes solo decía «1 mes de interés.», y es el
+ * último control antes de mover plata.
+ */
+export function paymentSummary({
+  context,
+  concept,
+  total,
+  paymentMethod,
+  accountName,
+}: {
+  context: PaymentContext
+  concept: string
+  total: string
+  paymentMethod: 'cash' | 'transfer' | 'other'
+  accountName: string | null | undefined
+}): { label: string; value: string | null | undefined }[] {
+  return [
+    { label: 'Contrato', value: context.contractNumber !== undefined ? `#${context.contractNumber}` : null },
+    { label: 'Cliente', value: context.customerName },
+    { label: 'Paga', value: concept },
+    { label: 'Total', value: formatCOP(total) },
+    { label: 'Medio de pago', value: PAYMENT_METHOD_LABELS[paymentMethod] },
+    { label: 'Entra a', value: accountName },
+  ]
+}
+
 /**
  * Contrato AL DÍA (`months_owed === 0`) — `payment-options` responde
  * `options: []` porque no hay ningún mes de interés para elegir, pero
@@ -66,8 +101,9 @@ function PaymentMethodField({ value, onChange, accountId, onAccountChange }: { v
  * cobrar `payoff_total`. El saldo de capital no viene suelto en la
  * cotización; es `payoff_total − payoff_interest`.
  */
-function CapitalOnlyPaymentForm({ contractId, quote }: { contractId: string; quote: PaymentQuote }) {
+function CapitalOnlyPaymentForm({ contractId, quote, context }: { contractId: string; quote: PaymentQuote; context: PaymentContext }) {
   const createPayment = useCreatePayment(contractId)
+  const { data: accounts } = useAccounts()
   const [capitalAmount, setCapitalAmount] = useState('0.00')
   const [paymentMethod, setPaymentMethod] = useState<'cash' | 'transfer' | 'other'>('cash')
   const [accountId, setAccountId] = useState<string | null>(null)
@@ -87,8 +123,17 @@ function CapitalOnlyPaymentForm({ contractId, quote }: { contractId: string; quo
     const result = await confirm({
       title: isPayoff ? 'Saldar el contrato' : 'Registrar abono a capital',
       description: isPayoff
-        ? `${formatCOP(capitalAmount)} de capital + ${formatCOP(payoffInterest)} de interés: saldar causa como mínimo un mes de interés.`
+        ? 'Saldar causa como mínimo un mes de interés.'
         : `Contrato al día — este abono va completo a reducir el capital prestado.`,
+      summary: paymentSummary({
+        context,
+        concept: isPayoff
+          ? `${formatCOP(capitalAmount)} de capital + ${formatCOP(payoffInterest)} de interés`
+          : `${formatCOP(capitalAmount)} a capital`,
+        total,
+        paymentMethod,
+        accountName: accounts?.find((a) => a.id === accountId)?.name,
+      }),
       confirmLabel: `Registrar abono ${formatCOP(total)}`,
     })
     if (!result.confirmed) return
@@ -156,8 +201,9 @@ function CapitalOnlyPaymentForm({ contractId, quote }: { contractId: string; quo
  * cuando `allows_capital` (con meses adeudados) o cuando el contrato ya
  * está al día (`CapitalOnlyPaymentForm` arriba).
  */
-export function PaymentOptionsPanel({ contractId }: { contractId: string }) {
+export function PaymentOptionsPanel({ contractId, contractNumber, customerName }: { contractId: string } & PaymentContext) {
   const { data: quote, isPending, isError, refetch } = usePaymentOptions(contractId)
+  const { data: accounts } = useAccounts()
   const createPayment = useCreatePayment(contractId)
   const [selected, setSelected] = useState<PaymentOption | null>(null)
   const [paymentMethod, setPaymentMethod] = useState<'cash' | 'transfer' | 'other'>('cash')
@@ -184,7 +230,7 @@ export function PaymentOptionsPanel({ contractId }: { contractId: string }) {
   if (quote.months_owed === 0) {
     return (
       <Can permission="payments.create" fallback={<p className="text-sm text-muted-foreground">No tienes permiso para registrar abonos.</p>}>
-        <CapitalOnlyPaymentForm contractId={contractId} quote={quote} />
+        <CapitalOnlyPaymentForm contractId={contractId} quote={quote} context={{ contractNumber, customerName }} />
       </Can>
     )
   }
@@ -207,7 +253,13 @@ export function PaymentOptionsPanel({ contractId }: { contractId: string }) {
     const hasCapital = selected.allows_capital && Number(capitalAmount) > 0
     const result = await confirm({
       title: 'Registrar abono',
-      description: `${selected.months} ${selected.months === 1 ? 'mes' : 'meses'} de interés${hasCapital ? ` + ${formatCOP(capitalAmount)} a capital` : ''}.`,
+      summary: paymentSummary({
+        context: { contractNumber, customerName },
+        concept: `${selected.months} ${selected.months === 1 ? 'mes' : 'meses'} de interés${hasCapital ? ` + ${formatCOP(capitalAmount)} a capital` : ''}`,
+        total,
+        paymentMethod,
+        accountName: accounts?.find((a) => a.id === accountId)?.name,
+      }),
       confirmLabel: `Registrar abono ${formatCOP(total)}`,
     })
     if (!result.confirmed) return

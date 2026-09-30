@@ -308,7 +308,7 @@ export function ContractDetailPage() {
         <div className="rounded-card border border-border bg-card p-card shadow-card">
           <h2 className="text-sm font-medium text-foreground">Registrar abono</h2>
           <div className="mt-3">
-            <PaymentOptionsPanel contractId={contractId} />
+            <PaymentOptionsPanel contractId={contractId} contractNumber={contract.number} customerName={customer?.full_name} />
           </div>
         </div>
       )}
