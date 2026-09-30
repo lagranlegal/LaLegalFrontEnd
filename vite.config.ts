@@ -92,5 +92,16 @@ export default defineConfig(({ mode }) => ({
     environment: 'jsdom',
     include: ['tests/**/*.test.{ts,tsx}'],
     setupFiles: ['./tests/setup.ts'],
+    // Los tests no leen el `.env` de quien los corre: `src/lib/auth/supabase.ts`
+    // crea el cliente al importarse y revienta sin URL ("supabaseUrl is
+    // required"), y `src/lib/api/client.ts` arma URLs relativas que `fetch` no
+    // acepta sin base. En CI no hay `.env`, así que 27 archivos fallaban al
+    // cargar y en local pasaban solo porque el `.env` apunta a dev. Valores
+    // fijos y a dominios `.invalid`: ningún test puede llegar a un servidor real.
+    env: {
+      VITE_API_URL: 'http://api.test.invalid',
+      VITE_SUPABASE_URL: 'http://supabase.test.invalid',
+      VITE_SUPABASE_ANON_KEY: 'anon-key-de-tests',
+    },
   },
 }))
