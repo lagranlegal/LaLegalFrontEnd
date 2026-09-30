@@ -3,6 +3,7 @@ import { useMe } from '@/lib/auth/me'
 import { useDashboard, useReadyForAuction } from '@/features/dashboard/api'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { KpiCard, KpiRow } from '@/components/shared/KpiCard'
+import { QuickActions } from '@/features/dashboard/components/QuickActions'
 import { Money } from '@/components/shared/Money'
 import { RecordNumber } from '@/components/shared/RecordNumber'
 import { EmptyState } from '@/components/shared/EmptyState'
@@ -54,11 +55,15 @@ export function DashboardPage() {
     // creyendo que la app está rota — cuando en realidad no tiene permiso.
     // Se le explica y se le señala el menú, que sí muestra lo que sí puede.
     if (isPermissionError(error)) {
+      // F9-60: y no una pantalla vacía — los accesos a lo que sí puede hacer.
       return (
-        <EmptyState
-          title={`Hola, ${me?.user.full_name ?? ''}`.trim()}
-          description="Tu rol no incluye el resumen del inicio. Usa el menú de la izquierda para ir a lo que sí tienes habilitado, o pídele a un administrador el permiso 'Dashboard y reportes'."
-        />
+        <div className="flex flex-col gap-6">
+          <PageHeader title={`Hola, ${me?.user.full_name ?? ''}`.trim()} description="¿Qué vas a hacer?" />
+          <QuickActions />
+          <p className="text-xs text-muted-foreground">
+            El resumen de cifras del inicio es para quien tiene el permiso «Dashboard y reportes».
+          </p>
+        </div>
       )
     }
     return (
