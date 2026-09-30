@@ -57,7 +57,8 @@ plataforma ahí diría que el inquilino se llama Prendo.
   con borde sutil y radio generoso. Pie de una línea.
 - **Modales**: centrados, radio grande, X arriba a la derecha, título grande, campos con label arriba y **botón
   primario tipo pastilla en oro**. Todos los diálogos de la app siguen este patrón.
-- **Punto de venta**: CTA grande de ancho completo en oro, texto carbón y **el total dentro del botón**.
+- **Punto de venta**: CTA grande de ancho completo en oro, texto carbón y **el total dentro del botón** Con efectivo,
+  «Efectivo recibido» y el **cambio** en grande (o cuánto falta); es solo cálculo en pantalla, no se envía (F9-32).
 - **Celular**: KPIs apilados, tablas que colapsan a tarjetas, CTAs de ancho completo.
 
 ## 2. Tokens (`src/styles/tokens.css`) — única fuente de verdad

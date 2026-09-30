@@ -22,6 +22,7 @@ import { usePermission } from '@/lib/permissions/usePermission'
 import { belowPriceDiscount } from '@/lib/sales/discount'
 import { AccountPicker } from '@/components/shared/AccountPicker'
 import { PAYMENT_METHOD_LABELS } from '@/lib/paymentMethods'
+import { cashChange } from '@/features/sales/cashChange'
 import { useCreateSale } from '@/features/sales/api'
 import { QuantityInput } from '@/features/sales/components/QuantityInput'
 import { allowsFractions, clampQuantity, unitAbbr } from '@/lib/inventory/units'
@@ -55,6 +56,8 @@ export function SaleFormPage() {
   const [customer, setCustomer] = useState<Customer | null>(null)
   const [paymentMethod, setPaymentMethod] = useState<'cash' | 'transfer' | 'other'>('cash')
   const [discountAmount, setDiscountAmount] = useState('0.00')
+  // Solo para calcular el cambio en pantalla (F9-32): no se envía.
+  const [cashReceived, setCashReceived] = useState('')
   const [discountReason, setDiscountReason] = useState('')
   const [formError, setFormError] = useState<string | null>(null)
   const [accountId, setAccountId] = useState<string | null>(null)
@@ -137,6 +140,7 @@ export function SaleFormPage() {
   const total = hasDiscount ? subtractMoney(subtotal, discountAmount) : subtotal
   const hasCreditNote = !!creditNoteId && Number(creditNoteAmount) > 0
   const cashAmount = hasCreditNote ? subtractMoney(total, creditNoteAmount) : total
+  const change = paymentMethod === 'cash' ? cashChange(cashReceived, cashAmount) : null
   // Vender por debajo del costo del lote (decisión del dueño, auditoría fase
   // 7): el backend lo exige con `sales.apply_discount`. Acá se avisa en la
   // línea y se pide confirmarlo; `item.cost` es el mismo costo del lote con
@@ -414,6 +418,27 @@ export function SaleFormPage() {
               </>
             )}
           </div>
+
+          {/* F9-32: con efectivo, lo recibido y el cambio. Solo en pantalla. */}
+          {paymentMethod === 'cash' && (
+            <div className="flex flex-col gap-2 rounded-card border border-border bg-card p-card shadow-card">
+              <label htmlFor="sale-cash-received" className="text-sm font-medium text-foreground">
+                Efectivo recibido <span className="font-normal text-muted-foreground">(opcional, para calcular el cambio)</span>
+              </label>
+              <MoneyInput id="sale-cash-received" optional value={cashReceived} onChange={setCashReceived} />
+              {change?.kind === 'change' && (
+                <div className="flex items-baseline justify-between" aria-live="polite">
+                  <span className="text-sm text-muted-foreground">Cambio</span>
+                  <Money value={change.amount} className="tnum text-2xl font-semibold text-foreground" />
+                </div>
+              )}
+              {change?.kind === 'short' && (
+                <p className="text-sm text-danger" aria-live="polite">
+                  Faltan <Money value={change.amount} /> para completar el cobro.
+                </p>
+              )}
+            </div>
+          )}
 
           {hasBelowCost && (
             <label className="flex items-start gap-2 rounded-input bg-danger-soft px-3 py-2 text-sm text-danger">
