@@ -129,6 +129,10 @@ lista de los 43 permisos vive en `backend-starter/docs/DOMINIO.md` §11.
   `lib/api/isPermissionError`: si la pantalla **afirma un estado** y no lo puede saber, no muestra nada; si es una
   lista, dice qué permiso falta y a quién pedirlo, sin reintentar; si el elemento es opcional (el selector de
   cuenta), se oculta y la operación sigue (el backend usa la cuenta por defecto).
+- **Una consulta cuyo permiso ya se sabe que falta no sale** (`enabled` con `usePermission`): el Inicio del Asesor
+  pedía el resumen, el remate y la caja en cada carga para recibir tres 403 (issue #9). `useCashboxCurrent` lo hace
+  adentro porque la franja de caja está en todas las pantallas; deshabilitada queda en `isPending`, así que quien
+  la consuma sin el permiso no afirma nada. El 403 se sigue atendiendo por si `/me` quedó viejo.
 - **Sin permiso, la ruta vuelve al Inicio con un aviso** (`forbidden(preload)` en `router.tsx`, F9-59): la
   redirección muda dejaba sin explicación a quien abría un enlace compartido. En una precarga no avisa.
 

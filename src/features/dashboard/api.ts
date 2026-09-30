@@ -8,8 +8,12 @@ export function dashboardQueryOptions() {
   })
 }
 
-export function useDashboard() {
-  return useQuery(dashboardQueryOptions())
+/**
+ * `enabled`: sin `reports.view` la consulta no sale (issue #9). El 403 no era
+ * una falla, pero sí un error evitable en cada carga del Inicio del Asesor.
+ */
+export function useDashboard({ enabled = true }: { enabled?: boolean } = {}) {
+  return useQuery({ ...dashboardQueryOptions(), enabled })
 }
 
 /**
@@ -19,9 +23,10 @@ export function useDashboard() {
  * (`['contracts','ready-for-auction']`) para que rematar un contrato
  * invalide esta card también, no solo la lista de contratos.
  */
-export function useReadyForAuction() {
+export function useReadyForAuction({ enabled = true }: { enabled?: boolean } = {}) {
   return useQuery({
     queryKey: ['contracts', 'ready-for-auction'] as const,
     queryFn: () => unwrap(api.GET('/api/v1/contracts/ready-for-auction')),
+    enabled,
   })
 }

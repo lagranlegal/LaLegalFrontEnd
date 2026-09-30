@@ -4,6 +4,7 @@ import { userMessage } from '@/lib/api/errors'
 import { useCursorInfiniteQuery } from '@/lib/api/pagination'
 import { useMoneyMutation } from '@/lib/api/useMoneyMutation'
 import { todayBogota } from '@/lib/dates'
+import { usePermission } from '@/lib/permissions/usePermission'
 import type { components } from '@/types/api'
 
 // `useClosingsHistory`/`ClosingHistory` viven en `lib/cashbox/closings.ts`
@@ -38,8 +39,14 @@ export function cashboxCurrentQueryOptions() {
   })
 }
 
+/**
+ * Sin `cashbox.view` la consulta no sale (issue #9): la franja de caja está en
+ * todas las pantallas, y era un 403 por navegación para Bodega. Deshabilitada
+ * queda en `isPending`: quien la use sin el permiso no afirma nada.
+ */
 export function useCashboxCurrent() {
-  return useQuery(cashboxCurrentQueryOptions())
+  const canView = usePermission('cashbox.view')
+  return useQuery({ ...cashboxCurrentQueryOptions(), enabled: canView })
 }
 
 /**

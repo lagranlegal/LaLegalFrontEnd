@@ -185,7 +185,8 @@ un collar: basta el punto activo al pasar el mouse), eje de fechas en `dd/MM` (e
 - **Inicio** (`/inicio`, `GET /reports/dashboard`): fila de KPIs (cartera, ventas, contratos activos, inventario,
   caja), contratos por estado y la lista de **listos para remate**, que es la alerta operativa más valiosa.
 - **Inicio sin `reports.view`** (Asesor, Bodega): accesos directos a lo que el rol sí puede hacer, cada uno con el
-  permiso de su ruta (`dashboard/components/QuickActions`, F9-60); antes era una pantalla vacía.
+  permiso de su ruta (`dashboard/components/QuickActions`, F9-60); antes era una pantalla vacía. El texto de cada
+  acceso dice lo que el rol puede hacer ahí: «Caja» ofrece abrirla solo con `cashbox.open_close`.
 - **Reportes** (`/reportes`) tiene dos pestañas porque responden cosas distintas: **Período** resume un rango
   (selector de fechas con tope de 90 días, `MAX_RANGE_DAYS`) y **Contabilidad** es una foto de hoy (qué se debe,
   qué se tiene). Reglas que no se negocian:

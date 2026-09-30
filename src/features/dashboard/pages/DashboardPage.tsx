@@ -1,5 +1,6 @@
 import { Link } from '@tanstack/react-router'
 import { useMe } from '@/lib/auth/me'
+import { usePermission } from '@/lib/permissions/usePermission'
 import { useDashboard, useReadyForAuction } from '@/features/dashboard/api'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { KpiCard, KpiRow } from '@/components/shared/KpiCard'
@@ -43,29 +44,33 @@ function ReturnsHint({ gross, returns }: { gross?: string; returns?: string }) {
 
 export function DashboardPage() {
   const { data: me } = useMe()
-  const { data, isPending, isError, error, refetch } = useDashboard()
-  const { data: readyForAuction } = useReadyForAuction()
+  // Sin el permiso la consulta no sale: el 403 era seguro, pero evitable
+  // (issue #9). El 403 se sigue atendiendo abajo por si `/me` quedó viejo.
+  const canViewReports = usePermission('reports.view')
+  const canAuction = usePermission('contracts.auction')
+  const { data, isPending, isError, error, refetch } = useDashboard({ enabled: canViewReports })
+  const { data: readyForAuction } = useReadyForAuction({ enabled: canAuction })
+
+  // `/` es el destino al que redirigen TODOS los guards de ruta, así que es la
+  // pantalla que ve un usuario cuyo rol no le da acceso a casi nada. Sin
+  // `reports.view` el dashboard no carga, y decirle "no se pudo" lo deja
+  // creyendo que la app está rota — cuando en realidad no tiene permiso.
+  // F9-60: y no una pantalla vacía — los accesos a lo que sí puede hacer.
+  if (!canViewReports || (isError && isPermissionError(error))) {
+    return (
+      <div className="flex flex-col gap-6">
+        <PageHeader title={`Hola, ${me?.user.full_name ?? ''}`.trim()} description="¿Qué vas a hacer?" />
+        <QuickActions />
+        <p className="text-xs text-muted-foreground">
+          El resumen de cifras del inicio es para quien tiene el permiso «Dashboard y reportes».
+        </p>
+      </div>
+    )
+  }
 
   if (isPending) return <DashboardSkeleton />
 
   if (isError) {
-    // `/` es el destino al que redirigen TODOS los guards de ruta, así que es
-    // la pantalla que ve un usuario cuyo rol no le da acceso a casi nada. Sin
-    // `reports.view` el dashboard no carga, y decirle "no se pudo" lo deja
-    // creyendo que la app está rota — cuando en realidad no tiene permiso.
-    // Se le explica y se le señala el menú, que sí muestra lo que sí puede.
-    if (isPermissionError(error)) {
-      // F9-60: y no una pantalla vacía — los accesos a lo que sí puede hacer.
-      return (
-        <div className="flex flex-col gap-6">
-          <PageHeader title={`Hola, ${me?.user.full_name ?? ''}`.trim()} description="¿Qué vas a hacer?" />
-          <QuickActions />
-          <p className="text-xs text-muted-foreground">
-            El resumen de cifras del inicio es para quien tiene el permiso «Dashboard y reportes».
-          </p>
-        </div>
-      )
-    }
     return (
       <div className="flex flex-col items-center gap-3 rounded-card border border-border bg-card p-card text-center">
         <p className="text-sm text-muted-foreground">No se pudo cargar el dashboard.</p>

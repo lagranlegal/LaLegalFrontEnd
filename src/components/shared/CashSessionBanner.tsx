@@ -5,6 +5,7 @@ import { Can } from '@/components/shared/Can'
 import { Button } from '@/components/ui/button'
 import { formatDate, formatTime, todayBogota } from '@/lib/dates'
 import { isPermissionError } from '@/lib/api/isPermissionError'
+import { usePermission } from '@/lib/permissions/usePermission'
 
 /**
  * Franja global bajo la topbar: estado de caja visible en toda la app
@@ -12,8 +13,13 @@ import { isPermissionError } from '@/lib/api/isPermissionError'
  * permanente — contratos y ventas dependen de que haya una sesión abierta.
  */
 export function CashSessionBanner() {
+  const canView = usePermission('cashbox.view')
   const { data: session, isPending, error } = useCashboxCurrent()
   const [openDialog, setOpenDialog] = useState(false)
+
+  // Sin `cashbox.view` la consulta ni sale (`useCashboxCurrent`): la franja no
+  // afirma nada, y tampoco se queda cargando para siempre.
+  if (!canView) return null
 
   if (isPending) {
     return <div className="h-9 animate-pulse bg-background" />
