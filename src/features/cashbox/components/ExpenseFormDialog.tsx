@@ -107,7 +107,7 @@ export function ExpenseFormDialog({ open, onOpenChange }: { open: boolean; onOpe
     handleSubmit,
     control,
     setError,
-    formState: { errors },
+    formState: { errors, isDirty },
   } = useForm<ExpenseFormValues>({
     resolver: zodResolver(expenseSchema),
     defaultValues: { category_id: '', description: '', amount: '0.00', payment_method: 'cash', account_id: null, module: 'general', receipt: [] },
@@ -139,6 +139,7 @@ export function ExpenseFormDialog({ open, onOpenChange }: { open: boolean; onOpe
       <AppDialog
         open={open}
         onOpenChange={onOpenChange}
+        confirmDiscard={isDirty}
         title="Nuevo gasto"
         footer={
           <div className="flex w-full gap-2">

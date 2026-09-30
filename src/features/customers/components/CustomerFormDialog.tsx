@@ -108,7 +108,7 @@ export function CustomerFormDialog({ open, onOpenChange, customer }: { open: boo
     handleSubmit,
     control,
     setError,
-    formState: { errors },
+    formState: { errors, isDirty },
   } = useForm<CustomerFormValues>({
     resolver: zodResolver(customerSchema(savedEmail)),
     defaultValues: customer ? valuesFromCustomer(customer) : emptyValues(),
@@ -164,6 +164,7 @@ export function CustomerFormDialog({ open, onOpenChange, customer }: { open: boo
     <AppDialog
       open={open}
       onOpenChange={onOpenChange}
+      confirmDiscard={isDirty}
       title={mode === 'create' ? 'Nuevo cliente' : 'Editar cliente'}
       size="lg"
       footer={
