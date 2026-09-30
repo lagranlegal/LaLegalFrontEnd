@@ -5,6 +5,7 @@ import { unitsSoldText } from '@/features/reports/units'
 import { usePawnPerformance, useProfitSummary } from '@/features/reports/api'
 import { MAX_PROFIT_RANGE_DAYS, reportRangeProblem } from '@/features/reports/aggregate'
 import { ApiError, userMessage } from '@/lib/api/errors'
+import { SectionError } from '@/features/reports/components/SectionError'
 
 /** El rango no se puede pedir (o el backend lo rechazó): se dice por qué en vez de esconder la tarjeta. */
 function RangeNotice({ title, message }: { title: string; message: string }) {
@@ -44,12 +45,13 @@ function rangeMessage(range: DateRangeValue | null, error: unknown): string | nu
  * al momento de vender.
  */
 export function ProfitCard({ range }: { range: DateRangeValue | null }) {
-  const { data: profit, isPending, isError, error } = useProfitSummary(range)
+  const { data: profit, isPending, isError, error, refetch } = useProfitSummary(range)
   const problemaRango = rangeMessage(range, error)
 
   if (problemaRango) return <RangeNotice title="Utilidad bruta de tienda" message={problemaRango} />
   if (isPending) return <div className="h-28 animate-pulse rounded-card border border-border bg-border" />
-  if (isError || !profit) return null
+  if (isError) return <SectionError title="Utilidad bruta de tienda" error={error} onRetry={() => void refetch()} />
+  if (!profit) return null
 
   const loss = Number(profit.gross_profit) < 0
 
@@ -111,12 +113,13 @@ export function ProfitCard({ range }: { range: DateRangeValue | null }) {
  * cobrados" por esa razón, y es correcto que difiera.
  */
 export function PawnCard({ range }: { range: DateRangeValue | null }) {
-  const { data: pawn, isPending, isError, error } = usePawnPerformance(range)
+  const { data: pawn, isPending, isError, error, refetch } = usePawnPerformance(range)
   const problemaRango = rangeMessage(range, error)
 
   if (problemaRango) return <RangeNotice title="Rentabilidad del empeño" message={problemaRango} />
   if (isPending) return <div className="h-28 animate-pulse rounded-card border border-border bg-border" />
-  if (isError || !pawn) return null
+  if (isError) return <SectionError title="Rentabilidad del empeño" error={error} onRetry={() => void refetch()} />
+  if (!pawn) return null
   // Sobre el interés neto, igual que la cifra de al lado. Un backend anterior
   // a F1 no lo manda: ahí queda el bruto.
   const netYield = pawn.net_yield_on_current_portfolio_pct === undefined ? pawn.yield_on_current_portfolio_pct : pawn.net_yield_on_current_portfolio_pct

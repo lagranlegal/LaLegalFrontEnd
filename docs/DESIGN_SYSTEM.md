@@ -193,6 +193,9 @@ un collar: basta el punto activo al pasar el mouse), eje de fechas en `dd/MM` (e
   - Filtro Todo / Empeño / Tienda para toda la pantalla, sin pedir nada nuevo al backend; la comparación con el
     período anterior de igual duración con `delta` por KPI.
   - Lo que no depende del rango (la cartera de hoy, los rankings del histórico completo) lo dice en su rótulo.
+- **Una sección que falla no desaparece** (F9-47): queda su título, el error y «Reintentar»
+  (`reports/components/SectionError`); un reporte al que le falta la utilidad sin decirlo parece completo. Un 403 la
+  oculta, como siempre.
 - Exportar a Excel sale de los mismos datos que se ven (`lib/export/xlsx.ts`).
 
 ## 6. Theming en la práctica

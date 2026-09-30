@@ -49,7 +49,7 @@ describe('CashClosedNotice', () => {
     const casos = [
       { data: { id: 's1' }, isPending: false, error: null },
       { data: undefined, isPending: true, error: null },
-      { data: undefined, isPending: false, error: new ApiError({ status: 403, code: 'FORBIDDEN', message: 'x' }) },
+      { data: undefined, isPending: false, error: new ApiError({ status: 403, code: 'PERMISSION_DENIED', message: 'x' }) },
       { data: undefined, isPending: false, error: new Error('red') },
     ]
     for (const caso of casos) {

@@ -27,6 +27,7 @@ import { aggregateCashDifferences, aggregateFinancialSummary, salesCashFlow, agg
 import { aggregateItemRanking } from '@/features/reports/rankings'
 import { ModuleSplitBar } from '@/features/reports/components/ModuleSplitBar'
 import { PawnCard, ProfitCard } from '@/features/reports/components/PerformanceCards'
+import { SectionError } from '@/features/reports/components/SectionError'
 import { incomeStatementCascade, incomeStatementRows, incomeStatementSheetRows } from '@/features/reports/incomeStatement'
 
 type ModuleFilter = 'all' | 'pawn' | 'store'
@@ -108,10 +109,11 @@ function RankingList({ rows }: { rows: { key: string; label: string; quantity: n
  * entero. Empeño y tienda por separado ya están en las tarjetas de abajo.
  */
 function IncomeStatementCard({ range }: { range: DateRangeValue | null }) {
-  const { data, isPending, isError } = useIncomeStatement(range)
+  const { data, isPending, isError, error, refetch } = useIncomeStatement(range)
 
   if (isPending) return <div className="h-56 animate-pulse rounded-card border border-border bg-border" />
-  if (isError || !data) return null
+  if (isError) return <SectionError title="Estado de resultados" error={error} onRetry={() => void refetch()} />
+  if (!data) return null
 
   // Subtotales derivados de los renglones mostrados, con centavos si los
   // hay: lo que se ve se puede sumar a mano (ver `incomeStatementCascade`).
