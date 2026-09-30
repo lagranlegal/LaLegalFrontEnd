@@ -18,8 +18,20 @@ const quote = { months_owed: 1, payoff_total: '1050000.00' }
 describe('contractStatusHeadline', () => {
   it('en mora: desde cuándo, cuánto debe y cuánto salda', () => {
     const h = contractStatusHeadline({ ...base, status: 'in_arrears' }, quote)
-    expect(h?.title).toBe('En mora desde el 28/08/2026')
+    // La mora empieza al CUMPLIRSE el primer mes adeudado (`rules.months_between`
+    // pasa de 0 a 1), no en `interest_paid_until`, que es el inicio del mes sin
+    // pagar: un contrato del 28/08 sin abonos no está en mora desde que se firmó.
+    expect(h?.title).toBe('En mora desde el 28/09/2026')
     expect(h?.detail).toMatch(/Debe 1 mes de interés · para saldar hoy \$\s1\.050\.000/)
+  })
+
+  it('en mora con ancla el 31: el mes siguiente recorta el día, como `rules.add_months`', () => {
+    expect(contractStatusHeadline({ ...base, interest_paid_until: '2026-08-31', status: 'in_arrears' }, null)?.title).toBe(
+      'En mora desde el 30/09/2026',
+    )
+    expect(contractStatusHeadline({ ...base, interest_paid_until: '2028-01-31', status: 'in_arrears' }, null)?.title).toBe(
+      'En mora desde el 29/02/2028',
+    )
   })
 
   it('en prórroga vigente y ya vencida (lista para remate)', () => {

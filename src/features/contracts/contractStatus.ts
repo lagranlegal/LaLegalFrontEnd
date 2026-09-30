@@ -1,4 +1,4 @@
-import { formatDate, todayBogota } from '@/lib/dates'
+import { addMonthsToDateOnly, formatDate, todayBogota } from '@/lib/dates'
 import { formatCOP } from '@/lib/money'
 import type { Contract } from '@/features/contracts/api'
 
@@ -52,7 +52,12 @@ export function contractStatusHeadline(
     return { title, detail: deuda }
   }
   if (contract.status === 'in_arrears') {
-    return { title: `En mora desde el ${formatDate(contract.interest_paid_until)}`, detail: deuda }
+    // La mora empieza al cumplirse el primer mes adeudado (`months_between`
+    // pasa de 0 a 1): `interest_paid_until` + 1 mes, con el recorte de fin de
+    // mes de `rules.add_months`. `interest_paid_until` solo es el inicio del
+    // mes sin pagar: «en mora desde el día que se firmó».
+    const desde = addMonthsToDateOnly(contract.interest_paid_until, 1)
+    return { title: `En mora desde el ${formatDate(desde)}`, detail: deuda }
   }
   return null
 }
