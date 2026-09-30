@@ -8,7 +8,8 @@ import fixtures from './fixtures/backend-f1.json'
 let DASHBOARD: unknown = fixtures.dashboard_devolucion.body
 
 vi.mock('@tanstack/react-router', () => ({ Link: ({ children }: { children: ReactNode }) => <a>{children}</a> }))
-vi.mock('@/lib/auth/me', () => ({ useMe: () => ({ data: { user: { full_name: 'Ana' } } }) }))
+// Con `reports.view`: sin él el Inicio ni pide el resumen (issue #9).
+vi.mock('@/lib/auth/me', () => ({ useMe: () => ({ data: { user: { full_name: 'Ana' }, permissions: ['reports.view'] } }) }))
 vi.mock('@/features/dashboard/api', () => ({
   useDashboard: () => ({ data: DASHBOARD, isPending: false, isError: false }),
   useReadyForAuction: () => ({ data: [] }),
