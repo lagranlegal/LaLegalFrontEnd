@@ -275,3 +275,12 @@ export function groupEvents(events: NotificationEventSetting[]): EventGroup[] {
     },
   ].filter((g) => g.events.length > 0) as EventGroup[]
 }
+
+/**
+ * El nombre de un aviso sin su código interno (F9-55). El backend manda
+ * «A1 · Venta anulada»: el código (A1…A4, C1…C7, R1…R5) sirve para cruzar con
+ * la documentación, no le dice nada a quien configura la empresa.
+ */
+export function eventLabel(description: string): string {
+  return description.replace(/^[A-Z]\d+\s*·\s*/, '')
+}

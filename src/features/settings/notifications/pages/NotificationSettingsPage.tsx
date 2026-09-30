@@ -28,6 +28,7 @@ import {
   buildParamsPatch,
   draftFromSettings,
   enableConfirmDescription,
+  eventLabel,
   groupEvents,
   storedBelowLegalFloor,
   validateDraft,
@@ -236,11 +237,11 @@ function EventsSection({ settings }: { settings: NotificationSettings }) {
                     checked={event.enabled}
                     disabled={update.isPending}
                     onCheckedChange={(v) => save(event, v === true)}
-                    aria-label={event.description}
+                    aria-label={eventLabel(event.description)}
                     className="mt-0.5"
                   />
                   <span className="min-w-0 text-sm text-foreground">
-                    {event.description}
+                    {eventLabel(event.description)}
                     {event.code === AUCTION_READY_CUSTOMER && (
                       <span className="block text-xs text-warning">Tiene consecuencias legales: lee el aviso antes de encenderlo.</span>
                     )}
@@ -445,7 +446,7 @@ function DeliveriesSection({ settings }: { settings: NotificationSettings }) {
   const status = statusFilter === ALL ? undefined : (statusFilter as DeliveryStatus)
   const { data, isPending, isError, refetch, fetchNextPage, hasNextPage, isFetchingNextPage } = useNotificationDeliveries({ status })
   const deliveries = data?.pages.flatMap((p) => p.items) ?? []
-  const descriptions = new Map(settings.events.map((e) => [e.code, e.description]))
+  const descriptions = new Map(settings.events.map((e) => [e.code, eventLabel(e.description)]))
 
   return (
     <Section

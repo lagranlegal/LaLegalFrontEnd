@@ -177,3 +177,12 @@ describe('alertRecipientsSummary', () => {
   })
 })
 
+
+describe('eventLabel (F9-55)', () => {
+  it('quita el código interno del nombre del aviso', async () => {
+    const { eventLabel } = await import('@/features/settings/notifications/logic')
+    expect(eventLabel('A1 · Venta anulada')).toBe('Venta anulada')
+    expect(eventLabel('C12 · Contrato creado: número, monto')).toBe('Contrato creado: número, monto')
+    expect(eventLabel('Sin código')).toBe('Sin código')
+  })
+})
