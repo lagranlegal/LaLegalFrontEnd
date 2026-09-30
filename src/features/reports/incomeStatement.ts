@@ -51,8 +51,17 @@ export function incomeStatementRows(data: IncomeStatement): IncomeStatementRow[]
     { key: 'inventory_shrinkage', label: 'Mermas y bajas', value: data.inventory_shrinkage, kind: 'subtract', hint: `${data.shrinkage_exit_count} egreso(s), al costo` },
     // F7-02: lo que se quedó el convenio (Sistecrédito y similares) al liquidar.
     { key: 'settlement_commissions', label: 'Comisiones de convenios', value: data.settlement_commissions, kind: 'subtract', hint: 'Liquidado menos recibido' },
-    // F7-03: con signo. Un sobrante suma, un faltante resta.
-    { key: 'cash_differences', label: 'Descuadres de caja', value: data.cash_differences, kind: 'signed', hint: 'Sobrantes suman, faltantes restan' },
+    // F7-03: con signo. Un sobrante suma, un faltante resta. Incluye el conteo
+    // de APERTURA y el arqueo de CIERRE (y la reversa al reabrir): por eso no
+    // coincide con el neto de «Descuadres de caja al cierre», que solo cuenta
+    // el arqueo. Sin decirlo, la misma pantalla mostraba +43.000 y −7.000.
+    {
+      key: 'cash_differences',
+      label: 'Descuadres de caja',
+      value: data.cash_differences,
+      kind: 'signed',
+      hint: 'Sobrantes suman, faltantes restan. Incluye los conteos de apertura y de cierre, por eso no coincide con los descuadres al cierre',
+    },
     { key: 'operating_profit', label: 'Utilidad', value: data.operating_profit, kind: 'result' },
 
     { key: 'sales_discounts', label: 'Descuentos de venta', value: data.sales_discounts, kind: 'info', hint: 'Ya restados de las ventas' },

@@ -38,6 +38,9 @@ describe('estado de resultados (F1: líneas nuevas)', () => {
     const faltante = { ...(fixtures.income_statement_descuadre.body as IncomeStatement), cash_differences: '-43000.00', operating_profit: '-43000.00' }
     const filas = incomeStatementRows(faltante)
     expect(signedValue(filas.find((r) => r.key === 'cash_differences')!)).toBe('-43000.00')
+    // Verificación del 29/09: la línea dice que incluye apertura y cierre, que
+    // es por qué no coincide con la tarjeta de descuadres de los cierres.
+    expect(filas.find((r) => r.key === 'cash_differences')?.hint).toMatch(/apertura y de cierre/)
   })
 
   it('el interés del remate es informativo: ya está en la utilidad bruta y no suma otra vez', () => {

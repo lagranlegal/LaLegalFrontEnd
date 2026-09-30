@@ -528,7 +528,8 @@ export function ReportesPage() {
               />
             </div>
             <p className="mt-3 border-t border-border pt-2 text-xs text-muted-foreground">
-              No incluye los descuadres del conteo de apertura: esos se registran como ajuste de la cuenta, fuera de la sesión.
+              No incluye los descuadres del conteo de apertura: esos se registran como ajuste de la cuenta, fuera de la sesión. El estado de
+              resultados sí los incluye (su línea «Descuadres de caja» suma apertura y cierre), por eso las dos cifras pueden no coincidir.
             </p>
           </div>
 
