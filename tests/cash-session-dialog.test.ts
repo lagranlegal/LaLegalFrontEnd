@@ -35,6 +35,7 @@ const NO_SON_PANTALLA = new Set([
   'lib/api/errors.ts', // catálogo central de códigos
   'lib/sales/void.ts', // hook de mutación; lo nombra en su docstring
   'features/cashbox/api.ts', // hooks de caja
+  'components/shared/CashClosedNotice.tsx', // aviso previo con la caja cerrada; lo nombra en su docstring
 ])
 
 function archivos(dir: string): string[] {
