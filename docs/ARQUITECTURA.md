@@ -263,8 +263,11 @@ Rutas declaradas a mano en `src/app/router.tsx` (TanStack Router, sin file-based
   search lo escribe cualquiera). El callback de invitación va directo a `APP_HOME` (`/inicio`).
 - Los filtros de inventario viven en la URL (schema Zod en el router): sobreviven a F5, se pueden compartir y
   «atrás» vuelve al filtro anterior.
-- **Sin code-splitting por ruta**: todo el árbol entra en el bundle inicial (≈1,9 MB); solo el editor de
-  plantillas (Tiptap) carga aparte. Deuda conocida, en `backend-starter/docs/QA.md` §4 (F9).
+- **Code-splitting por ruta** (issue #7): cada pantalla de la app entra con `lazyRouteComponent`; en el bundle
+  inicial quedan solo las de entrada (landing, login, callback, baja) y el shell. El JS inicial bajó de 1.950 kB
+  (538 gzip) a 928 kB (277 gzip), medido con `npm run build`. Una pantalla nueva se declara igual. Con
+  `defaultPreload: 'intent'` el chunk baja al pasar por el enlace, y si tras un deploy ya no existe (pestaña vieja),
+  `lazyRouteComponent` recarga la página una vez. El editor de plantillas (Tiptap) y `xlsx` van aparte desde antes.
 
 ## 10. Tests
 
@@ -311,6 +314,9 @@ Vitest + Testing Library sobre jsdom (`tests/setup.ts` simula `matchMedia`). Las
   una en el dashboard sin redesplegar no hace nada, y el dashboard muestra el valor nuevo. El CSP sale de las
   mismas variables (§8).
 - SPA fallback: `vercel.json` reescribe toda ruta a `/index.html` salvo los assets.
+- **Caché**: `/assets/*` (todo con hash en el nombre) va con caché de un año e `immutable`; el `index.html` no, así
+  que un deploy se ve en la siguiente carga. Las cabeceras de seguridad aplican a todas las rutas, assets incluidos
+  (Vercel suma todas las reglas que coinciden).
 - **Nunca** poner las URLs viejas (`*.fly.dev`, `*.vercel.app`) en un `.env`: el CSP de la app servida bloquea la
   API vieja.
 - Cómo se despliega, cómo se reemplaza una `VITE_*` sin dejar un hueco, cómo verificar el bundle servido, Site URL

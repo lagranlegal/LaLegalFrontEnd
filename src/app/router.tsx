@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { createRootRouteWithContext, createRoute, createRouter, Outlet, redirect } from '@tanstack/react-router'
+import { createRootRouteWithContext, createRoute, createRouter, lazyRouteComponent, Outlet, redirect } from '@tanstack/react-router'
 import type { QueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { supabase } from '@/lib/auth/supabase'
@@ -16,33 +16,45 @@ import { NotFoundPage } from '@/app/pages/NotFoundPage'
 import { ErrorPage } from '@/app/pages/ErrorPage'
 import { LoginPage } from '@/features/auth/pages/LoginPage'
 import { AuthCallbackPage } from '@/features/auth/pages/AuthCallbackPage'
-import { DashboardPage } from '@/features/dashboard/pages/DashboardPage'
 import { LandingPage } from '@/features/landing/pages/LandingPage'
-import { CustomersPage } from '@/features/customers/pages/CustomersPage'
-import { CustomerDetailPage } from '@/features/customers/pages/CustomerDetailPage'
-import { CatalogsPage } from '@/features/catalogs/pages/CatalogsPage'
-import { SupplierDetailPage } from '@/features/catalogs/pages/SupplierDetailPage'
-import { ContractsListPage } from '@/features/contracts/pages/ContractsListPage'
-import { ContractFormPage } from '@/features/contracts/pages/ContractFormPage'
-import { ContractImportPage } from '@/features/contracts/pages/ContractImportPage'
-import { ContractDetailPage } from '@/features/contracts/pages/ContractDetailPage'
-import { CashboxPage } from '@/features/cashbox/pages/CashboxPage'
-import { InventoryPage } from '@/features/inventory/pages/InventoryPage'
-import { EntryFormPage } from '@/features/inventory/pages/EntryFormPage'
-import { TransformationFormPage } from '@/features/inventory/pages/TransformationFormPage'
-import { SalesListPage } from '@/features/sales/pages/SalesListPage'
-import { SaleFormPage } from '@/features/sales/pages/SaleFormPage'
-import { IdentityPage } from '@/features/identity/pages/IdentityPage'
-import { AuditPage } from '@/features/audit/pages/AuditPage'
-import { ReportesPage } from '@/features/reports/pages/ReportesPage'
-import { AccountsPage } from '@/features/accounts/pages/AccountsPage'
-import { CapitalPage } from '@/features/capital/pages/CapitalPage'
-import { SettingsPage } from '@/features/settings/pages/SettingsPage'
-import { DocumentTemplatesPage } from '@/features/settings/documentTemplates/pages/DocumentTemplatesPage'
-import { ProfilePage } from '@/features/settings/pages/ProfilePage'
-import { NotificationSettingsPage } from '@/features/settings/notifications/pages/NotificationSettingsPage'
-import { CompaniesPage } from '@/features/platform/pages/CompaniesPage'
 import { UnsubscribePage } from '@/features/unsubscribe/pages/UnsubscribePage'
+
+/**
+ * División de código por ruta (issue #7, F9-64). Todo iba en un bundle de
+ * 1,9 MB: el login y la landing bajaban también Reportes, las gráficas, el
+ * inventario, las plantillas y la plataforma. Cada pantalla de la app va en
+ * su chunk; en el bundle inicial quedan solo las de entrada (landing, login,
+ * enlace de invitación, baja de correos) y el shell.
+ * Con `defaultPreload: 'intent'`, pasar el mouse por el enlace ya baja el
+ * chunk. Un chunk que ya no existe tras un deploy (pestaña abierta de antes)
+ * lo resuelve `lazyRouteComponent`: recarga la página una vez. Medido con
+ * `npm run build`: JS inicial de 1.950 kB (538 gzip) a 928 kB (277 gzip).
+ */
+const DashboardPage = lazyRouteComponent(() => import('@/features/dashboard/pages/DashboardPage'), 'DashboardPage')
+const CustomersPage = lazyRouteComponent(() => import('@/features/customers/pages/CustomersPage'), 'CustomersPage')
+const CustomerDetailPage = lazyRouteComponent(() => import('@/features/customers/pages/CustomerDetailPage'), 'CustomerDetailPage')
+const ContractsListPage = lazyRouteComponent(() => import('@/features/contracts/pages/ContractsListPage'), 'ContractsListPage')
+const ContractFormPage = lazyRouteComponent(() => import('@/features/contracts/pages/ContractFormPage'), 'ContractFormPage')
+const ContractImportPage = lazyRouteComponent(() => import('@/features/contracts/pages/ContractImportPage'), 'ContractImportPage')
+const ContractDetailPage = lazyRouteComponent(() => import('@/features/contracts/pages/ContractDetailPage'), 'ContractDetailPage')
+const CashboxPage = lazyRouteComponent(() => import('@/features/cashbox/pages/CashboxPage'), 'CashboxPage')
+const SalesListPage = lazyRouteComponent(() => import('@/features/sales/pages/SalesListPage'), 'SalesListPage')
+const SaleFormPage = lazyRouteComponent(() => import('@/features/sales/pages/SaleFormPage'), 'SaleFormPage')
+const ReportesPage = lazyRouteComponent(() => import('@/features/reports/pages/ReportesPage'), 'ReportesPage')
+const DocumentTemplatesPage = lazyRouteComponent(() => import('@/features/settings/documentTemplates/pages/DocumentTemplatesPage'), 'DocumentTemplatesPage')
+const SettingsPage = lazyRouteComponent(() => import('@/features/settings/pages/SettingsPage'), 'SettingsPage')
+const NotificationSettingsPage = lazyRouteComponent(() => import('@/features/settings/notifications/pages/NotificationSettingsPage'), 'NotificationSettingsPage')
+const ProfilePage = lazyRouteComponent(() => import('@/features/settings/pages/ProfilePage'), 'ProfilePage')
+const InventoryPage = lazyRouteComponent(() => import('@/features/inventory/pages/InventoryPage'), 'InventoryPage')
+const EntryFormPage = lazyRouteComponent(() => import('@/features/inventory/pages/EntryFormPage'), 'EntryFormPage')
+const TransformationFormPage = lazyRouteComponent(() => import('@/features/inventory/pages/TransformationFormPage'), 'TransformationFormPage')
+const CompaniesPage = lazyRouteComponent(() => import('@/features/platform/pages/CompaniesPage'), 'CompaniesPage')
+const AuditPage = lazyRouteComponent(() => import('@/features/audit/pages/AuditPage'), 'AuditPage')
+const IdentityPage = lazyRouteComponent(() => import('@/features/identity/pages/IdentityPage'), 'IdentityPage')
+const CapitalPage = lazyRouteComponent(() => import('@/features/capital/pages/CapitalPage'), 'CapitalPage')
+const AccountsPage = lazyRouteComponent(() => import('@/features/accounts/pages/AccountsPage'), 'AccountsPage')
+const CatalogsPage = lazyRouteComponent(() => import('@/features/catalogs/pages/CatalogsPage'), 'CatalogsPage')
+const SupplierDetailPage = lazyRouteComponent(() => import('@/features/catalogs/pages/SupplierDetailPage'), 'SupplierDetailPage')
 
 interface RouterContext {
   queryClient: QueryClient
