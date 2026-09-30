@@ -139,7 +139,10 @@ agrega como prop al compartido, no se clona. **Un solo modal, un solo calendario
 2. **Dinero guiado, nunca libre.** Los abonos son botones generados desde `payment-options` (1 mes, 2 meses, al día
    + capital); el único campo libre es el capital extra cuando se permite. En el cierre de caja, lo esperado se ve,
    lo contado se digita, la diferencia se calcula al instante y, si no es cero, la justificación aparece y bloquea
-   el envío. Ampliar un préstamo **explica cuándo no se puede** en vez de desaparecer.
+   el envío. Ampliar un préstamo **explica cuándo no se puede** en vez de desaparecer, y bloqueado muestra el motivo
+   en lugar de la cifra del cupo: una cifra de plata que no se puede usar no va en grande (F9-17). Un contrato en mora
+   o en prórroga abre con un titular de estado (desde cuándo, cuánto debe, cuánto salda hoy), no solo con la pastilla
+   (F9-16).
 3. **Respuesta inmediata**: botón en carga y deshabilitado mientras la mutación vuela; éxito con acción contextual
    o error mapeado (ARQUITECTURA §6). Nunca doble envío. **Enter no registra dinero** (ARQUITECTURA §12).
 4. **Destructivo = fricción**: anular, rematar, reabrir, desactivar → `ConfirmDialog` con la consecuencia dicha y

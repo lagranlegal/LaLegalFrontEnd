@@ -14,7 +14,6 @@ import { ApiError } from '@/lib/api/client'
 import { addMonthsToDateOnly, formatDate } from '@/lib/dates'
 import { PAYMENT_METHOD_LABELS } from '@/lib/paymentMethods'
 import { percentOfMoney, subtractMoney, sumMoney } from '@/lib/money'
-import { useCashboxCurrent } from '@/features/cashbox/api'
 import { useContractChain, useExtendLoan, useExtensionOptions, type Contract } from '@/features/contracts/api'
 import { extensionBlock } from '@/features/contracts/extensionBlock'
 import { usePermission } from '@/lib/permissions/usePermission'
@@ -36,7 +35,6 @@ import { usePermission } from '@/lib/permissions/usePermission'
 export function ExtendLoanPanel({ contract }: { contract: Contract }) {
   const navigate = useNavigate()
   const { data: cupo, isPending } = useExtensionOptions(contract.id)
-  const { data: sesion, isPending: sesionPending } = useCashboxCurrent()
   const extend = useExtendLoan(contract.id)
   const [confirmOpen, setConfirmOpen] = useState(false)
   const [amount, setAmount] = useState('')
@@ -68,12 +66,9 @@ export function ExtendLoanPanel({ contract }: { contract: Contract }) {
   const nuevoCapital = amount ? sumMoney(contract.capital_balance, amount) : contract.capital_balance
   const excedeCupo = !!amount && Number(subtractMoney(amount, cupo.available)) > 0
 
-  // La sesión de caja la exige el TIPO DE CUENTA, no la operación (CLAUDE.md
-  // → Caja): con la caja cerrada el recargo en efectivo se rechaza, pero el
-  // de transferencia pasa. Decirlo ANTES evita el callejón sin salida de
-  // llenar el formulario para toparse con un 409 al confirmar.
-  const cajaCerrada = !sesionPending && sesion == null
-  const avisaCajaCerrada = cajaCerrada && method === 'cash'
+  // La sesión de caja la exige el TIPO DE CUENTA, no la operación: el aviso
+  // de caja cerrada (`CashClosedNotice`) sale solo con efectivo, antes de
+  // llenar, y trae «Abrir caja».
 
   // Desde 00053 el sucesor CONSERVA el ancla del interés, así que la próxima
   // cuota vence el día de siempre — no 30 días después del recargo. Es lo que
@@ -130,7 +125,19 @@ export function ExtendLoanPanel({ contract }: { contract: Contract }) {
     <Can permission="contracts.extend_loan">
       <div className="rounded-card border border-border bg-card p-card shadow-card">
         <h2 className="text-sm font-medium text-foreground">Ampliar el préstamo</h2>
-        <CashClosedNotice paymentMethod={method} className="mt-3" />
+
+        {/* F9-17: bloqueado, la cifra grande era plata que no se puede usar
+            («Puede retirar hasta $ 1.100.000» con la ventana vencida). En su
+            lugar va el motivo; el cupo queda como dato chico debajo. */}
+        {estado.kind === 'blocked' ? (
+          <div className="mt-3 flex flex-col gap-1">
+            <p className="rounded-input bg-muted px-3 py-2 text-sm text-foreground">{estado.message}</p>
+            <p className="text-xs text-muted-foreground">
+              Cupo sobre el avalúo: <Money value={cupo.available} />
+            </p>
+          </div>
+        ) : (
+          <>
 
         <div className="mt-3 flex flex-wrap items-baseline justify-between gap-x-6 gap-y-1">
           <div>
@@ -162,9 +169,7 @@ export function ExtendLoanPanel({ contract }: { contract: Contract }) {
           </p>
         )}
 
-        {estado.kind === 'blocked' ? (
-          <p className="mt-3 rounded-input bg-muted px-3 py-2 text-sm text-muted-foreground">{estado.message}</p>
-        ) : (
+            <CashClosedNotice paymentMethod={method} className="mt-3" />
           <div className="mt-4 flex flex-wrap items-end gap-3">
             <div className="min-w-40 flex-1">
               <label htmlFor="extend-amount" className="text-sm font-medium text-foreground">
@@ -200,6 +205,7 @@ export function ExtendLoanPanel({ contract }: { contract: Contract }) {
               Ampliar préstamo
             </Button>
           </div>
+          </>
         )}
 
         {excedeCupo && !(estado.kind === 'open' && estado.overLimitOnly) && (
@@ -209,12 +215,6 @@ export function ExtendLoanPanel({ contract }: { contract: Contract }) {
           </p>
         )}
 
-        {estado.kind === 'open' && avisaCajaCerrada && (
-          <p className="mt-2 rounded-input bg-warning-soft px-3 py-2 text-xs text-warning">
-            La caja está cerrada, así que no se puede entregar efectivo. Puedes ampliar por
-            transferencia, o abrir la caja primero.
-          </p>
-        )}
       </div>
 
       {/* La confirmación es la parte crítica: sin ella alguien amplía creyendo

@@ -20,8 +20,9 @@ import { PAYMENT_METHOD_LABELS } from '@/lib/paymentMethods'
 import { confirm } from '@/components/shared/confirmStore'
 import { useCategories } from '@/lib/catalogs/categories'
 import { useItemsByIds, type Item } from '@/lib/inventory/items'
-import { usePaymentsList, useAuctionContract, type Payment } from '@/features/contracts/api'
-import { effectiveContractStatus, isReadyForAuction } from '@/features/contracts/contractStatus'
+import { usePaymentOptions, usePaymentsList, useAuctionContract, type Contract, type Payment } from '@/features/contracts/api'
+import { AlertTriangle } from 'lucide-react'
+import { contractStatusHeadline, effectiveContractStatus, isReadyForAuction } from '@/features/contracts/contractStatus'
 import { useContract } from '@/lib/contracts/reference'
 import { useCustomer } from '@/lib/customers/search'
 import { PaymentOptionsPanel } from '@/features/contracts/components/PaymentOptionsPanel'
@@ -214,6 +215,9 @@ export function ContractDetailPage() {
           historia completa si hay varias (backend-starter/docs/DOMINIO.md §3). */}
       <ContractChainPanel contract={contract} />
 
+      {/* F9-16: la mora y la prórroga en grande, arriba de los datos. */}
+      <ContractStatusHeadline contract={contract} />
+
       {contract.ltv_warning && (
         <div className="rounded-input bg-warning-soft px-4 py-2 text-sm text-warning">Este contrato supera el LTV máximo permitido para su categoría.</div>
       )}
@@ -244,7 +248,9 @@ export function ContractDetailPage() {
           <p className="text-sm text-foreground">{formatDate(contract.start_date)}</p>
         </div>
         <div>
-          <p className="text-xs text-muted-foreground">Vencimiento</p>
+          {/* «Vencimiento» con una fecha futura se leía "al día" en un
+              contrato en mora (F9-16): es el fin del plazo, no el próximo pago. */}
+          <p className="text-xs text-muted-foreground">Fin del plazo</p>
           <p className="text-sm text-foreground">{formatDate(contract.due_date)}</p>
         </div>
         <div>
@@ -351,5 +357,28 @@ export function ContractDetailPage() {
       <ContractPrintView contract={contract} customer={customer} categories={categories} />
     )}
     </>
+  )
+}
+
+/** Encabezado de estado (F9-16). Solo se monta para estados que piden acción. */
+function ContractStatusHeadline({ contract }: { contract: Contract }) {
+  const needsHeadline = contract.status === 'in_arrears' || contract.status === 'in_extension'
+  if (!needsHeadline) return null
+  return <ContractStatusHeadlineInner contract={contract} />
+}
+
+function ContractStatusHeadlineInner({ contract }: { contract: Contract }) {
+  // Misma key que `PaymentOptionsPanel`: no es un request más.
+  const { data: quote } = usePaymentOptions(contract.id)
+  const headline = contractStatusHeadline(contract, quote)
+  if (!headline) return null
+  return (
+    <div role="status" className="flex gap-3 rounded-card border border-danger/30 bg-danger-soft px-4 py-3">
+      <AlertTriangle className="mt-0.5 size-5 shrink-0 text-danger" aria-hidden />
+      <div className="flex flex-col gap-0.5">
+        <p className="text-base font-semibold text-foreground">{headline.title}</p>
+        {headline.detail && <p className="tnum text-sm text-foreground">{headline.detail}</p>}
+      </div>
+    </div>
   )
 }
