@@ -109,6 +109,8 @@ describe('AuthCallbackPage', () => {
     expect(screen.getByText(/administrador/)).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Intentar de nuevo' })).not.toBeInTheDocument()
     expect(window.location.search).toBe('')
+    // Con salida: es el caso real más común y quedaba sin ningún botón.
+    expect(screen.getByRole('link', { name: 'Ir a ingresar' }).getAttribute('href')).toBe('/auth/login')
   })
 
   it('una falla de red NO se presenta como enlace quemado: el token no se gastó y se puede reintentar', async () => {
@@ -135,6 +137,7 @@ describe('AuthCallbackPage', () => {
     expect(await screen.findByText('Este enlace ya se usó o venció')).toBeInTheDocument()
     expect(screen.getByText(/genere uno nuevo/)).toBeInTheDocument()
     expect(verifyOtp).not.toHaveBeenCalled()
+    expect(screen.getByRole('link', { name: 'Ir a ingresar' })).toBeInTheDocument()
   })
 
   it('sigue funcionando con los enlaces viejos, que traen la sesión en el fragmento', async () => {

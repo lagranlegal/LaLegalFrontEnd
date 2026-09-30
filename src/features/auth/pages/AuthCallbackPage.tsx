@@ -192,6 +192,10 @@ export function AuthCallbackPage() {
           Cada enlace sirve una sola vez y por tiempo limitado. Pídele a tu administrador que genere uno nuevo y ábrelo
           apenas te llegue.
         </p>
+        {/* F9-61: la misma salida que `invalid`; es el caso real más común. */}
+        <Button asChild className="mt-4 w-full rounded-pill">
+          <Link to="/auth/login">Ir a ingresar</Link>
+        </Button>
       </div>
     )
   }
