@@ -20,6 +20,28 @@ function DataTableSkeleton({ columnsCount }: { columnsCount: number }) {
   )
 }
 
+const ROW_FOCUS = 'focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring'
+
+/**
+ * Una fila que abre su detalle se abre también con teclado (F9-11): antes solo
+ * con el mouse (sin `tabIndex`, sin rol). Tab llega a la fila y Enter o
+ * Espacio la abren. Solo si el evento es de la fila misma: un botón o enlace
+ * dentro de una celda maneja su propio Enter.
+ */
+function rowKeyboardProps<T>(onRowClick: ((row: T) => void) | undefined, row: T) {
+  if (!onRowClick) return {}
+  return {
+    tabIndex: 0,
+    onKeyDown: (e: React.KeyboardEvent<HTMLElement>) => {
+      if (e.target !== e.currentTarget) return
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault()
+        onRowClick(row)
+      }
+    },
+  }
+}
+
 /**
  * LA tabla de la app (docs/DESIGN_SYSTEM.md §3): sobre TanStack Table
  * (headless — todo el markup/estilo es nuestro). Encabezado gris claro,
@@ -121,8 +143,9 @@ export function DataTable<T>({
           {table.getRowModel().rows.map((row) => (
             <tr
               key={row.id}
-              className={cn('transition-colors hover:bg-accent/50', onRowClick && 'cursor-pointer active:bg-accent')}
+              className={cn('transition-colors hover:bg-accent/50', onRowClick && 'cursor-pointer active:bg-accent', onRowClick && ROW_FOCUS)}
               onClick={() => onRowClick?.(row.original)}
+              {...rowKeyboardProps(onRowClick, row.original)}
             >
               {row.getVisibleCells().map((cell) => (
                 <td key={cell.id} className="px-4 py-3 text-foreground">
@@ -139,8 +162,9 @@ export function DataTable<T>({
         {table.getRowModel().rows.map((row) => (
           <div
             key={row.id}
-            className={cn('flex flex-col gap-1.5 p-4', onRowClick && 'cursor-pointer transition-colors active:bg-accent/60')}
+            className={cn('flex flex-col gap-1.5 p-4', onRowClick && 'cursor-pointer transition-colors active:bg-accent/60', onRowClick && ROW_FOCUS)}
             onClick={() => onRowClick?.(row.original)}
+            {...rowKeyboardProps(onRowClick, row.original)}
           >
             {row.getVisibleCells().map((cell) => {
               const header = cell.column.columnDef.header
