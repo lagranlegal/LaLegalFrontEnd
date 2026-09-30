@@ -27,7 +27,14 @@ vi.mock('@/lib/auth/supabase', () => ({
   },
   supabase: { auth: { verifyOtp: (...args: unknown[]) => verifyOtp(...args), getSession: () => getSession() } },
 }))
-vi.mock('@tanstack/react-router', () => ({ useNavigate: () => vi.fn() }))
+vi.mock('@tanstack/react-router', () => ({
+  useNavigate: () => vi.fn(),
+  Link: ({ to, children, className }: { to: string; children: import('react').ReactNode; className?: string }) => (
+    <a href={to} className={className}>
+      {children}
+    </a>
+  ),
+}))
 vi.mock('@/features/auth/api', async (importOriginal) => {
   const original = await importOriginal<typeof import('@/features/auth/api')>()
   return {
@@ -146,5 +153,7 @@ describe('AuthCallbackPage', () => {
     render(<AuthCallbackPage />)
 
     expect(await screen.findByText('Link inválido o expirado')).toBeInTheDocument()
+    // F9-61: con salida a ingresar, no un callejón.
+    expect(screen.getByRole('link', { name: 'Ir a ingresar' }).getAttribute('href')).toBe('/auth/login')
   })
 })

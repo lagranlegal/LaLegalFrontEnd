@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useForm } from 'react-hook-form'
 import { z } from 'zod'
-import { useNavigate } from '@tanstack/react-router'
+import { Link, useNavigate } from '@tanstack/react-router'
 import { Button } from '@/components/ui/button'
 import { initialUrl, supabase } from '@/lib/auth/supabase'
 import { canjeFallidoEsDefinitivo, setPasswordErrorMessage, useSetPassword } from '@/features/auth/api'
@@ -204,6 +204,10 @@ export function AuthCallbackPage() {
           Los enlaces caducan por seguridad. Vuelve a pedir uno desde “¿Olvidaste tu contraseña?” en la pantalla de
           ingreso, o pide a tu administrador que te genere un enlace nuevo.
         </p>
+        {/* F9-61: con salida, no un callejón. */}
+        <Button asChild className="mt-4 w-full rounded-pill">
+          <Link to="/auth/login">Ir a ingresar</Link>
+        </Button>
       </div>
     )
   }
