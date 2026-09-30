@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react'
+import { Children, type ReactNode } from 'react'
 import { cn } from '@/lib/utils'
 
 const TONE_CLASSES = {
@@ -37,11 +37,12 @@ export function KpiCard({
   hint?: ReactNode
 }) {
   return (
-    <div className="flex min-w-0 flex-col gap-1 lg:px-4 lg:first:pl-0 lg:last:pr-0">
+    <div className="flex min-w-0 flex-col gap-1">
       <span className="text-xs text-muted-foreground">{label}</span>
-      {/* F9-06: `min-w-0` + `wrap-anywhere` — una cifra larga baja de línea
-          DENTRO de su celda en vez de invadir la de al lado («$ 6.000.000$ 0»). */}
-      <span className={cn('tnum min-w-0 text-2xl font-semibold wrap-anywhere', TONE_CLASSES[tone])}>{value}</span>
+      {/* La cifra NUNCA se parte dentro de un número («$ 6.000.00 / 0» a 1024–1280
+          px, verificación del 29/09): nada de `wrap-anywhere`. Que quepa es trabajo
+          de la fila, que no pone más columnas de las que caben (`KpiRow`). */}
+      <span className={cn('tnum min-w-0 text-2xl font-semibold', TONE_CLASSES[tone])}>{value}</span>
       {delta && (
         <span className={cn('text-xs font-medium', delta.pct === null ? 'text-muted-foreground' : delta.favorable ? 'text-success' : 'text-danger')}>
           {delta.pct === null ? '— vs período anterior' : `${delta.pct >= 0 ? '▲' : '▼'} ${Math.abs(Math.round(delta.pct))}% vs período anterior`}
@@ -52,11 +53,27 @@ export function KpiCard({
   )
 }
 
+const ROW_BASE = 'enter-up grid grid-cols-1 gap-4 min-[480px]:grid-cols-2 rounded-card border border-border bg-card p-card shadow-card sm:grid-cols-3'
+
+/**
+ * Una columna por debajo de 480 px (F9-06): a 360 px dos cifras de dinero en
+ * text-2xl no caben lado a lado y se leían como una sola. En una sola fila
+ * (con divisores) solo cuando caben: hasta 4 tarjetas desde 1024 px; con 5 o
+ * más (el Inicio tiene 6) desde 1536 px, porque a 1280 con el sidebar cada
+ * celda queda en ~120 px y «$ 6.000.000» no entra. Clases completas y
+ * estáticas: Tailwind no ve una clase armada por interpolación.
+ */
 export function KpiRow({ children }: { children: ReactNode }) {
+  const many = Children.toArray(children).length > 4
   return (
-    // Una columna por debajo de 400 px (F9-06): a 360 px dos cifras de
-    // dinero en text-2xl no caben lado a lado y se leían como una sola.
-    <div className="enter-up grid grid-cols-1 gap-4 min-[400px]:grid-cols-2 rounded-card border border-border bg-card p-card shadow-card sm:grid-cols-3 lg:flex lg:gap-0 lg:divide-x lg:divide-border">
+    <div
+      className={cn(
+        ROW_BASE,
+        many
+          ? '2xl:flex 2xl:gap-0 2xl:divide-x 2xl:divide-border 2xl:*:px-4 2xl:*:first:pl-0 2xl:*:last:pr-0'
+          : 'lg:flex lg:gap-0 lg:divide-x lg:divide-border lg:*:px-4 lg:*:first:pl-0 lg:*:last:pr-0',
+      )}
+    >
       {children}
     </div>
   )

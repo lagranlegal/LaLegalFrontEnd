@@ -16,7 +16,7 @@ function DashboardSkeleton() {
   return (
     <div className="flex flex-col gap-6">
       <div className="h-8 w-64 animate-pulse rounded-input bg-border" />
-      <div className="grid grid-cols-2 gap-4 rounded-card border border-border bg-card p-card sm:grid-cols-3 lg:grid-cols-6">
+      <div className="grid grid-cols-2 gap-4 rounded-card border border-border bg-card p-card sm:grid-cols-3 2xl:grid-cols-6">
         {Array.from({ length: 6 }).map((_, i) => (
           <div key={i} className="flex flex-col gap-2">
             <div className="h-3 w-20 animate-pulse rounded bg-border" />
