@@ -360,6 +360,9 @@ cargado aparte): cada empresa puede escribir su contrato y su paz y salvo.
   solo pide no estar vacío). El editor avisa **antes** con las palabras del editor; el backend rechaza igual
   (`TEMPLATE_IS_EMPTY`, `TEMPLATE_MISSING_REQUIRED_FIELDS`, con las claves en `details.missing`). Si el backend
   cambia la regla, se cambia aquí.
+- **Los bloques atómicos se insertan con `insertBlock`** (`lib/documents/insertBlock.ts`): deja el cursor en un
+  párrafo después del bloque. Con `insertContent` a secas el bloque queda seleccionado como nodo y el siguiente que
+  se inserte lo reemplaza (la firma borraba la tabla de prendas recién puesta).
 - **Formato de fábrica como respaldo**: sin plantilla activa, o con una activa que no imprimiría nada, el contrato
   sale con el JSX de siempre (`ContractPrintView`), que es código y no una fila sembrada en la base. La firma de la
   empresa, si está cargada, se estampa sola. El formato de fábrica y la plantilla de arranque del editor

@@ -12,6 +12,7 @@ import { ItemsTableBlockNode } from '@/lib/documents/nodes/ItemsTableBlockNode'
 import { SignatureBlockNode } from '@/lib/documents/nodes/SignatureBlockNode'
 import { NoticeConsentClauseNode } from '@/lib/documents/nodes/NoticeConsentClauseNode'
 import { hasNoticeConsentClause } from '@/lib/documents/noticeConsentClause'
+import { insertBlock } from '@/lib/documents/insertBlock'
 import { MERGE_FIELDS, type DocumentType } from '@/lib/documents/mergeFields'
 import { cn } from '@/lib/utils'
 import type { JSONContent } from '@tiptap/core'
@@ -131,7 +132,7 @@ export function TemplateEditor({ documentType, value, onChange }: { documentType
           </DropdownMenu>
 
           {documentType === 'contract' && (
-            <Button type="button" variant="outline" size="sm" onClick={() => editor.chain().focus().insertContent({ type: 'itemsTableBlock' }).run()}>
+            <Button type="button" variant="outline" size="sm" onClick={() => insertBlock(editor, { type: 'itemsTableBlock' })}>
               <Table2 className="size-4" /> Tabla de prendas
             </Button>
           )}
@@ -143,10 +144,10 @@ export function TemplateEditor({ documentType, value, onChange }: { documentType
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="start">
-              <DropdownMenuItem onSelect={() => editor.chain().focus().insertContent({ type: 'signatureBlock', attrs: { variant: 'cliente' } }).run()}>
+              <DropdownMenuItem onSelect={() => insertBlock(editor, { type: 'signatureBlock', attrs: { variant: 'cliente' } })}>
                 Firma del cliente
               </DropdownMenuItem>
-              <DropdownMenuItem onSelect={() => editor.chain().focus().insertContent({ type: 'signatureBlock', attrs: { variant: 'empresa' } }).run()}>
+              <DropdownMenuItem onSelect={() => insertBlock(editor, { type: 'signatureBlock', attrs: { variant: 'empresa' } })}>
                 Firma de la empresa
               </DropdownMenuItem>
             </DropdownMenuContent>
