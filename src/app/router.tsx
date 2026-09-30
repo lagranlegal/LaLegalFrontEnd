@@ -1,6 +1,7 @@
 import { z } from 'zod'
 import { createRootRouteWithContext, createRoute, createRouter, Outlet, redirect } from '@tanstack/react-router'
 import type { QueryClient } from '@tanstack/react-query'
+import { toast } from 'sonner'
 import { supabase } from '@/lib/auth/supabase'
 import { meQueryOptions } from '@/lib/auth/me'
 import { setActiveTimezone } from '@/lib/dates'
@@ -45,6 +46,22 @@ import { UnsubscribePage } from '@/features/unsubscribe/pages/UnsubscribePage'
 
 interface RouterContext {
   queryClient: QueryClient
+}
+
+/**
+ * Sin permiso para una ruta, se vuelve al Inicio DICIENDO por qué (F9-59): la
+ * redirección muda dejaba a quien abrió un enlace compartido o un favorito
+ * sin saber qué pasó. En una precarga (`defaultPreload: 'intent'`) no se
+ * avisa: el usuario todavía no navegó.
+ */
+function forbidden(preload: boolean) {
+  if (!preload) {
+    toast.info('No tienes permiso para abrir esa pantalla.', {
+      id: 'forbidden-route',
+      description: 'Pídele acceso al administrador de tu empresa.',
+    })
+  }
+  return redirect({ to: '/inicio' })
 }
 
 const rootRoute = createRootRouteWithContext<RouterContext>()({
@@ -179,10 +196,10 @@ const customersRoute = createRoute({
   getParentRoute: () => appLayoutRoute,
   path: '/clientes',
   component: CustomersPage,
-  beforeLoad: ({ context }) => {
+  beforeLoad: ({ context, preload }) => {
     const me = context.queryClient.getQueryData(meQueryOptions().queryKey)
     if (me && !me.permissions.includes('customers.view')) {
-      throw redirect({ to: '/inicio' })
+      throw forbidden(preload)
     }
   },
 })
@@ -194,10 +211,10 @@ const customerDetailRoute = createRoute({
   getParentRoute: () => appLayoutRoute,
   path: '/clientes/$customerId',
   component: CustomerDetailPage,
-  beforeLoad: ({ context }) => {
+  beforeLoad: ({ context, preload }) => {
     const me = context.queryClient.getQueryData(meQueryOptions().queryKey)
     if (me && !me.permissions.includes('customers.view')) {
-      throw redirect({ to: '/inicio' })
+      throw forbidden(preload)
     }
   },
 })
@@ -206,10 +223,10 @@ const catalogsRoute = createRoute({
   getParentRoute: () => appLayoutRoute,
   path: '/catalogos',
   component: CatalogsPage,
-  beforeLoad: ({ context }) => {
+  beforeLoad: ({ context, preload }) => {
     const me = context.queryClient.getQueryData(meQueryOptions().queryKey)
     if (me && !me.permissions.includes('catalogs.view')) {
-      throw redirect({ to: '/inicio' })
+      throw forbidden(preload)
     }
   },
 })
@@ -221,10 +238,10 @@ const supplierDetailRoute = createRoute({
   getParentRoute: () => appLayoutRoute,
   path: '/proveedores/$supplierId',
   component: SupplierDetailPage,
-  beforeLoad: ({ context }) => {
+  beforeLoad: ({ context, preload }) => {
     const me = context.queryClient.getQueryData(meQueryOptions().queryKey)
     if (me && !me.permissions.includes('catalogs.view')) {
-      throw redirect({ to: '/inicio' })
+      throw forbidden(preload)
     }
   },
 })
@@ -239,10 +256,10 @@ const contractsRoute = createRoute({
   getParentRoute: () => appLayoutRoute,
   path: '/contratos',
   component: ContractsListPage,
-  beforeLoad: ({ context }) => {
+  beforeLoad: ({ context, preload }) => {
     const me = context.queryClient.getQueryData(meQueryOptions().queryKey)
     if (me && !me.permissions.includes('contracts.view')) {
-      throw redirect({ to: '/inicio' })
+      throw forbidden(preload)
     }
   },
 })
@@ -251,10 +268,10 @@ const contractNewRoute = createRoute({
   getParentRoute: () => appLayoutRoute,
   path: '/contratos/nuevo',
   component: ContractFormPage,
-  beforeLoad: ({ context }) => {
+  beforeLoad: ({ context, preload }) => {
     const me = context.queryClient.getQueryData(meQueryOptions().queryKey)
     if (me && !me.permissions.includes('contracts.create')) {
-      throw redirect({ to: '/inicio' })
+      throw forbidden(preload)
     }
   },
 })
@@ -280,10 +297,10 @@ const contractDetailRoute = createRoute({
   getParentRoute: () => appLayoutRoute,
   path: '/contratos/$contractId',
   component: ContractDetailPage,
-  beforeLoad: ({ context }) => {
+  beforeLoad: ({ context, preload }) => {
     const me = context.queryClient.getQueryData(meQueryOptions().queryKey)
     if (me && !me.permissions.includes('contracts.view')) {
-      throw redirect({ to: '/inicio' })
+      throw forbidden(preload)
     }
   },
 })
@@ -292,10 +309,10 @@ const cashboxRoute = createRoute({
   getParentRoute: () => appLayoutRoute,
   path: '/caja',
   component: CashboxPage,
-  beforeLoad: ({ context }) => {
+  beforeLoad: ({ context, preload }) => {
     const me = context.queryClient.getQueryData(meQueryOptions().queryKey)
     if (me && !me.permissions.includes('cashbox.view')) {
-      throw redirect({ to: '/inicio' })
+      throw forbidden(preload)
     }
   },
 })
@@ -333,10 +350,10 @@ const inventoryRoute = createRoute({
   path: '/inventario',
   component: InventoryPage,
   validateSearch: inventorySearchSchema,
-  beforeLoad: ({ context }) => {
+  beforeLoad: ({ context, preload }) => {
     const me = context.queryClient.getQueryData(meQueryOptions().queryKey)
     if (me && !me.permissions.includes('inventory.view')) {
-      throw redirect({ to: '/inicio' })
+      throw forbidden(preload)
     }
   },
 })
@@ -345,10 +362,10 @@ const entryNewRoute = createRoute({
   getParentRoute: () => appLayoutRoute,
   path: '/inventario/ingresos/nuevo',
   component: EntryFormPage,
-  beforeLoad: ({ context }) => {
+  beforeLoad: ({ context, preload }) => {
     const me = context.queryClient.getQueryData(meQueryOptions().queryKey)
     if (me && !me.permissions.includes('inventory.create')) {
-      throw redirect({ to: '/inicio' })
+      throw forbidden(preload)
     }
   },
 })
@@ -359,10 +376,10 @@ const transformationNewRoute = createRoute({
   getParentRoute: () => appLayoutRoute,
   path: '/inventario/transformaciones/nueva',
   component: TransformationFormPage,
-  beforeLoad: ({ context }) => {
+  beforeLoad: ({ context, preload }) => {
     const me = context.queryClient.getQueryData(meQueryOptions().queryKey)
     if (me && !me.permissions.includes('inventory.transform')) {
-      throw redirect({ to: '/inicio' })
+      throw forbidden(preload)
     }
   },
 })
@@ -371,10 +388,10 @@ const salesRoute = createRoute({
   getParentRoute: () => appLayoutRoute,
   path: '/ventas',
   component: SalesListPage,
-  beforeLoad: ({ context }) => {
+  beforeLoad: ({ context, preload }) => {
     const me = context.queryClient.getQueryData(meQueryOptions().queryKey)
     if (me && !me.permissions.includes('sales.view')) {
-      throw redirect({ to: '/inicio' })
+      throw forbidden(preload)
     }
   },
 })
@@ -383,10 +400,10 @@ const saleNewRoute = createRoute({
   getParentRoute: () => appLayoutRoute,
   path: '/ventas/nueva',
   component: SaleFormPage,
-  beforeLoad: ({ context }) => {
+  beforeLoad: ({ context, preload }) => {
     const me = context.queryClient.getQueryData(meQueryOptions().queryKey)
     if (me && !me.permissions.includes('sales.create')) {
-      throw redirect({ to: '/inicio' })
+      throw forbidden(preload)
     }
   },
 })
@@ -399,10 +416,10 @@ const identityRoute = createRoute({
   getParentRoute: () => appLayoutRoute,
   path: '/identidad',
   component: IdentityPage,
-  beforeLoad: ({ context }) => {
+  beforeLoad: ({ context, preload }) => {
     const me = context.queryClient.getQueryData(meQueryOptions().queryKey)
     if (me && !me.permissions.includes('identity.manage_users') && !me.permissions.includes('identity.manage_roles')) {
-      throw redirect({ to: '/inicio' })
+      throw forbidden(preload)
     }
   },
 })
@@ -413,10 +430,10 @@ const auditRoute = createRoute({
   getParentRoute: () => appLayoutRoute,
   path: '/auditoria',
   component: AuditPage,
-  beforeLoad: ({ context }) => {
+  beforeLoad: ({ context, preload }) => {
     const me = context.queryClient.getQueryData(meQueryOptions().queryKey)
     if (me && !me.permissions.includes('audit.view')) {
-      throw redirect({ to: '/inicio' })
+      throw forbidden(preload)
     }
   },
 })
@@ -429,10 +446,10 @@ const settingsRoute = createRoute({
   getParentRoute: () => appLayoutRoute,
   path: '/configuracion',
   component: SettingsPage,
-  beforeLoad: ({ context }) => {
+  beforeLoad: ({ context, preload }) => {
     const me = context.queryClient.getQueryData(meQueryOptions().queryKey)
     if (me && !me.permissions.includes('company.configure')) {
-      throw redirect({ to: '/inicio' })
+      throw forbidden(preload)
     }
   },
 })
@@ -443,10 +460,10 @@ const documentTemplatesRoute = createRoute({
   getParentRoute: () => appLayoutRoute,
   path: '/configuracion/documentos',
   component: DocumentTemplatesPage,
-  beforeLoad: ({ context }) => {
+  beforeLoad: ({ context, preload }) => {
     const me = context.queryClient.getQueryData(meQueryOptions().queryKey)
     if (me && !me.permissions.includes('company.configure')) {
-      throw redirect({ to: '/inicio' })
+      throw forbidden(preload)
     }
   },
 })
@@ -459,10 +476,10 @@ const notificationSettingsRoute = createRoute({
   getParentRoute: () => appLayoutRoute,
   path: '/configuracion/notificaciones',
   component: NotificationSettingsPage,
-  beforeLoad: ({ context }) => {
+  beforeLoad: ({ context, preload }) => {
     const me = context.queryClient.getQueryData(meQueryOptions().queryKey)
     if (me && !me.permissions.includes('company.configure')) {
-      throw redirect({ to: '/inicio' })
+      throw forbidden(preload)
     }
   },
 })
@@ -485,10 +502,10 @@ const accountsRoute = createRoute({
   getParentRoute: () => appLayoutRoute,
   path: '/cuentas',
   component: AccountsPage,
-  beforeLoad: ({ context }) => {
+  beforeLoad: ({ context, preload }) => {
     const me = context.queryClient.getQueryData(meQueryOptions().queryKey)
     if (me && !me.permissions.includes('accounts.view')) {
-      throw redirect({ to: '/inicio' })
+      throw forbidden(preload)
     }
   },
 })
@@ -501,10 +518,10 @@ const capitalRoute = createRoute({
   getParentRoute: () => appLayoutRoute,
   path: '/capital',
   component: CapitalPage,
-  beforeLoad: ({ context }) => {
+  beforeLoad: ({ context, preload }) => {
     const me = context.queryClient.getQueryData(meQueryOptions().queryKey)
     if (me && !me.permissions.includes('capital.view')) {
-      throw redirect({ to: '/inicio' })
+      throw forbidden(preload)
     }
   },
 })
@@ -514,10 +531,10 @@ const reportesRoute = createRoute({
   getParentRoute: () => appLayoutRoute,
   path: '/reportes',
   component: ReportesPage,
-  beforeLoad: ({ context }) => {
+  beforeLoad: ({ context, preload }) => {
     const me = context.queryClient.getQueryData(meQueryOptions().queryKey)
     if (me && !me.permissions.includes('reports.view')) {
-      throw redirect({ to: '/inicio' })
+      throw forbidden(preload)
     }
   },
 })
@@ -533,7 +550,7 @@ const platformLayoutRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/platform',
   component: PlatformLayout,
-  beforeLoad: async ({ location }) => {
+  beforeLoad: async ({ location, preload }) => {
     const {
       data: { session },
     } = await supabase.auth.getSession()
@@ -541,7 +558,7 @@ const platformLayoutRoute = createRoute({
       throw redirect({ to: '/auth/login', search: { redirect: location.href } })
     }
     if (!(await isSuperAdmin())) {
-      throw redirect({ to: '/inicio' })
+      throw forbidden(preload)
     }
   },
 })
