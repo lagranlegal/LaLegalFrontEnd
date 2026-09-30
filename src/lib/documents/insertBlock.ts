@@ -21,13 +21,11 @@ export function insertBlock(editor: Editor, block: JSONContent): boolean {
       if (!(sel instanceof NodeSelection)) return true
       const after = sel.to
       const next = tr.doc.resolve(after).nodeAfter
-      if (!dispatch) return true
-      if (next && next.type.name === 'paragraph' && next.content.size === 0) {
-        tr.setSelection(TextSelection.create(tr.doc, after + 1))
-      } else {
-        tr.insert(after, tr.doc.type.schema.nodes.paragraph.create())
-        tr.setSelection(TextSelection.create(tr.doc, after + 1))
-      }
+      const paragraph = tr.doc.type.schema.nodes.paragraph
+      if (!dispatch || !paragraph) return true
+      const reuse = next?.type === paragraph && next.content.size === 0
+      if (!reuse) tr.insert(after, paragraph.create())
+      tr.setSelection(TextSelection.create(tr.doc, after + 1))
       return true
     })
     .scrollIntoView()
