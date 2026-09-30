@@ -1,4 +1,5 @@
 import { useRef, useState } from 'react'
+import { CashClosedNotice } from '@/components/shared/CashClosedNotice'
 import { useNavigate, useBlocker } from '@tanstack/react-router'
 import { zodResolver } from '@hookform/resolvers/zod'
 import type { FieldErrors } from 'react-hook-form'
@@ -402,6 +403,8 @@ export function EntryFormPage() {
         title="Nuevo ingreso"
         description="Registra la mercancía que entra al inventario. Con precio queda lista para vender; sin precio, en borrador."
       />
+      {/* Solo la compra mueve plata; los demás orígenes no piden caja. */}
+      <CashClosedNotice paymentMethod={isPurchase ? paymentMethod : null} />
 
       <form onKeyDown={preventImplicitSubmit} onSubmit={handleSubmit(onSubmit, señalarProblemas)} className="flex flex-col gap-6" noValidate>
         <section className="flex flex-col gap-4 rounded-card border border-border bg-card p-card shadow-card">

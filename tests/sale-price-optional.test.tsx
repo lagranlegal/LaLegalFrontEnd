@@ -23,6 +23,7 @@ vi.mock('@/features/inventory/api', () => ({
 }))
 vi.mock('@/components/shared/AccountPicker', () => ({ AccountPicker: () => null }))
 vi.mock('@/components/shared/CashSessionRequiredDialog', () => ({ CashSessionRequiredDialog: () => null }))
+vi.mock('@/components/shared/CashClosedNotice', () => ({ CashClosedNotice: () => null }))
 vi.mock('@/components/shared/PhotoUploader', () => ({ PhotoUploader: () => null }))
 vi.mock('@/components/shared/ItemPicker', () => ({ ItemPicker: () => null }))
 

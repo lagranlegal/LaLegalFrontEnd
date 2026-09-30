@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { CashClosedNotice } from '@/components/shared/CashClosedNotice'
 import { toast } from 'sonner'
 import { Money } from '@/components/shared/Money'
 import { MoneyInput } from '@/components/shared/MoneyInput'
@@ -108,6 +109,7 @@ function CapitalOnlyPaymentForm({ contractId, quote }: { contractId: string; quo
   return (
     <>
       <div className="flex flex-col gap-3">
+        <CashClosedNotice paymentMethod={paymentMethod} />
         <p className="text-sm text-muted-foreground">Este contrato está al día en intereses — puedes abonar directo a capital.</p>
         <div className="flex flex-col gap-3 rounded-input border border-border p-3">
           <div>
@@ -232,6 +234,7 @@ export function PaymentOptionsPanel({ contractId }: { contractId: string }) {
   return (
     <Can permission="payments.create" fallback={<p className="text-sm text-muted-foreground">No tienes permiso para registrar abonos.</p>}>
       <div className="flex flex-col gap-4">
+        <CashClosedNotice paymentMethod={paymentMethod} />
         <p className="text-xs text-muted-foreground">
           {quote.months_owed} {quote.months_owed === 1 ? 'mes adeudado' : 'meses adeudados'} · interés mensual <Money value={quote.monthly_interest} /> · para
           saldar hoy <Money value={quote.payoff_total} />

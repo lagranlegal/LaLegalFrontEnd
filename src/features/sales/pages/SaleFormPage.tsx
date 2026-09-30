@@ -1,4 +1,5 @@
 import { useRef, useState } from 'react'
+import { CashClosedNotice } from '@/components/shared/CashClosedNotice'
 import { useNavigate, useBlocker } from '@tanstack/react-router'
 import { toast } from 'sonner'
 import { Minus, Plus, Trash2 } from 'lucide-react'
@@ -193,6 +194,7 @@ export function SaleFormPage() {
     <div className="flex flex-col gap-6">
       <BackLink to="/ventas" label="Ventas" />
       <PageHeader title="Nueva venta" description="Busca el artículo por código o nombre y agrégalo al carrito." />
+      <CashClosedNotice paymentMethod={paymentMethod} />
 
       <form onKeyDown={preventImplicitSubmit} onSubmit={handleSubmit} className="grid grid-cols-1 gap-6 lg:grid-cols-[2fr_1fr]" noValidate>
         <div className="flex flex-col gap-4">

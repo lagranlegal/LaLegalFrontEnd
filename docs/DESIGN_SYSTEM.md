@@ -122,6 +122,7 @@ agrega como prop al compartido, no se clona. **Un solo modal, un solo calendario
 | `Callout` | recuadro de ayuda: explica algo que el usuario no sabe y trae la acción para resolverlo. Tonos `info` `success` `warning` sobre el `-soft`; **el texto en el color normal y solo el ícono en el semántico** (un párrafo entero en color de advertencia se lee peor) |
 | `EmptyState` | ícono suave + título + descripción + CTA («Aún no tienes…»). Toda lista vacía lo usa |
 | `CashSessionBanner` | franja global: caja abierta (responsable, hora, y la fecha si el turno es de otro día) o cerrada (qué no se puede hacer + abrir si hay permiso). Sin `cashbox.view` **no afirma nada** (§4, regla 8) |
+| `CashClosedNotice` | aviso arriba de una operación de dinero **en efectivo** con la caja cerrada, con «Abrir caja» si hay permiso (F9-19). Avisa antes de llenar, no bloquea: por banco se sigue operando sin caja. Sin saber el estado, no afirma nada |
 | `CashSessionRequiredDialog` | la respuesta a `CASH_SESSION_NOT_OPEN`: abrir caja desde ahí o a quién pedírselo |
 | `AccountPicker` | la cuenta donde queda la plata, junto al medio de pago (ARQUITECTURA §7); oculto sin `accounts.view` |
 | `CustomerPicker` / `ItemPicker` / `SearchInput` | elegir cliente (con «Consumidor final» en ventas), agregar artículos de a uno, búsqueda con debounce de 300 ms contra `?q=` |

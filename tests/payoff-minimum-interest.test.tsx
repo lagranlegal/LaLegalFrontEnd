@@ -34,6 +34,7 @@ vi.mock('@/features/contracts/api', () => ({
 vi.mock('@/components/shared/Can', () => ({ Can: ({ children }: { children: ReactNode }) => children }))
 vi.mock('@/components/shared/AccountPicker', () => ({ AccountPicker: () => null }))
 vi.mock('@/components/shared/CashSessionRequiredDialog', () => ({ CashSessionRequiredDialog: () => null }))
+vi.mock('@/components/shared/CashClosedNotice', () => ({ CashClosedNotice: () => null }))
 vi.mock('@/components/shared/confirmStore', () => ({ confirm: vi.fn(async () => ({ confirmed: true })) }))
 vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn() } }))
 

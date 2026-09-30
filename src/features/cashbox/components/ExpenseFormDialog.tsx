@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { CashClosedNotice } from '@/components/shared/CashClosedNotice'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { Controller, useForm, useWatch } from 'react-hook-form'
 import { z } from 'zod'
@@ -151,6 +152,7 @@ export function ExpenseFormDialog({ open, onOpenChange }: { open: boolean; onOpe
         }
       >
         <form onKeyDown={preventImplicitSubmit} id="expense-form" onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-4" noValidate>
+          <CashClosedNotice paymentMethod={selectedMethod} />
           <div>
             <label className="text-sm font-medium text-foreground">Categoría</label>
             <Controller control={control} name="category_id" render={({ field }) => <ExpenseCategoryField value={field.value} onChange={field.onChange} />} />

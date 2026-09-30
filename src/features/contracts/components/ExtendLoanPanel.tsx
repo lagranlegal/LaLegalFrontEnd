@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { CashClosedNotice } from '@/components/shared/CashClosedNotice'
 import { useNavigate } from '@tanstack/react-router'
 import { toast } from 'sonner'
 import { AppDialog } from '@/components/shared/AppDialog'
@@ -129,6 +130,7 @@ export function ExtendLoanPanel({ contract }: { contract: Contract }) {
     <Can permission="contracts.extend_loan">
       <div className="rounded-card border border-border bg-card p-card shadow-card">
         <h2 className="text-sm font-medium text-foreground">Ampliar el préstamo</h2>
+        <CashClosedNotice paymentMethod={method} className="mt-3" />
 
         <div className="mt-3 flex flex-wrap items-baseline justify-between gap-x-6 gap-y-1">
           <div>
