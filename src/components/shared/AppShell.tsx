@@ -174,7 +174,7 @@ export function AppShell() {
               </div>
               <Button
                 variant="ghost"
-                size="icon-sm"
+                size="icon"
                 className="shrink-0 text-sidebar-foreground/70 hover:bg-sidebar-hover hover:text-sidebar-foreground"
                 onClick={() => setMobileDrawerOpen(false)}
                 aria-label="Cerrar menú"
@@ -189,8 +189,9 @@ export function AppShell() {
 
       <div className="flex min-w-0 flex-1 flex-col">
         {/* Topbar */}
-        <header className="flex h-14 items-center justify-between gap-3 border-b border-border bg-card px-4 print:hidden">
-          <Button variant="ghost" size="icon-sm" className="lg:hidden" onClick={() => setMobileDrawerOpen(true)} aria-label="Abrir menú">
+        <header className="flex h-14 items-center justify-between gap-1.5 border-b border-border bg-card px-3 print:hidden">
+          {/* F9-02: 44 × 44 px (antes 28). Lo mismo el tema y el avatar. */}
+          <Button variant="ghost" size="icon" className="lg:hidden" onClick={() => setMobileDrawerOpen(true)} aria-label="Abrir menú">
             <Menu className="size-5" />
           </Button>
 
@@ -205,8 +206,8 @@ export function AppShell() {
 
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <button type="button" className="flex items-center gap-2 rounded-input px-2 py-1.5 text-sm hover:bg-accent">
-                <span className="flex size-7 items-center justify-center rounded-full bg-brand-100 text-xs font-semibold text-brand-700">
+              <button type="button" className="flex min-h-11 min-w-11 items-center justify-center gap-2 rounded-input px-1.5 text-sm hover:bg-muted">
+                <span className="flex size-8.5 items-center justify-center rounded-full bg-brand-100 text-sm font-semibold text-foreground">
                   {me?.user.full_name?.charAt(0).toUpperCase() ?? '?'}
                 </span>
                 <span className="hidden text-left sm:block">

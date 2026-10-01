@@ -24,8 +24,8 @@ export function ThemeToggle() {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="ghost" size="icon-sm" aria-label="Cambiar tema">
-          <TriggerIcon className="size-4" />
+        <Button variant="ghost" size="icon" aria-label="Cambiar tema">
+          <TriggerIcon className="size-4.5" />
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
