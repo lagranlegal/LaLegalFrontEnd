@@ -1,5 +1,6 @@
 import { Children, type ReactNode } from 'react'
 import { cn } from '@/lib/utils'
+import { formatPercent } from '@/lib/percent'
 
 /**
  * La cifra va en color de texto (rediseño P1, F9-07): la «Cartera activa» en
@@ -17,6 +18,8 @@ const TONE_CLASSES = {
 export interface KpiDelta {
   pct: number | null
   favorable: boolean
+  /** Contra qué se compara («vs. agosto»); por defecto, «vs período anterior». */
+  label?: string
 }
 
 /**
@@ -37,8 +40,8 @@ export function KpiCard({
   tone?: keyof typeof TONE_CLASSES
   delta?: KpiDelta
   /** Contexto bajo la cifra, para cuando el número solo se entiende con su
-   *  denominador ("3 compras sin pagar", "desde marzo"). Excluyente con
-   *  `delta`: los dos ocupan la misma línea y competir ahí sería ruido. */
+   *  denominador ("3 compras sin pagar", "desde marzo"). Con `delta` va en
+   *  una línea aparte, debajo: el Inicio la usa solo cuando hubo devoluciones. */
   hint?: ReactNode
 }) {
   return (
@@ -48,12 +51,23 @@ export function KpiCard({
           px, verificación del 29/09): nada de `wrap-anywhere`. Que quepa es trabajo
           de la fila, que no pone más columnas de las que caben (`KpiRow`). */}
       <span className={cn('tnum min-w-0 text-2xl font-semibold', TONE_CLASSES[tone])}>{value}</span>
+      {/* Solo la flecha y el % llevan el color (rediseño P2-c): «vs. agosto» es
+          contexto, va en gris. El % en es-CO, «12 %» (F9-21). */}
       {delta && (
-        <span className={cn('text-xs font-medium', delta.pct === null ? 'text-muted-foreground' : delta.favorable ? 'text-success' : 'text-danger')}>
-          {delta.pct === null ? '— vs período anterior' : `${delta.pct >= 0 ? '▲' : '▼'} ${Math.abs(Math.round(delta.pct))}% vs período anterior`}
+        <span className="text-xs text-muted-foreground">
+          {delta.pct === null ? (
+            `— ${delta.label ?? 'vs período anterior'}`
+          ) : (
+            <>
+              <span className={cn('tnum font-semibold', delta.favorable ? 'text-success' : 'text-danger')}>
+                {delta.pct >= 0 ? '▲' : '▼'} {formatPercent(Math.abs(Math.round(delta.pct)), 0)}
+              </span>{' '}
+              {delta.label ?? 'vs período anterior'}
+            </>
+          )}
         </span>
       )}
-      {!delta && hint && <span className="text-xs text-muted-foreground">{hint}</span>}
+      {hint && <span className="text-xs text-muted-foreground">{hint}</span>}
     </div>
   )
 }
@@ -61,14 +75,23 @@ export function KpiCard({
 const ROW_BASE = 'enter-up grid grid-cols-1 gap-4 min-[480px]:grid-cols-2 rounded-card border border-border bg-card p-card sm:grid-cols-3'
 
 /**
+ * `tiles`: cada KPI en su propia tarjeta, en una grilla que pone tantas
+ * columnas de al menos 200 px como quepan (el Inicio del rediseño P2-c: cuatro
+ * en fila a 1280, una sola a 390). Sin `tiles`, una sola tarjeta con
+ * divisores, como Reportes.
+ */
+const TILES = 'enter-up grid grid-cols-[repeat(auto-fit,minmax(min(100%,200px),1fr))] gap-2.5 *:rounded-card *:border *:border-border *:bg-card *:p-card'
+
+/**
  * Una columna por debajo de 480 px (F9-06): a 360 px dos cifras de dinero en
  * text-2xl no caben lado a lado y se leían como una sola. En una sola fila
  * (con divisores) solo cuando caben: hasta 4 tarjetas desde 1024 px; con 5 o
- * más (el Inicio tiene 6) desde 1536 px, porque a 1280 con el sidebar cada
- * celda queda en ~120 px y «$ 6.000.000» no entra. Clases completas y
- * estáticas: Tailwind no ve una clase armada por interpolación.
+ * más desde 1536 px, porque a 1280 con el sidebar cada celda queda en ~120 px
+ * y «$ 6.000.000» no entra. Clases completas y estáticas: Tailwind no ve una
+ * clase armada por interpolación.
  */
-export function KpiRow({ children }: { children: ReactNode }) {
+export function KpiRow({ children, tiles = false }: { children: ReactNode; tiles?: boolean }) {
+  if (tiles) return <div className={TILES}>{children}</div>
   const many = Children.toArray(children).length > 4
   return (
     <div

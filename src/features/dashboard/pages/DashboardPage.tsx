@@ -3,7 +3,7 @@ import { usePermission } from '@/lib/permissions/usePermission'
 import { useContractAttention, useDashboard, useReadyForAuction } from '@/features/dashboard/api'
 import { TodayTasks } from '@/features/dashboard/components/TodayTasks'
 import { InicioHeader } from '@/features/dashboard/components/InicioHeader'
-import { KpiCard, KpiRow } from '@/components/shared/KpiCard'
+import { DashboardKpis } from '@/features/dashboard/components/DashboardKpis'
 import { QuickActions } from '@/features/dashboard/components/QuickActions'
 import { Money } from '@/components/shared/Money'
 import { RecordNumber } from '@/components/shared/RecordNumber'
@@ -12,33 +12,22 @@ import { isPermissionError } from '@/lib/api/isPermissionError'
 import { ContractsStatusChart, type StatusDatum } from '@/components/shared/charts/ContractsStatusChart'
 import { Button } from '@/components/ui/button'
 import { formatDate } from '@/lib/dates'
-import { compareMoney } from '@/lib/money'
 
+/** La forma de los KPIs en tarjetas y del bloque de abajo, mientras carga. */
 function DashboardSkeleton() {
   return (
-    <div className="flex flex-col gap-6">
-      <div className="h-8 w-64 animate-pulse rounded-input bg-border" />
-      <div className="grid grid-cols-2 gap-4 rounded-card border border-border bg-card p-card sm:grid-cols-3 2xl:grid-cols-6">
-        {Array.from({ length: 6 }).map((_, i) => (
-          <div key={i} className="flex flex-col gap-2">
+    <div className="flex flex-col gap-4.5" aria-hidden>
+      <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,200px),1fr))] gap-2.5">
+        {Array.from({ length: 4 }).map((_, i) => (
+          <div key={i} className="flex flex-col gap-2 rounded-card border border-border bg-card p-card">
+            <div className="h-3 w-24 animate-pulse rounded bg-border" />
+            <div className="h-6 w-32 animate-pulse rounded bg-border" />
             <div className="h-3 w-20 animate-pulse rounded bg-border" />
-            <div className="h-6 w-16 animate-pulse rounded bg-border" />
           </div>
         ))}
       </div>
       <div className="h-64 animate-pulse rounded-card border border-border bg-card" />
     </div>
-  )
-}
-
-/** «$ 800.000 vendidas − $ 300.000 devueltas», solo si hubo devoluciones. */
-function ReturnsHint({ gross, returns }: { gross?: string; returns?: string }) {
-  // Un backend anterior a F1 no manda el bruto: sin él no hay qué explicar.
-  if (!gross || !returns || compareMoney(returns, '0') <= 0) return null
-  return (
-    <>
-      <Money value={gross} /> vendidas − <Money value={returns} /> devueltas
-    </>
   )
 }
 
@@ -104,35 +93,7 @@ function ReportsSection({
 
   return (
     <>
-      <KpiRow>
-        <KpiCard label="Cartera activa" value={<Money value={data.contracts.capital_outstanding} />} />
-        {/* F7-07: `today_total`/`month_total` ya vienen NETOS de
-            devoluciones. Si hubo alguna, la cifra baja sin explicación —
-            se nombran el bruto y lo devuelto debajo. */}
-        <KpiCard
-          label="Ventas de hoy"
-          value={<Money value={data.sales.today_total} />}
-          hint={<ReturnsHint gross={data.sales.today_gross} returns={data.sales.today_returns} />}
-        />
-        <KpiCard
-          label="Ventas del mes"
-          value={<Money value={data.sales.month_total} />}
-          hint={<ReturnsHint gross={data.sales.month_gross} returns={data.sales.month_returns} />}
-        />
-        <KpiCard label="Contratos activos" value={data.contracts.active_count} />
-        <KpiCard
-          label="Artículos disponibles"
-          value={
-            <>
-              {data.inventory.available_count}{' '}
-              <span className="text-sm font-normal text-muted-foreground">
-                · <Money value={data.inventory.available_value} />
-              </span>
-            </>
-          }
-        />
-        <KpiCard label="Estado de caja" value={data.cashbox.session_open ? 'Abierta' : 'Cerrada'} />
-      </KpiRow>
+      <DashboardKpis data={data} />
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <div className="enter-up rounded-card border border-border bg-card p-card">

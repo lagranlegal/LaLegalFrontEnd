@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { formatCOP, maskMoneyInput, multiplyMoney, parseMoneyInput, subtractMoney, sumMoney } from '@/lib/money'
+import { changePercent, formatCOP, maskMoneyInput, multiplyMoney, parseMoneyInput, subtractMoney, sumMoney } from '@/lib/money'
 
 // Intl.NumberFormat('es-CO') separa el símbolo del monto con NBSP (U+00A0),
 // no un espacio normal — visualmente idéntico a "$ 2.664.500" pero hay que
@@ -182,5 +182,17 @@ describe('multiplyMoney con cantidades fraccionarias', () => {
     for (const qty of [1.1, 0.333, 2.5, 1.005, 0.001, 7.77]) {
       expect(() => formatCOP(multiplyMoney('1001.00', qty))).not.toThrow()
     }
+  })
+})
+
+describe('changePercent (Inicio: ▲/▼ vs. el mes anterior)', () => {
+  it('sube y baja contra el mes anterior', () => {
+    expect(changePercent('1120000.00', '1000000.00')).toBe(12)
+    expect(changePercent('920000.00', '1000000.00')).toBe(-8)
+  })
+
+  it('sin mes anterior (0) no hay porcentaje', () => {
+    expect(changePercent('450000.00', '0.00')).toBeNull()
+    expect(changePercent('0.00', '0')).toBeNull()
   })
 })

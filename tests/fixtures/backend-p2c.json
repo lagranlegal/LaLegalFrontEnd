@@ -115,5 +115,44 @@
         "opening_balance": "5000000.00"
       }
     }
+  },
+  "dashboard_devolucion": {
+    "_test": "test_reports.py::test_F7_05_07_ventas_netas_en_el_dashboard_y_flujo_de_caja_sin_anuladas",
+    "status": 200,
+    "body": {
+      "as_of": "2026-10-01",
+      "contracts": {
+        "active_count": 0,
+        "in_arrears_count": 0,
+        "in_extension_count": 0,
+        "ready_for_auction_count": 0,
+        "auctioned_count": 0,
+        "capital_outstanding": "0.00",
+        "interest_collected_month": "0.00",
+        "interest_collected_prev_month": "0.00",
+        "auctioned_this_month": 0
+      },
+      "sales": {
+        "today_total": "500000.00",
+        "today_count": 2,
+        "month_total": "500000.00",
+        "today_gross": "800000.00",
+        "today_returns": "300000.00",
+        "month_gross": "800000.00",
+        "month_returns": "300000.00",
+        "month_total_prev": "0.00"
+      },
+      "inventory": {
+        "available_count": 2,
+        "available_value": "200000.00",
+        "draft_count": 0
+      },
+      "cashbox": {
+        "session_open": true,
+        "session_id": "d4a9e37f-7c29-46dd-8e13-0fadecfa3e9d",
+        "opened_at": "2026-10-01T07:13:10.480445Z",
+        "opening_balance": "0.00"
+      }
+    }
   }
 }

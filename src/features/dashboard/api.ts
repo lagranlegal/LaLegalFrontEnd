@@ -32,6 +32,7 @@ export function useReadyForAuction({ enabled = true }: { enabled?: boolean } = {
   })
 }
 
+export type Dashboard = components['schemas']['DashboardOut']
 export type ContractAttention = components['schemas']['ContractAttentionOut']
 export type AttentionItem = components['schemas']['AttentionItemOut']
 

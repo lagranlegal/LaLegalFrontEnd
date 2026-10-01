@@ -1,38 +1,27 @@
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, it } from 'vitest'
 import { cleanup, render, screen } from '@testing-library/react'
-import type { ReactNode } from 'react'
-import fixtures from './fixtures/backend-f1.json'
+import fixtures from './fixtures/backend-p2c.json'
+import type { Dashboard } from '@/features/dashboard/api'
+import { DashboardKpis } from '@/features/dashboard/components/DashboardKpis'
 
 // Respuesta real del backend local: dos ventas por 800.000 y una devolución
-// de 300.000 el mismo día (F7-07). `today_total` ya viene neto.
-let DASHBOARD: unknown = fixtures.dashboard_devolucion.body
-
-vi.mock('@tanstack/react-router', () => ({ Link: ({ children }: { children: ReactNode }) => <a>{children}</a> }))
-// Con `reports.view`: sin él el Inicio ni pide el resumen (issue #9).
-vi.mock('@/lib/auth/me', () => ({ useMe: () => ({ data: { user: { full_name: 'Ana' }, permissions: ['reports.view'] } }) }))
-vi.mock('@/features/dashboard/api', () => ({
-  useDashboard: () => ({ data: DASHBOARD, isPending: false, isError: false }),
-  useReadyForAuction: () => ({ data: [] }),
-  useContractAttention: () => ({ data: undefined, isPending: true, error: null, refetch: vi.fn() }),
-}))
-
-const { DashboardPage } = await import('@/features/dashboard/pages/DashboardPage')
+// de 300.000 en el mes (F7-07), sin ventas el mes anterior. `month_total` ya
+// viene neto. El Inicio del rediseño P2-c muestra el mes, no el día.
+const BODY = fixtures.dashboard_devolucion.body as Dashboard
 const text = (el: Element | null | undefined) => (el?.textContent ?? '').replace(/\s+/g, ' ')
 
 afterEach(cleanup)
 
-describe('dashboard — ventas netas de devoluciones (F7-07)', () => {
+describe('Inicio — ventas del mes netas de devoluciones (F7-07)', () => {
   it('muestra la cifra neta y, debajo, el bruto y lo devuelto', () => {
-    render(<DashboardPage />)
-    const hoy = text(screen.getByText('Ventas de hoy').parentElement)
-    expect(hoy).toContain('$ 500.000')
-    expect(hoy).toContain('$ 800.000 vendidas − $ 300.000 devueltas')
+    render(<DashboardKpis data={BODY} />)
+    const mes = text(screen.getByText('Ventas del mes').parentElement)
+    expect(mes).toContain('$ 500.000')
+    expect(mes).toContain('$ 800.000 vendidas − $ 300.000 devueltas')
   })
 
   it('sin devoluciones no agrega el detalle', () => {
-    const body = fixtures.dashboard_devolucion.body
-    DASHBOARD = { ...body, sales: { ...body.sales, today_total: '800000.00', today_returns: '0.00', month_total: '800000.00', month_returns: '0.00' } }
-    render(<DashboardPage />)
-    expect(text(screen.getByText('Ventas de hoy').parentElement)).not.toContain('devueltas')
+    render(<DashboardKpis data={{ ...BODY, sales: { ...BODY.sales, month_total: '800000.00', month_returns: '0.00' } }} />)
+    expect(text(screen.getByText('Ventas del mes').parentElement)).not.toContain('devueltas')
   })
 })

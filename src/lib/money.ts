@@ -281,3 +281,15 @@ export function percentOfMoney(value: string, pct: number): string {
   const basisPoints = Math.round(pct * 100)
   return centsToDecimal(Math.round((toCents(value) * basisPoints) / 10000))
 }
+
+/**
+ * Variación porcentual de PRESENTACIÓN entre dos montos (el «▲ 12 % vs.
+ * agosto» del Inicio), en centavos enteros. `null` si el monto anterior es 0:
+ * no hay base, y un «+∞ %» o un «100 %» inventado dicen más de lo que se sabe.
+ * `changePercent("1120.00", "1000.00")` → `12`.
+ */
+export function changePercent(current: string, previous: string): number | null {
+  const base = toCents(previous)
+  if (base === 0) return null
+  return ((toCents(current) - base) / Math.abs(base)) * 100
+}

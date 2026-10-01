@@ -52,16 +52,19 @@ describe('KpiCard sin rojo por defecto', () => {
         <KpiCard label="Intereses" value="$ 3" delta={{ pct: 12, favorable: true }} />
       </>,
     )
-    expect(screen.getByText('▼ 8% vs período anterior')).toHaveClass('text-danger')
-    expect(screen.getByText('▲ 12% vs período anterior')).toHaveClass('text-success')
+    // Solo la flecha y el % llevan el color; el % en es-CO («8 %», F9-21).
+    expect(screen.getByText('▼ 8 %')).toHaveClass('text-danger')
+    expect(screen.getByText('▲ 12 %')).toHaveClass('text-success')
+    expect(screen.getByText('▲ 12 %').parentElement).toHaveClass('text-muted-foreground')
     expect(screen.getByText('$ 2')).toHaveClass('text-foreground')
   })
 
-  it('en Inicio, la cartera y la caja ya no van en rojo, y ninguna cifra en verde u oro', () => {
-    const tarjetas = kpis('src/features/dashboard/pages/DashboardPage.tsx')
+  it('en Inicio, la cartera ya no va en rojo, y ninguna cifra en verde, oro ni rojo', () => {
+    // El estado de la caja salió de los KPIs: es la franja verde de arriba (P2-c).
+    const tarjetas = kpis('src/features/dashboard/components/DashboardKpis.tsx')
+    expect(tarjetas).toHaveLength(4)
     expect(tarjetas.find((t) => t.includes('Cartera activa'))).not.toMatch(/tone=/)
-    expect(tarjetas.find((t) => t.includes('Estado de caja'))).not.toMatch(/tone=/)
-    for (const t of tarjetas) expect(t).not.toMatch(/tone="(success|brand)"/)
+    for (const t of tarjetas) expect(t).not.toMatch(/tone=/)
   })
 
   it('en Reportes, ninguna cifra de KPI se pinta de verde, oro ni rojo por ser entrada o salida', () => {
