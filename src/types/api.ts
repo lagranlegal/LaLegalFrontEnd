@@ -789,6 +789,32 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/contracts/attention": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Attention
+         * @description «Para hoy» del Inicio: listos para remate, en mora, vencen hoy, y la
+         *     lista «Requieren acción» ordenada por urgencia (docs/DOMINIO.md §2.3).
+         *
+         *     Va con `contracts.view` y no con `contracts.auction` aunque cuente los
+         *     listos para remate: el conteo, la fecha y el monto son información del
+         *     contrato que quien atiende ya ve en cada ficha; Rematar (y la lista de
+         *     `/ready-for-auction`) siguen exigiendo `contracts.auction`.
+         */
+        get: operations["get_attention_api_v1_contracts_attention_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/contracts": {
         parameters: {
             query?: never;
@@ -2335,6 +2361,60 @@ export interface components {
             /** Active */
             active?: boolean | null;
         };
+        /** AttentionArrearsOut */
+        AttentionArrearsOut: {
+            /** Count */
+            count: number;
+            /** Overdue Interest Total */
+            overdue_interest_total: string;
+        };
+        /** AttentionDueTodayOut */
+        AttentionDueTodayOut: {
+            /** Count */
+            count: number;
+            /** Amount Total */
+            amount_total: string;
+        };
+        /** AttentionItemOut */
+        AttentionItemOut: {
+            /**
+             * Contract Id
+             * Format: uuid
+             */
+            contract_id: string;
+            /** Number */
+            number: number;
+            /**
+             * Customer Id
+             * Format: uuid
+             */
+            customer_id: string;
+            /** Customer Name */
+            customer_name: string;
+            /** Status */
+            status: string;
+            /**
+             * Reason Code
+             * @enum {string}
+             */
+            reason_code: "ready_for_auction" | "in_arrears" | "in_extension" | "due_today";
+            /** Days Overdue */
+            days_overdue: number | null;
+            /**
+             * Reference Date
+             * Format: date
+             */
+            reference_date: string;
+            /** Amount Due Today */
+            amount_due_today: string;
+        };
+        /** AttentionReadyOut */
+        AttentionReadyOut: {
+            /** Count */
+            count: number;
+            /** Earliest Expired On */
+            earliest_expired_on: string | null;
+        };
         /** AuditLogOut */
         AuditLogOut: {
             /**
@@ -2827,6 +2907,25 @@ export interface components {
             transactional_in_weekly_cap: boolean;
         };
         /**
+         * ContractAttentionOut
+         * @description «Para hoy» del Inicio (`GET /contracts/attention`). Las tres tarjetas
+         *     cuentan TODOS los contratos; `items` es la lista topada por `limit`.
+         */
+        ContractAttentionOut: {
+            /**
+             * As Of
+             * Format: date
+             */
+            as_of: string;
+            ready_for_auction: components["schemas"]["AttentionReadyOut"];
+            in_arrears: components["schemas"]["AttentionArrearsOut"];
+            due_today: components["schemas"]["AttentionDueTodayOut"];
+            /** Items Total */
+            items_total: number;
+            /** Items */
+            items: components["schemas"]["AttentionItemOut"][];
+        };
+        /**
          * ContractChainLinkOut
          * @description Un eslabón de la cadena de ampliaciones (docs/RECARGOS.md §6).
          *
@@ -3027,6 +3126,21 @@ export interface components {
             auctioned_count: number;
             /** Capital Outstanding */
             capital_outstanding: string;
+            /**
+             * Interest Collected Month
+             * @default 0.00
+             */
+            interest_collected_month: string;
+            /**
+             * Interest Collected Prev Month
+             * @default 0.00
+             */
+            interest_collected_prev_month: string;
+            /**
+             * Auctioned This Month
+             * @default 0
+             */
+            auctioned_this_month: number;
         };
         /** ContractOut */
         ContractOut: {
@@ -5198,6 +5312,11 @@ export interface components {
              * @default 0.00
              */
             month_returns: string;
+            /**
+             * Month Total Prev
+             * @default 0.00
+             */
+            month_total_prev: string;
         };
         /** SessionCloseIn */
         SessionCloseIn: {
@@ -7623,6 +7742,37 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ContractOut"][];
+                };
+            };
+        };
+    };
+    get_attention_api_v1_contracts_attention_get: {
+        parameters: {
+            query?: {
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ContractAttentionOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
