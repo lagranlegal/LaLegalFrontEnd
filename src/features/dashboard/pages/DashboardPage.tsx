@@ -1,8 +1,7 @@
 import { Link } from '@tanstack/react-router'
-import { useMe } from '@/lib/auth/me'
 import { usePermission } from '@/lib/permissions/usePermission'
 import { useDashboard, useReadyForAuction } from '@/features/dashboard/api'
-import { PageHeader } from '@/components/shared/PageHeader'
+import { InicioHeader } from '@/features/dashboard/components/InicioHeader'
 import { KpiCard, KpiRow } from '@/components/shared/KpiCard'
 import { QuickActions } from '@/features/dashboard/components/QuickActions'
 import { Money } from '@/components/shared/Money'
@@ -43,7 +42,6 @@ function ReturnsHint({ gross, returns }: { gross?: string; returns?: string }) {
 }
 
 export function DashboardPage() {
-  const { data: me } = useMe()
   // Sin el permiso la consulta no sale: el 403 era seguro, pero evitable
   // (issue #9). El 403 se sigue atendiendo abajo por si `/me` quedó viejo.
   const canViewReports = usePermission('reports.view')
@@ -59,7 +57,7 @@ export function DashboardPage() {
   if (!canViewReports || (isError && isPermissionError(error))) {
     return (
       <div className="flex flex-col gap-6">
-        <PageHeader title={`Hola, ${me?.user.full_name ?? ''}`.trim()} description="¿Qué vas a hacer?" />
+        <InicioHeader />
         <QuickActions />
         <p className="text-xs text-muted-foreground">
           El resumen de cifras del inicio es para quien tiene el permiso «Dashboard y reportes».
@@ -91,7 +89,7 @@ export function DashboardPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <PageHeader title={`Hola, ${me?.user.full_name ?? ''}`} description={`Actualizado al ${formatDate(data.as_of)}`} />
+      <InicioHeader />
 
       <KpiRow>
         <KpiCard label="Cartera activa" value={<Money value={data.contracts.capital_outstanding} />} />

@@ -125,3 +125,62 @@ export function addMonthsToDateOnly(dateOnly: string, months: number): string {
   const day = Math.min(Number(dayStr), daysInMonth(year, month))
   return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`
 }
+
+const WEEKDAYS = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'] as const
+const MONTH_NAMES = [
+  'enero',
+  'febrero',
+  'marzo',
+  'abril',
+  'mayo',
+  'junio',
+  'julio',
+  'agosto',
+  'septiembre',
+  'octubre',
+  'noviembre',
+  'diciembre',
+] as const
+
+function parseDateOnly(dateOnly: string, fn: string): [number, number, number] {
+  const match = DATE_ONLY_RE.exec(dateOnly)
+  if (!match) {
+    throw new Error(`${fn}: se esperaba "yyyy-MM-dd", llegó ${JSON.stringify(dateOnly)}`)
+  }
+  return [Number(match[1]), Number(match[2]), Number(match[3])]
+}
+
+/**
+ * «Martes 30/09/2026» — la fecha del encabezado del Inicio. El día de la
+ * semana sale de `Date.UTC`, que es calendario puro (sin zona): la fecha ya
+ * viene en la zona de la empresa (`todayBogota()`).
+ */
+export function formatLongDate(dateOnly: string): string {
+  const [year, month, day] = parseDateOnly(dateOnly, 'formatLongDate')
+  const weekday = WEEKDAYS[new Date(Date.UTC(year, month - 1, day)).getUTCDay()]
+  return `${weekday} ${formatDate(dateOnly)}`
+}
+
+/** «agosto»: el nombre del mes ANTERIOR al de la fecha (la comparación «vs. agosto» del Inicio). */
+export function previousMonthName(dateOnly: string): string {
+  const [, month] = parseDateOnly(dateOnly, 'previousMonthName')
+  return MONTH_NAMES[(month + 10) % 12] ?? ''
+}
+
+/**
+ * «Buenos días» hasta las 11:59, «Buenas tardes» hasta las 18:59 y «Buenas
+ * noches» después, con la hora de la empresa (no la del equipo).
+ */
+export function greetingNow(now: Date = new Date()): string {
+  const hour = Number(format(now, 'H', { in: tz(activeTimezone) }))
+  if (hour < 12) return 'Buenos días'
+  if (hour < 19) return 'Buenas tardes'
+  return 'Buenas noches'
+}
+
+/** «8:02 a. m.» — la hora como se escribe en Colombia, en la zona de la empresa (franja de caja). */
+export function formatClock(timestamp: string | Date): string {
+  const zoned = tz(activeTimezone)
+  const hour = Number(format(timestamp, 'H', { in: zoned }))
+  return `${format(timestamp, 'h:mm', { in: zoned })} ${hour < 12 ? 'a. m.' : 'p. m.'}`
+}

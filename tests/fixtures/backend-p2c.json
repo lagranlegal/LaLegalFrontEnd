@@ -1,0 +1,119 @@
+{
+  "_origen": "Respuestas REALES del backend local (backend-starter HEAD 1c3bf18, sin desplegar), capturadas el 01/10/2026 envolviendo el TestClient de sus tests de integración. No editar a mano: se regeneran corriendo esos tests.",
+  "attention": {
+    "_test": "test_contract_attention.py::test_para_hoy_cuenta_ordena_y_cobra_lo_mismo_que_payment_options",
+    "status": 200,
+    "body": {
+      "as_of": "2026-10-01",
+      "ready_for_auction": {
+        "count": 1,
+        "earliest_expired_on": "2026-07-01"
+      },
+      "in_arrears": {
+        "count": 2,
+        "overdue_interest_total": "47000.00"
+      },
+      "due_today": {
+        "count": 1,
+        "amount_total": "25000.00"
+      },
+      "items_total": 5,
+      "items": [
+        {
+          "contract_id": "dda6562b-f17a-43f9-9f18-15c76b8bc3f3",
+          "number": 1,
+          "customer_id": "279f6666-b43d-4465-9167-4c4f59daeb1a",
+          "customer_name": "Cliente Empresa A attention",
+          "status": "in_extension",
+          "reason_code": "ready_for_auction",
+          "days_overdue": 214,
+          "reference_date": "2026-07-01",
+          "amount_due_today": "1400000.00"
+        },
+        {
+          "contract_id": "46d61c19-00c9-4923-90ad-315a93065e50",
+          "number": 2,
+          "customer_id": "279f6666-b43d-4465-9167-4c4f59daeb1a",
+          "customer_name": "Cliente Empresa A attention",
+          "status": "in_arrears",
+          "reason_code": "in_arrears",
+          "days_overdue": 39,
+          "reference_date": "2026-08-23",
+          "amount_due_today": "32000.00"
+        },
+        {
+          "contract_id": "592236d4-cd6c-4c09-b852-611e07de31c7",
+          "number": 3,
+          "customer_id": "279f6666-b43d-4465-9167-4c4f59daeb1a",
+          "customer_name": "Cliente Empresa A attention",
+          "status": "in_arrears",
+          "reason_code": "in_arrears",
+          "days_overdue": 9,
+          "reference_date": "2026-09-22",
+          "amount_due_today": "15000.00"
+        },
+        {
+          "contract_id": "6282e7c0-f490-45b2-b303-9b6c251022ce",
+          "number": 4,
+          "customer_id": "279f6666-b43d-4465-9167-4c4f59daeb1a",
+          "customer_name": "Cliente Empresa A attention",
+          "status": "in_extension",
+          "reason_code": "in_extension",
+          "days_overdue": 99,
+          "reference_date": "2026-10-24",
+          "amount_due_today": "60000.00"
+        },
+        {
+          "contract_id": "98971c4c-f1e6-4330-b8a0-5575396cf8b8",
+          "number": 6,
+          "customer_id": "279f6666-b43d-4465-9167-4c4f59daeb1a",
+          "customer_name": "Cliente Empresa A attention",
+          "status": "in_arrears",
+          "reason_code": "due_today",
+          "days_overdue": 0,
+          "reference_date": "2026-10-01",
+          "amount_due_today": "25000.00"
+        }
+      ]
+    }
+  },
+  "dashboard_comparado": {
+    "_test": "test_reports.py::test_dashboard_compara_el_mes_con_el_anterior_completo",
+    "status": 200,
+    "body": {
+      "as_of": "2026-10-01",
+      "contracts": {
+        "active_count": 1,
+        "in_arrears_count": 0,
+        "in_extension_count": 0,
+        "ready_for_auction_count": 0,
+        "auctioned_count": 1,
+        "capital_outstanding": "1000000.00",
+        "interest_collected_month": "40000.00",
+        "interest_collected_prev_month": "25000.00",
+        "auctioned_this_month": 1
+      },
+      "sales": {
+        "today_total": "0.00",
+        "today_count": 0,
+        "month_total": "0.00",
+        "today_gross": "0.00",
+        "today_returns": "0.00",
+        "month_gross": "0.00",
+        "month_returns": "0.00",
+        "month_total_prev": "450000.00"
+      },
+      "inventory": {
+        "available_count": 0,
+        "available_value": "0.00",
+        "draft_count": 1
+      },
+      "cashbox": {
+        "session_open": true,
+        "session_id": "6a04735e-93c2-4954-a5fc-f1a3ec6e1ee0",
+        "opened_at": "2026-10-01T07:04:02.119198Z",
+        "opening_balance": "5000000.00"
+      }
+    }
+  }
+}

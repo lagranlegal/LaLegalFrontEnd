@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { addMonthsToDateOnly, BOGOTA_TZ, formatDate, formatDateShort, formatDateTime, formatMonth, formatTime, getActiveTimezone, setActiveTimezone, todayBogota } from '@/lib/dates'
+import { addMonthsToDateOnly, BOGOTA_TZ, formatClock, formatDate, formatDateShort, formatLongDate, greetingNow, previousMonthName, formatDateTime, formatMonth, formatTime, getActiveTimezone, setActiveTimezone, todayBogota } from '@/lib/dates'
 
 describe('todayBogota', () => {
   afterEach(() => {
@@ -148,5 +148,36 @@ describe('formatMonth', () => {
 
   it('rechaza un formato que no sea yyyy-MM-dd en vez de devolver algo raro', () => {
     expect(() => formatMonth('08/2026')).toThrow()
+  })
+})
+
+describe('Inicio: fecha larga, saludo, mes anterior y hora', () => {
+  afterEach(() => {
+    vi.useRealTimers()
+    setActiveTimezone('America/Bogota')
+  })
+
+  it('formatLongDate pone el día de la semana sin correrse por zona', () => {
+    // La maqueta decía «Martes 30/09/2026», pero ese día fue miércoles.
+    expect(formatLongDate('2026-09-30')).toBe('Miércoles 30/09/2026')
+    expect(formatLongDate('2026-10-04')).toBe('Domingo 04/10/2026')
+  })
+
+  it('previousMonthName da el mes anterior, y enero vuelve a diciembre', () => {
+    expect(previousMonthName('2026-09-30')).toBe('agosto')
+    expect(previousMonthName('2027-01-15')).toBe('diciembre')
+  })
+
+  it('greetingNow usa la hora de la empresa, no la UTC', () => {
+    // 13:30 UTC = 8:30 a. m. en Bogotá.
+    expect(greetingNow(new Date('2026-09-30T13:30:00Z'))).toBe('Buenos días')
+    expect(greetingNow(new Date('2026-09-30T20:00:00Z'))).toBe('Buenas tardes')
+    // 01:00 UTC del 1/10 = 8 p. m. del 30/09 en Bogotá.
+    expect(greetingNow(new Date('2026-10-01T01:00:00Z'))).toBe('Buenas noches')
+  })
+
+  it('formatClock escribe «a. m.» y «p. m.»', () => {
+    expect(formatClock('2026-09-30T13:02:00Z')).toBe('8:02 a. m.')
+    expect(formatClock('2026-09-30T23:40:00Z')).toBe('6:40 p. m.')
   })
 })

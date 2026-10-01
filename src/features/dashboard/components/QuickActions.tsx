@@ -1,5 +1,5 @@
 import { Link } from '@tanstack/react-router'
-import { FilePlus2, FileText, PackagePlus, ShoppingCart, Users, Wallet } from 'lucide-react'
+import { FileText, PackagePlus, Users, Wallet } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { usePermission } from '@/lib/permissions/usePermission'
 
@@ -18,10 +18,10 @@ type Action = {
  * Asesor, que atiende el mostrador todo el día, entraba siempre a una
  * pantalla vacía que lo mandaba al menú. Cada acceso es una ruta con el mismo
  * permiso que su guard: si no lo tiene, no aparece (ni deshabilitado).
+ * «Nuevo contrato» y «Nueva venta» no van aquí: son las acciones del
+ * encabezado (`InicioHeader`, rediseño P2-c), y repetirlas era ruido.
  */
 const ACTIONS: Action[] = [
-  { label: 'Nuevo contrato', hint: 'Prestar sobre una prenda', to: '/contratos/nuevo', icon: FilePlus2, permission: 'contracts.create' },
-  { label: 'Nueva venta', hint: 'Cobrar en el mostrador', to: '/ventas/nueva', icon: ShoppingCart, permission: 'sales.create' },
   { label: 'Contratos', hint: 'Buscar uno para abonar o ampliar', to: '/contratos', icon: FileText, permission: 'contracts.view' },
   { label: 'Clientes', hint: 'Buscar o registrar un cliente', to: '/clientes', icon: Users, permission: 'customers.view' },
   { label: 'Nuevo ingreso', hint: 'Mercancía que entra al inventario', to: '/inventario/ingresos/nuevo', icon: PackagePlus, permission: 'inventory.create' },

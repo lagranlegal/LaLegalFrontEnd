@@ -29,6 +29,7 @@ afterEach(cleanup)
 describe('Inicio sin reportes', () => {
   it('accesos a lo que el rol puede hacer, y nada más', () => {
     render(<DashboardPage />)
+    // Las dos puertas del mostrador van en el encabezado, una sola vez (P2-c).
     expect(screen.getByRole('link', { name: /Nuevo contrato/ }).getAttribute('href')).toBe('/contratos/nuevo')
     expect(screen.getByRole('link', { name: /Nueva venta/ }).getAttribute('href')).toBe('/ventas/nueva')
     expect(screen.getByRole('link', { name: /^Contratos/ })).toBeInTheDocument()
