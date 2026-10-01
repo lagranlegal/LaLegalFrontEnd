@@ -23,9 +23,12 @@ export function ItemPicker({
   onSelect,
   placeholder = 'Buscar artículo por código o nombre…',
   scope = 'available',
+  id,
 }: {
   onSelect: (item: Item) => void
   placeholder?: string
+  /** El `id` del buscador, para que un `<label htmlFor>` lo nombre. */
+  id?: string
   /**
    * `available` — lo vendible, para el carrito y los egresos.
    * `transformable` — incluye BORRADORES, porque fundir una prenda que nunca
@@ -70,7 +73,7 @@ export function ItemPicker({
 
   return (
     <div className="relative">
-      <SearchInput value={q} onChange={setQ} placeholder={placeholder} onEnter={handleEnter} />
+      <SearchInput id={id} value={q} onChange={setQ} placeholder={placeholder} onEnter={handleEnter} />
       {q.trim() && (
         <div className="absolute z-10 mt-1 w-full overflow-hidden rounded-input border border-border bg-card shadow-card">
           {isFetching && <p className="px-3 py-2 text-sm text-muted-foreground">Buscando…</p>}
