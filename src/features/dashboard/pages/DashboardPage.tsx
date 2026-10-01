@@ -9,7 +9,7 @@ import { Money } from '@/components/shared/Money'
 import { RecordNumber } from '@/components/shared/RecordNumber'
 import { EmptyState } from '@/components/shared/EmptyState'
 import { isPermissionError } from '@/lib/api/isPermissionError'
-import { ContractsStatusChart, type StatusDatum } from '@/components/shared/charts/ContractsStatusChart'
+import { ContractsByStatusCard } from '@/features/dashboard/components/ContractsByStatusCard'
 import { Button } from '@/components/ui/button'
 import { formatDate } from '@/lib/dates'
 
@@ -83,23 +83,12 @@ function ReportsSection({
   data: NonNullable<ReturnType<typeof useDashboard>['data']>
   readyForAuction: ReturnType<typeof useReadyForAuction>['data']
 }) {
-  const contractsByStatus: StatusDatum[] = [
-    { key: 'active', label: 'Vigentes', count: data.contracts.active_count, color: 'var(--status-active)' },
-    { key: 'in_arrears', label: 'En mora', count: data.contracts.in_arrears_count, color: 'var(--status-arrears)' },
-    { key: 'in_extension', label: 'Prórroga', count: data.contracts.in_extension_count, color: 'var(--status-extension)' },
-    { key: 'ready_for_auction', label: 'Listos p/ remate', count: data.contracts.ready_for_auction_count, color: 'var(--status-arrears)' },
-    { key: 'auctioned', label: 'Rematados', count: data.contracts.auctioned_count, color: 'var(--status-auctioned)' },
-  ]
-
   return (
     <>
       <DashboardKpis data={data} />
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-        <div className="enter-up rounded-card border border-border bg-card p-card">
-          <h2 className="text-sm font-medium text-foreground">Contratos por estado</h2>
-          <ContractsStatusChart data={contractsByStatus} />
-        </div>
+        <ContractsByStatusCard contracts={data.contracts} />
 
         <div className="enter-up rounded-card border border-border bg-card p-card">
           <h2 className="text-sm font-medium text-foreground">Listos para remate</h2>

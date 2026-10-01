@@ -251,6 +251,17 @@
   }
 }
 
+/* «Listos para remate» en la barra apilada del Inicio (rediseño P2-c): rayado
+   y no solo rojo, para no confundirse con «En mora» sin depender del color. El
+   de la leyenda es más fino porque el cuadro mide 12 px. */
+@utility bg-hatch-danger {
+  background: repeating-linear-gradient(135deg, var(--danger) 0 3px, var(--danger-soft) 3px 6px);
+}
+
+@utility bg-hatch-danger-sm {
+  background: repeating-linear-gradient(135deg, var(--danger) 0 2px, var(--danger-soft) 2px 4px);
+}
+
 @utility enter-up {
   animation: enter-up var(--duration-base) var(--ease-out) both;
 }
