@@ -120,12 +120,16 @@ describe('POS — vender por debajo del precio publicado', () => {
   it('sin sales.apply_discount el precio de la línea no se puede editar', async () => {
     await montarConAnillo()
     expect(screen.queryByLabelText(/Precio de Anillo oro 18k/i)).toBeNull()
+    expect(screen.queryByRole('button', { name: /Cambiar precio/ })).toBeNull()
   })
 
   it('con el permiso, bajar el precio pide motivo antes de enviar y avisa que es un descuento', async () => {
     permisos = ['sales.apply_discount']
     await montarConAnillo()
-    const precio = screen.getByLabelText(/Precio de Anillo oro 18k/i)
+    // Rediseño P2: el precio va plegado en la línea, como el descuento.
+    expect(screen.queryByRole('textbox', { name: /^Precio de Anillo oro 18k/ })).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: 'Cambiar precio de Anillo oro 18k' }))
+    const precio = screen.getByRole('textbox', { name: /^Precio de Anillo oro 18k/ })
     fireEvent.change(precio, { target: { value: '450.000' } })
 
     expect(screen.getByText(/por debajo del precio publicado/i)).toBeInTheDocument()

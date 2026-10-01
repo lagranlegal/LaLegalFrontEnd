@@ -82,7 +82,8 @@ describe('POS — vender por debajo del costo', () => {
     permisos = ['sales.apply_discount']
     await montar(LINEA.unit_cost)
     expect(screen.queryByText(/por debajo del costo/i)).toBeNull()
-    fireEvent.change(screen.getByLabelText(/Precio de Pulsera oro/i), { target: { value: '250.000' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Cambiar precio de Pulsera oro' }))
+    fireEvent.change(screen.getByRole('textbox', { name: /^Precio de Pulsera oro/ }), { target: { value: '250.000' } })
     expect(screen.getByText(/Por debajo del costo \(/)).toBeInTheDocument()
 
     fireEvent.change(screen.getByLabelText(/Motivo del descuento/i), { target: { value: 'Liquidación' } })

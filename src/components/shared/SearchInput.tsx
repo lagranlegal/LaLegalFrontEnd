@@ -94,7 +94,7 @@ export function SearchInput({
         placeholder={placeholder}
         className={cn(
           'w-full rounded-input border border-border-strong bg-card py-2 text-base text-foreground outline-none focus:border-ring',
-          size === 'lg' ? 'min-h-14 pl-11 sm:text-md' : 'min-h-11 pl-9 sm:text-sm',
+          size === 'lg' ? 'min-h-14 pl-11 sm:text-md [&::-webkit-search-cancel-button]:appearance-none' : 'min-h-11 pl-9 sm:text-sm',
           trailing ? (size === 'lg' ? 'pr-12 min-[481px]:pr-44' : 'pr-28') : 'pr-3',
         )}
       />

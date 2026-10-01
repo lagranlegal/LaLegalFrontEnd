@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { Minus, Plus, Trash2 } from 'lucide-react'
 import { Money } from '@/components/shared/Money'
 import { MoneyInput } from '@/components/shared/MoneyInput'
@@ -83,6 +84,11 @@ function CartLineRow({
 }) {
   const { item, quantity, unitPrice } = line
   const belowPublished = item.sale_price !== null && compareMoney(unitPrice, item.sale_price) < 0
+  // El precio se edita plegado, como el descuento (F9-34): la maqueta no lo
+  // muestra en la línea. Si ya no es el publicado, queda a la vista.
+  const [editingPrice, setEditingPrice] = useState(false)
+  const priceChanged = item.sale_price === null || compareMoney(unitPrice, item.sale_price) !== 0
+  const showPrice = canDiscount && (editingPrice || priceChanged)
   const stock = Number(item.quantity)
   return (
     // Bajo 560 px el monto va arriba a la derecha y los controles en su propia fila (maqueta).
@@ -93,16 +99,21 @@ function CartLineRow({
           {item.code && <span className="font-mono">{item.code}</span>}
           {/* El detalle de la maqueta («3,2 g», «45 cm») es la descripción del artículo: la API no da peso ni medida aparte. */}
           {item.description && <span className="truncate">{item.description}</span>}
+          {canDiscount && !showPrice && (
+            <button type="button" className="font-medium text-brand hover:underline" onClick={() => setEditingPrice(true)} aria-label={`Cambiar precio de ${item.name}`}>
+              Cambiar precio
+            </button>
+          )}
         </p>
         {/* Cambiar el precio de la línea: solo con permiso de descuentos.
             Bajarlo del publicado ES un descuento (F6-05 del backend): pide
             motivo y queda auditado. */}
-        {canDiscount && (
+        {showPrice && (
           <div className="mt-2 flex items-center gap-2">
             <label htmlFor={`precio-${item.id}`} className="text-xs text-muted-foreground">
               Precio
             </label>
-            <MoneyInput id={`precio-${item.id}`} ariaLabel={`Precio de ${item.name}`} className="w-36" value={unitPrice} onChange={onPrice} />
+            <MoneyInput id={`precio-${item.id}`} ariaLabel={`Precio de ${item.name}`} className="w-36" value={unitPrice} onChange={onPrice} autoFocus={editingPrice} />
           </div>
         )}
         {belowPublished && <p className="mt-1 text-xs text-warning">Por debajo del precio publicado: cuenta como descuento y necesita motivo.</p>}
