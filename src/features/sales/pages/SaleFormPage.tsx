@@ -1,7 +1,6 @@
 import { useRef, useState } from 'react'
 import { CashClosedNotice } from '@/components/shared/CashClosedNotice'
-import { useNavigate, useBlocker } from '@tanstack/react-router'
-import { toast } from 'sonner'
+import { useBlocker } from '@tanstack/react-router'
 import { BackLink } from '@/components/shared/BackLink'
 import { AppDialog } from '@/components/shared/AppDialog'
 import { ItemPicker } from '@/components/shared/ItemPicker'
@@ -22,7 +21,9 @@ import { PAYMENT_METHOD_LABELS } from '@/lib/paymentMethods'
 import { cashChange } from '@/features/sales/cashChange'
 import { confirm } from '@/components/shared/confirmStore'
 import { useAccounts } from '@/lib/accounts/list'
-import { useCreateSale } from '@/features/sales/api'
+import { useCreateSale, type Sale } from '@/features/sales/api'
+import { SaleDoneCard } from '@/features/sales/components/SaleDoneCard'
+import { SaleReceiptDialog } from '@/components/shared/SaleReceiptDialog'
 import { PosCart } from '@/features/sales/components/PosCart'
 import { PaymentMethodSegmented, PosCustomerField, QuickCashButtons, type PaymentMethod } from '@/features/sales/components/PosPay'
 import { quickCashAmounts } from '@/features/sales/quickCash'
@@ -45,7 +46,6 @@ import { preventImplicitSubmit } from '@/lib/forms/preventImplicitSubmit'
 export const CONFIRM_BEFORE_CHARGE = true
 
 export function SaleFormPage() {
-  const navigate = useNavigate()
   const createSale = useCreateSale()
   const { data: accounts } = useAccounts()
   const canDiscount = usePermission('sales.apply_discount')
@@ -78,14 +78,15 @@ export function SaleFormPage() {
   const [serverBelowCost, setServerBelowCost] = useState<ReadonlySet<string>>(new Set())
   /** Confirmación explícita de vender con pérdida en alguna pieza. */
   const [belowCostConfirmed, setBelowCostConfirmed] = useState(false)
-  const submittedRef = useRef(false)
+  /** La venta recién cobrada: la pantalla cierra con su comprobante en vez de volver a la lista (F9-33). */
+  const [doneSale, setDoneSale] = useState<{ sale: Sale; change: string | null; customerName: string } | null>(null)
   const scannerRef = useRef<HTMLInputElement>(null)
 
   // Perder un carrito armado sin aviso era el hueco más agudo de navegación
   // de todo el front (auditoría de UX del 27/08/2026, punto 10): a diferencia de los
   // formularios de contratos/ingreso, esta pantalla no tenía NINGÚN resguardo.
   const blocker = useBlocker({
-    shouldBlockFn: () => cart.length > 0 && !submittedRef.current,
+    shouldBlockFn: () => cart.length > 0,
     enableBeforeUnload: true,
     withResolver: true,
   })
@@ -100,6 +101,8 @@ export function SaleFormPage() {
   }
 
   function addToCart(item: Item) {
+    // Escanear después de cobrar ya es la venta siguiente.
+    setDoneSale(null)
     setCart((prev) => {
       const existing = prev.find((line) => line.item.id === item.id)
       if (existing) {
@@ -128,6 +131,28 @@ export function SaleFormPage() {
 
   function removeLine(itemId: string) {
     setCart((prev) => prev.filter((line) => line.item.id !== itemId))
+  }
+
+  /** Deja la pantalla lista para la venta siguiente (después de cobrar). */
+  function resetSale() {
+    setCart([])
+    chooseCustomer(null)
+    setPaymentMethod('cash')
+    setAccountId(null)
+    setDiscountAmount('0.00')
+    setDiscountOpen(false)
+    setDiscountReason('')
+    setCashReceived('')
+    setServerPriceDiscount(null)
+    setServerBelowCost(new Set())
+    setBelowCostConfirmed(false)
+    setFormError(null)
+    scannerRef.current?.focus()
+  }
+
+  function startNewSale() {
+    setDoneSale(null)
+    scannerRef.current?.focus()
   }
 
   async function clearCart() {
@@ -210,9 +235,12 @@ export function SaleFormPage() {
         credit_note_id: hasCreditNote ? creditNoteId : null,
         credit_note_amount: hasCreditNote ? creditNoteAmount : null,
       })
-      submittedRef.current = true
-      toast.success(`Venta #${sale.number} registrada`)
-      await navigate({ to: '/ventas' })
+      setDoneSale({
+        sale,
+        change: change?.kind === 'change' ? change.amount : null,
+        customerName: customer?.full_name ?? 'Consumidor final',
+      })
+      resetSale()
     } catch (error) {
       if (error instanceof ApiError && error.code === 'CASH_SESSION_NOT_OPEN') {
         setCashDialogOpen(true)
@@ -229,6 +257,8 @@ export function SaleFormPage() {
   }
 
   const quickAmounts = quickCashAmounts(cashAmount)
+  // Tras cobrar, el cierre ocupa la pantalla hasta «Nueva venta» o el siguiente escaneo.
+  const showingDone = doneSale !== null && cart.length === 0
 
   return (
     <div className="flex flex-col gap-4">
@@ -251,192 +281,204 @@ export function SaleFormPage() {
               envío implícito: la venta se registra solo con el botón. Nace
               con foco y lo recupera tras agregar (F9-27, F9-33). */}
           <ItemPicker ref={scannerRef} variant="scanner" onSelect={addToCart} placeholder="Escanea o escribe código o nombre" />
-          <PosCart
-            cart={cart}
-            canDiscount={canDiscount}
-            isBelowCost={isBelowCost}
-            onQuantity={updateQuantity}
-            onPrice={updateUnitPrice}
-            onRemove={removeLine}
-            onClear={clearCart}
-          />
+          {showingDone ? (
+            <SaleDoneCard
+              sale={doneSale.sale}
+              change={doneSale.change}
+              customerName={doneSale.customerName}
+              onPrint={() => window.print()}
+              onNewSale={startNewSale}
+            />
+          ) : (
+            <PosCart
+              cart={cart}
+              canDiscount={canDiscount}
+              isBelowCost={isBelowCost}
+              onQuantity={updateQuantity}
+              onPrice={updateUnitPrice}
+              onRemove={removeLine}
+              onClear={clearCart}
+            />
+          )}
         </div>
 
         {/* La columna de cobro (F9-32): cliente, medio, totales, recibido,
             cambio y el botón en un solo bloque que cabe entero a 1280×800. */}
-        <section aria-label="Cobro" className="flex min-w-0 flex-col gap-3 rounded-card border border-border bg-card p-card">
-          <div className="flex flex-col gap-1.5">
-            <span id="pos-customer-label" className="text-sm font-medium text-foreground">
-              Cliente
-            </span>
-            <PosCustomerField value={customer} onChange={chooseCustomer} />
-            {customer && <ReceiptEmailNotice customer={customer} />}
-          </div>
-
-          {availableCreditNotes.length > 0 && (
+        {!showingDone && (
+          <section aria-label="Cobro" className="flex min-w-0 flex-col gap-3 rounded-card border border-border bg-card p-card">
             <div className="flex flex-col gap-1.5">
-              <label htmlFor="sale-credit-note" className="text-sm font-medium text-foreground">
-                Aplicar nota crédito
+              <span id="pos-customer-label" className="text-sm font-medium text-foreground">
+                Cliente
+              </span>
+              <PosCustomerField value={customer} onChange={chooseCustomer} />
+              {customer && <ReceiptEmailNotice customer={customer} />}
+            </div>
+
+            {availableCreditNotes.length > 0 && (
+              <div className="flex flex-col gap-1.5">
+                <label htmlFor="sale-credit-note" className="text-sm font-medium text-foreground">
+                  Aplicar nota crédito
+                </label>
+                <Select
+                  value={creditNoteId ?? '__none__'}
+                  onValueChange={(v) => {
+                    if (v === '__none__') {
+                      setCreditNoteId(null)
+                      setCreditNoteAmount('0.00')
+                      return
+                    }
+                    const note = availableCreditNotes.find((n) => n.id === v)
+                    setCreditNoteId(v)
+                    setCreditNoteAmount(note ? minMoney(note.balance, total) : '0.00')
+                  }}
+                >
+                  <SelectTrigger id="sale-credit-note" className="w-full">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__none__">Ninguna</SelectItem>
+                    {availableCreditNotes.map((note) => (
+                      <SelectItem key={note.id} value={note.id}>
+                        <RecordNumber value={note.number} /> · saldo {formatCOP(note.balance)}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {hasCreditNote && <MoneyInput ariaLabel="Monto de la nota crédito a aplicar" value={creditNoteAmount} onChange={setCreditNoteAmount} />}
+              </div>
+            )}
+
+            <div className="flex flex-col gap-1.5">
+              <span id="pos-method-label" className="text-sm font-medium text-foreground">
+                Medio de pago
+              </span>
+              <PaymentMethodSegmented value={paymentMethod} onChange={setPaymentMethod} labelledBy="pos-method-label" />
+              {/* El medio dice CÓMO se cobró; la cuenta, DÓNDE quedó la plata
+                  (backend-starter/docs/DOMINIO.md §4.1). Con Sistecrédito la
+                  diferencia es el negocio entero: el medio es "Otro" y la
+                  cuenta es el convenio que todavía te la debe. */}
+              <label htmlFor="sale-account" className="sr-only">
+                ¿A dónde entra?
               </label>
-              <Select
-                value={creditNoteId ?? '__none__'}
-                onValueChange={(v) => {
-                  if (v === '__none__') {
-                    setCreditNoteId(null)
-                    setCreditNoteAmount('0.00')
-                    return
-                  }
-                  const note = availableCreditNotes.find((n) => n.id === v)
-                  setCreditNoteId(v)
-                  setCreditNoteAmount(note ? minMoney(note.balance, total) : '0.00')
-                }}
-              >
-                <SelectTrigger id="sale-credit-note" className="w-full">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="__none__">Ninguna</SelectItem>
-                  {availableCreditNotes.map((note) => (
-                    <SelectItem key={note.id} value={note.id}>
-                      <RecordNumber value={note.number} /> · saldo {formatCOP(note.balance)}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              {hasCreditNote && <MoneyInput ariaLabel="Monto de la nota crédito a aplicar" value={creditNoteAmount} onChange={setCreditNoteAmount} />}
+              <AccountPicker id="sale-account" paymentMethod={paymentMethod} value={accountId} onChange={setAccountId} warnNegativeBalance />
             </div>
-          )}
 
-          <div className="flex flex-col gap-1.5">
-            <span id="pos-method-label" className="text-sm font-medium text-foreground">
-              Medio de pago
-            </span>
-            <PaymentMethodSegmented value={paymentMethod} onChange={setPaymentMethod} labelledBy="pos-method-label" />
-            {/* El medio dice CÓMO se cobró; la cuenta, DÓNDE quedó la plata
-                (backend-starter/docs/DOMINIO.md §4.1). Con Sistecrédito la
-                diferencia es el negocio entero: el medio es "Otro" y la
-                cuenta es el convenio que todavía te la debe. */}
-            <label htmlFor="sale-account" className="sr-only">
-              ¿A dónde entra?
-            </label>
-            <AccountPicker id="sale-account" paymentMethod={paymentMethod} value={accountId} onChange={setAccountId} warnNegativeBalance />
-          </div>
-
-          <div className="flex flex-col gap-1.5 text-sm text-body tnum">
-            <div className="flex justify-between gap-3">
-              <span>Subtotal</span>
-              <Money value={subtotal} />
-            </div>
-            {hasPriceDiscount && (
+            <div className="flex flex-col gap-1.5 text-sm text-body tnum">
               <div className="flex justify-between gap-3">
-                <span>Rebajado del precio publicado (ya incluido)</span>
-                <Money value={priceDiscount} />
+                <span>Subtotal</span>
+                <Money value={subtotal} />
               </div>
-            )}
-            {/* Descuento plegado hasta que se pide (F9-34); solo con el permiso. */}
-            {canDiscount && !discountOpen && (
-              <div className="flex justify-between gap-3">
-                <span>Descuento</span>
-                <button type="button" className="font-medium text-brand hover:underline" onClick={() => setDiscountOpen(true)}>
-                  Agregar
-                </button>
-              </div>
-            )}
-            {canDiscount && discountOpen && (
-              <div className="flex items-center justify-between gap-3">
-                <label htmlFor="sale-discount">Descuento</label>
-                <div className="flex items-center gap-2">
-                  <MoneyInput id="sale-discount" className="w-36" value={discountAmount} onChange={setDiscountAmount} autoFocus />
-                  <button
-                    type="button"
-                    className="text-button-sm font-medium text-brand hover:underline"
-                    onClick={() => {
-                      setDiscountAmount('0.00')
-                      setDiscountOpen(false)
-                    }}
-                  >
-                    Quitar
+              {hasPriceDiscount && (
+                <div className="flex justify-between gap-3">
+                  <span>Rebajado del precio publicado (ya incluido)</span>
+                  <Money value={priceDiscount} />
+                </div>
+              )}
+              {/* Descuento plegado hasta que se pide (F9-34); solo con el permiso. */}
+              {canDiscount && !discountOpen && (
+                <div className="flex justify-between gap-3">
+                  <span>Descuento</span>
+                  <button type="button" className="font-medium text-brand hover:underline" onClick={() => setDiscountOpen(true)}>
+                    Agregar
                   </button>
                 </div>
+              )}
+              {canDiscount && discountOpen && (
+                <div className="flex items-center justify-between gap-3">
+                  <label htmlFor="sale-discount">Descuento</label>
+                  <div className="flex items-center gap-2">
+                    <MoneyInput id="sale-discount" className="w-36" value={discountAmount} onChange={setDiscountAmount} autoFocus />
+                    <button
+                      type="button"
+                      className="text-button-sm font-medium text-brand hover:underline"
+                      onClick={() => {
+                        setDiscountAmount('0.00')
+                        setDiscountOpen(false)
+                      }}
+                    >
+                      Quitar
+                    </button>
+                  </div>
+                </div>
+              )}
+              <div className="mt-0.5 flex justify-between gap-3 border-t border-border pt-2 text-xl font-bold text-foreground">
+                <span>Total</span>
+                <Money value={total} />
               </div>
-            )}
-            <div className="mt-0.5 flex justify-between gap-3 border-t border-border pt-2 text-xl font-bold text-foreground">
-              <span>Total</span>
-              <Money value={total} />
+              {hasCreditNote && (
+                <>
+                  <div className="flex justify-between gap-3">
+                    <span>Nota crédito aplicada</span>
+                    <Money value={creditNoteAmount} tone="out" />
+                  </div>
+                  <div className="flex justify-between gap-3 text-md font-semibold text-foreground">
+                    <span>A cobrar</span>
+                    <Money value={cashAmount} />
+                  </div>
+                </>
+              )}
             </div>
-            {hasCreditNote && (
-              <>
-                <div className="flex justify-between gap-3">
-                  <span>Nota crédito aplicada</span>
-                  <Money value={creditNoteAmount} tone="out" />
-                </div>
-                <div className="flex justify-between gap-3 text-md font-semibold text-foreground">
-                  <span>A cobrar</span>
-                  <Money value={cashAmount} />
-                </div>
-              </>
-            )}
-          </div>
 
-          {/* Fuera del permiso: el backend puede pedir el motivo aunque la
-              pantalla no viera rebaja (el precio publicado cambió con el
-              carrito armado). Sin el permiso, ese envío termina en un 403 que
-              ya explica qué falta. */}
-          {needsReason && (
-            <div className="flex flex-col gap-1.5">
-              <label htmlFor="sale-discount-reason" className="text-sm font-medium text-foreground">
-                Motivo del descuento
-              </label>
-              <Input id="sale-discount-reason" value={discountReason} onChange={(e) => setDiscountReason(e.target.value)} />
-            </div>
-          )}
-
-          {/* F9-32: con efectivo, lo recibido y el cambio. Solo en pantalla, no se envía. */}
-          {paymentMethod === 'cash' && (
-            <>
+            {/* Fuera del permiso: el backend puede pedir el motivo aunque la
+                pantalla no viera rebaja (el precio publicado cambió con el
+                carrito armado). Sin el permiso, ese envío termina en un 403 que
+                ya explica qué falta. */}
+            {needsReason && (
               <div className="flex flex-col gap-1.5">
-                <label htmlFor="sale-cash-received" className="text-sm font-medium text-foreground">
-                  Recibido en efectivo
+                <label htmlFor="sale-discount-reason" className="text-sm font-medium text-foreground">
+                  Motivo del descuento
                 </label>
-                <MoneyInput id="sale-cash-received" size="lg" optional value={cashReceived} onChange={setCashReceived} />
-                {compareMoney(cashAmount, '0') > 0 && <QuickCashButtons due={cashAmount} amounts={quickAmounts} received={cashReceived} onPick={setCashReceived} />}
+                <Input id="sale-discount-reason" value={discountReason} onChange={(e) => setDiscountReason(e.target.value)} />
               </div>
-              <div className="flex flex-wrap items-baseline justify-between gap-3 rounded-input bg-muted p-3.5" aria-live="polite">
-                {change?.kind === 'short' ? (
-                  <>
-                    <span className="text-sm font-medium text-body">Falta para completar</span>
-                    <Money value={change.amount} className="text-3xl leading-none font-bold tracking-tight text-danger tnum" />
-                  </>
-                ) : (
-                  <>
-                    <span className="text-sm font-medium text-body">Cambio a devolver</span>
-                    <Money value={change?.amount ?? '0'} className="text-3xl leading-none font-bold tracking-tight text-foreground tnum" />
-                  </>
-                )}
-              </div>
-            </>
-          )}
+            )}
 
-          {hasBelowCost && (
-            <label className="flex items-start gap-2 rounded-input bg-danger-soft px-3 py-2 text-sm text-danger">
-              <input type="checkbox" className="mt-0.5" checked={belowCostConfirmed} onChange={(e) => setBelowCostConfirmed(e.target.checked)} />
-              <span>Confirmo que vendo por debajo del costo: la venta pierde plata en esas piezas.</span>
-            </label>
-          )}
-
-          {formError && <p className="rounded-input bg-danger-soft px-3 py-2 text-sm text-danger">{formError}</p>}
-
-          <Button type="submit" size="lg" disabled={createSale.isPending}>
-            {createSale.isPending ? (
-              'Cobrando…'
-            ) : (
+            {/* F9-32: con efectivo, lo recibido y el cambio. Solo en pantalla, no se envía. */}
+            {paymentMethod === 'cash' && (
               <>
-                Cobrar <Money value={cashAmount} className="ml-1 tnum" />
+                <div className="flex flex-col gap-1.5">
+                  <label htmlFor="sale-cash-received" className="text-sm font-medium text-foreground">
+                    Recibido en efectivo
+                  </label>
+                  <MoneyInput id="sale-cash-received" size="lg" optional value={cashReceived} onChange={setCashReceived} />
+                  {compareMoney(cashAmount, '0') > 0 && <QuickCashButtons due={cashAmount} amounts={quickAmounts} received={cashReceived} onPick={setCashReceived} />}
+                </div>
+                <div className="flex flex-wrap items-baseline justify-between gap-3 rounded-input bg-muted p-3.5" aria-live="polite">
+                  {change?.kind === 'short' ? (
+                    <>
+                      <span className="text-sm font-medium text-body">Falta para completar</span>
+                      <Money value={change.amount} className="text-3xl leading-none font-bold tracking-tight text-danger tnum" />
+                    </>
+                  ) : (
+                    <>
+                      <span className="text-sm font-medium text-body">Cambio a devolver</span>
+                      <Money value={change?.amount ?? '0'} className="text-3xl leading-none font-bold tracking-tight text-foreground tnum" />
+                    </>
+                  )}
+                </div>
               </>
             )}
-          </Button>
-          <p className="text-center text-xs text-muted-foreground">Enter no cobra: el cobro se confirma con el botón.</p>
-        </section>
+
+            {hasBelowCost && (
+              <label className="flex items-start gap-2 rounded-input bg-danger-soft px-3 py-2 text-sm text-danger">
+                <input type="checkbox" className="mt-0.5" checked={belowCostConfirmed} onChange={(e) => setBelowCostConfirmed(e.target.checked)} />
+                <span>Confirmo que vendo por debajo del costo: la venta pierde plata en esas piezas.</span>
+              </label>
+            )}
+
+            {formError && <p className="rounded-input bg-danger-soft px-3 py-2 text-sm text-danger">{formError}</p>}
+
+            <Button type="submit" size="lg" disabled={createSale.isPending}>
+              {createSale.isPending ? (
+                'Cobrando…'
+              ) : (
+                <>
+                  Cobrar <Money value={cashAmount} className="ml-1 tnum" />
+                </>
+              )}
+            </Button>
+            <p className="text-center text-xs text-muted-foreground">Enter no cobra: el cobro se confirma con el botón.</p>
+          </section>
+        )}
       </form>
 
       <AppDialog
@@ -458,6 +500,9 @@ export function SaleFormPage() {
       />
 
       <CashSessionRequiredDialog open={cashDialogOpen} onOpenChange={setCashDialogOpen} />
+
+      {/* El comprobante de siempre, cerrado: se monta para que «Imprimir comprobante» imprima su PrintLayout. */}
+      {doneSale && <SaleReceiptDialog open={false} onOpenChange={() => {}} sale={doneSale.sale} />}
     </div>
   )
 }
