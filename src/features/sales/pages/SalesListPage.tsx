@@ -1,3 +1,5 @@
+import { toast } from 'sonner'
+import { isPageLimitError } from '@/lib/api/pagination'
 import { useState } from 'react'
 import type { ColumnDef } from '@tanstack/react-table'
 import { useNavigate } from '@tanstack/react-router'
@@ -37,6 +39,13 @@ export function SalesListPage() {
         saleExportRow(sale, sale.customer_id ? (customerById.get(sale.customer_id)?.full_name ?? '') : ''),
       )
       exportRowsToExcel(`ventas-${todayBogota()}.xlsx`, 'Ventas', rows)
+    } catch (error) {
+      // Issue #11: un listado más grande que el tope no se exporta a medias.
+      if (isPageLimitError(error)) {
+        toast.error('No se exportó el archivo', { description: error.message })
+        return
+      }
+      throw error
     } finally {
       setIsExporting(false)
     }

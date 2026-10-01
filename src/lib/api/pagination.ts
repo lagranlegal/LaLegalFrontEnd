@@ -38,22 +38,54 @@ export function useCursorInfiniteQuery<T>(
 }
 
 /**
+ * `fetchAllPages` llegó a su tope y el backend todavía tenía más páginas
+ * (issue #11). Antes devolvía lo que llevaba y un reporte salía incompleto
+ * sin que nadie lo supiera: un total parcial presentado como completo. Ahora
+ * es un error con nombre, que la pantalla dice («acorta el rango») en vez de
+ * pintar una cifra a medias.
+ */
+export class PageLimitError extends Error {
+  readonly code = 'PAGE_LIMIT_REACHED'
+  /** Cuántos registros alcanzaron a llegar antes del tope. */
+  readonly fetched: number
+  readonly maxPages: number
+  constructor(fetched: number, maxPages: number) {
+    super(
+      `Hay más de ${new Intl.NumberFormat('es-CO').format(fetched)} registros y no se pueden traer todos de una vez. ` +
+        'Acorta el rango de fechas o filtra la lista para ver el resultado completo.',
+    )
+    this.name = 'PageLimitError'
+    this.fetched = fetched
+    this.maxPages = maxPages
+  }
+}
+
+export function isPageLimitError(error: unknown): error is PageLimitError {
+  return error instanceof PageLimitError
+}
+
+/**
  * Trae TODAS las páginas de un listado por cursor de una sola vez, como
  * array plano — para agregación (Reportes: cierres de un rango, ventas y
- * artículos de todo el histórico), no para scroll infinito en una tabla
- * (eso es `useCursorInfiniteQuery`). `maxPages` es un tope defensivo — sin
- * uno, un catálogo que crece sin límite (ventas históricas) podría disparar
- * un loop de cientos de requests silenciosamente.
+ * artículos de todo el histórico) y exportes, no para scroll infinito en una
+ * tabla (eso es `useCursorInfiniteQuery`). `maxPages` es un tope defensivo —
+ * sin uno, un catálogo que crece sin límite (ventas históricas) podría
+ * disparar un loop de cientos de requests silenciosamente.
+ *
+ * **Nunca corta en silencio**: si al llegar al tope todavía hay
+ * `next_cursor`, lanza `PageLimitError` (issue #11). Quien la llama decide
+ * cómo decirlo; lo que no puede es mostrar el resultado parcial como total.
  */
 export async function fetchAllPages<T>(fetchPage: (cursor: string | undefined) => Promise<CursorPage<T>>, maxPages = 50): Promise<T[]> {
   const items: T[] = []
   let cursor: string | undefined
   let pageCount = 0
   do {
+    if (pageCount >= maxPages) throw new PageLimitError(items.length, maxPages)
     const page = await fetchPage(cursor)
     items.push(...page.items)
     cursor = page.next_cursor ?? undefined
     pageCount += 1
-  } while (cursor && pageCount < maxPages)
+  } while (cursor)
   return items
 }

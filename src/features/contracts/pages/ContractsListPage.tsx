@@ -1,3 +1,5 @@
+import { toast } from 'sonner'
+import { isPageLimitError } from '@/lib/api/pagination'
 import { useState } from 'react'
 import type { ColumnDef } from '@tanstack/react-table'
 import { useNavigate, useSearch } from '@tanstack/react-router'
@@ -185,6 +187,13 @@ export function ContractsListPage() {
       // F7-10: saldo en 0 fuera de la cartera viva y fila de total, ver `contractsExportRows`.
       const rows = contractsExportRows(allContracts, customerById)
       exportRowsToExcel(`contratos-${todayBogota()}.xlsx`, 'Contratos', rows)
+    } catch (error) {
+      // Issue #11: un listado más grande que el tope no se exporta a medias.
+      if (isPageLimitError(error)) {
+        toast.error('No se exportó el archivo', { description: error.message })
+        return
+      }
+      throw error
     } finally {
       setIsExporting(false)
     }

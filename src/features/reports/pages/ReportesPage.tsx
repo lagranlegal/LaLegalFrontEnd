@@ -25,6 +25,7 @@ import { SummaryCard } from '@/components/shared/SummaryCard'
 import { DataTable } from '@/components/shared/DataTable'
 import { IndexedSection, SectionIndexLayout, type IndexSection } from '@/components/shared/SectionIndex'
 import { formatPercent } from '@/lib/percent'
+import { isPageLimitError } from '@/lib/api/pagination'
 import { KPI_GRID, KPI_GRID_3 } from '@/features/reports/layout'
 import type { ColumnDef } from '@tanstack/react-table'
 import { ContablesSection } from '@/features/reports/components/ContablesSection'
@@ -248,7 +249,7 @@ export function ReportesPage() {
   // `byDay` completos y para los `session_id` de `useExpensesByCategory` — ver
   // `features/reports/api.ts`). Ya no hay N+1 de `GET /cashbox/sessions/{id}/report`.
   const { data: breakdown, isPending: breakdownPending, isError: breakdownError, refetch: refetchBreakdown } = useClosingsBreakdown(range)
-  const { data: closings, isPending: closingsPending, isError: closingsError, refetch: refetchClosings } = useClosingsInRange(range)
+  const { data: closings, isPending: closingsPending, isError: closingsError, error: closingsErrorValue, refetch: refetchClosings } = useClosingsInRange(range)
   const { data: previousBreakdown } = useClosingsBreakdown(previousRange)
   const { data: previousClosings } = useClosingsInRange(previousRange)
   const isPending = breakdownPending || closingsPending
@@ -260,7 +261,10 @@ export function ReportesPage() {
   const { data: cartera } = useCarteraActual()
   const { data: expenses } = useExpensesByCategory(closings)
   const { data: expenseCategories } = useExpenseCategories()
-  const { data: itemSales } = useItemSales(rangeTooWide ? null : range)
+  const { data: itemSales, error: itemSalesError } = useItemSales(rangeTooWide ? null : range)
+  // Issue #11: si el rango trae más de lo que se puede pedir de una vez, se
+  // dice; un ranking con la mitad de las ventas no se presenta como completo.
+  const rankingTruncated = isPageLimitError(itemSalesError) ? itemSalesError : null
   const { data: series } = useMonthlySeries(12)
   const { data: categories } = useCategories()
   // Mismo hook que ya usa `IncomeStatementCard` — misma query key, mismo
@@ -348,10 +352,12 @@ export function ReportesPage() {
         Total: Number(line.total),
       }))
 
-      const rankings = [
-        ...ranking.topItems.map((i) => ({ Tipo: 'Prenda', Nombre: i.code ? `${i.name} (${i.code})` : i.name, Cantidad: i.quantity, Unidad: unitAbbr(i.unit), Ingresos: Number(i.revenue) })),
-        ...ranking.topCategories.map((c) => ({ Tipo: 'Categoría', Nombre: c.path, Cantidad: c.quantity, Unidad: unitAbbr(c.unit), Ingresos: Number(c.revenue) })),
-      ]
+      const rankings = rankingTruncated
+        ? [{ Aviso: `Ranking no disponible: ${rankingTruncated.message}` }]
+        : [
+            ...ranking.topItems.map((i) => ({ Tipo: 'Prenda', Nombre: i.code ? `${i.name} (${i.code})` : i.name, Cantidad: i.quantity, Unidad: unitAbbr(i.unit), Ingresos: Number(i.revenue) })),
+            ...ranking.topCategories.map((c) => ({ Tipo: 'Categoría', Nombre: c.path, Cantidad: c.quantity, Unidad: unitAbbr(c.unit), Ingresos: Number(c.revenue) })),
+          ]
 
       await exportSheetsToExcel(`reportes-${range?.from ?? todayBogota()}-a-${range?.to ?? todayBogota()}.xlsx`, [
         { name: 'Resumen', rows: resumen },
@@ -472,7 +478,9 @@ export function ReportesPage() {
             ) : isError ? (
               <IndexedSection id="resumen">
                 <div className="flex flex-col items-center gap-3 rounded-card border border-border bg-card p-card text-center">
-                  <p className="text-sm text-muted-foreground">No se pudo cargar el reporte de este rango.</p>
+                  <p role="alert" className="text-sm text-muted-foreground">
+                    {isPageLimitError(closingsErrorValue) ? closingsErrorValue.message : 'No se pudo cargar el reporte de este rango.'}
+                  </p>
                   <Button variant="outline" onClick={() => refetch()}>
                     Reintentar
                   </Button>
@@ -680,14 +688,22 @@ export function ReportesPage() {
                 <h2 className="text-lg font-semibold text-foreground">Lo más vendido del período</h2>
                 <p className="text-xs text-muted-foreground">Del mismo rango de fechas elegido arriba.</p>
               </div>
-              <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
-                <CardShell title="Prendas más vendidas">
-                  <RankingList rows={ranking.topItems.map((i) => ({ key: i.itemId, label: i.code ? `${i.name} (${i.code})` : i.name, quantity: i.quantity, revenue: i.revenue, unit: i.unit }))} />
-                </CardShell>
-                <CardShell title="Categorías más movidas">
-                  <RankingList rows={ranking.topCategories.map((c) => ({ key: `${c.categoryId}|${c.unit}`, label: c.path, quantity: c.quantity, revenue: c.revenue, unit: c.unit }))} />
-                </CardShell>
-              </div>
+              {rankingTruncated ? (
+                <SummaryCard title="Lo más vendido">
+                  <p role="alert" className="text-sm text-warning">
+                    {rankingTruncated.message}
+                  </p>
+                </SummaryCard>
+              ) : (
+                <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
+                  <CardShell title="Prendas más vendidas">
+                    <RankingList rows={ranking.topItems.map((i) => ({ key: i.itemId, label: i.code ? `${i.name} (${i.code})` : i.name, quantity: i.quantity, revenue: i.revenue, unit: i.unit }))} />
+                  </CardShell>
+                  <CardShell title="Categorías más movidas">
+                    <RankingList rows={ranking.topCategories.map((c) => ({ key: `${c.categoryId}|${c.unit}`, label: c.path, quantity: c.quantity, revenue: c.revenue, unit: c.unit }))} />
+                  </CardShell>
+                </div>
+              )}
             </IndexedSection>
           </SectionIndexLayout>
         </PageTabsContent>
