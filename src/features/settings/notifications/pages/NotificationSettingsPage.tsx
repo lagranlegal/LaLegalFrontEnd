@@ -9,6 +9,7 @@ import { StatusBadge, statusLabel } from '@/components/shared/StatusBadge'
 import { confirm } from '@/components/shared/confirmStore'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
+import { FieldError, Input, invalidFieldProps } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { ApiError, userMessage } from '@/lib/api/errors'
 import { formatDate, formatDateTime } from '@/lib/dates'
@@ -37,9 +38,6 @@ import {
 } from '@/features/settings/notifications/logic'
 import { ContractClauseNotice } from '@/features/settings/notifications/components/ContractClauseNotice'
 
-const inputClass =
-  'mt-1 w-full rounded-input border border-border bg-background px-3 py-2 text-sm text-foreground outline-none focus:border-primary'
-
 function Section({ title, description, children }: { title: string; description?: string; children: React.ReactNode }) {
   return (
     <section className="flex flex-col gap-4 rounded-card border border-border bg-card p-card">
@@ -52,7 +50,28 @@ function Section({ title, description, children }: { title: string; description?
   )
 }
 
-function Field({ label, htmlFor, hint, error, children }: { label: string; htmlFor?: string; hint?: string; error?: string; children: React.ReactNode }) {
+/**
+ * Label arriba, ayuda o error abajo. El error es el `FieldError` de `errorFor`
+ * (por defecto, el campo de `htmlFor`): el campo lo enlaza con `invalid` o, en
+ * un par de campos que comparten error (las franjas horarias), con
+ * `invalidFieldProps(errorFor, …)` en los dos.
+ */
+function Field({
+  label,
+  htmlFor,
+  errorFor,
+  hint,
+  error,
+  children,
+}: {
+  label: string
+  htmlFor?: string
+  errorFor?: string
+  hint?: string
+  error?: string
+  children: React.ReactNode
+}) {
+  const errorFieldId = errorFor ?? htmlFor
   return (
     <div>
       <label htmlFor={htmlFor} className="text-sm font-medium text-foreground">
@@ -60,7 +79,7 @@ function Field({ label, htmlFor, hint, error, children }: { label: string; htmlF
       </label>
       {children}
       {hint && !error && <p className="mt-1 text-xs text-muted-foreground">{hint}</p>}
-      {error && <p className="mt-1 text-sm text-danger">{error}</p>}
+      {errorFieldId ? <FieldError fieldId={errorFieldId}>{error}</FieldError> : error && <p className="mt-1 text-sm text-danger">{error}</p>}
     </div>
   )
 }
@@ -354,10 +373,10 @@ function ParamsForm({ settings }: { settings: NotificationSettings }) {
             hint="Si el proceso nocturno estuvo caído, un aviso viejo ya no sirve: se registra como «Llegó tarde» en vez de mandarse."
             error={errors.stale_after_days}
           >
-            <input
+            <Input
               id="stale_after_days"
+              invalid={!!errors.stale_after_days}
               inputMode="numeric"
-              className={inputClass}
               value={draft.stale_after_days}
               onChange={(e) => set('stale_after_days', e.target.value)}
             />
@@ -386,23 +405,23 @@ function ParamsForm({ settings }: { settings: NotificationSettings }) {
         </label>
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <Field label="Máximo por semana" htmlFor="max_per_week" hint="0 o 1: la ley permite un contacto de cobranza por semana." error={errors.max_per_week}>
-            <input id="max_per_week" inputMode="numeric" className={inputClass} value={draft.max_per_week} onChange={(e) => set('max_per_week', e.target.value)} />
+            <Input id="max_per_week" invalid={!!errors.max_per_week} inputMode="numeric" value={draft.max_per_week} onChange={(e) => set('max_per_week', e.target.value)} />
           </Field>
           <Field label="Máximo por día" htmlFor="max_per_day" error={errors.max_per_day}>
-            <input id="max_per_day" inputMode="numeric" className={inputClass} value={draft.max_per_day} onChange={(e) => set('max_per_day', e.target.value)} />
+            <Input id="max_per_day" invalid={!!errors.max_per_day} inputMode="numeric" value={draft.max_per_day} onChange={(e) => set('max_per_day', e.target.value)} />
           </Field>
-          <Field label="Lunes a viernes" hint="Dentro de 07:00 a 19:00." error={errors.weekday_start ?? errors.weekday_end}>
+          <Field label="Lunes a viernes" errorFor="weekday_hours" hint="Dentro de 07:00 a 19:00." error={errors.weekday_start ?? errors.weekday_end}>
             <div className="flex items-center gap-2">
-              <input type="time" aria-label="Lunes a viernes, desde" className={inputClass} value={draft.weekday_start} onChange={(e) => set('weekday_start', e.target.value)} />
+              <Input id="weekday_start" type="time" aria-label="Lunes a viernes, desde" {...invalidFieldProps('weekday_hours', !!(errors.weekday_start ?? errors.weekday_end))} value={draft.weekday_start} onChange={(e) => set('weekday_start', e.target.value)} />
               <span className="mt-1 text-sm text-muted-foreground">a</span>
-              <input type="time" aria-label="Lunes a viernes, hasta" className={inputClass} value={draft.weekday_end} onChange={(e) => set('weekday_end', e.target.value)} />
+              <Input id="weekday_end" type="time" aria-label="Lunes a viernes, hasta" {...invalidFieldProps('weekday_hours', !!(errors.weekday_start ?? errors.weekday_end))} value={draft.weekday_end} onChange={(e) => set('weekday_end', e.target.value)} />
             </div>
           </Field>
-          <Field label="Sábados" hint="Dentro de 08:00 a 15:00." error={errors.saturday_start ?? errors.saturday_end}>
+          <Field label="Sábados" errorFor="saturday_hours" hint="Dentro de 08:00 a 15:00." error={errors.saturday_start ?? errors.saturday_end}>
             <div className="flex items-center gap-2">
-              <input type="time" aria-label="Sábados, desde" className={inputClass} value={draft.saturday_start} onChange={(e) => set('saturday_start', e.target.value)} />
+              <Input id="saturday_start" type="time" aria-label="Sábados, desde" {...invalidFieldProps('saturday_hours', !!(errors.saturday_start ?? errors.saturday_end))} value={draft.saturday_start} onChange={(e) => set('saturday_start', e.target.value)} />
               <span className="mt-1 text-sm text-muted-foreground">a</span>
-              <input type="time" aria-label="Sábados, hasta" className={inputClass} value={draft.saturday_end} onChange={(e) => set('saturday_end', e.target.value)} />
+              <Input id="saturday_end" type="time" aria-label="Sábados, hasta" {...invalidFieldProps('saturday_hours', !!(errors.saturday_start ?? errors.saturday_end))} value={draft.saturday_end} onChange={(e) => set('saturday_end', e.target.value)} />
             </div>
           </Field>
         </div>

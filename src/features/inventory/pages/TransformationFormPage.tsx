@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useId, useRef, useState } from 'react'
 import { useNavigate, useBlocker } from '@tanstack/react-router'
 import { toast } from 'sonner'
 import { ArrowDown, Plus, Trash2 } from 'lucide-react'
@@ -9,6 +9,7 @@ import { ItemPicker } from '@/components/shared/ItemPicker'
 import { MoneyInput } from '@/components/shared/MoneyInput'
 import { Money } from '@/components/shared/Money'
 import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { AccountPicker } from '@/components/shared/AccountPicker'
 import { CashSessionRequiredDialog } from '@/components/shared/CashSessionRequiredDialog'
@@ -21,9 +22,6 @@ import { PAYMENT_METHOD_LABELS } from '@/lib/paymentMethods'
 import { SELECTABLE_UNITS, formatQuantity, unitAbbr, unitLabel, type ProductUnit } from '@/lib/inventory/units'
 import { useCreateTransformation } from '@/features/inventory/api'
 import type { Item } from '@/lib/inventory/items'
-
-const inputClass =
-  'mt-1 w-full rounded-input border border-border bg-background px-3 py-2 text-sm text-foreground outline-none focus:border-primary'
 
 interface Entrada {
   item: Item
@@ -74,6 +72,7 @@ function nuevaSalida(): Salida {
  */
 export function TransformationFormPage() {
   const navigate = useNavigate()
+  const fieldId = useId()
   const { data: categories, isPending: categoriesPending } = useCategories()
   const createTransformation = useCreateTransformation()
 
@@ -264,15 +263,19 @@ export function TransformationFormPage() {
         </div>
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
           <div>
-            <label className="text-sm font-medium text-foreground">Cuánto</label>
-            <MoneyInput className="mt-1" value={extraCost} onChange={setExtraCost} />
+            <label htmlFor={`${fieldId}-extra-cost`} className="text-sm font-medium text-foreground">
+              Cuánto
+            </label>
+            <MoneyInput id={`${fieldId}-extra-cost`} className="mt-1" value={extraCost} onChange={setExtraCost} />
           </div>
           {Number(extraCost) > 0 && (
             <>
               <div>
-                <label className="text-sm font-medium text-foreground">Medio de pago</label>
+                <label htmlFor={`${fieldId}-payment-method`} className="text-sm font-medium text-foreground">
+                  Medio de pago
+                </label>
                 <Select value={paymentMethod} onValueChange={(v) => setPaymentMethod(v as typeof paymentMethod)}>
-                  <SelectTrigger className="mt-1 w-full">
+                  <SelectTrigger id={`${fieldId}-payment-method`} className="mt-1 w-full">
                     <SelectValue>{PAYMENT_METHOD_LABELS[paymentMethod]}</SelectValue>
                   </SelectTrigger>
                   <SelectContent>
@@ -285,8 +288,10 @@ export function TransformationFormPage() {
                 </Select>
               </div>
               <div>
-                <label className="text-sm font-medium text-foreground">¿De dónde sale?</label>
-                <AccountPicker paymentMethod={paymentMethod} direction="out" value={accountId} onChange={setAccountId} />
+                <label htmlFor={`${fieldId}-account`} className="text-sm font-medium text-foreground">
+                  ¿De dónde sale?
+                </label>
+                <AccountPicker id={`${fieldId}-account`} paymentMethod={paymentMethod} direction="out" value={accountId} onChange={setAccountId} />
               </div>
             </>
           )}
@@ -317,6 +322,7 @@ export function TransformationFormPage() {
           const parte = repartos[index] ?? 0
           const cantidad = Number(salidasN[index]?.quantity || 0)
           const costoUnitario = cantidad > 0 ? parte / cantidad : 0
+          const salidaId = `${fieldId}-salida-${salida.key}`
 
           return (
             <div key={salida.key} className="flex flex-col gap-3 rounded-input border border-border p-3">
@@ -337,9 +343,11 @@ export function TransformationFormPage() {
 
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <div className="sm:col-span-2">
-                  <label className="text-sm font-medium text-foreground">Nombre</label>
-                  <input
-                    className={inputClass}
+                  <label htmlFor={`${salidaId}-name`} className="text-sm font-medium text-foreground">
+                    Nombre
+                  </label>
+                  <Input
+                    id={`${salidaId}-name`}
                     value={salida.name}
                     onChange={(e) => actualizarSalida(salida.key, { name: e.target.value })}
                     placeholder="Oro 18k"
@@ -347,13 +355,15 @@ export function TransformationFormPage() {
                 </div>
 
                 <div>
-                  <label className="text-sm font-medium text-foreground">Categoría</label>
+                  <label htmlFor={`${salidaId}-cat1`} className="text-sm font-medium text-foreground">
+                    Categoría
+                  </label>
                   <Select
                     value={salida.cat1_id}
                     onValueChange={(v) => actualizarSalida(salida.key, { cat1_id: v, cat2_id: '', cat3_id: '' })}
                     disabled={categoriesPending}
                   >
-                    <SelectTrigger className="mt-1 w-full">
+                    <SelectTrigger id={`${salidaId}-cat1`} className="mt-1 w-full">
                       <SelectValue placeholder={categoriesPending ? 'Cargando…' : 'Selecciona…'} />
                     </SelectTrigger>
                     <SelectContent>
@@ -366,13 +376,15 @@ export function TransformationFormPage() {
                   </Select>
                 </div>
                 <div>
-                  <label className="text-sm font-medium text-foreground">Subcategoría</label>
+                  <label htmlFor={`${salidaId}-cat2`} className="text-sm font-medium text-foreground">
+                    Subcategoría
+                  </label>
                   <Select
                     value={salida.cat2_id}
                     onValueChange={(v) => actualizarSalida(salida.key, { cat2_id: v, cat3_id: '' })}
                     disabled={!salida.cat1_id}
                   >
-                    <SelectTrigger className="mt-1 w-full">
+                    <SelectTrigger id={`${salidaId}-cat2`} className="mt-1 w-full">
                       <SelectValue placeholder={salida.cat1_id ? 'Selecciona…' : 'Elige categoría'} />
                     </SelectTrigger>
                     <SelectContent>
@@ -385,13 +397,15 @@ export function TransformationFormPage() {
                   </Select>
                 </div>
                 <div>
-                  <label className="text-sm font-medium text-foreground">Categoría final</label>
+                  <label htmlFor={`${salidaId}-cat3`} className="text-sm font-medium text-foreground">
+                    Categoría final
+                  </label>
                   <Select
                     value={salida.cat3_id}
                     onValueChange={(v) => actualizarSalida(salida.key, { cat3_id: v })}
                     disabled={!salida.cat2_id}
                   >
-                    <SelectTrigger className="mt-1 w-full">
+                    <SelectTrigger id={`${salidaId}-cat3`} className="mt-1 w-full">
                       <SelectValue placeholder={salida.cat2_id ? 'Selecciona…' : 'Elige subcategoría'} />
                     </SelectTrigger>
                     <SelectContent>
@@ -405,16 +419,19 @@ export function TransformationFormPage() {
                 </div>
 
                 <div>
-                  <label className="text-sm font-medium text-foreground">Cantidad</label>
+                  <label htmlFor={`${salidaId}-quantity`} className="text-sm font-medium text-foreground">
+                    Cantidad
+                  </label>
                   <div className="mt-1 flex gap-2">
-                    <input
+                    <Input
+                      id={`${salidaId}-quantity`}
                       inputMode="decimal"
-                      className={`${inputClass} mt-0 flex-1`}
+                      className="mt-0 flex-1"
                       value={salida.quantity}
                       onChange={(e) => actualizarSalida(salida.key, { quantity: e.target.value })}
                     />
                     <Select value={salida.unit} onValueChange={(v) => actualizarSalida(salida.key, { unit: v as ProductUnit })}>
-                      <SelectTrigger className="w-32">
+                      <SelectTrigger className="w-32" aria-label="Unidad">
                         <SelectValue>{unitLabel(salida.unit)}</SelectValue>
                       </SelectTrigger>
                       <SelectContent>
@@ -432,15 +449,20 @@ export function TransformationFormPage() {
                 </div>
 
                 <div>
-                  <label className="text-sm font-medium text-foreground">Precio de venta (opcional)</label>
+                  <label htmlFor={`${salidaId}-sale-price`} className="text-sm font-medium text-foreground">
+                    Precio de venta (opcional)
+                  </label>
                   {/* `optional`: borrado queda vacío, no "0.00" (2d405cd). */}
-                  <MoneyInput optional className="mt-1" ariaLabel="Precio de venta" value={salida.sale_price} onChange={(v) => actualizarSalida(salida.key, { sale_price: v })} />
+                  <MoneyInput optional id={`${salidaId}-sale-price`} className="mt-1" value={salida.sale_price} onChange={(v) => actualizarSalida(salida.key, { sale_price: v })} />
                 </div>
 
                 {salidas.length > 1 && (
                   <div className="sm:col-span-2">
-                    <label className="text-sm font-medium text-foreground">Valor estimado (para repartir el costo)</label>
+                    <label htmlFor={`${salidaId}-estimated-value`} className="text-sm font-medium text-foreground">
+                      Valor estimado (para repartir el costo)
+                    </label>
                     <MoneyInput
+                      id={`${salidaId}-estimated-value`}
                       className="mt-1"
                       value={salida.estimated_value || '0.00'}
                       onChange={(v) => actualizarSalida(salida.key, { estimated_value: v })}
@@ -473,9 +495,8 @@ export function TransformationFormPage() {
           <label htmlFor="reason" className="text-sm font-medium text-foreground">
             Motivo
           </label>
-          <input
+          <Input
             id="reason"
-            className={inputClass}
             value={reason}
             onChange={(e) => setReason(e.target.value)}
             placeholder="Fundición de prendas rematadas sin rotación"

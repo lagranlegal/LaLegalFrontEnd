@@ -4,6 +4,7 @@ import { Controller, useForm } from 'react-hook-form'
 import { z } from 'zod'
 import { AppDialog } from '@/components/shared/AppDialog'
 import { Button } from '@/components/ui/button'
+import { FieldError, Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { applyServerErrors } from '@/lib/forms/applyServerErrors'
 import { useCreateRole, useRenameRole, useRoles, type Role } from '@/features/identity/api'
@@ -17,8 +18,6 @@ const roleSchema = z.object({
 })
 
 type RoleFormValues = z.infer<typeof roleSchema>
-
-const inputClass = 'mt-1 w-full rounded-input border border-border bg-background px-3 py-2 text-sm text-foreground outline-none focus:border-primary'
 
 /** El caller monta este diálogo con una `key` que cambie en cada apertura (mismo patrón que `SupplierFormDialog`). */
 export function RoleFormDialog({ open, onOpenChange, role }: { open: boolean; onOpenChange: (open: boolean) => void; role?: Role }) {
@@ -81,15 +80,15 @@ export function RoleFormDialog({ open, onOpenChange, role }: { open: boolean; on
           <label htmlFor="role-name" className="text-sm font-medium text-foreground">
             Nombre
           </label>
-          <input id="role-name" className={inputClass} {...register('name')} />
-          {errors.name && <p className="mt-1 text-sm text-danger">{errors.name.message}</p>}
+          <Input id="role-name" invalid={!!errors.name} {...register('name')} />
+          <FieldError fieldId="role-name">{errors.name?.message}</FieldError>
         </div>
 
         <div>
           <label htmlFor="role-description" className="text-sm font-medium text-foreground">
             Descripción
           </label>
-          <input id="role-description" className={inputClass} {...register('description')} />
+          <Input id="role-description" {...register('description')} />
         </div>
 
         {mode === 'create' && (

@@ -1,4 +1,4 @@
-import { cloneElement, isValidElement, useId, useState } from 'react'
+import { useId, useState } from 'react'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { Controller, useForm } from 'react-hook-form'
 import { z } from 'zod'
@@ -9,6 +9,7 @@ import { PageHeader } from '@/components/shared/PageHeader'
 import { PhotoUploader } from '@/components/shared/PhotoUploader'
 import { EmptyState } from '@/components/shared/EmptyState'
 import { Button } from '@/components/ui/button'
+import { FieldError, Input, Textarea } from '@/components/ui/input'
 import { applyServerErrors } from '@/lib/forms/applyServerErrors'
 import { useCompanySettings, useUpdateCompanySettings } from '@/features/settings/api'
 import { deleteDetachedPhotos } from '@/lib/storage/detachedPhotos'
@@ -29,16 +30,17 @@ const settingsSchema = z.object({
 
 type SettingsFormValues = z.infer<typeof settingsSchema>
 
-const inputClass =
-  'mt-1 w-full rounded-input border border-border bg-background px-3 py-2 text-sm text-foreground outline-none focus:border-primary'
+/** Lo que `Field` le pasa a su campo: el `id` de la etiqueta, si está inválido y, sin error, la ayuda como descripción. */
+type FieldControlProps = { id: string; invalid: boolean; 'aria-describedby'?: string }
 
 /**
- * Label arriba, ayuda o error abajo. Si el hijo es un campo nativo (input,
- * textarea, select), el label queda ASOCIADO por `id` (F9-54: los 9 campos de
- * Configuración no tenían: tocar la etiqueta no enfocaba el campo y el lector
- * de pantalla no los nombraba) y el campo lleva `aria-invalid` y
- * `aria-describedby` al mensaje. Un hijo compuesto (el cargador de fotos)
- * queda con el label como título, sin asociación.
+ * Label arriba, ayuda o error abajo. Si el hijo es una función, recibe el `id`
+ * y el estado de error para el campo (`<Input>`/`<Textarea>`): el label queda
+ * ASOCIADO por `id` (F9-54: los 9 campos de Configuración no tenían: tocar la
+ * etiqueta no enfocaba el campo y el lector de pantalla no los nombraba), con
+ * error el campo lleva `aria-invalid` y `aria-describedby` al `FieldError`, y
+ * sin error la ayuda queda como su descripción. Un hijo compuesto (el cargador
+ * de fotos) queda con el label como título, sin asociación.
  */
 function Field({
   label,
@@ -49,34 +51,27 @@ function Field({
   label: string
   hint?: string
   error?: string
-  children: React.ReactNode
+  children: React.ReactNode | ((field: FieldControlProps) => React.ReactNode)
 }) {
   const id = useId()
-  const messageId = `${id}-msg`
-  const native = isValidElement<Record<string, unknown>>(children) && typeof children.type === 'string'
-  const control = native
-    ? cloneElement(children, {
-        id,
-        'aria-invalid': error ? true : undefined,
-        'aria-describedby': hint || error ? messageId : undefined,
-      })
-    : children
+  const hintId = `${id}-hint`
+  const showHint = !!hint && !error
+  const isControl = typeof children === 'function'
+  // `aria-describedby` solo cuando hay ayuda que mostrar: con error lo pone el
+  // propio `Input` (al `FieldError`), y una clave en `undefined` lo pisaría.
+  const control = isControl ? children({ id, invalid: !!error, ...(showHint ? { 'aria-describedby': hintId } : {}) }) : children
   return (
     <div>
-      <label htmlFor={native ? id : undefined} className="text-sm font-medium text-foreground">
+      <label htmlFor={isControl ? id : undefined} className="text-sm font-medium text-foreground">
         {label}
       </label>
       {control}
-      {hint && !error && (
-        <p id={messageId} className="mt-1 text-xs text-muted-foreground">
+      {showHint && (
+        <p id={hintId} className="mt-1 text-xs text-muted-foreground">
           {hint}
         </p>
       )}
-      {error && (
-        <p id={messageId} className="mt-1 text-sm text-danger">
-          {error}
-        </p>
-      )}
+      <FieldError fieldId={id}>{error}</FieldError>
     </div>
   )
 }
@@ -215,22 +210,22 @@ export function SettingsPage() {
         <Section title="Datos de la empresa" description="Aparecen en los contratos, comprobantes y actas de cierre.">
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <Field label="Nombre comercial" error={errors.name?.message}>
-              <input className={inputClass} {...register('name')} />
+              {(field) => <Input {...field} {...register('name')} />}
             </Field>
             <Field label="Razón social" hint="Nombre legal, si es distinto del comercial." error={errors.legal_name?.message}>
-              <input className={inputClass} {...register('legal_name')} />
+              {(field) => <Input {...field} {...register('legal_name')} />}
             </Field>
             <Field label="NIT / documento" error={errors.tax_id?.message}>
-              <input className={inputClass} {...register('tax_id')} />
+              {(field) => <Input {...field} {...register('tax_id')} />}
             </Field>
             <Field label="Teléfono" error={errors.contact_phone?.message}>
-              <input className={inputClass} {...register('contact_phone')} />
+              {(field) => <Input {...field} {...register('contact_phone')} />}
             </Field>
             <Field label="Correo de contacto" error={errors.contact_email?.message}>
-              <input type="email" className={inputClass} {...register('contact_email')} />
+              {(field) => <Input type="email" {...field} {...register('contact_email')} />}
             </Field>
             <Field label="Dirección" error={errors.address?.message}>
-              <input className={inputClass} {...register('address')} />
+              {(field) => <Input {...field} {...register('address')} />}
             </Field>
           </div>
         </Section>
@@ -314,21 +309,21 @@ export function SettingsPage() {
             hint="Línea corta bajo el nombre de la empresa. Ej.: “Casa de empeño y compraventa · Vigilado Supersociedades”."
             error={errors.header_note?.message}
           >
-            <input className={inputClass} {...register('header_note')} />
+            {(field) => <Input {...field} {...register('header_note')} />}
           </Field>
           <Field
             label="Pie de página"
             hint="Ej.: horario de atención, teléfono, dirección de la sede."
             error={errors.footer_note?.message}
           >
-            <input className={inputClass} {...register('footer_note')} />
+            {(field) => <Input {...field} {...register('footer_note')} />}
           </Field>
           <Field
             label="Aviso legal"
             hint="Texto largo al final del documento. Ej.: tratamiento de datos personales (Ley 1581), condiciones del contrato."
             error={errors.legal_notice?.message}
           >
-            <textarea rows={4} className={inputClass} {...register('legal_notice')} />
+            {(field) => <Textarea rows={4} {...field} {...register('legal_notice')} />}
           </Field>
         </Section>
 

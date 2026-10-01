@@ -3,14 +3,12 @@ import { toast } from 'sonner'
 import { AppDialog } from '@/components/shared/AppDialog'
 import { MoneyInput } from '@/components/shared/MoneyInput'
 import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { ACCOUNT_TYPE_HINTS, ACCOUNT_TYPE_LABELS } from '@/lib/accounts/types'
 import { useAccounts } from '@/lib/accounts/list'
 import { useCreateAccount, useUpdateAccount, type Account, type AccountType } from '@/features/accounts/api'
-
-const inputClass =
-  'mt-1 w-full rounded-input border border-border bg-background px-3 py-2 text-sm text-foreground outline-none focus:border-primary'
 
 /**
  * Alta y edición de una cuenta. Un solo diálogo para ambas porque los campos
@@ -117,9 +115,8 @@ export function AccountFormDialog({
           <label htmlFor="account-name" className="text-sm font-medium text-foreground">
             Nombre
           </label>
-          <input
+          <Input
             id="account-name"
-            className={inputClass}
             value={name}
             onChange={(event) => setName(event.target.value)}
             placeholder="Bancolombia ahorros"
@@ -133,7 +130,7 @@ export function AccountFormDialog({
           </label>
           {isEdit ? (
             <>
-              <p className={`${inputClass} bg-muted text-muted-foreground`}>{ACCOUNT_TYPE_LABELS[account.type]}</p>
+              <Input id="account-type" value={ACCOUNT_TYPE_LABELS[account.type]} disabled readOnly />
               <p className="mt-1 text-xs text-muted-foreground">
                 El tipo no se puede cambiar: define cómo se verifica el dinero, y cambiarlo reinterpretaría los
                 movimientos ya registrados.
@@ -162,9 +159,8 @@ export function AccountFormDialog({
           <label htmlFor="account-reference" className="text-sm font-medium text-foreground">
             Referencia <span className="text-muted-foreground">(opcional)</span>
           </label>
-          <input
+          <Input
             id="account-reference"
-            className={inputClass}
             value={reference}
             onChange={(event) => setReference(event.target.value)}
             placeholder="Últimos 4 dígitos, número de convenio…"

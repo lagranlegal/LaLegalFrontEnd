@@ -4,13 +4,11 @@ import { BackLink } from '@/components/shared/BackLink'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { PhotoUploader } from '@/components/shared/PhotoUploader'
 import { Button } from '@/components/ui/button'
+import { FieldError, Input } from '@/components/ui/input'
 import { ApiError } from '@/lib/api/client'
 import { useMe, useUpdateMe } from '@/lib/auth/me'
 import { useChangeOwnPassword, WrongCurrentPasswordError, setPasswordErrorMessage } from '@/features/auth/api'
 import { deleteDetachedPhotos } from '@/lib/storage/detachedPhotos'
-
-const inputClass =
-  'mt-1 w-full rounded-input border border-border bg-background px-3 py-2 text-sm text-foreground outline-none focus:border-primary'
 
 /**
  * Perfil del usuario — `PATCH /me` (backend 02/09/2026). Solo lo que uno
@@ -64,8 +62,8 @@ export function ProfilePage() {
           <label htmlFor="profile-name" className="text-sm font-medium text-foreground">
             Nombre
           </label>
-          <input id="profile-name" className={inputClass} value={fullName} onChange={(e) => setFullName(e.target.value)} />
-          {nameMissing && <p className="mt-1 text-sm text-danger">El nombre no puede quedar vacío.</p>}
+          <Input id="profile-name" invalid={nameMissing} value={fullName} onChange={(e) => setFullName(e.target.value)} />
+          <FieldError fieldId="profile-name">{nameMissing && 'El nombre no puede quedar vacío.'}</FieldError>
         </div>
 
         <div>
@@ -153,7 +151,7 @@ function ChangePasswordCard() {
         <label htmlFor="pwd-actual" className="text-sm font-medium text-foreground">
           Contraseña actual
         </label>
-        <input id="pwd-actual" type="password" autoComplete="current-password" className={inputClass} value={actual} onChange={(e) => setActual(e.target.value)} />
+        <Input id="pwd-actual" type="password" autoComplete="current-password" value={actual} onChange={(e) => setActual(e.target.value)} />
       </div>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -161,15 +159,15 @@ function ChangePasswordCard() {
           <label htmlFor="pwd-nueva" className="text-sm font-medium text-foreground">
             Contraseña nueva
           </label>
-          <input id="pwd-nueva" type="password" autoComplete="new-password" className={inputClass} value={nueva} onChange={(e) => setNueva(e.target.value)} />
-          {cortaDeMas && <p className="mt-1 text-sm text-danger">Mínimo 8 caracteres.</p>}
+          <Input id="pwd-nueva" type="password" autoComplete="new-password" invalid={cortaDeMas} value={nueva} onChange={(e) => setNueva(e.target.value)} />
+          <FieldError fieldId="pwd-nueva">{cortaDeMas && 'Mínimo 8 caracteres.'}</FieldError>
         </div>
         <div>
           <label htmlFor="pwd-confirmar" className="text-sm font-medium text-foreground">
             Confirmar contraseña nueva
           </label>
-          <input id="pwd-confirmar" type="password" autoComplete="new-password" className={inputClass} value={confirmacion} onChange={(e) => setConfirmacion(e.target.value)} />
-          {noCoinciden && <p className="mt-1 text-sm text-danger">Las contraseñas no coinciden.</p>}
+          <Input id="pwd-confirmar" type="password" autoComplete="new-password" invalid={noCoinciden} value={confirmacion} onChange={(e) => setConfirmacion(e.target.value)} />
+          <FieldError fieldId="pwd-confirmar">{noCoinciden && 'Las contraseñas no coinciden.'}</FieldError>
         </div>
       </div>
 

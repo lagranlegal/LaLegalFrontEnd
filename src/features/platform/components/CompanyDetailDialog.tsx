@@ -3,6 +3,7 @@ import { Controller, useForm } from 'react-hook-form'
 import { toast } from 'sonner'
 import { AppDialog } from '@/components/shared/AppDialog'
 import { Button } from '@/components/ui/button'
+import { FieldError, Textarea } from '@/components/ui/input'
 import { DatePicker } from '@/components/shared/DatePicker'
 import { MoneyInput } from '@/components/shared/MoneyInput'
 import { Money } from '@/components/shared/Money'
@@ -20,8 +21,6 @@ import {
   type SubscriptionExtendIn,
 } from '@/features/platform/api'
 import { CompanyStatusBadge } from '@/features/platform/components/CompanyStatusBadge'
-
-const inputClass = 'mt-1 w-full rounded-input border border-border bg-background px-3 py-2 text-sm text-foreground outline-none focus:border-primary'
 
 const EVENT_LABELS: Record<string, string> = {
   created: 'Empresa creada',
@@ -214,9 +213,9 @@ export function CompanyDetailDialog({ open, onOpenChange, company }: { open: boo
                 control={control}
                 name="new_expires_at"
                 rules={{ required: true }}
-                render={({ field }) => <DatePicker id="extend-date" value={field.value} onChange={field.onChange} minDate={todayBogota()} />}
+                render={({ field }) => <DatePicker id="extend-date" invalid={!!errors.new_expires_at} value={field.value} onChange={field.onChange} minDate={todayBogota()} />}
               />
-              {errors.new_expires_at && <p className="mt-1 text-sm text-danger">Elige una fecha</p>}
+              <FieldError fieldId="extend-date">{errors.new_expires_at && 'Elige una fecha'}</FieldError>
             </div>
             <div>
               <label htmlFor="extend-amount" className="text-sm font-medium text-foreground">
@@ -238,7 +237,7 @@ export function CompanyDetailDialog({ open, onOpenChange, company }: { open: boo
               <label htmlFor="extend-notes" className="text-sm font-medium text-foreground">
                 Notas (opcional)
               </label>
-              <textarea id="extend-notes" rows={2} className={inputClass} {...register('notes')} />
+              <Textarea id="extend-notes" rows={2} {...register('notes')} />
             </div>
             <Button type="submit" disabled={extendSubscription.isPending} className="w-full rounded-pill">
               {extendSubscription.isPending ? 'Guardando…' : 'Extender suscripción'}

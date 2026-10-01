@@ -1,9 +1,10 @@
-import { useState } from 'react'
+import { useId, useState } from 'react'
 import { toast } from 'sonner'
 import { AppDialog } from '@/components/shared/AppDialog'
 import { CustomerPicker } from '@/components/shared/CustomerPicker'
 import { CashSessionRequiredDialog } from '@/components/shared/CashSessionRequiredDialog'
 import { Button } from '@/components/ui/button'
+import { Textarea } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { useItemsByIds, type Item } from '@/lib/inventory/items'
 import { formatQuantity } from '@/lib/inventory/units'
@@ -14,8 +15,6 @@ import { quantityError } from '@/lib/forms/rules'
 import type { Sale } from '@/lib/sales/void'
 import type { Customer } from '@/lib/customers/search'
 import { preventImplicitSubmit } from '@/lib/forms/preventImplicitSubmit'
-
-const inputClass = 'mt-1 w-full rounded-input border border-border bg-background px-3 py-2 text-sm text-foreground outline-none focus:border-primary'
 
 interface LineDraft {
   included: boolean
@@ -101,6 +100,7 @@ export function ReturnFormDialog({ open, onOpenChange, sale }: { open: boolean; 
   const [notes, setNotes] = useState('')
   const [formError, setFormError] = useState<string | null>(null)
   const [cashDialogOpen, setCashDialogOpen] = useState(false)
+  const fieldId = useId()
 
   const needsCustomer = settlementMethod === 'credit_note' && !sale.customer_id
   // F21-37: lo pagado con nota crédito no es plata — nunca entró al cajón, y
@@ -176,9 +176,11 @@ export function ReturnFormDialog({ open, onOpenChange, sale }: { open: boolean; 
           </div>
 
           <div>
-            <label className="text-sm font-medium text-foreground">Motivo</label>
+            <label htmlFor={`${fieldId}-reason`} className="text-sm font-medium text-foreground">
+              Motivo
+            </label>
             <Select value={reason} onValueChange={(v) => setReason(v as typeof reason)}>
-              <SelectTrigger className="mt-1 w-full">
+              <SelectTrigger id={`${fieldId}-reason`} className="mt-1 w-full">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -192,9 +194,11 @@ export function ReturnFormDialog({ open, onOpenChange, sale }: { open: boolean; 
           </div>
 
           <div>
-            <label className="text-sm font-medium text-foreground">Forma de liquidación</label>
+            <label htmlFor={`${fieldId}-settlement`} className="text-sm font-medium text-foreground">
+              Forma de liquidación
+            </label>
             <Select value={settlementMethod} onValueChange={(v) => setSettlementMethod(v as typeof settlementMethod)}>
-              <SelectTrigger className="mt-1 w-full">
+              <SelectTrigger id={`${fieldId}-settlement`} className="mt-1 w-full">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -218,16 +222,20 @@ export function ReturnFormDialog({ open, onOpenChange, sale }: { open: boolean; 
 
           {needsCustomer && (
             <div>
-              <label className="text-sm font-medium text-foreground">Cliente (obligatorio para nota crédito)</label>
+              <label htmlFor={`${fieldId}-customer`} className="text-sm font-medium text-foreground">
+                Cliente (obligatorio para nota crédito)
+              </label>
               <div className="mt-1">
-                <CustomerPicker value={customer} onChange={setCustomer} />
+                <CustomerPicker id={`${fieldId}-customer`} value={customer} onChange={setCustomer} />
               </div>
             </div>
           )}
 
           <div>
-            <label className="text-sm font-medium text-foreground">Notas (opcional)</label>
-            <textarea className={inputClass} rows={2} value={notes} onChange={(e) => setNotes(e.target.value)} />
+            <label htmlFor={`${fieldId}-notes`} className="text-sm font-medium text-foreground">
+              Notas (opcional)
+            </label>
+            <Textarea id={`${fieldId}-notes`} value={notes} onChange={(e) => setNotes(e.target.value)} />
           </div>
 
           {formError && <p className="rounded-input bg-danger-soft px-3 py-2 text-sm text-danger">{formError}</p>}

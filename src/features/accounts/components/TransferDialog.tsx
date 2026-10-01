@@ -6,6 +6,7 @@ import { CashSessionRequiredDialog } from '@/components/shared/CashSessionRequir
 import { Money } from '@/components/shared/Money'
 import { MoneyInput } from '@/components/shared/MoneyInput'
 import { Button } from '@/components/ui/button'
+import { FieldError, Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { ApiError } from '@/lib/api/client'
 import { useAccounts } from '@/lib/accounts/list'
@@ -13,9 +14,6 @@ import { accountTypeLabel } from '@/lib/accounts/types'
 import { useCreateTransfer, type Account } from '@/features/accounts/api'
 import { confirm } from '@/components/shared/confirmStore'
 import { formatCOP, subtractMoney } from '@/lib/money'
-
-const inputClass =
-  'mt-1 w-full rounded-input border border-border bg-background px-3 py-2 text-sm text-foreground outline-none focus:border-primary'
 
 function AccountSelect({
   id,
@@ -225,17 +223,16 @@ export function TransferDialog({
             <label htmlFor="transfer-amount" className="text-sm font-medium text-foreground">
               Cuánto
             </label>
-            <MoneyInput id="transfer-amount" value={amount} onChange={setAmount} autoFocus />
-            {excede && <p className="mt-1 text-sm text-danger">Es más de lo que hay disponible.</p>}
+            <MoneyInput id="transfer-amount" value={amount} onChange={setAmount} invalid={excede} autoFocus />
+            <FieldError fieldId="transfer-amount">{excede && 'Es más de lo que hay disponible.'}</FieldError>
           </div>
 
           <div>
             <label htmlFor="transfer-notes" className="text-sm font-medium text-foreground">
               Notas <span className="text-muted-foreground">(opcional)</span>
             </label>
-            <input
+            <Input
               id="transfer-notes"
-              className={inputClass}
               value={notes}
               onChange={(event) => setNotes(event.target.value)}
               placeholder="Consignación del día"

@@ -4,14 +4,12 @@ import { AppDialog } from '@/components/shared/AppDialog'
 import { Money } from '@/components/shared/Money'
 import { MoneyInput } from '@/components/shared/MoneyInput'
 import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { subtractMoney } from '@/lib/money'
 import { useAccounts } from '@/lib/accounts/list'
 import { useSettleAccount, type Account } from '@/features/accounts/api'
 import { positiveMoneyError } from '@/lib/forms/rules'
-
-const inputClass =
-  'mt-1 w-full rounded-input border border-border bg-background px-3 py-2 text-sm text-foreground outline-none focus:border-primary'
 
 /**
  * Liquidar un convenio: Sistecrédito (o quien sea) paga lo que debía, menos
@@ -153,9 +151,8 @@ export function SettleAccountDialog({
           <label htmlFor="settle-notes" className="text-sm font-medium text-foreground">
             Notas <span className="text-muted-foreground">(opcional)</span>
           </label>
-          <input
+          <Input
             id="settle-notes"
-            className={inputClass}
             value={notes}
             onChange={(event) => setNotes(event.target.value)}
             placeholder="Corte del 15 al 30"

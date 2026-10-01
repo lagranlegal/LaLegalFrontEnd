@@ -4,6 +4,7 @@ import { Controller, useForm } from 'react-hook-form'
 import { z } from 'zod'
 import { AppDialog } from '@/components/shared/AppDialog'
 import { Button } from '@/components/ui/button'
+import { FieldError, Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { applyServerErrors } from '@/lib/forms/applyServerErrors'
 import { useCreateSupplier, useUpdateSupplier, type Supplier } from '@/features/catalogs/api'
@@ -36,8 +37,6 @@ const supplierSchema = z.object({
 })
 
 type SupplierFormValues = z.infer<typeof supplierSchema>
-
-const inputClass = 'mt-1 w-full rounded-input border border-border bg-background px-3 py-2 text-sm text-foreground outline-none focus:border-primary'
 
 function emptyValues(): SupplierFormValues {
   return { name: '', code_letter: '', doc_type: NONE, doc_number: '', phone: '', email: '', address: '', notes: '' }
@@ -127,16 +126,16 @@ export function SupplierFormDialog({ open, onOpenChange, supplier }: { open: boo
             <label htmlFor="sup-name" className="text-sm font-medium text-foreground">
               Nombre
             </label>
-            <input id="sup-name" className={inputClass} {...register('name')} />
-            {errors.name && <p className="mt-1 text-sm text-danger">{errors.name.message}</p>}
+            <Input id="sup-name" invalid={!!errors.name} {...register('name')} />
+            <FieldError fieldId="sup-name">{errors.name?.message}</FieldError>
           </div>
           <div>
             <label htmlFor="sup-code" className="text-sm font-medium text-foreground">
               Letra de código
             </label>
-            <input id="sup-code" maxLength={3} className={`${inputClass} uppercase`} {...register('code_letter')} />
+            <Input id="sup-code" invalid={!!errors.code_letter} maxLength={3} className="uppercase" {...register('code_letter')} />
             <p className="mt-1 text-xs text-muted-foreground">1 a 3 letras. Va al final del código del lote. R, P, T y D están reservadas.</p>
-            {errors.code_letter && <p className="mt-1 text-sm text-danger">{errors.code_letter.message}</p>}
+            <FieldError fieldId="sup-code">{errors.code_letter?.message}</FieldError>
           </div>
         </div>
 
@@ -169,7 +168,7 @@ export function SupplierFormDialog({ open, onOpenChange, supplier }: { open: boo
             <label htmlFor="sup-doc-number" className="text-sm font-medium text-foreground">
               Número de documento
             </label>
-            <input id="sup-doc-number" className={inputClass} {...register('doc_number')} />
+            <Input id="sup-doc-number" {...register('doc_number')} />
           </div>
         </div>
 
@@ -178,14 +177,14 @@ export function SupplierFormDialog({ open, onOpenChange, supplier }: { open: boo
             <label htmlFor="sup-phone" className="text-sm font-medium text-foreground">
               Teléfono
             </label>
-            <input id="sup-phone" className={inputClass} {...register('phone')} />
+            <Input id="sup-phone" {...register('phone')} />
           </div>
           <div>
             <label htmlFor="sup-email" className="text-sm font-medium text-foreground">
               Correo
             </label>
-            <input id="sup-email" type="email" className={inputClass} {...register('email')} />
-            {errors.email && <p className="mt-1 text-sm text-danger">{errors.email.message}</p>}
+            <Input id="sup-email" invalid={!!errors.email} type="email" {...register('email')} />
+            <FieldError fieldId="sup-email">{errors.email?.message}</FieldError>
           </div>
         </div>
 
@@ -193,7 +192,7 @@ export function SupplierFormDialog({ open, onOpenChange, supplier }: { open: boo
           <label htmlFor="sup-address" className="text-sm font-medium text-foreground">
             Dirección
           </label>
-          <input id="sup-address" className={inputClass} {...register('address')} />
+          <Input id="sup-address" {...register('address')} />
         </div>
 
         {formError && <p className="rounded-input bg-danger-soft px-3 py-2 text-sm text-danger">{formError}</p>}

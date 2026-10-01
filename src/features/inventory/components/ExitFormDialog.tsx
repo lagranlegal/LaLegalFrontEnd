@@ -6,6 +6,7 @@ import { exitTypeLabel, SELECTABLE_EXIT_TYPES } from '@/lib/inventory/entryTypes
 import { allowsFractions, unitAbbr, unitLabel } from '@/lib/inventory/units'
 import { ItemPicker } from '@/components/shared/ItemPicker'
 import { Button } from '@/components/ui/button'
+import { Textarea } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { useCreateExit } from '@/features/inventory/api'
 import type { Item } from '@/lib/inventory/items'
@@ -13,8 +14,6 @@ import { preventImplicitSubmit } from '@/lib/forms/preventImplicitSubmit'
 import { quantityError } from '@/lib/forms/rules'
 import { normalizeDecimalInput } from '@/lib/money'
 
-
-const inputClass = 'mt-1 w-full rounded-input border border-border bg-background px-3 py-2 text-sm text-foreground outline-none focus:border-primary'
 
 /** Egreso de artículos (paso 7 del plan de construcción original) — sin caja: no es dinero, es una salida de inventario (ajuste, daño, devolución, uso interno). Con `Idempotency-Key` desde F6-11 del backend (ver `useCreateExit`). */
 export function ExitFormDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (open: boolean) => void }) {
@@ -101,9 +100,11 @@ export function ExitFormDialog({ open, onOpenChange }: { open: boolean; onOpenCh
     >
       <form onKeyDown={preventImplicitSubmit} id="exit-form" onSubmit={handleSubmit} className="flex flex-col gap-4" noValidate>
         <div>
-          <label className="text-sm font-medium text-foreground">Tipo de egreso</label>
+          <label htmlFor="exit-type" className="text-sm font-medium text-foreground">
+            Tipo de egreso
+          </label>
           <Select value={exitType} onValueChange={(v) => setExitType(v as typeof exitType)}>
-            <SelectTrigger className="mt-1 w-full">
+            <SelectTrigger id="exit-type" className="mt-1 w-full">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -120,13 +121,15 @@ export function ExitFormDialog({ open, onOpenChange }: { open: boolean; onOpenCh
           <label htmlFor="exit-reason" className="text-sm font-medium text-foreground">
             Motivo
           </label>
-          <textarea id="exit-reason" rows={2} className={inputClass} value={reason} onChange={(e) => setReason(e.target.value)} />
+          <Textarea id="exit-reason" rows={2} value={reason} onChange={(e) => setReason(e.target.value)} />
         </div>
 
         <div>
-          <label className="text-sm font-medium text-foreground">Artículos</label>
+          <label htmlFor="exit-items" className="text-sm font-medium text-foreground">
+            Artículos
+          </label>
           <div className="mt-1">
-            <ItemPicker onSelect={addItem} />
+            <ItemPicker id="exit-items" onSelect={addItem} />
           </div>
         </div>
 

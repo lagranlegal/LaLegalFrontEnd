@@ -5,6 +5,7 @@ import { z } from 'zod'
 import { ltvPctField, termMonthsField } from '@/lib/forms/rules'
 import { AppDialog } from '@/components/shared/AppDialog'
 import { Button } from '@/components/ui/button'
+import { FieldError, Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { applyServerErrors } from '@/lib/forms/applyServerErrors'
 import { formatCOP, normalizeDecimalInput } from '@/lib/money'
@@ -47,8 +48,6 @@ const categorySchema = z.object({
 })
 
 type CategoryFormValues = z.infer<typeof categorySchema>
-
-const inputClass = 'mt-1 w-full rounded-input border border-border bg-background px-3 py-2 text-sm text-foreground outline-none focus:border-primary'
 
 /**
  * El caller debe montar este componente con una `key` que cambie en CADA
@@ -164,8 +163,8 @@ export function CategoryFormDialog({
           <label htmlFor="cat-name" className="text-sm font-medium text-foreground">
             Nombre
           </label>
-          <input id="cat-name" className={inputClass} {...register('name')} />
-          {errors.name && <p className="mt-1 text-sm text-danger">{errors.name.message}</p>}
+          <Input id="cat-name" invalid={!!errors.name} {...register('name')} />
+          <FieldError fieldId="cat-name">{errors.name?.message}</FieldError>
         </div>
 
         <div className="grid grid-cols-2 gap-3">
@@ -179,9 +178,9 @@ export function CategoryFormDialog({
                 mismo padre. Se admiten hasta 3 igual, por consistencia con
                 proveedores —donde sí hacía falta— y porque el modelo ya lo
                 soportaba. */}
-            <input id="cat-code" maxLength={3} className={`${inputClass} uppercase`} {...register('code_letter')} />
+            <Input id="cat-code" invalid={!!errors.code_letter} maxLength={3} className="uppercase" {...register('code_letter')} />
             <p className="mt-1 text-xs text-muted-foreground">1 a 3 letras. Forma el código: {'{Nivel1}{Nivel2}{Nivel3}'}0001</p>
-            {errors.code_letter && <p className="mt-1 text-sm text-danger">{errors.code_letter.message}</p>}
+            <FieldError fieldId="cat-code">{errors.code_letter?.message}</FieldError>
           </div>
           <div>
             <label htmlFor="cat-applies" className="text-sm font-medium text-foreground">
@@ -215,40 +214,40 @@ export function CategoryFormDialog({
             </label>
             {/* El placeholder muestra lo HEREDADO: dejar el campo vacío ya no
                 es un hueco sin explicación, es "usa el del padre". */}
-            <input
+            <Input
               id="cat-term"
+              invalid={!!errors.default_term_months}
               inputMode="numeric"
-              className={inputClass}
               placeholder={heredado.default_term_months != null ? `${heredado.default_term_months} (heredado)` : undefined}
               {...register('default_term_months')}
             />
-            {errors.default_term_months && <p className="mt-1 text-xs text-danger">{errors.default_term_months.message}</p>}
+            <FieldError fieldId="cat-term" className="text-xs">{errors.default_term_months?.message}</FieldError>
           </div>
           <div>
             <label htmlFor="cat-arrears" className="text-sm font-medium text-foreground">
               Ventana de mora (meses)
             </label>
-            <input
+            <Input
               id="cat-arrears"
+              invalid={!!errors.arrears_window_months}
               inputMode="numeric"
-              className={inputClass}
               placeholder={heredado.arrears_window_months != null ? `${heredado.arrears_window_months} (heredado)` : undefined}
               {...register('arrears_window_months')}
             />
-            {errors.arrears_window_months && <p className="mt-1 text-xs text-danger">{errors.arrears_window_months.message}</p>}
+            <FieldError fieldId="cat-arrears" className="text-xs">{errors.arrears_window_months?.message}</FieldError>
           </div>
           <div>
             <label htmlFor="cat-ltv" className="text-sm font-medium text-foreground">
               LTV máximo (%)
             </label>
-            <input
+            <Input
               id="cat-ltv"
+              invalid={!!errors.max_ltv_pct}
               inputMode="decimal"
-              className={inputClass}
               placeholder={heredado.max_ltv_pct != null ? `${heredado.max_ltv_pct} (heredado)` : undefined}
               {...register('max_ltv_pct')}
             />
-            {errors.max_ltv_pct && <p className="mt-1 text-xs text-danger">{errors.max_ltv_pct.message}</p>}
+            <FieldError fieldId="cat-ltv" className="text-xs">{errors.max_ltv_pct?.message}</FieldError>
           </div>
         </div>
 

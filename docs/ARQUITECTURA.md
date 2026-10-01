@@ -353,6 +353,10 @@ Vitest + Testing Library sobre jsdom (`tests/setup.ts` simula `matchMedia`). Las
   artículo) lo resuelve antes.
 - **Un campo nuevo es `Input`/`Textarea` con `FieldError`** (`components/ui/input.tsx`), no otra copia de
   `inputClass`: el enlace del error con `aria-describedby` y el `label` por `id` salen de ahí (DESIGN_SYSTEM §4.10).
+  Ya no queda ninguna copia en `features/` ni en `components/shared/` (`input-shared.test.tsx` lo vigila). Los
+  campos compuestos siguen la misma regla con su prop `invalid` y su `id`: `MoneyInput`, `SearchInput`, `DatePicker`
+  y, en un `SelectTrigger` de Radix, `invalidFieldProps(id, invalid)`. Un buscador compuesto sin input propio
+  (`CustomerPicker`, `ItemPicker`, `AccountPicker`) recibe el `id` para que su `label` lo nombre.
 - Los CTA de dinero muestran el monto dentro del botón (`DESIGN_SYSTEM.md` §4).
 
 ## 13. Tipos desde OpenAPI
