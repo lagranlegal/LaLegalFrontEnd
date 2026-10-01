@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react'
-import { Search } from 'lucide-react'
+import { useEffect, useState, type ReactNode, type Ref } from 'react'
+import { Search, type LucideIcon } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { invalidFieldProps } from '@/components/ui/input'
 
@@ -13,6 +13,12 @@ export function SearchInput({
   onEnter,
   ariaLabel,
   invalid,
+  ref,
+  autoFocus,
+  size = 'default',
+  icon: Icon = Search,
+  trailing,
+  onFocusChange,
 }: {
   value: string
   onChange: (value: string) => void
@@ -30,6 +36,15 @@ export function SearchInput({
   ariaLabel?: string
   /** Falta llenarlo: `aria-invalid` y, con `id`, `aria-describedby` a su `FieldError` (issue #5). */
   invalid?: boolean
+  /** React 19: `ref` es una prop. El punto de venta devuelve el foco al escáner tras agregar (F9-27). */
+  ref?: Ref<HTMLInputElement>
+  autoFocus?: boolean
+  /** `lg`: el escáner del punto de venta (56 px, 15 px de texto, ícono de código de barras). */
+  size?: 'default' | 'lg'
+  icon?: LucideIcon
+  /** Lo que va a la derecha dentro del campo (el «Listo para escanear»). */
+  trailing?: ReactNode
+  onFocusChange?: (focused: boolean) => void
 }) {
   const [draft, setDraft] = useState(value)
   // Ajusta `draft` durante el render si `value` cambió por fuera (ej. un
@@ -51,8 +66,17 @@ export function SearchInput({
 
   return (
     <div className={cn('relative', className)}>
-      <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
+      <Icon
+        className={cn(
+          'pointer-events-none absolute top-1/2 -translate-y-1/2 text-muted-foreground',
+          size === 'lg' ? 'left-3.5 size-5 text-foreground' : 'left-3 size-4',
+        )}
+      />
       <input
+        ref={ref}
+        autoFocus={autoFocus}
+        onFocus={() => onFocusChange?.(true)}
+        onBlur={() => onFocusChange?.(false)}
         id={id}
         aria-label={ariaLabel ?? placeholder}
         {...invalidFieldProps(id, invalid)}
@@ -68,8 +92,13 @@ export function SearchInput({
           onEnter?.(draft)
         }}
         placeholder={placeholder}
-        className="min-h-11 w-full rounded-input border border-border-strong bg-card py-2 pr-3 pl-9 text-base text-foreground outline-none focus:border-ring sm:text-sm"
+        className={cn(
+          'w-full rounded-input border border-border-strong bg-card py-2 text-base text-foreground outline-none focus:border-ring',
+          size === 'lg' ? 'min-h-14 pl-11 sm:text-md' : 'min-h-11 pl-9 sm:text-sm',
+          trailing ? (size === 'lg' ? 'pr-12 min-[481px]:pr-44' : 'pr-28') : 'pr-3',
+        )}
       />
+      {trailing && <div className="pointer-events-none absolute top-1/2 right-3.5 -translate-y-1/2">{trailing}</div>}
     </div>
   )
 }

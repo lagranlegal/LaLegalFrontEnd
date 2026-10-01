@@ -82,6 +82,7 @@ export function SaleFormPage() {
   /** Confirmación explícita de vender con pérdida en alguna pieza. */
   const [belowCostConfirmed, setBelowCostConfirmed] = useState(false)
   const submittedRef = useRef(false)
+  const scannerRef = useRef<HTMLInputElement>(null)
 
   // Perder un carrito armado sin aviso era el hueco más agudo de navegación
   // de todo el front (auditoría de UX del 27/08/2026, punto 10): a diferencia de los
@@ -222,14 +223,13 @@ export function SaleFormPage() {
 
       <form onKeyDown={preventImplicitSubmit} onSubmit={handleSubmit} className="grid grid-cols-1 gap-6 lg:grid-cols-[2fr_1fr]" noValidate>
         <div className="flex flex-col gap-4">
-          <div className="rounded-card border border-border bg-card p-card">
-            {/* El buscador vive DENTRO del <form>: Enter disparaba el submit
-                y cobraba el carrito ya armado (QA F6-03, confirmado en vivo).
-                Ahora Enter AGREGA el artículo de código exacto (lo que manda
-                un lector de código de barras) y el formulario entero ignora
-                el envío implícito: la venta se registra solo con "Vender". */}
-            <ItemPicker onSelect={addToCart} placeholder="Buscar o escanear artículo por código o nombre…" />
-          </div>
+          {/* El escáner vive DENTRO del <form>: Enter disparaba el submit y
+              cobraba el carrito ya armado (QA F6-03, confirmado en vivo).
+              Ahora Enter AGREGA el artículo de código exacto (lo que manda
+              un lector de código de barras) y el formulario entero ignora el
+              envío implícito: la venta se registra solo con el botón. Nace
+              con foco y lo recupera tras agregar (F9-27, F9-33). */}
+          <ItemPicker ref={scannerRef} variant="scanner" onSelect={addToCart} placeholder="Escanea o escribe código o nombre" />
 
           <div className="overflow-hidden rounded-card border border-border bg-card">
             {cart.length === 0 ? (

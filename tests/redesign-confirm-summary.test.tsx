@@ -110,7 +110,7 @@ describe('venta', () => {
         <SaleFormPage />
       </QueryClientProvider>,
     )
-    const buscador = screen.getByPlaceholderText(/artículo por código/i)
+    const buscador = screen.getByPlaceholderText(/Escanea o escribe código o nombre/i)
     fireEvent.change(buscador, { target: { value: 'JOA0009-01K' } })
     fireEvent.keyDown(buscador, { key: 'Enter' })
     await waitFor(() => expect(screen.queryByText(/El carrito está vacío/i)).toBeNull())

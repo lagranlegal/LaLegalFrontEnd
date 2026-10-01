@@ -79,7 +79,7 @@ function montar() {
       <SaleFormPage />
     </QueryClientProvider>,
   )
-  return screen.getByPlaceholderText(/artículo por código/i) as HTMLInputElement
+  return screen.getByPlaceholderText(/Escanea o escribe código o nombre/i) as HTMLInputElement
 }
 
 beforeEach(() => {
