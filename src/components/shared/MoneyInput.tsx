@@ -20,6 +20,7 @@ export function MoneyInput({
   ariaLabel,
   invalid,
   ref,
+  size = 'default',
 }: {
   value: string
   onChange: (decimalValue: string) => void
@@ -42,6 +43,8 @@ export function MoneyInput({
   /** React 19: `ref` es una prop. Con `field.ref` de un `Controller`, React Hook Form puede llevar el foco al
    *  campo cuando es el primer error (F9-25: el foco saltaba al tercer error porque este no lo recibía). */
   ref?: Ref<HTMLInputElement>
+  /** `lg`: la cifra en 600 · 18 con cifras tabulares, para el «Recibido en efectivo» del punto de venta. */
+  size?: 'default' | 'lg'
 }) {
   const masked = maskMoneyInput(value.split('.')[0] ?? '')
   // F9-24: un obligatorio en cero se muestra VACÍO (placeholder «0»). Con el
@@ -75,7 +78,7 @@ export function MoneyInput({
 
   return (
     <div data-focus-ring="within" className={cn('flex min-h-11 items-center rounded-input border border-border-strong bg-card px-3 focus-within:border-ring', className)}>
-      <span className="text-sm text-muted-foreground">$</span>
+      <span className={cn('text-muted-foreground', size === 'lg' ? 'font-medium' : 'text-sm')}>$</span>
       <input
         ref={ref}
         id={id}
@@ -92,7 +95,7 @@ export function MoneyInput({
         // Enfocar selecciona todo: lo que se escribe reemplaza la cifra en
         // vez de pegarse a un lado de ella (F9-24).
         onFocus={(e) => e.currentTarget.select()}
-        className="w-full bg-transparent px-2 py-2 text-sm text-foreground outline-none"
+        className={cn('w-full bg-transparent px-2 py-2 text-foreground outline-none', size === 'lg' ? 'text-lg font-semibold tnum' : 'text-sm')}
       />
     </div>
   )

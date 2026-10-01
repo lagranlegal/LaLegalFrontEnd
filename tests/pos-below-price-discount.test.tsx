@@ -129,12 +129,12 @@ describe('POS — vender por debajo del precio publicado', () => {
     fireEvent.change(precio, { target: { value: '450.000' } })
 
     expect(screen.getByText(/por debajo del precio publicado/i)).toBeInTheDocument()
-    fireEvent.click(screen.getByRole('button', { name: /Vender/ }))
+    fireEvent.click(screen.getByRole('button', { name: /^Cobrar/ }))
     await waitFor(() => expect(screen.getByText(/necesita un motivo/i)).toBeInTheDocument())
     expect(mutateAsync).not.toHaveBeenCalled()
 
     fireEvent.change(screen.getByLabelText(/Motivo del descuento/i), { target: { value: 'Cliente frecuente' } })
-    fireEvent.click(screen.getByRole('button', { name: /Vender/ }))
+    fireEvent.click(screen.getByRole('button', { name: /^Cobrar/ }))
     await waitFor(() => expect(mutateAsync).toHaveBeenCalled())
     const body = mutateAsync.mock.calls[0]![0]
     expect(body.lines[0].unit_price).toBe('450000.00')
@@ -145,7 +145,7 @@ describe('POS — vender por debajo del precio publicado', () => {
   it('si el backend pide motivo (el precio publicado cambió con el carrito armado), aparece el campo', async () => {
     mutateAsync.mockRejectedValueOnce(parseApiError(SIN_MOTIVO.status, SIN_MOTIVO.body))
     await montarConAnillo()
-    fireEvent.click(screen.getByRole('button', { name: /Vender/ }))
+    fireEvent.click(screen.getByRole('button', { name: /^Cobrar/ }))
     await waitFor(() => expect(screen.getByText(SIN_MOTIVO.body.message)).toBeInTheDocument())
     expect(screen.getByLabelText(/Motivo del descuento/i)).toBeInTheDocument()
   })

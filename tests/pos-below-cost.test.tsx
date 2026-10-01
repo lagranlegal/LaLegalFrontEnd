@@ -86,12 +86,12 @@ describe('POS — vender por debajo del costo', () => {
     expect(screen.getByText(/Por debajo del costo \(/)).toBeInTheDocument()
 
     fireEvent.change(screen.getByLabelText(/Motivo del descuento/i), { target: { value: 'Liquidación' } })
-    fireEvent.click(screen.getByRole('button', { name: /Vender/ }))
+    fireEvent.click(screen.getByRole('button', { name: /^Cobrar/ }))
     await waitFor(() => expect(screen.getByText(/confirma que quieres venderlos con pérdida/i)).toBeInTheDocument())
     expect(mutateAsync).not.toHaveBeenCalled()
 
     fireEvent.click(screen.getByLabelText(/Confirmo que vendo por debajo del costo/i))
-    fireEvent.click(screen.getByRole('button', { name: /Vender/ }))
+    fireEvent.click(screen.getByRole('button', { name: /^Cobrar/ }))
     await waitFor(() => expect(mutateAsync).toHaveBeenCalled())
     expect(mutateAsync.mock.calls[0]![0].lines[0].unit_price).toBe('250000.00')
   })
@@ -100,7 +100,7 @@ describe('POS — vender por debajo del costo', () => {
     // El costo que cargó la pantalla no dejaba ver la pérdida (cambió con el carrito armado).
     mutateAsync.mockRejectedValueOnce(parseApiError(403, RECHAZO))
     await montar('100000.00')
-    fireEvent.click(screen.getByRole('button', { name: /Vender/ }))
+    fireEvent.click(screen.getByRole('button', { name: /^Cobrar/ }))
     await waitFor(() => expect(screen.getByText(/la venta perdería/)).toBeInTheDocument())
     expect(screen.getByText(/Por debajo del costo \(/)).toBeInTheDocument()
   })

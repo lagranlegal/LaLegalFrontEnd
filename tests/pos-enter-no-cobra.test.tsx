@@ -128,8 +128,8 @@ describe('POS — Enter en el buscador nunca cobra', () => {
 
   it('Enter en cualquier otro campo del formulario tampoco envía', () => {
     montar()
-    const cliente = screen.getByLabelText('Cliente')
+    const recibido = screen.getByLabelText('Recibido en efectivo')
 
-    expect(fireEvent.keyDown(cliente, { key: 'Enter' })).toBe(false)
+    expect(fireEvent.keyDown(recibido, { key: 'Enter' })).toBe(false)
   })
 })
