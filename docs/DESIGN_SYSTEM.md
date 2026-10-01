@@ -86,7 +86,7 @@ features usan colores semánticos y nunca un hex.
 | Forma | `--radius-input` `-card` `-modal` `-pill` `-panel`, `--shadow-card` `-modal` `-float` `-float-sm` `-lift` | **campo y botón 10, tarjeta 12, diálogo 16**; la pastilla (`--radius-pill`) es **solo para estados y filtros**. Sombra: `--shadow-modal` es la de **lo que flota** (diálogos, menús, selects, popovers, listas desplegables, drawer, barras fijas); las tarjetas del panel no llevan sombra. `--shadow-card`, `-float`, `-float-sm` y `-lift` son de la landing (`-float` es densa porque sobre el carbón `-modal` no se ve; `-lift`, el hover que sube una tarjeta) |
 | Luz de marca | `--brand-halo` `--hero-grid-line` | el oro como luz, no como relleno; solo landing |
 | Movimiento | `--ease-out` `--duration-fast` `-base` `-slow` | tres duraciones y una curva. Si algo pide una cuarta, casi siempre está animando de más |
-| Tipografía y espacio | `--font-sans` `--font-display` `--font-mono` `--tracking-display` `--tracking-title` `--tracking-headline` `--font-size-hero` `-closing` `-section` `-subsection` `-headline` `-button-sm` `-button-lg` `-md` `--space-page` `--space-card` | `--font-sans` es la interfaz, con cifras tabulares en los montos; `--font-display` (Archivo) es la marca: titulares de la landing, **título de página** (600 · 24/28 · `--tracking-title`) y **titular de estado** (700 · 22 · `--tracking-headline`); nunca cifras. `--font-mono` (JetBrains Mono) solo códigos de etiqueta, porque deja ver cada carácter. Texto de botón: 14, chico 13, de bloque 15,5; el total de una confirmación, 15. `--space-card` es 16. La escala de titulares de la landing es fluida entre 390 y 1280 px |
+| Tipografía y espacio | `--font-sans` `--font-display` `--font-mono` `--tracking-display` `--tracking-title` `--tracking-headline` `--font-size-hero` `-closing` `-section` `-subsection` `-headline` `-button-sm` `-button-lg` `-md` `-caption` `--space-page` `--space-card` | `--font-sans` es la interfaz, con cifras tabulares en los montos; `--font-display` (Archivo) es la marca: titulares de la landing, **título de página** (600 · 24/28 · `--tracking-title`) y **titular de estado** (700 · 22 · `--tracking-headline`); nunca cifras. `--font-mono` (JetBrains Mono) solo códigos de etiqueta, porque deja ver cada carácter. Texto de botón: 14, chico 13, de bloque 15,5; `-caption` (13) es el texto de las tarjetas del Inicio y de la franja de caja; el total de una confirmación, 15. `--space-card` es 16. La escala de titulares de la landing es fluida entre 390 y 1280 px |
 
 - **Tema oscuro**: Claro / Oscuro / Sistema con `ThemeToggle` en el topbar (`src/app/store.ts`). Un solo mecanismo,
   el atributo `data-theme` en `<html>`; `tokens.css` redefine las variables bajo `[data-theme='dark']` y ningún
@@ -197,6 +197,37 @@ pantallas de cobro:
   (15, botón chico y grande, titular…). Sin eso los tomaba por un color y, junto a un color real, borraba uno de los
   dos. Un tamaño nuevo en `globals.css` se agrega también ahí.
 
+### Inicio (rediseño P2-c, 01/10/2026)
+
+`/inicio` reproduce la maqueta aprobada (`propuesta_rediseno.html`, «Inicio»): tareas antes que totales.
+
+- **Encabezado**: «Buenos días/tardes/noches, <nombre de pila>» con la hora de la empresa (`greetingNow`: noches
+  también de madrugada, antes de las 5) y la fecha larga «Miércoles 30/09/2026» (`formatLongDate`). Acciones:
+  «Nueva venta» secundaria y «Nuevo contrato» primaria, cada una con su permiso; los accesos directos ya no las
+  repiten.
+- **Tarjeta de tarea** («Para hoy», `dashboard/components/TodayTasks`): ícono de 38 px en un cuadro de radio 10,
+  conteo 700 · 22, qué es en negrita y una línea de detalle en `--font-size-caption` (13); chevrón a la derecha y
+  toda la tarjeta es enlace. Tono por urgencia: remate con **borde rojo e ícono relleno** (`--danger-solid`), mora
+  con ícono sobre `--danger-soft`, vence hoy sobre `--info-soft`. **Con 0, en calma**: ícono neutro sobre
+  `--bg-muted` y borde normal. Abren `/contratos?estado=…` (la ruta acepta `estado`); «vencen hoy» abre la lista
+  entera porque el listado no filtra por fecha de cuota.
+- **KPIs en tarjetas** (`KpiRow` con `tiles`): columnas de al menos 200 px, tantas como quepan. La comparación con
+  el mes anterior va en el pie: solo la flecha y el % en color («▲ 12 %», `formatPercent` sin decimales), «vs.
+  agosto» en gris. Sin mes anterior no hay %: se dice «Sin movimiento en agosto».
+- **Barra apilada** (`charts/StackedBar`): 26 px, 2 px de separación entre tramos, leyenda con muestra de 12 px,
+  nombre y conteo en texto, y el resumen como texto alternativo (F9-08/F9-09). «Listos para remate» va **rayado**
+  (utilidades de rayado en `globals.css`, con `--danger` y `--danger-soft`) para no depender del rojo frente a
+  «En mora»; «Rematados este mes» en `--border-strong`. Un tramo en 0 no se dibuja; su renglón sí.
+- **Tabla dentro de una tarjeta** (`DataTable` con `embedded`): sin borde ni fondo propios, encabezado 600 · 12 con
+  su divisor, hover en `--bg-muted`; `meta.align: 'right'` alinea encabezado y celda del dinero. En «Requieren
+  acción» la pastilla y la subleyenda salen del **motivo** (`reason_code`), no del `status`: el día del vencimiento
+  el contrato ya es «en mora» en la base y se muestra «Vigente · vence hoy».
+- **Franja de caja abierta**: «**Caja abierta** por Laura M. desde 8:02 a. m.» a la izquierda, en 13 (`formatClock`).
+  El nombre sale solo si quien la abrió es quien usa la app; «Efectivo esperado» a la derecha solo si la sesión lo
+  trae (hoy el backend lo llena al cerrar). Conserva los 44 px de alto de la franja.
+- **Por rol**: con `contracts.view` (también el Asesor), «Para hoy» y «Requieren acción»; con `reports.view`, KPIs y
+  barra; sin ninguno (Bodega), los accesos directos. Nada se pide sin su permiso.
+
 ## 3. Componentes compartidos (`components/shared`)
 
 Construidos una vez sobre shadcn/ui + tokens; las features los componen. Si una feature necesita una variante, se
@@ -208,8 +239,8 @@ agrega como prop al compartido, no se clona. **Un solo modal, un solo calendario
 | `AppFooter` | pie de una línea: copyright, nombre legal y NIT de la empresa si existen, teléfono o el lema. Nada inventado (sin enlaces a páginas que no existen) |
 | `PageHeader` | título + descripción + acciones a la derecha (un solo primario). Toda página lo usa. El título va en Archivo 600 · 24/28 (rediseño P1). Envuelve a 360 px |
 | `BackLink` | el «Volver» único de los detalles y formularios de página completa |
-| `KpiCard` / `KpiRow` | etiqueta pequeña + cifra grande tabular **en color de texto**, divisores. El único tono es `danger`, y significa **«pide acción»** (lo vencido, los cierres descuadrados), nunca «es una salida de plata»: ni verde ni oro ni rojo para una cifra que solo informa (F9-07). Una tarjeta, sin sombra. Una columna bajo 480 px, dos hasta 640, tres después; en una sola fila con divisores desde 1024 px si son hasta 4 tarjetas y desde 1536 si son más (el Inicio tiene 6). **La cifra nunca se parte dentro de un número**: que quepa lo resuelve el número de columnas, no un corte de palabra (medido en Chrome de 360 a 1920 px). `delta` opcional («▲ N % vs período anterior»): **`favorable` decide el color, no el signo** (bajar gastos también es verde) |
-| `DataTable` | sobre TanStack Table: hover de fila, dinero a la derecha, estados de carga/vacío/error integrados, «Cargar más» por cursor, **tarjetas en celular**. Con `onRowClick`, la fila entra al orden de Tab y se abre con Enter o Espacio (F9-11) |
+| `KpiCard` / `KpiRow` | etiqueta pequeña + cifra grande tabular **en color de texto**, divisores. El único tono es `danger`, y significa **«pide acción»** (lo vencido, los cierres descuadrados), nunca «es una salida de plata»: ni verde ni oro ni rojo para una cifra que solo informa (F9-07). Una tarjeta, sin sombra. Una columna bajo 480 px, dos hasta 640, tres después; en una sola fila con divisores desde 1024 px si son hasta 4 tarjetas y desde 1536 si son más (el Inicio tiene 6). **La cifra nunca se parte dentro de un número**: que quepa lo resuelve el número de columnas, no un corte de palabra (medido en Chrome de 360 a 1920 px). `delta` opcional («▲ 12 % vs período anterior», o con su `label`, «vs. agosto»): **`favorable` decide el color, no el signo** (bajar gastos también es verde), y solo la flecha y el % llevan color. Con `tiles`, cada KPI en su tarjeta (el Inicio) |
+| `DataTable` | sobre TanStack Table: hover de fila, dinero a la derecha, estados de carga/vacío/error integrados, «Cargar más» por cursor, **tarjetas en celular**. Con `onRowClick`, la fila entra al orden de Tab y se abre con Enter o Espacio (F9-11). `embedded` para ir dentro de otra tarjeta y `meta.align: 'right'` en la columna de dinero (§2 «Inicio») |
 | `TableSkeleton` / `RefreshingBar` / `RouteTransitionBar` | carga con la forma del contenido (una barra gris se lee como "no hay nada"); barra delgada cuando una lista *ya* tiene datos y está pidiendo otros (`isPending` solo cubre la primera carga); barra fija mientras el router resuelve una navegación (el `beforeLoad` espera `/me` y la pantalla anterior se quedaba quieta) |
 | `AppDialog` | **el** modal (§1): tamaños `sm` `md` `lg` `xl`, sobre Radix (foco atrapado, Escape, scroll bloqueado); limita la altura al viewport y hace scroll adentro. `confirmDiscard` (con `formState.isDirty`): Escape, clic afuera o la X preguntan antes de descartar lo escrito (F9-40); Cancelar no pregunta. **Prohibido crear otro modal** |
 | `ConfirmDialog` / `confirm()` | confirmación imperativa (`await confirm({ title, tone: 'danger' })`) para acciones destructivas o de dinero; `requireReason` exige motivo (anular, reabrir, descuadre). `summary` pinta un resumen renglón por renglón: una confirmación de dinero repite a quién, cuánto, cómo y a dónde (el abono: contrato, cliente, qué paga, total, medio y cuenta; F9-18). Es la pieza «Confirmación con resumen» de la propuesta (`ConfirmSummary`): renglones con divisor dentro de un recuadro de radio 10, `emphasis: 'total'` para el monto (va **último**, en negrita sobre `--brand-50`) y `emphasis: 'after'` para cómo queda (en verde). El botón de confirmar es de bloque, con el monto adentro; con `tone: 'danger'` va en el relleno rojo. La usan préstamo, abono, venta, gasto y traslado, con título en pregunta y «Volver». Se monta una vez (`ConfirmDialogHost`) |
@@ -222,7 +253,7 @@ agrega como prop al compartido, no se clona. **Un solo modal, un solo calendario
 | `RecordNumber` | el número de un documento (`#123`) con el `#` atenuado y el número en cifras tabulares |
 | `Callout` | recuadro de ayuda: explica algo que el usuario no sabe y trae la acción para resolverlo. Tonos `info` `success` `warning` sobre el `-soft`; **el texto en el color normal y solo el ícono en el semántico** (un párrafo entero en color de advertencia se lee peor) |
 | `EmptyState` | ícono suave + título + descripción + CTA («Aún no tienes…»). Toda lista vacía lo usa |
-| `CashSessionBanner` | franja global de 44 px: caja abierta (responsable, hora, y la fecha si el turno es de otro día) o cerrada (qué no se puede hacer + «Abrir caja» si hay permiso, botón secundario con área táctil de 44, F9-02). Texto en tinta con el estado en negrita y un punto de color como señal. Sin `cashbox.view` **no afirma nada** (§4, regla 8) |
+| `CashSessionBanner` | franja global de 44 px: caja abierta («por Laura M. desde 8:02 a. m.» si la abrió quien usa la app, la fecha si el turno es de otro día, y el efectivo esperado si la sesión lo trae) o cerrada (qué no se puede hacer + «Abrir caja» si hay permiso, botón secundario con área táctil de 44, F9-02). Texto en tinta con el estado en negrita y un punto de color como señal. Sin `cashbox.view` **no afirma nada** (§4, regla 8) |
 | `CashClosedNotice` | aviso arriba de una operación de dinero **en efectivo** con la caja cerrada, con «Abrir caja» si hay permiso (F9-19). Avisa antes de llenar, no bloquea: por banco se sigue operando sin caja. Con `anyMethod` avisa con cualquier medio: el gasto exige la caja abierta aunque se pague por transferencia. Sin saber el estado, no afirma nada |
 | `CashSessionRequiredDialog` | la respuesta a `CASH_SESSION_NOT_OPEN`: abrir caja desde ahí o a quién pedírselo |
 | `AccountPicker` | la cuenta donde queda la plata, junto al medio de pago (ARQUITECTURA §7); oculto sin `accounts.view`. Preselecciona la predeterminada del tipo por `onAutoSelect`, que en un formulario de React Hook Form es `resetField` con `defaultValue`: una preselección no ensucia el formulario ni dispara «¿Descartar lo escrito?» |
@@ -230,7 +261,7 @@ agrega como prop al compartido, no se clona. **Un solo modal, un solo calendario
 | `PhotoUploader` / `PhotoThumbnail` | subir (comprimido a WebP, bucket privado, URL firmada, varias fotos con orden) y mostrar una foto guardada. El borrado ocurre al guardar (ARQUITECTURA §15) |
 | `PrintLayout` / `PrintBlocks` | documento imprimible en hoja carta con membrete de la empresa, montado en un portal para que al imprimir salga solo el documento. **Solo tokens `--paper-*`.** Las piezas: sección, campo, tabla, tabla de prendas, firma (espacio fijo, con o sin imagen). Un documento nuevo se arma con estas piezas. `CompanyDataNotice` avisa junto al botón de imprimir si faltan datos de la empresa |
 | `SaleReceiptDialog`, `ReturnFormDialog`, `EntryDetailDialog` | comprobante de venta, devolución y detalle de una compra: compartidos porque se abren desde más de un módulo |
-| `charts/` | `DonutChart`, `ContractsStatusChart`, `DailyTrendChart`: colores de `--chart-*` y `--status-*`, nunca inline (§5) |
+| `charts/` | `DonutChart`, `ContractsStatusChart`, `DailyTrendChart`: colores de `--chart-*` y `--status-*`, nunca inline (§5). `StackedBar`: barra apilada con leyenda y conteo en texto, sin Recharts (§2 «Inicio») |
 | `documentTemplate/` | el editor de plantillas (Tiptap), cargado aparte (ARQUITECTURA §14) |
 
 ## 4. Protocolos de UX
@@ -297,11 +328,11 @@ Recharts con wrappers propios en `components/shared/charts/`, que leen los color
 Tooltips con `formatCOP`, grid horizontal sutil, sin puntos fijos por dato (con rangos largos convierten la línea en
 un collar: basta el punto activo al pasar el mouse), eje de fechas en `dd/MM` (el año ya está en el selector).
 
-- **Inicio** (`/inicio`, `GET /reports/dashboard`): fila de KPIs (cartera, ventas, contratos activos, inventario,
-  caja), contratos por estado y la lista de **listos para remate**, que es la alerta operativa más valiosa.
-- **Inicio sin `reports.view`** (Asesor, Bodega): accesos directos a lo que el rol sí puede hacer, cada uno con el
-  permiso de su ruta (`dashboard/components/QuickActions`, F9-60); antes era una pantalla vacía. El texto de cada
-  acceso dice lo que el rol puede hacer ahí: «Caja» ofrece abrirla solo con `cashbox.open_close`.
+- **Inicio** (`/inicio`, §2 «Inicio»): «Para hoy» y «Requieren acción» desde `GET /contracts/attention`; KPIs y
+  «Contratos por estado» (barra apilada) desde `GET /reports/dashboard`.
+- **Inicio sin `contracts.view` ni `reports.view`** (Bodega): accesos directos a lo que el rol sí puede hacer, cada
+  uno con el permiso de su ruta (`dashboard/components/QuickActions`, F9-60); antes era una pantalla vacía. El
+  texto de cada acceso dice lo que el rol puede hacer ahí: «Caja» ofrece abrirla solo con `cashbox.open_close`.
 - **Reportes** (`/reportes`) tiene dos pestañas porque responden cosas distintas: **Período** resume un rango
   (selector de fechas con tope de 90 días, `MAX_RANGE_DAYS`) y **Contabilidad** es una foto de hoy (qué se debe,
   qué se tiene). Reglas que no se negocian:
