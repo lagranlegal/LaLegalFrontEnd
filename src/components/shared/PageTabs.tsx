@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react'
+import { useEffect, useRef, type ReactNode } from 'react'
 import { Tabs as TabsPrimitive } from 'radix-ui'
 import { cn } from '@/lib/utils'
 
@@ -32,9 +32,21 @@ export function PageTabs<T extends string>({
   label: string
   children: ReactNode
 }) {
+  // Con scroll horizontal (celular), la activa puede quedar cortada al abrir
+  // desde la URL: se corre la tira, no la página (sin `scrollIntoView`, que
+  // también movería la página en vertical).
+  const listRef = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    const list = listRef.current
+    const active = list?.querySelector<HTMLElement>('[data-state="active"]')
+    if (!list || !active) return
+    const overflowRight = active.offsetLeft + active.offsetWidth - (list.scrollLeft + list.clientWidth)
+    if (overflowRight > 0) list.scrollLeft += overflowRight
+    else if (active.offsetLeft < list.scrollLeft) list.scrollLeft = active.offsetLeft
+  }, [value])
   return (
     <TabsPrimitive.Root value={value} onValueChange={(v) => onValueChange(v as T)} className="flex flex-col gap-4">
-      <TabsPrimitive.List aria-label={label} className="flex gap-1 overflow-x-auto border-b border-border">
+      <TabsPrimitive.List ref={listRef} aria-label={label} className="relative flex gap-1 overflow-x-auto border-b border-border">
         {tabs.map((tab) => (
           <TabsPrimitive.Trigger
             key={tab.value}
