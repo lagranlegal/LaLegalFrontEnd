@@ -4,6 +4,7 @@ import { CalendarIcon } from 'lucide-react'
 import { Calendar } from '@/components/ui/calendar'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Button } from '@/components/ui/button'
+import { invalidFieldProps } from '@/components/ui/input'
 import { formatDate, todayBogota } from '@/lib/dates'
 import { cn } from '@/lib/utils'
 
@@ -46,6 +47,7 @@ export function DatePicker({
   minDate,
   maxDate,
   id,
+  invalid,
 }: {
   value: string
   onChange: (dateOnly: string) => void
@@ -56,6 +58,8 @@ export function DatePicker({
   /** `yyyy-MM-dd` — días después de esta fecha quedan deshabilitados (ej. "no puede ser futura" → `todayBogota()`). */
   maxDate?: string
   id?: string
+  /** Hay un error a la vista: `aria-invalid` y, con `id`, `aria-describedby` al `<FieldError>` del mismo `id` (issue #4). */
+  invalid?: boolean
 }) {
   const [open, setOpen] = useState(false)
   const selected = value ? dateOnlyToLocalDate(value) : undefined
@@ -72,6 +76,7 @@ export function DatePicker({
           type="button"
           variant="outline"
           disabled={disabled}
+          {...invalidFieldProps(id, invalid)}
           className={cn(
             'w-full justify-start gap-2 rounded-input border-border bg-background text-left text-sm font-normal',
             !value && 'text-muted-foreground',
