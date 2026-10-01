@@ -89,9 +89,12 @@ describe('reportes — las cantidades decimales no se leen como miles', () => {
   it('la valorización y la mercancía sin rotación muestran la cantidad sin ceros de relleno', () => {
     render(<ContablesSection />)
     expect(screen.getByText('1,4 unidad(es) en 1 lote(s)')).toBeInTheDocument()
-    const fila = screen.getByText('Joyería').closest('tr')!
+    // Rediseño P3: las tablas son `DataTable`, que pinta también las tarjetas
+    // del celular; se mira la fila de la tabla.
+    const enTabla = (text: string) => screen.getAllByText(text).find((el) => el.closest('tr'))!.closest('tr')!
+    const fila = enTabla('Joyería')
     expect(within(fila).getByText('1,4')).toBeInTheDocument()
-    const producto = screen.getByText('Cadena dormida').closest('tr')!
+    const producto = enTabla('Cadena dormida')
     expect(within(producto).getByText('2')).toBeInTheDocument()
     expect(screen.queryByText('2.000')).toBeNull()
     expect(screen.queryByText('1.400')).toBeNull()

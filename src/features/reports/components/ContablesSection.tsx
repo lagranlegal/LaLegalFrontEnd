@@ -1,14 +1,83 @@
 import { useState } from 'react'
 import { Link } from '@tanstack/react-router'
+import type { ColumnDef } from '@tanstack/react-table'
 import { KpiCard, KpiRow } from '@/components/shared/KpiCard'
 import { Money } from '@/components/shared/Money'
 import { EmptyState } from '@/components/shared/EmptyState'
-import { Button } from '@/components/ui/button'
+import { DataTable } from '@/components/shared/DataTable'
+import { SummaryCard } from '@/components/shared/SummaryCard'
+import { IndexedSection, SectionIndexLayout, type IndexSection } from '@/components/shared/SectionIndex'
 import { cn } from '@/lib/utils'
 import { FilterChip } from '@/components/shared/FilterChip'
 import { formatDate } from '@/lib/dates'
 import { formatQuantity } from '@/lib/inventory/units'
-import { usePayables, useInventoryValuation, useStaleInventory } from '@/features/reports/api'
+import { SectionError } from '@/features/reports/components/SectionError'
+import {
+  usePayables,
+  useInventoryValuation,
+  useStaleInventory,
+  type InventoryValuation,
+  type Payables,
+  type StaleInventory,
+} from '@/features/reports/api'
+
+type SupplierRow = Payables['by_supplier'][number]
+type CategoryRow = InventoryValuation['by_category'][number]
+type StaleRow = StaleInventory['items'][number]
+
+const SUPPLIER_COLUMNS: ColumnDef<SupplierRow>[] = [
+  {
+    id: 'supplier',
+    header: 'Proveedor',
+    // Enlaza a la ficha: el siguiente paso natural después de ver que se le
+    // debe es mirar qué se le compró.
+    cell: ({ row }) =>
+      row.original.supplier_id ? (
+        <Link to="/proveedores/$supplierId" params={{ supplierId: row.original.supplier_id }} className="text-brand hover:underline">
+          {row.original.supplier_name}
+        </Link>
+      ) : (
+        <span className="text-muted-foreground">{row.original.supplier_name}</span>
+      ),
+  },
+  { id: 'count', header: 'Compras', meta: { align: 'right' }, cell: ({ row }) => <span className="tnum text-muted-foreground">{row.original.entry_count}</span> },
+  {
+    id: 'oldest',
+    header: 'Más antigua',
+    cell: ({ row }) => <span className="tnum text-muted-foreground">{row.original.oldest_entry_date ? formatDate(row.original.oldest_entry_date) : '—'}</span>,
+  },
+  {
+    id: 'over60',
+    header: '+60 días',
+    meta: { align: 'right' },
+    // Lo vencido de más de 60 días pide acción: es el único rojo de la tabla.
+    cell: ({ row }) => <Money value={row.original.days_over_60} className={cn(Number(row.original.days_over_60) > 0 && 'font-medium text-danger')} />,
+  },
+  { id: 'total', header: 'Total', meta: { align: 'right' }, cell: ({ row }) => <Money value={row.original.total} className="font-semibold text-foreground" /> },
+]
+
+const CATEGORY_COLUMNS: ColumnDef<CategoryRow>[] = [
+  { id: 'category', header: 'Categoría', cell: ({ row }) => row.original.cat1_name },
+  { id: 'units', header: 'Unidades', meta: { align: 'right' }, cell: ({ row }) => <span className="tnum text-muted-foreground">{formatQuantity(row.original.units)}</span> },
+  { id: 'cost', header: 'Al costo', meta: { align: 'right' }, cell: ({ row }) => <Money value={row.original.cost_value} className="font-semibold text-foreground" /> },
+  { id: 'retail', header: 'A precio de venta', meta: { align: 'right' }, cell: ({ row }) => <Money value={row.original.retail_value} className="text-muted-foreground" /> },
+]
+
+const STALE_COLUMNS: ColumnDef<StaleRow>[] = [
+  {
+    id: 'product',
+    header: 'Producto',
+    cell: ({ row }) => (
+      <>
+        <span className="text-foreground">{row.original.product_name}</span>
+        {row.original.product_code && <span className="ml-2 font-mono text-xs text-muted-foreground">{row.original.product_code}</span>}
+      </>
+    ),
+  },
+  { id: 'units', header: 'Unidades', meta: { align: 'right' }, cell: ({ row }) => <span className="tnum text-muted-foreground">{formatQuantity(row.original.units)}</span> },
+  { id: 'days', header: 'Días', meta: { align: 'right' }, cell: ({ row }) => <span className="tnum font-medium text-foreground">{row.original.days_in_stock}</span> },
+  { id: 'cost', header: 'Costo detenido', meta: { align: 'right' }, cell: ({ row }) => <Money value={row.original.cost_value} className="font-semibold text-foreground" /> },
+]
 
 const STALE_THRESHOLDS = [60, 90, 180, 365]
 
@@ -32,19 +101,10 @@ function SectionSkeleton() {
  * columnas «Más antigua» y «+60 días».
  */
 function PayablesCard() {
-  const { data, isPending, isError, refetch } = usePayables()
+  const { data, isPending, isError, error, refetch } = usePayables()
 
   if (isPending) return <SectionSkeleton />
-  if (isError || !data) {
-    return (
-      <div className="flex flex-col items-start gap-2 rounded-card border border-border bg-card p-card">
-        <p className="text-sm text-danger">No se pudieron cargar las cuentas por pagar.</p>
-        <Button variant="outline" size="sm" onClick={() => refetch()}>
-          Reintentar
-        </Button>
-      </div>
-    )
-  }
+  if (isError || !data) return <SectionError title="Cuentas por pagar" error={error} onRetry={() => void refetch()} />
 
   if (data.entry_count === 0) {
     return (
@@ -74,44 +134,9 @@ function PayablesCard() {
         />
       </KpiRow>
 
-      <div className="overflow-x-auto rounded-card border border-border bg-card">
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="border-b border-border text-xs text-muted-foreground">
-              <th className="px-3 py-2 text-left font-medium">Proveedor</th>
-              <th className="px-3 py-2 text-right font-medium">Compras</th>
-              <th className="px-3 py-2 text-left font-medium">Más antigua</th>
-              <th className="px-3 py-2 text-right font-medium">+60 días</th>
-              <th className="px-3 py-2 text-right font-medium">Total</th>
-            </tr>
-          </thead>
-          <tbody>
-            {data.by_supplier.map((s) => (
-              <tr key={s.supplier_id ?? 'sin-proveedor'} className="border-b border-border/60 last:border-0">
-                <td className="px-3 py-2">
-                  {/* Enlaza a la ficha: el siguiente paso natural después de
-                      ver que se le debe es mirar qué se le compró. */}
-                  {s.supplier_id ? (
-                    <Link to="/proveedores/$supplierId" params={{ supplierId: s.supplier_id }} className="text-brand hover:underline">
-                      {s.supplier_name}
-                    </Link>
-                  ) : (
-                    <span className="text-muted-foreground">{s.supplier_name}</span>
-                  )}
-                </td>
-                <td className="px-3 py-2 text-right tnum text-muted-foreground">{s.entry_count}</td>
-                <td className="px-3 py-2 text-muted-foreground">{s.oldest_entry_date ? formatDate(s.oldest_entry_date) : '—'}</td>
-                <td className="px-3 py-2 text-right">
-                  <Money value={s.days_over_60} className={cn(Number(s.days_over_60) > 0 && 'font-medium text-danger')} />
-                </td>
-                <td className="px-3 py-2 text-right">
-                  <Money value={s.total} className="font-medium text-foreground" />
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+      <SummaryCard title="Por proveedor" description="De mayor a menor deuda">
+        <DataTable embedded columns={SUPPLIER_COLUMNS} data={data.by_supplier} getRowId={(s) => s.supplier_id ?? 'sin-proveedor'} />
+      </SummaryCard>
     </div>
   )
 }
@@ -125,19 +150,10 @@ function PayablesCard() {
  * poner esa cifra primero invitaría a cometerlo.
  */
 function ValuationCard() {
-  const { data, isPending, isError, refetch } = useInventoryValuation()
+  const { data, isPending, isError, error, refetch } = useInventoryValuation()
 
   if (isPending) return <SectionSkeleton />
-  if (isError || !data) {
-    return (
-      <div className="flex flex-col items-start gap-2 rounded-card border border-border bg-card p-card">
-        <p className="text-sm text-danger">No se pudo cargar la valorización del inventario.</p>
-        <Button variant="outline" size="sm" onClick={() => refetch()}>
-          Reintentar
-        </Button>
-      </div>
-    )
-  }
+  if (isError || !data) return <SectionError title="Valor del inventario" error={error} onRetry={() => void refetch()} />
 
   const enPerdida = Number(data.potential_profit) < 0
 
@@ -160,32 +176,9 @@ function ValuationCard() {
       </KpiRow>
 
       {data.by_category.length > 0 && (
-        <div className="overflow-x-auto rounded-card border border-border bg-card">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-border text-xs text-muted-foreground">
-                <th className="px-3 py-2 text-left font-medium">Categoría</th>
-                <th className="px-3 py-2 text-right font-medium">Unidades</th>
-                <th className="px-3 py-2 text-right font-medium">Al costo</th>
-                <th className="px-3 py-2 text-right font-medium">A precio de venta</th>
-              </tr>
-            </thead>
-            <tbody>
-              {data.by_category.map((c) => (
-                <tr key={c.cat1_id ?? 'sin-categoria'} className="border-b border-border/60 last:border-0">
-                  <td className="px-3 py-2 text-foreground">{c.cat1_name}</td>
-                  <td className="px-3 py-2 text-right tnum text-muted-foreground">{formatQuantity(c.units)}</td>
-                  <td className="px-3 py-2 text-right">
-                    <Money value={c.cost_value} className="font-medium text-foreground" />
-                  </td>
-                  <td className="px-3 py-2 text-right text-muted-foreground">
-                    <Money value={c.retail_value} />
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <SummaryCard title="Por categoría">
+          <DataTable embedded columns={CATEGORY_COLUMNS} data={data.by_category} getRowId={(c) => c.cat1_id ?? 'sin-categoria'} />
+        </SummaryCard>
       )}
     </div>
   )
@@ -201,7 +194,7 @@ function ValuationCard() {
  */
 function StaleCard() {
   const [threshold, setThreshold] = useState(90)
-  const { data, isPending, isError, refetch } = useStaleInventory(threshold)
+  const { data, isPending, isError, error, refetch } = useStaleInventory(threshold)
 
   return (
     <div className="flex flex-col gap-3">
@@ -221,14 +214,7 @@ function StaleCard() {
 
       {isPending && <SectionSkeleton />}
 
-      {isError && (
-        <div className="flex flex-col items-start gap-2 rounded-card border border-border bg-card p-card">
-          <p className="text-sm text-danger">No se pudo cargar la mercancía sin rotación.</p>
-          <Button variant="outline" size="sm" onClick={() => refetch()}>
-            Reintentar
-          </Button>
-        </div>
-      )}
+      {isError && <SectionError title="Mercancía sin rotación" error={error} onRetry={() => void refetch()} />}
 
       {data && data.items.length === 0 && (
         <div className="rounded-card border border-border bg-card">
@@ -245,33 +231,9 @@ function StaleCard() {
             <strong className="text-foreground">{data.product_count}</strong> producto(s) con{' '}
             <Money value={data.total_cost_value} className="font-medium text-foreground" /> en costo detenido.
           </p>
-          <div className="overflow-x-auto rounded-card border border-border bg-card">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-border text-xs text-muted-foreground">
-                  <th className="px-3 py-2 text-left font-medium">Producto</th>
-                  <th className="px-3 py-2 text-right font-medium">Unidades</th>
-                  <th className="px-3 py-2 text-right font-medium">Días</th>
-                  <th className="px-3 py-2 text-right font-medium">Costo detenido</th>
-                </tr>
-              </thead>
-              <tbody>
-                {data.items.map((p) => (
-                  <tr key={p.product_id} className="border-b border-border/60 last:border-0">
-                    <td className="px-3 py-2">
-                      <span className="text-foreground">{p.product_name}</span>
-                      {p.product_code && <span className="ml-2 font-mono text-xs text-muted-foreground">{p.product_code}</span>}
-                    </td>
-                    <td className="px-3 py-2 text-right tnum text-muted-foreground">{formatQuantity(p.units)}</td>
-                    <td className="px-3 py-2 text-right tnum font-medium text-warning">{p.days_in_stock}</td>
-                    <td className="px-3 py-2 text-right">
-                      <Money value={p.cost_value} className="font-medium text-foreground" />
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <SummaryCard title="Productos detenidos">
+            <DataTable embedded columns={STALE_COLUMNS} data={data.items} getRowId={(p) => p.product_id} />
+          </SummaryCard>
         </>
       )}
     </div>
@@ -286,34 +248,41 @@ function StaleCard() {
  * HOY, no un resumen de un rango. "¿Cuánto debo?" y "¿cuánto tengo en
  * mercancía?" no tienen versión "en marzo" — o se debe hoy, o no se debe.
  */
+const CONTABLES_SECTIONS: IndexSection[] = [
+  { id: 'cuentas-por-pagar', label: 'Cuentas por pagar' },
+  { id: 'valor-inventario', label: 'Valor del inventario' },
+  { id: 'sin-rotacion', label: 'Mercancía sin rotación' },
+]
+
+function SectionTitle({ title, description }: { title: string; description: string }) {
+  return (
+    <div>
+      <h2 className="text-lg font-semibold text-foreground">{title}</h2>
+      <p className="text-xs text-muted-foreground">{description}</p>
+    </div>
+  )
+}
+
 export function ContablesSection() {
   return (
-    <div className="flex flex-col gap-8">
-      <section className="flex flex-col gap-3">
-        <div>
-          <h2 className="text-sm font-medium text-foreground">Cuentas por pagar</h2>
-          <p className="text-xs text-muted-foreground">Lo que le debes a proveedores, por antigüedad de la compra.</p>
-        </div>
+    <SectionIndexLayout sections={CONTABLES_SECTIONS} label="Secciones de Contabilidad">
+      <IndexedSection id="cuentas-por-pagar">
+        <SectionTitle title="Cuentas por pagar" description="Lo que le debes a proveedores, por antigüedad de la compra." />
         <PayablesCard />
-      </section>
+      </IndexedSection>
 
-      <section className="flex flex-col gap-3">
-        <div>
-          <h2 className="text-sm font-medium text-foreground">Valor del inventario</h2>
-          <p className="text-xs text-muted-foreground">
-            Al costo — es el activo, no lo que se cobraría por él. Solo cuenta la mercancía disponible para vender.
-          </p>
-        </div>
+      <IndexedSection id="valor-inventario">
+        <SectionTitle
+          title="Valor del inventario"
+          description="Al costo — es el activo, no lo que se cobraría por él. Solo cuenta la mercancía disponible para vender."
+        />
         <ValuationCard />
-      </section>
+      </IndexedSection>
 
-      <section className="flex flex-col gap-3">
-        <div>
-          <h2 className="text-sm font-medium text-foreground">Mercancía sin rotación</h2>
-          <p className="text-xs text-muted-foreground">Plata congelada en la vitrina — la base para decidir un descuento o un remate.</p>
-        </div>
+      <IndexedSection id="sin-rotacion">
+        <SectionTitle title="Mercancía sin rotación" description="Plata congelada en la vitrina — la base para decidir un descuento o un remate." />
         <StaleCard />
-      </section>
-    </div>
+      </IndexedSection>
+    </SectionIndexLayout>
   )
 }

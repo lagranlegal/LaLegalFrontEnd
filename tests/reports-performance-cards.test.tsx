@@ -25,7 +25,8 @@ describe('tarjetas de rentabilidad (F7-06, F7-08)', () => {
     render(<PawnCard range={range} />)
     const label = screen.getByText('Intereses cobrados')
     expect(text(label.parentElement)).toContain('$ 42.000')
-    expect(screen.getByText('5.25%', { exact: false })).toBeTruthy()
+    // Rediseño P3: el % en es-CO, «5,25 %» (F9-21).
+    expect(screen.getByText('5,25 %', { exact: false })).toBeTruthy()
   })
 
   it('«descuentos aplicados» incluye la venta bajo el precio publicado (total_discounts)', () => {

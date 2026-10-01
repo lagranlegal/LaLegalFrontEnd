@@ -1,4 +1,5 @@
 import { Money } from '@/components/shared/Money'
+import { formatPercent } from '@/lib/percent'
 
 /**
  * % de participación de Empeño vs Tienda sobre los ingresos del rango —
@@ -27,14 +28,14 @@ export function ModuleSplitBar({ pawn, store }: { pawn: string; store: string })
         <div className="flex items-center gap-2">
           <span className="size-2.5 rounded-full bg-chart-3" />
           <span className="text-foreground">Empeño</span>
-          <span className="text-muted-foreground">{pawnPct}%</span>
-          <Money value={pawn} tone="in" className="ml-1" />
+          <span className="tnum text-muted-foreground">{formatPercent(pawnPct, 0)}</span>
+          <Money value={pawn} className="ml-1 font-semibold text-foreground" />
         </div>
         <div className="flex items-center gap-2">
           <span className="size-2.5 rounded-full bg-primary" />
           <span className="text-foreground">Tienda</span>
-          <span className="text-muted-foreground">{storePct}%</span>
-          <Money value={store} tone="in" className="ml-1" />
+          <span className="tnum text-muted-foreground">{formatPercent(storePct, 0)}</span>
+          <Money value={store} className="ml-1 font-semibold text-foreground" />
         </div>
       </div>
     </div>

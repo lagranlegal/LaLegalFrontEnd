@@ -6,16 +6,18 @@ import { usePawnPerformance, useProfitSummary } from '@/features/reports/api'
 import { MAX_PROFIT_RANGE_DAYS, reportRangeProblem } from '@/features/reports/aggregate'
 import { ApiError, userMessage } from '@/lib/api/errors'
 import { SectionError } from '@/features/reports/components/SectionError'
+import { SummaryCard } from '@/components/shared/SummaryCard'
+import { formatPercent } from '@/lib/percent'
+import { KPI_GRID } from '@/features/reports/layout'
 
 /** El rango no se puede pedir (o el backend lo rechazó): se dice por qué en vez de esconder la tarjeta. */
 function RangeNotice({ title, message }: { title: string; message: string }) {
   return (
-    <div className="rounded-card border border-border bg-card p-card">
-      <h2 className="text-sm font-medium text-foreground">{title}</h2>
-      <p role="status" className="mt-2 text-sm text-warning">
+    <SummaryCard title={title}>
+      <p role="status" className="text-sm text-warning">
         {message}
       </p>
-    </div>
+    </SummaryCard>
   )
 }
 
@@ -54,14 +56,11 @@ export function ProfitCard({ range }: { range: DateRangeValue | null }) {
   if (!profit) return null
 
   return (
-    <div className="rounded-card border border-border bg-card p-card">
-      <div className="mb-3 flex flex-wrap items-center justify-between gap-x-4 gap-y-1">
-        <h2 className="text-sm font-medium text-foreground">Utilidad bruta de tienda</h2>
-        <span className="text-xs text-muted-foreground">
-          Ventas netas de descuentos y devoluciones, menos el costo de la mercancía vendida. No descuenta gastos operativos.
-        </span>
-      </div>
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+    <SummaryCard
+      title="Utilidad bruta de tienda"
+      description="Ventas netas de descuentos y devoluciones, menos el costo de la mercancía vendida. No descuenta gastos operativos."
+    >
+      <div className={KPI_GRID}>
         <KpiCard label="Ingreso por ventas" value={<Money value={profit.net_revenue} />} />
         <KpiCard label="Costo de lo vendido" value={<Money value={profit.cost_of_goods_sold} />} />
         <KpiCard label="Utilidad bruta" value={<Money value={profit.gross_profit} />} />
@@ -69,11 +68,11 @@ export function ProfitCard({ range }: { range: DateRangeValue | null }) {
           label="Margen"
           // `null` cuando no hubo ventas: un 0% afirmaría "vendí sin ganar",
           // que es distinto de "no hay datos en el período".
-          value={<span className="tnum">{profit.margin_pct === null ? '—' : `${Number(profit.margin_pct).toFixed(1)}%`}</span>}
+          value={<span className="tnum">{profit.margin_pct === null ? '—' : formatPercent(profit.margin_pct, 1)}</span>}
         />
       </div>
       {profit.sale_count > 0 && (
-        <p className="mt-3 text-xs text-muted-foreground">
+        <p className="text-xs text-muted-foreground">
           {profit.sale_count} {profit.sale_count === 1 ? 'venta' : 'ventas'} · {unitsSoldText(profit.units_sold)}
           {/* F7-08: `total_discounts` es cabecera + venta bajo el precio
               publicado. `discounts` solo era la cabecera y dejaba afuera el
@@ -95,7 +94,7 @@ export function ProfitCard({ range }: { range: DateRangeValue | null }) {
           )}
         </p>
       )}
-    </div>
+    </SummaryCard>
   )
 }
 
@@ -122,14 +121,11 @@ export function PawnCard({ range }: { range: DateRangeValue | null }) {
   const netYield = pawn.net_yield_on_current_portfolio_pct === undefined ? pawn.yield_on_current_portfolio_pct : pawn.net_yield_on_current_portfolio_pct
 
   return (
-    <div className="rounded-card border border-border bg-card p-card">
-      <div className="mb-3 flex flex-wrap items-center justify-between gap-x-4 gap-y-1">
-        <h2 className="text-sm font-medium text-foreground">Rentabilidad del empeño</h2>
-        <span className="text-xs text-muted-foreground">
-          Intereses cobrados sobre el capital prestado. Incluye los abonos de hoy, aunque la caja siga abierta.
-        </span>
-      </div>
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+    <SummaryCard
+      title="Rentabilidad del empeño"
+      description="Intereses cobrados sobre el capital prestado. Incluye los abonos de hoy, aunque la caja siga abierta."
+    >
+      <div className={KPI_GRID}>
         {/* F7-06: el interés NETO de descuentos —la misma cifra que
             «Intereses cobrados» del estado de resultados—. El bruto y el
             descuento van abajo, para explicar la resta. */}
@@ -138,14 +134,12 @@ export function PawnCard({ range }: { range: DateRangeValue | null }) {
         <KpiCard
           label="Rendimiento del período"
           value={
-            <span className="tnum">
-              {netYield === null ? '—' : `${Number(netYield).toFixed(2)}%`}
-            </span>
+<span className="tnum">{netYield === null ? '—' : formatPercent(netYield)}</span>
           }
         />
         <KpiCard label="Contratos abiertos" value={<span className="tnum">{pawn.open_contracts}</span>} />
       </div>
-      <p className="mt-3 text-xs text-muted-foreground">
+      <p className="text-xs text-muted-foreground">
         {pawn.payment_count} {pawn.payment_count === 1 ? 'abono' : 'abonos'} · {pawn.contracts_opened}{' '}
         {pawn.contracts_opened === 1 ? 'contrato nuevo' : 'contratos nuevos'}
         {Number(pawn.interest_discounts) > 0 && (
@@ -158,6 +152,6 @@ export function PawnCard({ range }: { range: DateRangeValue | null }) {
         )}
         {' '}· el rendimiento se calcula sobre la cartera actual, no sobre la que había al inicio del rango.
       </p>
-    </div>
+    </SummaryCard>
   )
 }

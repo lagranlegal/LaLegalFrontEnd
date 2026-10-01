@@ -2,6 +2,7 @@ import type { ReactNode } from 'react'
 import { Link } from '@tanstack/react-router'
 import { Gem } from 'lucide-react'
 import { Money } from '@/components/shared/Money'
+import { SummaryCard } from '@/components/shared/SummaryCard'
 import { PhotoThumbnail } from '@/components/shared/PhotoThumbnail'
 import { StatusBadge } from '@/components/shared/StatusBadge'
 import { formatDate } from '@/lib/dates'
@@ -9,15 +10,8 @@ import { formatPercent } from '@/lib/percent'
 import type { Item } from '@/lib/inventory/items'
 import type { Contract } from '@/features/contracts/api'
 
-/** Tarjeta de la columna derecha del Resumen: título 600 · 15 y contenido. */
-export function SummaryCard({ title, children }: { title: string; children: ReactNode }) {
-  return (
-    <section className="grid min-w-0 gap-3 rounded-card border border-border bg-card p-card">
-      <h2 className="text-md font-semibold text-foreground">{title}</h2>
-      {children}
-    </section>
-  )
-}
+/** La tarjeta de datos subió a compartidos (rediseño P3); se re-exporta para no romper a quien la importaba de acá. */
+export { SummaryCard }
 
 function Field({ label, children }: { label: string; children: ReactNode }) {
   return (
