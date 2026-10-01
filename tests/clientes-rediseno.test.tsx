@@ -131,3 +131,16 @@ describe('ficha del cliente', () => {
     expect(state.navigations.at(-1)).toMatchObject({ to: '/contratos/$contractId', params: { contractId: contratoReal.id } })
   })
 })
+
+describe('«Nuevo cliente» a 360 px (F9-41)', () => {
+  it('las grillas de documento y contacto son de una columna bajo 480 px', async () => {
+    const { readFileSync } = await import('node:fs')
+    const source = readFileSync('src/features/customers/components/CustomerFormDialog.tsx', 'utf8')
+    const grids = source.match(/className="grid [^"]*"/g) ?? []
+    expect(grids.length).toBeGreaterThanOrEqual(2)
+    for (const grid of grids) {
+      expect(grid).toContain('grid-cols-1')
+      expect(grid).toContain('min-[480px]:grid-cols-2')
+    }
+  })
+})

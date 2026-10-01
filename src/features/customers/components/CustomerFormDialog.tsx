@@ -186,7 +186,8 @@ export function CustomerFormDialog({ open, onOpenChange, customer }: { open: boo
           <FieldError fieldId="full_name">{errors.full_name?.message}</FieldError>
         </div>
 
-        <div className="grid grid-cols-2 gap-3">
+        {/* F9-41: una columna bajo 480 px; a 360 «Cédula de ciudadanía» se cortaba. */}
+        <div className="grid grid-cols-1 gap-3 min-[480px]:grid-cols-2">
           <div>
             <label htmlFor="doc_type" className="text-sm font-medium text-foreground">
               Tipo de documento
@@ -226,7 +227,7 @@ export function CustomerFormDialog({ open, onOpenChange, customer }: { open: boo
           <Input id="doc_issue_place" {...register('doc_issue_place')} />
         </div>
 
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 gap-3 min-[480px]:grid-cols-2">
           <div>
             <label htmlFor="phone" className="text-sm font-medium text-foreground">
               Teléfono
