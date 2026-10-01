@@ -259,6 +259,47 @@ Issue #10: la lista decía números sin dueño. Lo que vale para otras listas y 
   lista y, otra vez, la búsqueda. Un grupo **solo existe con el permiso de lectura de su módulo**: sin él ni se pide
   ni se nombra.
 
+### Rediseño P3-a (01/10/2026): Reportes, Nuevo contrato y la acción a la vista
+
+Lo que vale para cualquier página larga o formulario:
+
+- **Página larga con índice** (`SectionIndexLayout` + `IndexedSection`, hoy en Reportes, pestañas Período y
+  Contabilidad): desde 1024 px una columna de 200 px fija a la izquierda con un enlace por sección sobre una línea
+  de `--border`; la sección que se está leyendo va en tinta y negrita con una barra de 2 px en el color de texto
+  (`aria-current="location"`), las demás en `--text-muted`, como `PageTabs`: nunca en el oro. «La que se está
+  leyendo» la decide IntersectionObserver: la primera que toca el 40 % superior de la ventana; al llegar al final de
+  la página, la última. Los enlaces son **anclas reales** (`#id`): el salto desplaza suave (instantáneo con
+  movimiento reducido) y **pasa el foco a la sección**, y la marca queda fija hasta que el usuario mueva la página.
+  Bajo 1024 px, un selector «Ir a» fijo arriba (sobre `--bg-app`, con divisor), que además dice en qué sección se
+  está. El índice nombra **solo lo que hay en pantalla**: el filtro de módulo y los estados vacíos lo cambian.
+- **Reportes con las piezas del sistema**: cada bloque es una `SummaryCard` (título 600 · 15 y, a su lado, el rótulo
+  de qué mide), las tablas son `DataTable` embebidas (dinero a la derecha, tarjetas en el celular) y las grillas de
+  cifras pasan a una columna bajo 480 px. **Sin color por defecto en una cifra**: la utilidad del estado de
+  resultados va en tinta (el verde o el rojo quedan en el margen), lo que se resta ya lleva su «−» en el rótulo, y el
+  desglose dice «Entrada/Salida» en su columna en vez de pintar el monto. El rojo queda para lo que pide acción: el
+  faltante de caja, lo vencido de más de 60 días, pasarse del cupo. Los % en es-CO (`formatPercent`).
+- **Formulario con resumen al lado** (`LoanSummaryCard`, Nuevo contrato, F9-30): desde 1024 px el formulario a la
+  izquierda y, fija a la derecha (320 px; 352 desde 1280), la tarjeta «Resumen del préstamo»: renglones de etiqueta
+  en `--text-muted` y valor 600 tabular a la derecha (capital, tasa «5,00 % mensual», plazo, interés mensual, avalúo y
+  préstamo sobre avalúo cuando la categoría tiene LTV, de dónde sale), el **total a entregar** en un recuadro
+  `--brand-50` de radio 10 y, debajo, el botón de bloque «Registrar préstamo $ X» con «Enter no registra». En el
+  celular el resumen va al final, antes del botón. **Lo que no se sabe se dice con un guion o con su origen
+  («Según la categoría»), nunca con un cero**, y nada se calcula distinto que en el backend: el plazo y el LTV salen
+  de la primera prenda, el interés de la regla `monthly_interest` en centavos (`loanPreview.ts`) y solo con una tasa
+  de hasta dos decimales; las fechas las pone el backend.
+- **Diálogo con pie fijo** (`AppDialog`, F9-41): el título y el pie no se desplazan; solo el cuerpo hace scroll,
+  dentro del 90 % del alto de la ventana. Cuando el cuerpo no cabe, el pie lleva su divisor de `--border`; en un
+  diálogo corto no. Un formulario con el submit en el pie lo enlaza con el atributo `form` («Nuevo cliente»).
+- **Barra de acción fija** (`StickyActionBar`, F9-31): en un formulario de página larga, la acción se pega al fondo
+  de la ventana mientras se llena y aterriza en su lugar al final. Flota: superficie, borde, radio de tarjeta y
+  `--shadow-modal`. A la izquierda el resumen (el total, lo que va a pasar al guardar), a la derecha las acciones con
+  el primario de último; en el celular, apilada y a ancho completo. Va dentro del formulario para que el botón siga
+  siendo su submit. Hoy: Registrar contrato existente, Nuevo ingreso y Transformación.
+- **Campos en diálogo, una columna bajo 480 px**: dos campos lado a lado no caben a 360 («Cédula de ciu…» cortado).
+  Las grillas de campos abren sus columnas desde 480 px.
+- **Un listado que no se pudo traer completo lo dice** (issue #11): «Hay más de N registros… acorta el rango» en la
+  sección y en el Excel, nunca un total parcial como completo (ARQUITECTURA §7, «Paginación»).
+
 ## 3. Componentes compartidos (`components/shared`)
 
 Construidos una vez sobre shadcn/ui + tokens; las features los componen. Si una feature necesita una variante, se
@@ -274,13 +315,16 @@ agrega como prop al compartido, no se clona. **Un solo modal, un solo calendario
 | `KpiCard` / `KpiRow` | etiqueta pequeña + cifra grande tabular **en color de texto**, divisores. El único tono es `danger`, y significa **«pide acción»** (lo vencido, los cierres descuadrados), nunca «es una salida de plata»: ni verde ni oro ni rojo para una cifra que solo informa (F9-07). Una tarjeta, sin sombra. Una columna bajo 480 px, dos hasta 640, tres después; en una sola fila con divisores desde 1024 px si son hasta 4 tarjetas y desde 1536 si son más (el Inicio tiene 6). **La cifra nunca se parte dentro de un número**: que quepa lo resuelve el número de columnas, no un corte de palabra (medido en Chrome de 360 a 1920 px). `delta` opcional («▲ 12 % vs período anterior», o con su `label`, «vs. agosto»): **`favorable` decide el color, no el signo** (bajar gastos también es verde), y solo la flecha y el % llevan color. Con `tiles`, cada KPI en su tarjeta (el Inicio) |
 | `DataTable` | sobre TanStack Table: hover de fila, dinero a la derecha, estados de carga/vacío/error integrados, «Cargar más» por cursor, **tarjetas en celular**. Con `onRowClick`, la fila entra al orden de Tab y se abre con Enter o Espacio (F9-11). `embedded` para ir dentro de otra tarjeta y `meta.align: 'right'` en la columna de dinero (§2 «Inicio») |
 | `TableSkeleton` / `RefreshingBar` / `RouteTransitionBar` | carga con la forma del contenido (una barra gris se lee como "no hay nada"); barra delgada cuando una lista *ya* tiene datos y está pidiendo otros (`isPending` solo cubre la primera carga); barra fija mientras el router resuelve una navegación (el `beforeLoad` espera `/me` y la pantalla anterior se quedaba quieta) |
-| `AppDialog` | **el** modal (§1): tamaños `sm` `md` `lg` `xl`, sobre Radix (foco atrapado, Escape, scroll bloqueado); limita la altura al viewport y hace scroll adentro. `confirmDiscard` (con `formState.isDirty`): Escape, clic afuera o la X preguntan antes de descartar lo escrito (F9-40); Cancelar no pregunta. **Prohibido crear otro modal** |
+| `AppDialog` | **el** modal (§1): tamaños `sm` `md` `lg` `xl`, sobre Radix (foco atrapado, Escape, scroll bloqueado); limita la altura al viewport y **solo el cuerpo hace scroll**: título y pie fijos, el pie con divisor cuando el cuerpo no cabe (rediseño P3, F9-41). `confirmDiscard` (con `formState.isDirty`): Escape, clic afuera o la X preguntan antes de descartar lo escrito (F9-40); Cancelar no pregunta. **Prohibido crear otro modal** |
 | `ConfirmDialog` / `confirm()` | confirmación imperativa (`await confirm({ title, tone: 'danger' })`) para acciones destructivas o de dinero; `requireReason` exige motivo (anular, reabrir, descuadre). `summary` pinta un resumen renglón por renglón: una confirmación de dinero repite a quién, cuánto, cómo y a dónde (el abono: contrato, cliente, qué paga, total, medio y cuenta; F9-18). Es la pieza «Confirmación con resumen» de la propuesta (`ConfirmSummary`): renglones con divisor dentro de un recuadro de radio 10, `emphasis: 'total'` para el monto (va **último**, en negrita sobre `--brand-50`) y `emphasis: 'after'` para cómo queda (en verde). El botón de confirmar es de bloque, con el monto adentro; con `tone: 'danger'` va en el relleno rojo. La usan préstamo, abono, venta, gasto y traslado, con título en pregunta y «Volver». Se monta una vez (`ConfirmDialogHost`) |
 | `DatePicker` / `DateRangePicker` | **el** calendario: español, semana desde el lunes, `dd/MM/yyyy`, "hoy" = `todayBogota()`, presets (Hoy, Ayer, Esta semana, Este mes) |
 | `Money` / `MoneyInput` | nadie formatea ni captura dinero fuera de estos dos (reglas de `MoneyInput`: ARQUITECTURA §7). `MoneyInput` tiene tamaño `lg` (cifra 600 · 18) para lo recibido en el POS |
 | `StatusBadge` | pastilla de estado con el **único** mapa estado → tono + ícono Lucide + etiqueta en español: 24 px, 600 · 12, ícono de 13, fondo `-soft` de su semántico (o `--neutral-soft`) y «Listo para remate» como **único estado relleno** (`--danger-solid`). Orden de urgencia en `CONTRACT_STATUS_URGENCY`. Un cliente pasa `kind="customer"`: su «active» dice **«Activo»**, no «Vigente» (F9-42). Un reintento de correo es ámbar; rojo solo lo que se perdió. Las clases van completas y estáticas, nunca interpoladas (ARQUITECTURA §16) |
 | `FilterChip` | la pestaña de filtro en pastilla (estado de contratos e inventario, módulo y antigüedad de Reportes, tipo de plantilla). La activa va en **neutro invertido** con `aria-pressed`, nunca en el oro del primario (F9-13); la inactiva, con el borde de controles |
 | `PageTabs` / `PageTabsContent` | pestañas de sección de una página de detalle (rediseño P2-a; hoy, el contrato): subrayado de 2 px en el color de texto sobre un divisor de ancho completo, nunca una cápsula ni el oro; la activa en tinta y negrita, las demás en `--text-muted`; 44 px de alto y scroll horizontal propio si no caben (el documento no desborda a 360 px). Contador opcional en pastilla gris («Abonos 3»). Sobre Radix (flechas, Home/End). La pestaña activa la decide quien llama: en el contrato va en la URL |
+| `SummaryCard` | la tarjeta de datos (rediseño P2-a, subió a compartidos en P3): título 600 · 15, `description` opcional a su lado (el rótulo de qué mide), `action` opcional y `headingId` para que la sección se nombre con su título. Borde, sin sombra. La usan el Resumen del contrato, Reportes y el resumen del préstamo |
+| `SectionIndexLayout` / `IndexedSection` | página larga con índice (§2, «Rediseño P3-a»): índice fijo a la izquierda desde 1024 px con la sección visible marcada (`useActiveSection`, IntersectionObserver) y anclas reales que pasan el foco; selector «Ir a» arriba en el celular. Cada bloque destino es una `IndexedSection` con su `id` |
+| `StickyActionBar` | la barra de acción de un formulario de página larga (§2, «Rediseño P3-a»): pegada al fondo, flota con `--shadow-modal`, `summary` a la izquierda y acciones a la derecha; apilada en el celular |
 | `LegacyCodeBadge` | pastilla neutra con el código del sistema anterior de un contrato importado. No es un estado |
 | `RecordNumber` | el número de un documento (`#123`) con el `#` atenuado y el número en cifras tabulares |
 | `Callout` | recuadro de ayuda: explica algo que el usuario no sabe y trae la acción para resolverlo. Tonos `info` `success` `warning` sobre el `-soft`; **el texto en el color normal y solo el ícono en el semántico** (un párrafo entero en color de advertencia se lee peor) |
@@ -365,7 +409,8 @@ un collar: basta el punto activo al pasar el mouse), eje de fechas en `dd/MM` (e
 - **Inicio sin `contracts.view` ni `reports.view`** (Bodega): accesos directos a lo que el rol sí puede hacer, cada
   uno con el permiso de su ruta (`dashboard/components/QuickActions`, F9-60); antes era una pantalla vacía. El
   texto de cada acceso dice lo que el rol puede hacer ahí: «Caja» ofrece abrirla solo con `cashbox.open_close`.
-- **Reportes** (`/reportes`) tiene dos pestañas porque responden cosas distintas: **Período** resume un rango
+- **Reportes** (`/reportes`) va con índice lateral por secciones (§2, «Rediseño P3-a») y tiene dos pestañas
+  (`PageTabs`) porque responden cosas distintas: **Período** resume un rango
   (selector de fechas con tope de 90 días, `MAX_RANGE_DAYS`) y **Contabilidad** es una foto de hoy (qué se debe,
   qué se tiene). Reglas que no se negocian:
   - **El movimiento de capital no es resultado**: prestar no es un gasto y recuperar no es un ingreso. Desembolsos

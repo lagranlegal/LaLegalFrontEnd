@@ -223,8 +223,9 @@ otro. Sin `accounts.view` el selector no se muestra y la operación sigue.
 
 Las listas usan `{items, next_cursor}`: `useCursorInfiniteQuery` + `<DataTable>` con "Cargar más". No hay
 paginación por número de página: no inventarla. `fetchAllPages` trae todo para agregaciones y exportaciones, con
-un tope defensivo de páginas; hoy corta en silencio al llegar al tope (bug abierto en `backend-starter/docs/QA.md`
-§4).
+un tope defensivo de páginas. **Nunca corta en silencio** (issue #11): si al tope todavía hay `next_cursor`, lanza
+`PageLimitError` (`isPageLimitError`), y quien la llama lo dice («hay más de N registros, acorta el rango») en vez
+de mostrar un total parcial como completo: Reportes en la sección y en el Excel, los exportes en un toast.
 
 **Un listado con orden elegible lleva el orden en la llave de la consulta** (`useContractsList(status, sort)`): el
 cursor del backend codifica el orden, y uno emitido con otro `sort` da 400. Con el orden en la llave, cambiarlo es
