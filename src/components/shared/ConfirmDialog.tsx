@@ -1,10 +1,9 @@
 import { useState } from 'react'
 import { AppDialog } from '@/components/shared/AppDialog'
 import { Button } from '@/components/ui/button'
+import { Textarea } from '@/components/ui/input'
 import { cn } from '@/lib/utils'
 import { type ConfirmOptions, resolveConfirm, useConfirmStore } from '@/components/shared/confirmStore'
-
-const inputClass = 'mt-1 w-full rounded-input border border-border bg-background px-3 py-2 text-sm text-foreground outline-none focus:border-primary'
 
 function ConfirmDialogInner({ options }: { options: ConfirmOptions }) {
   const [open, setOpen] = useState(true)
@@ -55,7 +54,7 @@ function ConfirmDialogInner({ options }: { options: ConfirmOptions }) {
           <label htmlFor="confirm-reason" className="text-sm font-medium text-foreground">
             {options.reasonLabel ?? 'Motivo'}
           </label>
-          <textarea id="confirm-reason" rows={3} className={inputClass} value={reason} onChange={(e) => setReason(e.target.value)} />
+          <Textarea id="confirm-reason" rows={3} value={reason} onChange={(e) => setReason(e.target.value)} />
         </div>
       )}
     </AppDialog>
