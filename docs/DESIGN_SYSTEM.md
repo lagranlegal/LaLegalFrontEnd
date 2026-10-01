@@ -53,10 +53,13 @@ plataforma ahí diría que el inquilino se llama Prendo.
 ### El look
 
 - **Shell**: sidebar **carbón** fija a la izquierda, colapsable (drawer en celular), ítem activo con fondo sólido y
-  barra de acento; topbar clara con tema, ayuda y avatar; fondo marfil (`--bg-app`) y el contenido en cards blancas
-  con borde sutil y radio generoso. Pie de una línea.
-- **Modales**: centrados, radio grande, X arriba a la derecha, título grande, campos con label arriba y **botón
-  primario tipo pastilla en oro**. Todos los diálogos de la app siguen este patrón.
+  barra de acento; topbar clara con tema, ayuda y avatar (objetivos de 44 px); fondo marfil (`--bg-app`) y el
+  contenido en tarjetas blancas **separadas por borde, sin sombra**, de radio 12. Pie de una línea.
+- **Títulos**: el título de página (`PageHeader`) y el titular de estado del contrato van en **Archivo**, la fuente
+  de la marca; el resto de la interfaz y **todas las cifras** van en Inter con cifras tabulares.
+- **Modales**: centrados, radio 16, borde y la única sombra de la app (con menús y desplegables), X arriba a la
+  derecha, título grande, campos con label arriba y **botón primario rectangular en oro**. Todos los diálogos de la
+  app siguen este patrón.
 - **Punto de venta**: CTA grande de ancho completo en oro, texto carbón y **el total dentro del botón** Con efectivo,
   «Efectivo recibido» y el **cambio** en grande (o cuánto falta); es solo cálculo en pantalla, no se envía (F9-32).
 - **Celular**: KPIs apilados, tablas que colapsan a tarjetas, CTAs de ancho completo.
@@ -71,17 +74,17 @@ features usan colores semánticos y nunca un hex.
 | Grupo | Tokens | Para qué |
 |---|---|---|
 | Marca | `--brand-50` `-100` `-500` `-600` `-700` `--brand-contrast` | `500` es el **relleno** del primario y `--brand-contrast` el texto encima; `700` es la marca **como texto** sobre el fondo del tema (color `brand`); `50`/`100`, fondos suaves, chips y bordes |
-| Semánticos | `--success` `--warning` `--danger` `--info` + su `-soft` | estado de una operación. Cada uno cumple AA sobre `--bg-app`, `--bg-surface` **y su propio `-soft`**, el caso más exigente por compartir tono |
-| Neutrales | `--bg-app` `--bg-surface` `--bg-muted` `--border` `--text-strong` `--text-body` `--text-muted` | superficies y texto. `--bg-muted` es distinto de `--bg-app` a propósito: si son iguales, un botón con borde y un esqueleto de carga desaparecen sobre el fondo de página |
+| Semánticos | `--success` `--warning` `--danger` `--info` + su `-soft`; `--danger-solid` + `--on-danger-solid`; `--neutral-soft` | estado de una operación. `--warning` es **ámbar tostado** (gira hacia naranja para separarse del oro). `--danger-solid` es el relleno del **único estado relleno** («Listo para remate») y del botón destructivo dentro de su confirmación; `--neutral-soft`, el fondo de un estado que terminó. Cada uno cumple AA sobre `--bg-app`, `--bg-surface` **y su propio `-soft`**, el caso más exigente por compartir tono |
+| Neutrales | `--bg-app` `--bg-surface` `--bg-muted` `--border` `--border-strong` `--text-strong` `--text-body` `--text-muted` `--focus` | superficies y texto. `--border` es el borde de tarjetas y divisores; `--border-strong`, el de **controles** (campo, botón secundario, segmentado, filtro), para que un campo no se confunda con una tarjeta. `--focus` es el anillo de foco de 2 px de todo control (5,98:1 sobre marfil), con token propio aunque hoy valga lo mismo que `--brand-700`. `--text-muted` se oscureció en P1 (5,02 sobre `--bg-muted`, F9-22). `--bg-muted` es distinto de `--bg-app` a propósito: si son iguales, un botón con borde y un esqueleto de carga desaparecen sobre el fondo de página |
 | Papel | `--paper` `--paper-ink` `-ink-soft` `-muted` `-rule` `-accent` `-accent-ink` `-accent-soft` `-danger` `-danger-soft` | documentos impresos y su vista previa. **No cambian en oscuro**: el papel no tiene tema, y `tests/paper-tokens.test.ts` exige que sean copia exacta de su token claro (si cambia la marca, el test avisa que el papel también) |
 | Sidebar | `--sidebar-bg` `-hover` `-active-bg` `-fg` `-fg-strong` `-fg-muted` `-border` `--sidebar-success` | superficie propia, no `--bg-surface`. **Son los únicos tokens que siguen oscuros en los dos temas**, por eso también pintan las secciones oscuras de la landing. `--sidebar-success` es el «bien» sobre carbón (`--success` ahí da 2.4) |
-| Estados de dominio | `--status-active` `-arrears` `-extension` `-auctioned` `-paid` `-neutral` | badges; casi todos alias de un semántico, la prórroga con color propio |
+| Estados de dominio | `--status-active` `-arrears` `-extension` `-auctioned` `-paid` `-neutral` | gráficas y leyendas por estado; todos alias de un semántico. **La mora es roja** (`--danger`: es lo que se cobra) y **la prórroga ámbar** (`--warning`); antes eran dos marrones al lado del oro. La pastilla de estado ya no los usa: va por tono (§3, `StatusBadge`) |
 | Gráficas | `--chart-1` … `--chart-5` | Recharts lee de aquí. `1` es la serie principal (ingresos), `2` los egresos, `3–5` series secundarias y donas |
 | Plataforma | `--platform` `--platform-foreground` | banda del panel super-admin. **Navy frío a propósito**: ningún inquilino la ve, y existe para que no se confunda con la marca |
-| Forma | `--radius-input` `-card` `-modal` `-pill` `-panel`, `--shadow-card` `-modal` `-float` `-float-sm` `-lift` | `-float` son sombras densas porque sobre el carbón `-modal` no se ve; `-lift` es el hover que sube una tarjeta |
+| Forma | `--radius-input` `-card` `-modal` `-pill` `-panel`, `--shadow-card` `-modal` `-float` `-float-sm` `-lift` | **campo y botón 10, tarjeta 12, diálogo 16**; la pastilla (`--radius-pill`) es **solo para estados y filtros**. Sombra: `--shadow-modal` es la de **lo que flota** (diálogos, menús, selects, popovers, listas desplegables, drawer, barras fijas); las tarjetas del panel no llevan sombra. `--shadow-card`, `-float`, `-float-sm` y `-lift` son de la landing (`-float` es densa porque sobre el carbón `-modal` no se ve; `-lift`, el hover que sube una tarjeta) |
 | Luz de marca | `--brand-halo` `--hero-grid-line` | el oro como luz, no como relleno; solo landing |
 | Movimiento | `--ease-out` `--duration-fast` `-base` `-slow` | tres duraciones y una curva. Si algo pide una cuarta, casi siempre está animando de más |
-| Tipografía y espacio | `--font-sans` `--font-display` `--font-mono` `--tracking-display` `--font-size-hero` `-closing` `-section` `-subsection` `--space-page` `--space-card` | `--font-sans` es la interfaz, con cifras tabulares en los montos; `--font-display` (Archivo) solo titulares de marca; `--font-mono` (JetBrains Mono) solo códigos de etiqueta, porque deja ver cada carácter. La escala de titulares es fluida entre 390 y 1280 px |
+| Tipografía y espacio | `--font-sans` `--font-display` `--font-mono` `--tracking-display` `--tracking-title` `--tracking-headline` `--font-size-hero` `-closing` `-section` `-subsection` `-headline` `-button-sm` `-button-lg` `-md` `--space-page` `--space-card` | `--font-sans` es la interfaz, con cifras tabulares en los montos; `--font-display` (Archivo) es la marca: titulares de la landing, **título de página** (600 · 24/28 · `--tracking-title`) y **titular de estado** (700 · 22 · `--tracking-headline`); nunca cifras. `--font-mono` (JetBrains Mono) solo códigos de etiqueta, porque deja ver cada carácter. Texto de botón: 14, chico 13, de bloque 15,5; el total de una confirmación, 15. `--space-card` es 16. La escala de titulares de la landing es fluida entre 390 y 1280 px |
 
 - **Tema oscuro**: Claro / Oscuro / Sistema con `ThemeToggle` en el topbar (`src/app/store.ts`). Un solo mecanismo,
   el atributo `data-theme` en `<html>`; `tokens.css` redefine las variables bajo `[data-theme='dark']` y ningún
@@ -99,6 +102,37 @@ features usan colores semánticos y nunca un hex.
   los wrappers de `charts/` pasan `isAnimationActive={!prefersReducedMotion}` con `usePrefersReducedMotion()`, y
   toda gráfica nueva hace lo mismo.
 
+### Rediseño P1 (30/09/2026): las reglas que cambió
+
+La propuesta aprobada (`auditoria_2026-09/propuesta_rediseno.html`, §3, §4 y §6) se aplicó primero a tokens y
+compartidos; las pantallas vienen después (P2, P3).
+
+- **Botón = rectángulo, estado = pastilla.** El botón tiene radio 10 y 44 px de alto (chico 36, de bloque 52); la
+  pastilla queda para `StatusBadge` y `FilterChip`. Pasarle a un botón la clase de radio de pastilla es un bug de
+  revisión (lo vigila `tests/redesign-button.test.tsx`).
+- **Un solo primario dorado por pantalla** (F9-13). Un filtro o segmentado activo va en **neutro invertido** (tinta
+  sobre fondo), nunca en el oro del primario.
+- **El rojo es para lo que pide acción.** La cifra de un KPI va en color de texto (F9-07); el color de una
+  comparación va en el delta. En una acción, el destructivo es **contorno rojo** en la pantalla y **relleno rojo**
+  (`--danger-solid`) solo dentro de su confirmación. El rojo a mano en un botón es un bug: va por variante.
+- **Estados de contrato: tono, ícono y palabra**, en orden de urgencia (`CONTRACT_STATUS_URGENCY`): «Listo para
+  remate» relleno con bandera, «En mora» rojo suave con triángulo, «Prórroga» ámbar con reloj de arena, «Vigente»
+  verde con círculo de chequeo, «Pagado» azul con chequeo, «Rematado» neutro con archivo. Ningún estado depende solo
+  del color.
+- **Sombra solo para lo que flota**; las tarjetas se separan por borde.
+- **`Button`** (`components/ui/button.tsx`): primario en oro; la variante de contorno y `secondary`, en superficie
+  con `--border-strong`; `ghost` sin fondo («Cancelar», «Volver»); `destructive`, contorno rojo; `danger-solid`,
+  relleno rojo solo en confirmaciones; `link`. Deshabilitado va en beige con texto atenuado (no a media opacidad) y
+  quien lo deshabilita dice por qué al lado. Foco: contorno sólido de 2 px en `--focus`.
+- **Campo** (`Input`, `Textarea`, `MoneyInput`, `SearchInput`, el disparador de `Select`): radio 10, 44 px, fondo de
+  superficie, `--border-strong` y el borde de foco en `--focus`; 16 px de texto en el celular para que iOS no haga
+  zoom.
+- **Objetivos de 44 px** en la topbar (menú, tema, avatar) y en «Abrir caja» del banner (F9-02); cuando el botón
+  visible es más chico, un pseudo-elemento amplía el área táctil.
+- **Antes de mover plata, confirmación con resumen** (F9-18): préstamo, abono, venta, gasto y traslado.
+- `tests/token-contrast.test.ts` mide cada par nuevo contra el ratio aprobado (§«rediseño P1»); el papel no cambió:
+  `--paper-muted` conserva el gris anterior a propósito.
+
 ## 3. Componentes compartidos (`components/shared`)
 
 Construidos una vez sobre shadcn/ui + tokens; las features los componen. Si una feature necesita una variante, se
@@ -108,21 +142,22 @@ agrega como prop al compartido, no se clona. **Un solo modal, un solo calendario
 |---|---|
 | `AppShell` | sidebar (tokens `--sidebar-*`) + topbar (menú en celular, tema, avatar con «Mi perfil» y «Cerrar sesión») + `CashSessionBanner` + contenido + `AppFooter`. Menú: Inicio, Contratos, Ventas, Inventario, Clientes, Caja, Cuentas, Capital, Catálogos, Identidad, Reportes, Auditoría, Configuración; **cada ítem con su `anyPermission`** (ARQUITECTURA §5). Sin buscador en el topbar: uno que no busca comunica "a medio hacer" |
 | `AppFooter` | pie de una línea: copyright, nombre legal y NIT de la empresa si existen, teléfono o el lema. Nada inventado (sin enlaces a páginas que no existen) |
-| `PageHeader` | título + descripción + acciones a la derecha (un solo primario). Toda página lo usa. Envuelve a 360 px |
+| `PageHeader` | título + descripción + acciones a la derecha (un solo primario). Toda página lo usa. El título va en Archivo 600 · 24/28 (rediseño P1). Envuelve a 360 px |
 | `BackLink` | el «Volver» único de los detalles y formularios de página completa |
-| `KpiCard` / `KpiRow` | etiqueta pequeña + cifra grande tabular, color semántico opcional, divisores. Una columna bajo 480 px, dos hasta 640, tres después; en una sola fila con divisores desde 1024 px si son hasta 4 tarjetas y desde 1536 si son más (el Inicio tiene 6). **La cifra nunca se parte dentro de un número**: que quepa lo resuelve el número de columnas, no un corte de palabra (medido en Chrome de 360 a 1920 px). `delta` opcional («▲ N % vs período anterior»): **`favorable` decide el color, no el signo** (bajar gastos también es verde) |
+| `KpiCard` / `KpiRow` | etiqueta pequeña + cifra grande tabular **en color de texto**, divisores. El único tono es `danger`, y significa **«pide acción»** (lo vencido, los cierres descuadrados), nunca «es una salida de plata»: ni verde ni oro ni rojo para una cifra que solo informa (F9-07). Una tarjeta, sin sombra. Una columna bajo 480 px, dos hasta 640, tres después; en una sola fila con divisores desde 1024 px si son hasta 4 tarjetas y desde 1536 si son más (el Inicio tiene 6). **La cifra nunca se parte dentro de un número**: que quepa lo resuelve el número de columnas, no un corte de palabra (medido en Chrome de 360 a 1920 px). `delta` opcional («▲ N % vs período anterior»): **`favorable` decide el color, no el signo** (bajar gastos también es verde) |
 | `DataTable` | sobre TanStack Table: hover de fila, dinero a la derecha, estados de carga/vacío/error integrados, «Cargar más» por cursor, **tarjetas en celular**. Con `onRowClick`, la fila entra al orden de Tab y se abre con Enter o Espacio (F9-11) |
 | `TableSkeleton` / `RefreshingBar` / `RouteTransitionBar` | carga con la forma del contenido (una barra gris se lee como "no hay nada"); barra delgada cuando una lista *ya* tiene datos y está pidiendo otros (`isPending` solo cubre la primera carga); barra fija mientras el router resuelve una navegación (el `beforeLoad` espera `/me` y la pantalla anterior se quedaba quieta) |
 | `AppDialog` | **el** modal (§1): tamaños `sm` `md` `lg` `xl`, sobre Radix (foco atrapado, Escape, scroll bloqueado); limita la altura al viewport y hace scroll adentro. `confirmDiscard` (con `formState.isDirty`): Escape, clic afuera o la X preguntan antes de descartar lo escrito (F9-40); Cancelar no pregunta. **Prohibido crear otro modal** |
-| `ConfirmDialog` / `confirm()` | confirmación imperativa (`await confirm({ title, tone: 'danger' })`) para acciones destructivas o de dinero; `requireReason` exige motivo (anular, reabrir, descuadre). `summary` pinta un resumen renglón por renglón: una confirmación de dinero repite a quién, cuánto, cómo y a dónde (el abono: contrato, cliente, qué paga, total, medio y cuenta; F9-18). Se monta una vez (`ConfirmDialogHost`) |
+| `ConfirmDialog` / `confirm()` | confirmación imperativa (`await confirm({ title, tone: 'danger' })`) para acciones destructivas o de dinero; `requireReason` exige motivo (anular, reabrir, descuadre). `summary` pinta un resumen renglón por renglón: una confirmación de dinero repite a quién, cuánto, cómo y a dónde (el abono: contrato, cliente, qué paga, total, medio y cuenta; F9-18). Es la pieza «Confirmación con resumen» de la propuesta (`ConfirmSummary`): renglones con divisor dentro de un recuadro de radio 10, `emphasis: 'total'` para el monto (va **último**, en negrita sobre `--brand-50`) y `emphasis: 'after'` para cómo queda (en verde). El botón de confirmar es de bloque, con el monto adentro; con `tone: 'danger'` va en el relleno rojo. La usan préstamo, abono, venta, gasto y traslado, con título en pregunta y «Volver». Se monta una vez (`ConfirmDialogHost`) |
 | `DatePicker` / `DateRangePicker` | **el** calendario: español, semana desde el lunes, `dd/MM/yyyy`, "hoy" = `todayBogota()`, presets (Hoy, Ayer, Esta semana, Este mes) |
 | `Money` / `MoneyInput` | nadie formatea ni captura dinero fuera de estos dos (reglas de `MoneyInput`: ARQUITECTURA §7) |
-| `StatusBadge` | pastilla de estado con el **único** mapa estado → token → etiqueta en español. Las clases van completas y estáticas, nunca interpoladas (ARQUITECTURA §16) |
+| `StatusBadge` | pastilla de estado con el **único** mapa estado → tono + ícono Lucide + etiqueta en español: 24 px, 600 · 12, ícono de 13, fondo `-soft` de su semántico (o `--neutral-soft`) y «Listo para remate» como **único estado relleno** (`--danger-solid`). Orden de urgencia en `CONTRACT_STATUS_URGENCY`. Un cliente pasa `kind="customer"`: su «active» dice **«Activo»**, no «Vigente» (F9-42). Un reintento de correo es ámbar; rojo solo lo que se perdió. Las clases van completas y estáticas, nunca interpoladas (ARQUITECTURA §16) |
+| `FilterChip` | la pestaña de filtro en pastilla (estado de contratos e inventario, módulo y antigüedad de Reportes, tipo de plantilla). La activa va en **neutro invertido** con `aria-pressed`, nunca en el oro del primario (F9-13); la inactiva, con el borde de controles |
 | `LegacyCodeBadge` | pastilla neutra con el código del sistema anterior de un contrato importado. No es un estado |
 | `RecordNumber` | el número de un documento (`#123`) con el `#` atenuado y el número en cifras tabulares |
 | `Callout` | recuadro de ayuda: explica algo que el usuario no sabe y trae la acción para resolverlo. Tonos `info` `success` `warning` sobre el `-soft`; **el texto en el color normal y solo el ícono en el semántico** (un párrafo entero en color de advertencia se lee peor) |
 | `EmptyState` | ícono suave + título + descripción + CTA («Aún no tienes…»). Toda lista vacía lo usa |
-| `CashSessionBanner` | franja global: caja abierta (responsable, hora, y la fecha si el turno es de otro día) o cerrada (qué no se puede hacer + abrir si hay permiso). Sin `cashbox.view` **no afirma nada** (§4, regla 8) |
+| `CashSessionBanner` | franja global de 44 px: caja abierta (responsable, hora, y la fecha si el turno es de otro día) o cerrada (qué no se puede hacer + «Abrir caja» si hay permiso, botón secundario con área táctil de 44, F9-02). Texto en tinta con el estado en negrita y un punto de color como señal. Sin `cashbox.view` **no afirma nada** (§4, regla 8) |
 | `CashClosedNotice` | aviso arriba de una operación de dinero **en efectivo** con la caja cerrada, con «Abrir caja» si hay permiso (F9-19). Avisa antes de llenar, no bloquea: por banco se sigue operando sin caja. Con `anyMethod` avisa con cualquier medio: el gasto exige la caja abierta aunque se pague por transferencia. Sin saber el estado, no afirma nada |
 | `CashSessionRequiredDialog` | la respuesta a `CASH_SESSION_NOT_OPEN`: abrir caja desde ahí o a quién pedírselo |
 | `AccountPicker` | la cuenta donde queda la plata, junto al medio de pago (ARQUITECTURA §7); oculto sin `accounts.view`. Preselecciona la predeterminada del tipo por `onAutoSelect`, que en un formulario de React Hook Form es `resetField` con `defaultValue`: una preselección no ensucia el formulario ni dispara «¿Descartar lo escrito?» |
@@ -135,7 +170,8 @@ agrega como prop al compartido, no se clona. **Un solo modal, un solo calendario
 
 ## 4. Protocolos de UX
 
-1. **Una acción primaria** por pantalla o modal (oro, pastilla o bloque); el resto secundarias o terciarias. **El
+1. **Una acción primaria** por pantalla o modal (oro, rectángulo de radio 10, o de bloque a todo el ancho); los
+   filtros activos van en neutro; el resto secundarias o terciarias. **El
    CTA de dinero lleva el monto dentro** («Vender $419.170», «Registrar abono $50.000»).
 2. **Dinero guiado, nunca libre.** Los abonos son botones generados desde `payment-options` (1 mes, 2 meses, al día
    + capital); el único campo libre es el capital extra cuando se permite. En el cierre de caja, lo esperado se ve,
@@ -146,7 +182,9 @@ agrega como prop al compartido, no se clona. **Un solo modal, un solo calendario
    (F9-16).
 3. **Respuesta inmediata**: botón en carga y deshabilitado mientras la mutación vuela; éxito con acción contextual
    o error mapeado (ARQUITECTURA §6). Nunca doble envío. **Enter no registra dinero** (ARQUITECTURA §12).
-4. **Destructivo = fricción**: anular, rematar, reabrir, desactivar → `ConfirmDialog` con la consecuencia dicha y
+4. **Destructivo = fricción**: el botón en la pantalla va con **contorno rojo** (variante `destructive` de `Button`)
+   y el relleno rojo (variante `danger-solid`) solo dentro de la confirmación. Anular, rematar, reabrir, desactivar →
+   `ConfirmDialog` con la consecuencia dicha y
    motivo obligatorio cuando el backend lo audita.
 5. **Esqueletos, no spinners de página**: cada card o tabla carga con la forma de su contenido. El shell no parpadea.
 6. **Formularios**: label arriba, error bajo el campo, **llevar a la vista el primer error** (`revealFirstError`);
@@ -163,7 +201,7 @@ agrega como prop al compartido, no se clona. **Un solo modal, un solo calendario
     texto sobre los fondos donde viven, el texto del botón primario sobre sus dos rellenos y los pares de la landing,
     en los dos temas; se comprobó que falla al invertir la regla. Navegable por teclado, `aria-label` en íconos
     solos, objetivos táctiles de 44 px en celular.
-    **Foco de un campo**: anillo sólido de 2 px en el token de foco (`--color-ring`), puesto una vez en `globals.css`
+    **Foco de un campo**: anillo sólido de 2 px en el token de foco (`--focus`, expuesto como `--color-ring`), puesto una vez en `globals.css`
     para todos los `input`/`textarea`/`select` (por sombra, porque las copias de `inputClass` que quedan llevan la
     utilidad que quita el contorno); un campo compuesto marca su contenedor con `data-focus-ring`. **Foco de un
     control** (botón, select de Radix, pestaña, casilla, día del calendario, fila de tabla): el anillo o contorno en
