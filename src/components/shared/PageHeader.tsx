@@ -15,7 +15,7 @@ import type { ReactNode } from 'react'
  * QA, F6-03; DESIGN_SYSTEM §4.11 pide 360px usable: el mostrador puede ser un
  * celular).
  */
-export function PageHeader({ title, description, actions }: { title: ReactNode; description?: string; actions?: ReactNode }) {
+export function PageHeader({ title, description, actions }: { title: ReactNode; description?: ReactNode; actions?: ReactNode }) {
   return (
     <div className="flex flex-wrap items-start justify-between gap-4">
       <div className="min-w-0">

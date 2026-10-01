@@ -9,11 +9,9 @@ import { CompanyDataNotice } from '@/components/shared/CompanyDataNotice'
 import { ExtendLoanPanel } from '@/features/contracts/components/ExtendLoanPanel'
 import { ContractChainPanel } from '@/features/contracts/components/ContractChainPanel'
 import { StatusBadge } from '@/components/shared/StatusBadge'
-import { LegacyCodeBadge } from '@/components/shared/LegacyCodeBadge'
 import { PhotoThumbnail } from '@/components/shared/PhotoThumbnail'
 import { Money } from '@/components/shared/Money'
 import { DataTable } from '@/components/shared/DataTable'
-import { Can } from '@/components/shared/Can'
 import { Button } from '@/components/ui/button'
 import { formatDate, formatDateTime } from '@/lib/dates'
 import { PAYMENT_METHOD_LABELS } from '@/lib/paymentMethods'
@@ -27,6 +25,7 @@ import { useCustomer } from '@/lib/customers/search'
 import { ContractStatusHeadline } from '@/features/contracts/components/ContractStatusHeadline'
 import { PaymentOptionsPanel } from '@/features/contracts/components/PaymentOptionsPanel'
 import { ContractMetricsPanel } from '@/features/contracts/components/ContractMetricsPanel'
+import { ContractHeaderActions } from '@/features/contracts/components/ContractHeaderActions'
 import { ContractEditDialog } from '@/features/contracts/components/ContractEditDialog'
 import { ContractPrintView } from '@/features/contracts/components/ContractPrintView'
 import { RecordNumber } from '@/components/shared/RecordNumber'
@@ -155,15 +154,21 @@ export function ContractDetailPage() {
 
       <PageHeader
         title={<>Contrato <RecordNumber value={contract.number} className="text-2xl" /></>}
-        description={customer ? `${customer.full_name} · ${customer.doc_type.toUpperCase()} ${customer.doc_number}` : undefined}
+        description={
+          customer || contract.legacy_code ? (
+            <>
+              {customer && `${customer.full_name} · ${customer.doc_type.toUpperCase()} ${customer.doc_number}`}
+              {customer && contract.legacy_code && ' · '}
+              {contract.legacy_code && <span className="font-mono text-xs">{contract.legacy_code}</span>}
+            </>
+          ) : undefined
+        }
         actions={
-          <div className="flex items-center gap-2">
-            {contract.legacy_code && <LegacyCodeBadge code={contract.legacy_code} />}
+          <>
             <StatusBadge status={effectiveContractStatus(contract)} />
-            <Button
-              variant="outline"
-              disabled={contractTemplateLoading}
-              onClick={() => {
+            <ContractHeaderActions
+              printLoading={contractTemplateLoading}
+              onPrint={() => {
                 // `window.print()` es sincrónico y bloquea — sin `flushSync`,
                 // el setState de `printMode` queda batcheado para DESPUÉS de
                 // que el diálogo de impresión ya se abrió con el DOM viejo
@@ -171,40 +176,21 @@ export function ContractDetailPage() {
                 flushSync(() => setPrintMode('contract'))
                 window.print()
               }}
-            >
-              {contractTemplateLoading ? 'Cargando…' : 'Imprimir'}
-            </Button>
-            {isPaid && settlement && (
-              <Button
-                variant="outline"
-                disabled={settlementTemplateLoading}
-                onClick={() => {
-                  flushSync(() => setPrintMode('settlement'))
-                  window.print()
-                }}
-              >
-                {settlementTemplateLoading ? 'Cargando…' : 'Imprimir paz y salvo'}
-              </Button>
-            )}
-            <Can permission="contracts.edit">
-              <Button
-                variant="outline"
-                onClick={() => {
-                  setEditDialogNonce((n) => n + 1)
-                  setEditDialogOpen(true)
-                }}
-              >
-                Editar
-              </Button>
-            </Can>
-            {isReadyForAuction(contract) && (
-              <Can permission="contracts.auction">
-                <Button variant="destructive" disabled={auctionContract.isPending} onClick={handleAuction}>
-                  {auctionContract.isPending ? 'Rematando…' : 'Rematar'}
-                </Button>
-              </Can>
-            )}
-          </div>
+              settlementAvailable={isPaid && !!settlement}
+              settlementLoading={settlementTemplateLoading}
+              onPrintSettlement={() => {
+                flushSync(() => setPrintMode('settlement'))
+                window.print()
+              }}
+              onEdit={() => {
+                setEditDialogNonce((n) => n + 1)
+                setEditDialogOpen(true)
+              }}
+              canAuction={isReadyForAuction(contract)}
+              auctionPending={auctionContract.isPending}
+              onAuction={() => void handleAuction()}
+            />
+          </>
         }
       />
 
