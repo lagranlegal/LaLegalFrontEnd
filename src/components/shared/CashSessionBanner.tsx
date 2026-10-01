@@ -59,9 +59,14 @@ export function CashSessionBanner() {
     // incomprensible — o peor, se asume que es de hoy. El dato ya viaja en la
     // respuesta (`session_date`) y no se estaba usando (auditoría de QA, F9-01).
     const deOtroDia = session.session_date !== todayBogota()
-    // `opened_by` es un id: el nombre solo se sabe si es quien está usando la
-    // app («Laura M.»). De otro, no se inventa ni se pide una lista de usuarios.
-    const openedBy = me && session.opened_by === me.user.id ? shortName(me.user.full_name) : null
+    // El backend manda el nombre de quien abrió (`opened_by_name`, P2-e). Si no
+    // viene (usuario de otra empresa o respuesta vieja) y la abrió quien está
+    // usando la app, se usa su propio nombre; de otro, no se inventa.
+    const openedBy = session.opened_by_name
+      ? shortName(session.opened_by_name)
+      : me && session.opened_by === me.user.id
+        ? shortName(me.user.full_name)
+        : null
     return (
       <div
         className={
@@ -88,9 +93,8 @@ export function CashSessionBanner() {
               <b className="font-semibold text-foreground">Caja abierta</b>
               {openedBy && <> por {openedBy}</>} desde {formatClock(session.opened_at)}
             </span>
-            {/* «Efectivo esperado» a la derecha: el backend solo lo llena al
-                cerrar (`expected_cash` es null con la caja abierta), así que
-                hoy no se muestra. Si llega con dato, aparece. */}
+            {/* «Efectivo esperado» a la derecha: `sessions/current` lo calcula
+                en vivo con la caja abierta (P2-e); si no viene, no se muestra. */}
             {session.expected_cash && (
               <span>
                 Efectivo esperado <Money value={session.expected_cash} className="font-semibold text-foreground" />

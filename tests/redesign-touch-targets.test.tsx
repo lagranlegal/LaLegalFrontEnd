@@ -76,6 +76,16 @@ describe('objetivos táctiles de 44 px', () => {
     expect(container.textContent).toBe('Caja abierta desde 8:02 a. m.')
   })
 
+  it('P2-e: abierta por otra persona, el nombre viene del backend', () => {
+    cashbox.current = {
+      data: { session_date: '2026-09-30', opened_at: '2026-09-30T13:02:00Z', opened_by: 'otro', opened_by_name: 'Ana Gómez', expected_cash: null },
+      isPending: false,
+      error: null,
+    }
+    const { container } = render(<CashSessionBanner />)
+    expect(container.textContent).toBe('Caja abierta por Ana G. desde 8:02 a. m.')
+  })
+
   it('P2-c: si la sesión trae el efectivo esperado, va a la derecha', () => {
     cashbox.current = {
       data: { session_date: '2026-09-30', opened_at: '2026-09-30T13:02:00Z', opened_by: 'otro', expected_cash: '1240000.00' },

@@ -5457,6 +5457,8 @@ export interface components {
              * Format: uuid
              */
             opened_by: string;
+            /** Opened By Name */
+            opened_by_name?: string | null;
             /**
              * Opened At
              * Format: date-time
