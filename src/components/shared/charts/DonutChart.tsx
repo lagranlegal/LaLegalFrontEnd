@@ -1,6 +1,7 @@
 import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from 'recharts'
 import { formatCOP } from '@/lib/money'
 import { usePrefersReducedMotion } from '@/lib/usePrefersReducedMotion'
+import { formatPercent } from '@/lib/percent'
 
 export interface DonutDatum {
   key: string
@@ -48,7 +49,7 @@ export function DonutChart({ data }: { data: DonutDatum[] }) {
               {d.label}
             </span>
             <span className="tnum text-muted-foreground">
-              {Math.round((d.value / total) * 100)}% · {formatCOP(d.value)}
+              {formatPercent(Math.round((d.value / total) * 100), 0)} · {formatCOP(d.value)}
             </span>
           </div>
         ))}

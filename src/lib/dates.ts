@@ -79,15 +79,16 @@ export function formatMonth(dateOnly: string): string {
 
 /**
  * Timestamps con hora (`created_at`, `updated_at`…) se convierten a la zona
- * de la empresa y se formatean `dd/MM/yyyy h:mm a`.
+ * de la empresa: «30/09/2026 1:31 p. m.». La hora como se escribe en Colombia
+ * (issue #16): el `h:mm a` de date-fns sin locale daba «1:31 PM».
  */
 export function formatDateTime(timestamp: string | Date): string {
-  return format(timestamp, 'dd/MM/yyyy h:mm a', { in: tz(activeTimezone) })
+  return `${format(timestamp, 'dd/MM/yyyy', { in: tz(activeTimezone) })} ${formatClock(timestamp)}`
 }
 
-/** Solo la hora (`h:mm a`), en la zona de la empresa — ej. "caja abierta desde las 6:30 PM". */
+/** Solo la hora, en la zona de la empresa: «6:30 p. m.» (issue #16). Mismo formato que `formatClock`. */
 export function formatTime(timestamp: string | Date): string {
-  return format(timestamp, 'h:mm a', { in: tz(activeTimezone) })
+  return formatClock(timestamp)
 }
 
 const DAYS_IN_MONTH = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31]

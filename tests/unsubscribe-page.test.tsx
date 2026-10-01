@@ -91,8 +91,8 @@ describe('UnsubscribePage', () => {
     expect(await screen.findByText('Ya no recibirá avisos por correo')).toBeInTheDocument()
     expect(POST).toHaveBeenCalledTimes(1)
     expect(POST).toHaveBeenCalledWith('/api/v1/public/unsubscribe/{token}', { params: { path: { token: TOKEN } } })
-    // Fecha en la zona de la empresa (default Bogotá: 07:23 UTC = 2:23 AM).
-    expect(screen.getByText(/25\/09\/2026 2:23 AM/)).toBeInTheDocument()
+    // Fecha en la zona de la empresa (default Bogotá: 07:23 UTC = 2:23 a. m.).
+    expect(screen.getByText(/25\/09\/2026 2:23 a\. m\./)).toBeInTheDocument()
   })
 
   it('si ya se había dado de baja, lo dice sin ofrecer el botón otra vez', async () => {

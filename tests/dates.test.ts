@@ -64,17 +64,17 @@ describe('formatDateTime (timestamps con hora)', () => {
   afterEach(() => setActiveTimezone(BOGOTA_TZ))
 
   it('convierte un timestamp UTC a la hora de Bogotá', () => {
-    expect(formatDateTime('2026-08-15T23:30:00Z')).toBe('15/08/2026 6:30 PM')
+    expect(formatDateTime('2026-08-15T23:30:00Z')).toBe('15/08/2026 6:30 p. m.')
   })
 
   it('respeta el cruce de día al convertir a Bogotá', () => {
-    expect(formatDateTime('2026-08-16T03:30:00Z')).toBe('15/08/2026 10:30 PM')
+    expect(formatDateTime('2026-08-16T03:30:00Z')).toBe('15/08/2026 10:30 p. m.')
   })
 
   it('usa la zona activa, no siempre Bogotá', () => {
     setActiveTimezone('America/Mexico_City')
     // México (UTC-6) va una hora detrás de Bogotá (UTC-5).
-    expect(formatDateTime('2026-08-15T23:30:00Z')).toBe('15/08/2026 5:30 PM')
+    expect(formatDateTime('2026-08-15T23:30:00Z')).toBe('15/08/2026 5:30 p. m.')
   })
 })
 
@@ -83,7 +83,7 @@ describe('formatTime', () => {
   afterEach(() => setActiveTimezone(BOGOTA_TZ))
 
   it('formatea solo la hora, sin fecha, en la zona activa', () => {
-    expect(formatTime('2026-08-15T23:30:00Z')).toBe('6:30 PM')
+    expect(formatTime('2026-08-15T23:30:00Z')).toBe('6:30 p. m.')
   })
 })
 

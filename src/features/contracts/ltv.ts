@@ -1,6 +1,7 @@
 import { resolveInheritedParams } from '@/features/catalogs/inheritance'
 import type { Category } from '@/lib/catalogs/categories'
 import { compareMoney, normalizeDecimalInput, percentOfMoney, subtractMoney } from '@/lib/money'
+import { formatPercent } from '@/lib/percent'
 
 /**
  * El cupo del LTV, calculado MIENTRAS se llena el formulario del contrato.
@@ -115,6 +116,6 @@ export function appraisalRequirement(input: {
     required: true,
     error: tasado
       ? null
-      : `El avalúo es obligatorio: la categoría presta hasta el ${maxLtvPct}% del avalúo y sin él no se puede calcular el cupo.`,
+      : `El avalúo es obligatorio: la categoría presta hasta el ${formatPercent(maxLtvPct, 'auto')} del avalúo y sin él no se puede calcular el cupo.`,
   }
 }

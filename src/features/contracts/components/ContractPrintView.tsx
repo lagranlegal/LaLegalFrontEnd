@@ -14,6 +14,7 @@ import type { Contract } from '@/features/contracts/api'
 import type { Customer } from '@/lib/customers/search'
 import type { Category } from '@/lib/catalogs/categories'
 import type { JSONContent } from '@tiptap/core'
+import { formatPercent } from '@/lib/percent'
 
 function categoryName(categories: Category[] | undefined, categoryId: string): string {
   return categories?.find((c) => c.id === categoryId)?.name ?? '—'
@@ -177,7 +178,7 @@ export function ContractPrintView({ contract, customer, categories }: { contract
           <PrintField label="Capital prestado">
             <Money value={contract.principal} />
           </PrintField>
-          <PrintField label="Tasa de interés mensual">{contract.interest_rate_pct}%</PrintField>
+          <PrintField label="Tasa de interés mensual">{formatPercent(contract.interest_rate_pct)}</PrintField>
           <PrintField label="Plazo">{months(contract.term_months)}</PrintField>
           <PrintField label="Ventana de mora">{months(contract.arrears_window_months)}</PrintField>
         </div>

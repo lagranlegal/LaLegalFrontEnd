@@ -1,6 +1,7 @@
 import { Money } from '@/components/shared/Money'
 import { usePermission } from '@/lib/permissions/usePermission'
 import type { LtvEstado } from '@/features/contracts/ltv'
+import { formatPercent } from '@/lib/percent'
 
 /**
  * El cupo del LTV, ANTES de prestar.
@@ -29,7 +30,7 @@ export function LtvHint({ estado }: { estado: LtvEstado }) {
     return (
       <p className="mt-1 text-sm text-muted-foreground">
         Puede prestar hasta <Money value={estado.cupo} className="font-medium text-foreground" /> por esta garantía —{' '}
-        {estado.maxLtvPct}% del avalúo. Va en el {estado.ltvPct.toFixed(0)}%.
+        {formatPercent(estado.maxLtvPct, 'auto')} del avalúo. Va en el {formatPercent(estado.ltvPct, 0)}.
       </p>
     )
   }
@@ -40,8 +41,8 @@ export function LtvHint({ estado }: { estado: LtvEstado }) {
         Supera el cupo de la garantía en <Money value={estado.exceso} />
       </p>
       <p className="mt-1">
-        El máximo para esta categoría es el {estado.maxLtvPct}% del avalúo (<Money value={estado.cupo} />) y este
-        préstamo va en el {estado.ltvPct.toFixed(0)}%.
+        El máximo para esta categoría es el {formatPercent(estado.maxLtvPct, 'auto')} del avalúo (<Money value={estado.cupo} />) y este
+        préstamo va en el {formatPercent(estado.ltvPct, 0)}.
       </p>
       <p className="mt-1">
         {puedeAutorizar

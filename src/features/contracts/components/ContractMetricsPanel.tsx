@@ -68,7 +68,7 @@ export function ContractMetricsPanel({ contract, payments }: { contract: Contrac
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <CardShell title="Capital devuelto" subtitle={`${metrics.cantidadAbonos} ${metrics.cantidadAbonos === 1 ? 'abono' : 'abonos'} · ${dias} días`}>
           <p className="tnum mb-2 text-2xl font-semibold text-foreground">
-            {metrics.capitalRecuperadoPct === null ? '—' : `${metrics.capitalRecuperadoPct.toFixed(0)}%`}
+            {metrics.capitalRecuperadoPct === null ? '—' : formatPercent(metrics.capitalRecuperadoPct, 0)}
           </p>
           <div className="h-2 w-full overflow-hidden rounded-pill bg-border">
             <div

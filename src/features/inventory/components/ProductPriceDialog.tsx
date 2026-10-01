@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { SELECTABLE_UNITS, unitAbbr, unitLabel, type ProductUnit } from '@/lib/inventory/units'
 import { ApiError } from '@/lib/api/client'
 import { useUpdateProduct, type Product } from '@/features/inventory/api'
+import { formatPercent } from '@/lib/percent'
 
 /**
  * Cambiar el precio de un producto — una acción que afecta a todos sus lotes.
@@ -97,7 +98,7 @@ export function ProductPriceDialog({
           <MoneyInput id="product-price" className="mt-1" value={price} onChange={setPrice} />
           {margen !== null && (
             <p className={`mt-1 text-xs ${alerta ? 'text-warning' : 'text-muted-foreground'}`}>
-              Margen sobre el lote más caro: {margen}%
+              Margen sobre el lote más caro: {formatPercent(margen, 0)}
               {alerta && ' — el costo subió y el precio se quedó corto.'}
             </p>
           )}
