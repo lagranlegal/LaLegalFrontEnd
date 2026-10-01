@@ -284,3 +284,60 @@ export function groupEvents(events: NotificationEventSetting[]): EventGroup[] {
 export function eventLabel(description: string): string {
   return description.replace(/^[A-Z]\d+\s*·\s*/, '')
 }
+
+/**
+ * Los interruptores en borrador (issue #6). Antes se guardaban al tocarlos y
+ * los parámetros con un botón: dos modelos en la misma página. Ahora todo
+ * viaja en un solo «Guardar cambios»; `events` lleva solo lo que cambió
+ * (`null` = volver al predeterminado), como el PATCH.
+ */
+export interface SwitchesDraft {
+  enabled: boolean
+  events: Record<string, boolean | null>
+}
+
+export function switchesFromSettings(s: NotificationSettings): SwitchesDraft {
+  return { enabled: s.enabled, events: {} }
+}
+
+/** Cómo se ve la casilla de un evento con el borrador aplicado. */
+export function eventChecked(event: NotificationEventSetting, draft: SwitchesDraft): boolean {
+  if (!(event.code in draft.events)) return event.enabled
+  const value = draft.events[event.code]
+  return value === null ? event.default_enabled : (value as boolean)
+}
+
+/**
+ * Marca o desmarca un evento en el borrador. Si el resultado es lo que ya está
+ * guardado, se borra del borrador: volver a dejar algo como estaba no es un
+ * cambio (ni ensucia la auditoría del backend).
+ */
+export function setEventDraft(event: NotificationEventSetting, draft: SwitchesDraft, value: boolean | null): SwitchesDraft {
+  const events = { ...draft.events }
+  const unchanged = value === null ? !event.overridden : value === event.enabled
+  if (unchanged) delete events[event.code]
+  else events[event.code] = value
+  return { ...draft, events }
+}
+
+/** Lo que se encendería al guardar: cada cosa se confirma antes, diciendo a quién se le escribe. */
+export function turningOn(s: NotificationSettings, draft: SwitchesDraft): { master: boolean; auctionCustomer: boolean } {
+  const auction = s.events.find((e) => e.code === AUCTION_READY_CUSTOMER)
+  return {
+    master: !s.enabled && draft.enabled,
+    auctionCustomer: !!auction && !auction.enabled && eventChecked(auction, draft),
+  }
+}
+
+/** Los ajustes como quedarían guardados: para el texto de la confirmación al encender. */
+export function settingsWithSwitches(s: NotificationSettings, draft: SwitchesDraft): NotificationSettings {
+  return { ...s, enabled: draft.enabled, events: s.events.map((e) => ({ ...e, enabled: eventChecked(e, draft) })) }
+}
+
+/** Un solo PATCH con los interruptores y los parámetros que cambiaron; `null` si no hay nada. */
+export function buildSettingsPatch(s: NotificationSettings, switches: SwitchesDraft, params: ParamsDraft): NotificationSettingsUpdateIn | null {
+  const body: NotificationSettingsUpdateIn = { ...(buildParamsPatch(s, params) ?? {}) }
+  if (switches.enabled !== s.enabled) body.enabled = switches.enabled
+  if (Object.keys(switches.events).length > 0) body.events = { ...switches.events }
+  return Object.keys(body).length > 0 ? body : null
+}

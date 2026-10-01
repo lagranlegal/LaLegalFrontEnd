@@ -8,6 +8,8 @@ import { FileEdit, Mail } from 'lucide-react'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { PhotoUploader } from '@/components/shared/PhotoUploader'
 import { EmptyState } from '@/components/shared/EmptyState'
+import { SummaryCard, SummaryField } from '@/components/shared/SummaryCard'
+import { SaveBar, UnsavedChangesGuard } from '@/components/shared/SaveBar'
 import { Button } from '@/components/ui/button'
 import { FieldError, Input, Textarea } from '@/components/ui/input'
 import { applyServerErrors } from '@/lib/forms/applyServerErrors'
@@ -73,18 +75,6 @@ function Field({
       )}
       <FieldError fieldId={id}>{error}</FieldError>
     </div>
-  )
-}
-
-function Section({ title, description, children }: { title: string; description?: string; children: React.ReactNode }) {
-  return (
-    <section className="flex flex-col gap-4 rounded-card border border-border bg-card p-card">
-      <div>
-        <h2 className="text-sm font-medium text-foreground">{title}</h2>
-        {description && <p className="mt-0.5 text-xs text-muted-foreground">{description}</p>}
-      </div>
-      {children}
-    </section>
   )
 }
 
@@ -207,7 +197,7 @@ export function SettingsPage() {
       <PageHeader title="Configuración" description="Datos de la empresa, marca y documentos impresos." />
 
       <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-6" noValidate>
-        <Section title="Datos de la empresa" description="Aparecen en los contratos, comprobantes y actas de cierre.">
+        <SummaryCard title="Datos de la empresa" description="Aparecen en los contratos, comprobantes y actas de cierre.">
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <Field label="Nombre comercial" error={errors.name?.message}>
               {(field) => <Input {...field} {...register('name')} />}
@@ -228,9 +218,9 @@ export function SettingsPage() {
               {(field) => <Input {...field} {...register('address')} />}
             </Field>
           </div>
-        </Section>
+        </SummaryCard>
 
-        <Section title="Logo y firma">
+        <SummaryCard title="Logo y firma">
           <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
             <Field label="Logo" hint="Se muestra en el encabezado de los documentos impresos.">
               <Controller
@@ -270,9 +260,9 @@ export function SettingsPage() {
               />
             </Field>
           </div>
-        </Section>
+        </SummaryCard>
 
-        <Section title="Notificaciones" description="Correos que la empresa manda: el resumen diario y semanal, y los avisos al cliente.">
+        <SummaryCard title="Notificaciones" description="Correos que la empresa manda: el resumen diario y semanal, y los avisos al cliente.">
           <div className="flex items-start justify-between gap-4 rounded-input border border-border bg-background p-3">
             <div>
               <p className="text-sm font-medium text-foreground">Avisos por correo</p>
@@ -284,9 +274,9 @@ export function SettingsPage() {
               </Link>
             </Button>
           </div>
-        </Section>
+        </SummaryCard>
 
-        <Section
+        <SummaryCard
           title="Documentos impresos"
           description="Textos del contrato, el comprobante de venta y el acta de cierre de caja."
         >
@@ -325,32 +315,27 @@ export function SettingsPage() {
           >
             {(field) => <Textarea rows={4} {...field} {...register('legal_notice')} />}
           </Field>
-        </Section>
+        </SummaryCard>
 
-        <Section title="Parámetros regionales" description="No se editan desde acá — escríbenos si necesitas cambiarlos.">
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            <div>
-              <p className="text-sm font-medium text-foreground">Zona horaria</p>
-              <p className="mt-1 text-sm text-muted-foreground">{settings.timezone}</p>
-              <p className="mt-1 text-xs text-muted-foreground">
-                Define el “hoy” con el que se calculan la mora de los contratos, las prórrogas y el cierre de caja.
-                Cambiarla afecta cuentas ya en curso.
-              </p>
-            </div>
-            <div>
-              <p className="text-sm font-medium text-foreground">Moneda</p>
-              <p className="mt-1 text-sm text-muted-foreground">{settings.currency}</p>
-            </div>
-          </div>
-        </Section>
+        <SummaryCard title="Parámetros regionales" description="No se editan desde acá: escríbenos si necesitas cambiarlos.">
+          <dl className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <SummaryField label="Zona horaria">
+              {settings.timezone}
+              <span className="mt-1 block text-xs font-normal text-muted-foreground">
+                Define el “hoy” con el que se calculan la mora de los contratos, las prórrogas y el cierre de caja. Cambiarla afecta cuentas
+                ya en curso.
+              </span>
+            </SummaryField>
+            <SummaryField label="Moneda">{settings.currency}</SummaryField>
+          </dl>
+        </SummaryCard>
 
         {formError && <p className="rounded-input bg-danger-soft px-3 py-2 text-sm text-danger">{formError}</p>}
 
-        <div className="flex justify-end">
-          <Button type="submit" disabled={updateSettings.isPending || !isDirty} className="w-full sm:w-auto">
-            {updateSettings.isPending ? 'Guardando…' : 'Guardar cambios'}
-          </Button>
-        </div>
+        {/* F9-54: el botón vivía al final de 1.870 px y salir con cambios no
+            avisaba. Ahora la barra se queda abajo mientras haya cambios. */}
+        <SaveBar dirty={isDirty} pending={updateSettings.isPending} onDiscard={() => reset()} />
+        <UnsavedChangesGuard when={isDirty} />
       </form>
     </div>
   )

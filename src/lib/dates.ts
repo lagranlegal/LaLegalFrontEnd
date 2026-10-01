@@ -186,3 +186,18 @@ export function formatClock(timestamp: string | Date): string {
   const hour = Number(format(timestamp, 'H', { in: zoned }))
   return `${format(timestamp, 'h:mm', { in: zoned })} ${hour < 12 ? 'a. m.' : 'p. m.'}`
 }
+
+const HOUR_OF_DAY_RE = /^(\d{2}):(\d{2})/
+
+/**
+ * Una hora del día sin fecha («07:00», franjas de contacto) como se escribe en
+ * Colombia: «7:00 a. m.». Sin `Date` ni zona: es una hora de reloj de pared,
+ * no un instante.
+ */
+export function formatHourOfDay(hhmm: string): string {
+  const match = HOUR_OF_DAY_RE.exec(hhmm)
+  if (!match) return hhmm
+  const hour = Number(match[1])
+  const h12 = hour % 12 === 0 ? 12 : hour % 12
+  return `${h12}:${match[2]} ${hour < 12 ? 'a. m.' : 'p. m.'}`
+}

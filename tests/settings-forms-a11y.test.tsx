@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import type { ReactNode } from 'react'
 import fixtures from './fixtures/backend-g2.json'
 import type { NotificationSettings } from '@/features/settings/notifications/api'
@@ -10,13 +10,18 @@ import type { NotificationSettings } from '@/features/settings/notifications/api
  * `aria-describedby` (en Mi perfil y Notificaciones solo se pintaba debajo), y
  * en Configuración la ayuda sigue siendo la descripción mientras no haya error.
  */
+// Radix Select usa APIs de puntero y scroll que jsdom no trae.
+Element.prototype.hasPointerCapture ??= () => false
+Element.prototype.releasePointerCapture ??= () => {}
+Element.prototype.scrollIntoView ??= () => {}
 globalThis.ResizeObserver ??= class {
   observe() {}
   unobserve() {}
   disconnect() {}
 }
 
-vi.mock('@tanstack/react-router', () => ({ Link: ({ children }: { children: ReactNode }) => <a>{children}</a> }))
+// `useBlocker`: la barra de guardar pregunta antes de salir con cambios (P3).
+vi.mock('@tanstack/react-router', () => ({ Link: ({ children }: { children: ReactNode }) => <a>{children}</a>, useBlocker: () => ({ status: 'idle' }) }))
 vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn() } }))
 vi.mock('@/components/shared/BackLink', () => ({ BackLink: () => null }))
 vi.mock('@/components/shared/PhotoUploader', () => ({ PhotoUploader: () => null }))
@@ -109,8 +114,15 @@ describe('Notificaciones', () => {
   it('un número fuera de rango y una franja al revés se anuncian con su motivo', async () => {
     render(<NotificationSettingsPage />)
     fireEvent.change(screen.getByLabelText('Máximo por día'), { target: { value: '99' } })
-    fireEvent.change(screen.getByLabelText('Sábados, hasta'), { target: { value: '08:00' } })
-    fireEvent.click(screen.getByRole('button', { name: 'Guardar parámetros' }))
+    // Las horas son un selector en es-CO desde P3 (issue #16): «8:00 a. m.».
+    await act(async () => {
+      fireEvent.keyDown(screen.getByRole('combobox', { name: 'Sábados, hasta' }), { key: 'Enter' })
+    })
+    const opcion = await screen.findByRole('option', { name: '8:00 a. m.' })
+    await act(async () => {
+      fireEvent.keyDown(opcion, { key: 'Enter' })
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'Guardar cambios' }))
 
     expect(await screen.findByRole('textbox', { name: 'Máximo por día', description: 'Un número entero entre 0 y 20.' })).toBeInTheDocument()
     for (const etiqueta of ['Sábados, desde', 'Sábados, hasta']) {
