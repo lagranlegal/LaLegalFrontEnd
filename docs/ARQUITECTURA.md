@@ -226,6 +226,10 @@ paginación por número de página: no inventarla. `fetchAllPages` trae todo par
 un tope defensivo de páginas; hoy corta en silencio al llegar al tope (bug abierto en `backend-starter/docs/QA.md`
 §4).
 
+**Un listado con orden elegible lleva el orden en la llave de la consulta** (`useContractsList(status, sort)`): el
+cursor del backend codifica el orden, y uno emitido con otro `sort` da 400. Con el orden en la llave, cambiarlo es
+otra consulta que arranca sin cursor; reusar las páginas cargadas mandaría el cursor ajeno.
+
 ## 8. Seguridad
 
 - **Claves**: solo la anon/publishable de Supabase vive en el front (es pública por diseño; lo que protege es RLS

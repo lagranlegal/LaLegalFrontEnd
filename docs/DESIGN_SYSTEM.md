@@ -228,6 +228,37 @@ pantallas de cobro:
 - **Por rol**: con `contracts.view` (también el Asesor), «Para hoy» y «Requieren acción»; con `reports.view`, KPIs y
   barra; sin ninguno (Bodega), los accesos directos. Nada se pide sin su permiso.
 
+### Lista de contratos y búsqueda global (rediseño P2-d, 01/10/2026)
+
+Issue #10: la lista decía números sin dueño. Lo que vale para otras listas y para el shell:
+
+- **Columna de persona en una tabla**: el nombre en 500 y, debajo, el dato que la distingue (el documento) en 12
+  y `--text-muted`, con cifras tabulares; el mismo par que «Requieren acción» del Inicio. Viene del mismo listado
+  (`customer_name`, `customer_document`), nunca de bajar todos los clientes.
+- **Dinero a la derecha**: `meta.align: 'right'` en cada columna de monto alinea encabezado y celda; cifras
+  tabulares (F9-12). En el celular la tabla sigue colapsando a tarjetas y el valor ya va a la derecha.
+- **Ordenar por**: un `Select` con su `label` visible («Ordenar por»), a la derecha del buscador (debajo, a ancho
+  completo, en el celular). Opciones con nombre de tarea, no de columna: «Más urgente» (el default, que no se
+  escribe en la URL), «Número ↓», «Número ↑», «Cliente A–Z». El orden va en la URL (`?orden=`) junto al filtro
+  (`?estado=`), con `replace`: compartir el enlace abre la misma lista y «atrás» no recorre cada cambio. Cambiar de
+  orden vuelve a la primera página (ARQUITECTURA §7, «Paginación»). Donde el endpoint no acepta orden («Listos
+  para remate»), el selector no aparece.
+- **Búsqueda global** (`GlobalSearch`, en la topbar): campo de 40 px desde 768 px, hasta 384 de ancho, fondo
+  `--bg-app` con el borde de controles; la pista de la tecla «/» en `--font-mono` dentro de un recuadro con borde,
+  a la derecha, solo con el campo vacío y sin foco. El texto de ayuda nombra solo lo que el rol puede buscar
+  («Buscar cliente, contrato o código»; Bodega: «Buscar código»). Resultados en un panel que flota (radio 12,
+  borde, `--shadow-modal`): grupos Contratos · Clientes · Artículos con su título 600 · 12 en `--text-muted`, cada
+  resultado de 44 px con título 500 y detalle 12; el activo sobre `--bg-muted`. «Buscando…» mientras llega,
+  «Sin resultados para «…»» al final (con el piso de 3 letras de clientes dicho, si aplica). Bajo 768 px, una lupa
+  de 44 px abre la búsqueda a **pantalla completa** con «Cerrar búsqueda». El artículo abre Inventario › Artículos
+  filtrado por su código: no tiene página propia.
+- **Atajo de teclado global**: «/» enfoca la búsqueda salvo con el foco en un campo, un área de texto, un select,
+  algo editable o dentro de un diálogo. El campo lo anuncia con `aria-keyshortcuts`.
+- **Combobox accesible**: el foco se queda en el campo (`role="combobox"`, `aria-activedescendant`), las opciones
+  en un `listbox` con `group` por módulo; flechas con vuelta, Enter abre la activa (o la primera), Escape cierra la
+  lista y, otra vez, la búsqueda. Un grupo **solo existe con el permiso de lectura de su módulo**: sin él ni se pide
+  ni se nombra.
+
 ## 3. Componentes compartidos (`components/shared`)
 
 Construidos una vez sobre shadcn/ui + tokens; las features los componen. Si una feature necesita una variante, se
@@ -235,7 +266,8 @@ agrega como prop al compartido, no se clona. **Un solo modal, un solo calendario
 
 | Componente | Qué es y sus reglas |
 |---|---|
-| `AppShell` | sidebar (tokens `--sidebar-*`) + topbar (menú en celular, tema, avatar con «Mi perfil» y «Cerrar sesión») + `CashSessionBanner` + contenido + `AppFooter`. Menú: Inicio, Contratos, Ventas, Inventario, Clientes, Caja, Cuentas, Capital, Catálogos, Identidad, Reportes, Auditoría, Configuración; **cada ítem con su `anyPermission`** (ARQUITECTURA §5). Sin buscador en el topbar: uno que no busca comunica "a medio hacer" |
+| `AppShell` | sidebar (tokens `--sidebar-*`) + topbar (menú en celular, tema, avatar con «Mi perfil» y «Cerrar sesión») + `CashSessionBanner` + contenido + `AppFooter`. Menú: Inicio, Contratos, Ventas, Inventario, Clientes, Caja, Cuentas, Capital, Catálogos, Identidad, Reportes, Auditoría, Configuración; **cada ítem con su `anyPermission`** (ARQUITECTURA §5). La topbar lleva `GlobalSearch` |
+| `GlobalSearch` | la búsqueda de la topbar (§2, «Lista de contratos y búsqueda global»): «/» la enfoca, grupos por permiso, combobox con listbox, pantalla completa en el celular. Sus consultas viven en `lib/globalSearch.ts` (el shell no importa features). Sin ningún permiso de búsqueda no aparece |
 | `AppFooter` | pie de una línea: copyright, nombre legal y NIT de la empresa si existen, teléfono o el lema. Nada inventado (sin enlaces a páginas que no existen) |
 | `PageHeader` | título + descripción + acciones a la derecha (un solo primario). Toda página lo usa. El título va en Archivo 600 · 24/28 (rediseño P1). Envuelve a 360 px |
 | `BackLink` | el «Volver» único de los detalles y formularios de página completa |
