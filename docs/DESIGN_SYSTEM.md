@@ -133,6 +133,35 @@ compartidos; las pantallas vienen después (P2, P3).
 - `tests/token-contrast.test.ts` mide cada par nuevo contra el ratio aprobado (§«rediseño P1»); el papel no cambió:
   `--paper-muted` conserva el gris anterior a propósito.
 
+### Rediseño P2-a (30/09/2026): detalle de contrato
+
+La maqueta aprobada («Detalle de contrato en mora», `auditoria_2026-09/propuesta_rediseno.html`). Las piezas viven
+en `features/contracts/components/` y su forma se reutiliza en los demás detalles:
+
+- **Encabezado**: «Contrato #N» en Archivo; debajo cliente · documento · código anterior (en `--font-mono`). A la
+  derecha solo «Imprimir» y **«Más»**, un menú con el resto de acciones (paz y salvo, Editar, Rematar en rojo), cada
+  una con su condición y su permiso; sin ninguna, el menú no aparece (`ContractHeaderActions`).
+- **Tarjeta de estado** (`ContractStatusHero`, modelo en `contractStatus.ts`): en **todos** los estados, con el tono
+  y el ícono de su pastilla sobre el `-soft` del semántico y borde del mismo color al 35 %; titular en Archivo
+  700 · 22, una línea de detalle («Interés pagado hasta …») y hasta tres cifras en Inter tabular: la primera
+  («Para ponerse al día») en `--font-size-figure-lg` (26), las otras en 22. Una cifra que el backend no da se omite,
+  no se calcula. La **línea de tiempo** reparte los puntos en columnas iguales, en orden de fecha: tramo pagado en
+  `--success`, lo adeudado en el color del estado, lo que falta en `--border-strong`; el punto de hoy relleno. Un
+  contrato cerrado no lleva cifras ni línea. La pastilla de estado sale del encabezado: la tarjeta la reemplaza.
+- **Pestañas** Resumen · Abonos · Análisis · Documentos (`PageTabs`, la activa en la URL como `?seccion=`). El
+  Resumen cabe en 1280×800: el abono a la izquierda (7 de 12) y la columna de datos a la derecha (5 de 12) desde
+  1024 px; debajo, una columna.
+- **Opción en tarjeta con radio**: radio de 20 px, título 600 · 14, consecuencia 12 en `--text-muted` y el monto a la
+  derecha en 700 · 16. Elegida: borde y anillo de 1 px en el color `brand` sobre `--brand-50`. El input real es un
+  radio oculto dentro del `label`: el teclado y el lector de pantalla la tratan como radio.
+- **Control segmentado** (medio de pago): celdas iguales de 44 px con divisores en `--border-strong`, la activa en
+  **neutro invertido** (tinta de fondo, texto de superficie), con `role="radio"`. Debajo, la cuenta en una línea:
+  «Entra a **Caja principal** · Cambiar» (el enlace en el color `brand`); el selector aparece al pedirlo.
+- **Bloqueado explica**: recuadro `--bg-muted` de radio 10 con candado en `--text-muted`, el motivo en negrita y la
+  salida en texto normal.
+- **Tarjetas de datos** (`SummaryCard`): título 600 · 15, grilla de dos con etiqueta 12 en `--text-muted` y valor
+  600 · 14 tabular. Porcentajes con `formatPercent` (`lib/percent.ts`): «5,00 %», coma decimal y espacio (F9-21).
+
 ## 3. Componentes compartidos (`components/shared`)
 
 Construidos una vez sobre shadcn/ui + tokens; las features los componen. Si una feature necesita una variante, se
@@ -153,6 +182,7 @@ agrega como prop al compartido, no se clona. **Un solo modal, un solo calendario
 | `Money` / `MoneyInput` | nadie formatea ni captura dinero fuera de estos dos (reglas de `MoneyInput`: ARQUITECTURA §7) |
 | `StatusBadge` | pastilla de estado con el **único** mapa estado → tono + ícono Lucide + etiqueta en español: 24 px, 600 · 12, ícono de 13, fondo `-soft` de su semántico (o `--neutral-soft`) y «Listo para remate» como **único estado relleno** (`--danger-solid`). Orden de urgencia en `CONTRACT_STATUS_URGENCY`. Un cliente pasa `kind="customer"`: su «active» dice **«Activo»**, no «Vigente» (F9-42). Un reintento de correo es ámbar; rojo solo lo que se perdió. Las clases van completas y estáticas, nunca interpoladas (ARQUITECTURA §16) |
 | `FilterChip` | la pestaña de filtro en pastilla (estado de contratos e inventario, módulo y antigüedad de Reportes, tipo de plantilla). La activa va en **neutro invertido** con `aria-pressed`, nunca en el oro del primario (F9-13); la inactiva, con el borde de controles |
+| `PageTabs` / `PageTabsContent` | pestañas de sección de una página de detalle (rediseño P2-a; hoy, el contrato): subrayado de 2 px en el color de texto sobre un divisor de ancho completo, nunca una cápsula ni el oro; la activa en tinta y negrita, las demás en `--text-muted`; 44 px de alto y scroll horizontal propio si no caben (el documento no desborda a 360 px). Contador opcional en pastilla gris («Abonos 3»). Sobre Radix (flechas, Home/End). La pestaña activa la decide quien llama: en el contrato va en la URL |
 | `LegacyCodeBadge` | pastilla neutra con el código del sistema anterior de un contrato importado. No es un estado |
 | `RecordNumber` | el número de un documento (`#123`) con el `#` atenuado y el número en cifras tabulares |
 | `Callout` | recuadro de ayuda: explica algo que el usuario no sabe y trae la acción para resolverlo. Tonos `info` `success` `warning` sobre el `-soft`; **el texto en el color normal y solo el ícono en el semántico** (un párrafo entero en color de advertencia se lee peor) |
@@ -173,13 +203,16 @@ agrega como prop al compartido, no se clona. **Un solo modal, un solo calendario
 1. **Una acción primaria** por pantalla o modal (oro, rectángulo de radio 10, o de bloque a todo el ancho); los
    filtros activos van en neutro; el resto secundarias o terciarias. **El
    CTA de dinero lleva el monto dentro** («Vender $419.170», «Registrar abono $50.000»).
-2. **Dinero guiado, nunca libre.** Los abonos son botones generados desde `payment-options` (1 mes, 2 meses, al día
-   + capital); el único campo libre es el capital extra cuando se permite. En el cierre de caja, lo esperado se ve,
+2. **Dinero guiado, nunca libre.** Los abonos salen de `payment-options` como **tres opciones con consecuencia**
+   (rediseño P2-a): «1 mes de interés», «Ponerse al día · N meses» (preseleccionada cuando se debe) y «Saldar el
+   contrato», cada una diciendo cómo queda el contrato («queda vigente, pagado hasta 28/10»); los demás meses y el
+   abono a capital, detrás de «Más meses o abono a capital». El único campo libre es el capital extra cuando se
+   permite. En el cierre de caja, lo esperado se ve,
    lo contado se digita, la diferencia se calcula al instante y, si no es cero, la justificación aparece y bloquea
    el envío. Ampliar un préstamo **explica cuándo no se puede** en vez de desaparecer, y bloqueado muestra el motivo
-   en lugar de la cifra del cupo: una cifra de plata que no se puede usar no va en grande (F9-17). Un contrato en mora
-   o en prórroga abre con un titular de estado (desde cuándo, cuánto debe, cuánto salda hoy), no solo con la pastilla
-   (F9-16).
+   (en negrita, con candado) **sin la cifra del cupo**: una cifra de plata que no se puede usar no va (F9-17). Un
+   contrato abre con su **tarjeta de estado** (desde cuándo, cuánto para ponerse al día, cuánto salda hoy y la línea
+   de tiempo), no solo con la pastilla (F9-16).
 3. **Respuesta inmediata**: botón en carga y deshabilitado mientras la mutación vuela; éxito con acción contextual
    o error mapeado (ARQUITECTURA §6). Nunca doble envío. **Enter no registra dinero** (ARQUITECTURA §12).
 4. **Destructivo = fricción**: el botón en la pantalla va con **contorno rojo** (variante `destructive` de `Button`)
