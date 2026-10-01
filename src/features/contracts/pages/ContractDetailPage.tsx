@@ -1,10 +1,12 @@
 import { useState } from 'react'
 import { flushSync } from 'react-dom'
-import { Link, useParams } from '@tanstack/react-router'
+import { Link, useNavigate, useParams, useSearch } from '@tanstack/react-router'
+import { Printer } from 'lucide-react'
 import type { ColumnDef } from '@tanstack/react-table'
 import { toast } from 'sonner'
 import { BackLink } from '@/components/shared/BackLink'
 import { PageHeader } from '@/components/shared/PageHeader'
+import { PageTabs, PageTabsContent, type PageTab } from '@/components/shared/PageTabs'
 import { CompanyDataNotice } from '@/components/shared/CompanyDataNotice'
 import { ExtendLoanPanel } from '@/features/contracts/components/ExtendLoanPanel'
 import { ContractChainPanel } from '@/features/contracts/components/ContractChainPanel'
@@ -13,7 +15,7 @@ import { PhotoThumbnail } from '@/components/shared/PhotoThumbnail'
 import { Money } from '@/components/shared/Money'
 import { DataTable } from '@/components/shared/DataTable'
 import { Button } from '@/components/ui/button'
-import { formatDate, formatDateTime } from '@/lib/dates'
+import { formatDateTime } from '@/lib/dates'
 import { PAYMENT_METHOD_LABELS } from '@/lib/paymentMethods'
 import { confirm } from '@/components/shared/confirmStore'
 import { useCategories } from '@/lib/catalogs/categories'
@@ -46,6 +48,8 @@ const paymentColumns: ColumnDef<Payment>[] = [
   },
   { accessorKey: 'total', header: 'Total', cell: (info) => <Money value={info.getValue<string>()} /> },
 ]
+
+type Section = 'resumen' | 'abonos' | 'analisis' | 'documentos'
 
 function ContractDetailSkeleton() {
   return (
@@ -81,6 +85,9 @@ export function ContractDetailPage() {
   // `Link`/`navigate({to:...})` sí usan el
   // fullPath sin prefijo, por eso en el resto del feature se ve "/contratos/…".
   const { contractId } = useParams({ from: '/app-layout/contratos/$contractId' })
+  const { seccion } = useSearch({ from: '/app-layout/contratos/$contractId' })
+  const section: Section = seccion ?? 'resumen'
+  const navigate = useNavigate({ from: '/contratos/$contractId' })
   const { data: contract, isPending, isError, refetch } = useContract(contractId)
   const { data: customer } = useCustomer(contract?.customer_id ?? '')
   const { data: categories } = useCategories()
@@ -128,6 +135,25 @@ export function ContractDetailPage() {
   }
 
   const payments = paymentsData?.pages.flatMap((page) => page.items) ?? []
+  const payable = PAYABLE_STATUSES.has(contract.status)
+
+  function setSection(next: Section) {
+    void navigate({ search: (prev) => ({ ...prev, seccion: next === 'resumen' ? undefined : next }), replace: true })
+  }
+
+  function printContract() {
+    // `window.print()` es sincrónico y bloquea — sin `flushSync`, el setState
+    // de `printMode` queda batcheado para DESPUÉS de que el diálogo de
+    // impresión ya se abrió con el DOM viejo (imprimiría el documento que
+    // estaba antes, no el elegido).
+    flushSync(() => setPrintMode('contract'))
+    window.print()
+  }
+
+  function printSettlement() {
+    flushSync(() => setPrintMode('settlement'))
+    window.print()
+  }
 
   async function handleAuction() {
     const result = await confirm({
@@ -145,65 +171,20 @@ export function ContractDetailPage() {
     }
   }
 
-  return (
+  const tabs: PageTab<Section>[] = [
+    { value: 'resumen', label: 'Resumen' },
+    { value: 'abonos', label: 'Abonos', count: paymentsPending || paymentsError ? undefined : `${payments.length}${hasNextPage ? '+' : ''}` },
+    { value: 'analisis', label: 'Análisis' },
+    { value: 'documentos', label: 'Documentos' },
+  ]
+
+  const details = (
     <>
-    <div className="flex flex-col gap-6 print:hidden">
-      <BackLink to="/contratos" label="Contratos" />
-
-      <PageHeader
-        title={<>Contrato <RecordNumber value={contract.number} className="text-2xl" /></>}
-        description={
-          customer || contract.legacy_code ? (
-            <>
-              {customer && `${customer.full_name} · ${customer.doc_type.toUpperCase()} ${customer.doc_number}`}
-              {customer && contract.legacy_code && ' · '}
-              {contract.legacy_code && <span className="font-mono text-xs">{contract.legacy_code}</span>}
-            </>
-          ) : undefined
-        }
-        actions={
-          <ContractHeaderActions
-              printLoading={contractTemplateLoading}
-              onPrint={() => {
-                // `window.print()` es sincrónico y bloquea — sin `flushSync`,
-                // el setState de `printMode` queda batcheado para DESPUÉS de
-                // que el diálogo de impresión ya se abrió con el DOM viejo
-                // (imprimiría el documento que estaba antes, no el elegido).
-                flushSync(() => setPrintMode('contract'))
-                window.print()
-              }}
-              settlementAvailable={isPaid && !!settlement}
-              settlementLoading={settlementTemplateLoading}
-              onPrintSettlement={() => {
-                flushSync(() => setPrintMode('settlement'))
-                window.print()
-              }}
-              onEdit={() => {
-                setEditDialogNonce((n) => n + 1)
-                setEditDialogOpen(true)
-              }}
-              canAuction={isReadyForAuction(contract)}
-              auctionPending={auctionContract.isPending}
-              onAuction={() => void handleAuction()}
-            />
-        }
-      />
-
-      {/* F9-16: el estado es el encabezado (rediseño P2-a). */}
-      <ContractStatusHero contract={contract} settlement={settlement} />
-
-      {/* F8-10: el contrato y el paz y salvo se imprimen desde acá. */}
-      <CompanyDataNotice className="print:hidden" />
-
-      {/* La cadena de ampliaciones: a cuál pasó la deuda, de cuál viene, y la
-          historia completa si hay varias (backend-starter/docs/DOMINIO.md §3). */}
-      <ContractChainPanel contract={contract} />
-
       {contract.ltv_warning && (
         <div className="rounded-input bg-warning-soft px-4 py-2 text-sm text-warning">Este contrato supera el LTV máximo permitido para su categoría.</div>
       )}
 
-      <div className="grid grid-cols-1 gap-4 rounded-card border border-border bg-card p-card sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid grid-cols-1 gap-4 rounded-card border border-border bg-card p-card sm:grid-cols-2">
         <div>
           <p className="text-xs text-muted-foreground">Capital prestado</p>
           <p className="tnum text-lg font-semibold text-foreground">
@@ -224,36 +205,6 @@ export function ContractDetailPage() {
           <p className="text-xs text-muted-foreground">Avalúo</p>
           <p className="tnum text-lg font-semibold text-foreground">{contract.appraisal_value ? <Money value={contract.appraisal_value} /> : '—'}</p>
         </div>
-        <div>
-          <p className="text-xs text-muted-foreground">Inicio</p>
-          <p className="text-sm text-foreground">{formatDate(contract.start_date)}</p>
-        </div>
-        <div>
-          {/* «Vencimiento» con una fecha futura se leía "al día" en un
-              contrato en mora (F9-16): es el fin del plazo, no el próximo pago. */}
-          <p className="text-xs text-muted-foreground">Fin del plazo</p>
-          <p className="text-sm text-foreground">{formatDate(contract.due_date)}</p>
-        </div>
-        <div>
-          <p className="text-xs text-muted-foreground">Interés pagado hasta</p>
-          <p className="text-sm text-foreground">{formatDate(contract.interest_paid_until)}</p>
-        </div>
-        {contract.extension_ends_at && (
-          <div>
-            <p className="text-xs text-muted-foreground">Prórroga hasta</p>
-            <p className="text-sm text-foreground">{formatDate(contract.extension_ends_at)}</p>
-          </div>
-        )}
-        {/* Antes era su propia card de ancho completo para una sola miniatura
-            de 96px — mucho espacio vacío alrededor de un solo dato chico. Acá
-            es una celda más de la grilla, mismo criterio que ya usan las
-            fotos de "Prendas" más abajo (inline, no en su propio bloque). */}
-        {contract.signed_photo_url && (
-          <div>
-            <p className="text-xs text-muted-foreground">Documento firmado</p>
-            <PhotoThumbnail path={contract.signed_photo_url} className="mt-1.5 size-14" />
-          </div>
-        )}
       </div>
 
       {contract.notes && (
@@ -291,43 +242,133 @@ export function ContractDetailPage() {
         </div>
       </div>
 
-      {PAYABLE_STATUSES.has(contract.status) && (
-        <div className="rounded-card border border-border bg-card p-card">
-          <h2 className="text-sm font-medium text-foreground">Registrar abono</h2>
-          <div className="mt-3">
-            <PaymentOptionsPanel contractId={contractId} contractNumber={contract.number} customerName={customer?.full_name} />
-          </div>
-        </div>
-      )}
-
-      {/* Las métricas van ANTES del historial: responden "¿cómo va este
-          contrato?" de un vistazo, mientras que la tabla de abonos es para
-          consultar un movimiento puntual. Se calculan de los mismos abonos que
-          la tabla, así que solo tienen sentido cuando ya cargaron. */}
       <ExtendLoanPanel contract={contract} />
+    </>
+  )
 
-      {!paymentsPending && !paymentsError && (
-        <div>
-          <h2 className="mb-3 text-sm font-medium text-foreground">Cómo va este contrato</h2>
-          <ContractMetricsPanel contract={contract} payments={payments} />
-        </div>
-      )}
+  return (
+    <>
+    <div className="flex flex-col gap-6 print:hidden">
+      <BackLink to="/contratos" label="Contratos" />
 
-      <div>
-        <h2 className="mb-3 text-sm font-medium text-foreground">Historial de abonos</h2>
-        <DataTable
-          columns={paymentColumns}
-          data={payments}
-          getRowId={(row) => row.id}
-          isLoading={paymentsPending}
-          isError={paymentsError}
-          onRetry={() => refetchPayments()}
-          emptyTitle="Aún no hay abonos registrados"
-          hasNextPage={hasNextPage}
-          isFetchingNextPage={isFetchingNextPage}
-          onLoadMore={() => fetchNextPage()}
-        />
-      </div>
+      <PageHeader
+        title={<>Contrato <RecordNumber value={contract.number} className="text-2xl" /></>}
+        description={
+          customer || contract.legacy_code ? (
+            <>
+              {customer && `${customer.full_name} · ${customer.doc_type.toUpperCase()} ${customer.doc_number}`}
+              {customer && contract.legacy_code && ' · '}
+              {contract.legacy_code && <span className="font-mono text-xs">{contract.legacy_code}</span>}
+            </>
+          ) : undefined
+        }
+        actions={
+          <ContractHeaderActions
+            printLoading={contractTemplateLoading}
+            onPrint={printContract}
+            settlementAvailable={isPaid && !!settlement}
+            settlementLoading={settlementTemplateLoading}
+            onPrintSettlement={printSettlement}
+            onEdit={() => {
+              setEditDialogNonce((n) => n + 1)
+              setEditDialogOpen(true)
+            }}
+            canAuction={isReadyForAuction(contract)}
+            auctionPending={auctionContract.isPending}
+            onAuction={() => void handleAuction()}
+          />
+        }
+      />
+
+      {/* F9-16: el estado es el encabezado (rediseño P2-a). */}
+      <ContractStatusHero contract={contract} settlement={settlement} />
+
+      {/* Rediseño P2-a (F9-20): la página medía ~2.000 px; lo que se consulta
+          de pasada (historial, análisis, documentos) va en su pestaña y el
+          Resumen cabe en 1280×800. */}
+      <PageTabs label="Secciones del contrato" value={section} onValueChange={setSection} tabs={tabs}>
+        <PageTabsContent value="resumen" className="flex flex-col gap-4">
+          {/* La cadena de ampliaciones: a cuál pasó la deuda, de cuál viene, y la
+              historia completa si hay varias (backend-starter/docs/DOMINIO.md §3). */}
+          <ContractChainPanel contract={contract} />
+
+          {payable ? (
+            <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-12">
+              <section aria-labelledby="registrar-abono" className="grid gap-3 rounded-card border border-border bg-card p-card lg:col-span-7">
+                <h2 id="registrar-abono" className="text-md font-semibold text-foreground">
+                  Registrar abono
+                </h2>
+                <PaymentOptionsPanel contractId={contractId} contractNumber={contract.number} customerName={customer?.full_name} />
+              </section>
+              <div className="flex min-w-0 flex-col gap-4 lg:col-span-5">{details}</div>
+            </div>
+          ) : (
+            <div className="flex flex-col gap-4">{details}</div>
+          )}
+        </PageTabsContent>
+
+        <PageTabsContent value="abonos">
+          <DataTable
+            columns={paymentColumns}
+            data={payments}
+            getRowId={(row) => row.id}
+            isLoading={paymentsPending}
+            isError={paymentsError}
+            onRetry={() => refetchPayments()}
+            emptyTitle="Aún no hay abonos registrados"
+            hasNextPage={hasNextPage}
+            isFetchingNextPage={isFetchingNextPage}
+            onLoadMore={() => fetchNextPage()}
+          />
+        </PageTabsContent>
+
+        <PageTabsContent value="analisis" className="flex flex-col gap-3">
+          {/* Se calculan de los mismos abonos que el historial, así que solo
+              tienen sentido cuando ya cargaron. */}
+          <h2 className="text-sm font-medium text-foreground">Cómo va este contrato</h2>
+          {paymentsPending ? (
+            <div className="h-40 animate-pulse rounded-card bg-border" />
+          ) : paymentsError ? (
+            <div className="flex flex-col items-center gap-3 rounded-card border border-border bg-card p-card text-center">
+              <p className="text-sm text-muted-foreground">No se pudieron cargar los abonos para el análisis.</p>
+              <Button variant="outline" onClick={() => refetchPayments()}>
+                Reintentar
+              </Button>
+            </div>
+          ) : (
+            <ContractMetricsPanel contract={contract} payments={payments} />
+          )}
+        </PageTabsContent>
+
+        <PageTabsContent value="documentos" className="flex flex-col gap-4">
+          {/* F8-10: el contrato y el paz y salvo se imprimen desde acá. */}
+          <CompanyDataNotice />
+          <div className="flex flex-col gap-3 rounded-card border border-border bg-card p-card">
+            <h2 className="text-md font-semibold text-foreground">Imprimir</h2>
+            <div className="flex flex-wrap gap-2">
+              <Button variant="outline" disabled={contractTemplateLoading} onClick={printContract}>
+                <Printer aria-hidden />
+                {contractTemplateLoading ? 'Cargando…' : 'Contrato'}
+              </Button>
+              {isPaid && settlement && (
+                <Button variant="outline" disabled={settlementTemplateLoading} onClick={printSettlement}>
+                  <Printer aria-hidden />
+                  {settlementTemplateLoading ? 'Cargando…' : 'Paz y salvo'}
+                </Button>
+              )}
+            </div>
+            <p className="text-xs text-muted-foreground">Sale con la plantilla activa de la empresa (Configuración → Documentos impresos).</p>
+          </div>
+          <div className="flex flex-col gap-2 rounded-card border border-border bg-card p-card">
+            <h2 className="text-md font-semibold text-foreground">Documento firmado</h2>
+            {contract.signed_photo_url ? (
+              <PhotoThumbnail path={contract.signed_photo_url} className="size-24" />
+            ) : (
+              <p className="text-sm text-muted-foreground">Aún no se ha subido la foto del contrato firmado. Se agrega desde Editar.</p>
+            )}
+          </div>
+        </PageTabsContent>
+      </PageTabs>
 
       <ContractEditDialog key={editDialogNonce} open={editDialogOpen} onOpenChange={setEditDialogOpen} contract={contract} />
     </div>

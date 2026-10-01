@@ -305,10 +305,19 @@ const contractImportRoute = createRoute({
   },
 })
 
+// La pestaña del detalle va en la URL: volver atrás o compartir el enlace
+// abre la misma (rediseño P2-a). Sin `seccion`, el Resumen. No se llama
+// `tab`: el reductor de búsqueda de Inventario ve la unión de todas las rutas
+// y un `tab` con otros valores lo rompía.
+const contractDetailSearchSchema = z.object({
+  seccion: z.enum(['abonos', 'analisis', 'documentos']).optional().catch(undefined),
+})
+
 const contractDetailRoute = createRoute({
   getParentRoute: () => appLayoutRoute,
   path: '/contratos/$contractId',
   component: ContractDetailPage,
+  validateSearch: contractDetailSearchSchema,
   beforeLoad: ({ context, preload }) => {
     const me = context.queryClient.getQueryData(meQueryOptions().queryKey)
     if (me && !me.permissions.includes('contracts.view')) {
