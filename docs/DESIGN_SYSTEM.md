@@ -281,13 +281,17 @@ Lo que vale para cualquier página larga o formulario:
   faltante de caja, lo vencido de más de 60 días, pasarse del cupo. Los % en es-CO (`formatPercent`).
 - **Formulario con resumen al lado** (`LoanSummaryCard`, Nuevo contrato, F9-30): desde 1024 px el formulario a la
   izquierda y, fija a la derecha (320 px; 352 desde 1280), la tarjeta «Resumen del préstamo»: renglones de etiqueta
-  en `--text-muted` y valor 600 tabular a la derecha (capital, tasa «5,00 % mensual», plazo, interés mensual, avalúo y
-  préstamo sobre avalúo cuando la categoría tiene LTV, de dónde sale), el **total a entregar** en un recuadro
-  `--brand-50` de radio 10 y, debajo, el botón de bloque «Registrar préstamo $ X» con «Enter no registra». En el
-  celular el resumen va al final, antes del botón. **Lo que no se sabe se dice con un guion o con su origen
-  («Según la categoría»), nunca con un cero**, y nada se calcula distinto que en el backend: el plazo y el LTV salen
-  de la primera prenda, el interés de la regla `monthly_interest` en centavos (`loanPreview.ts`) y solo con una tasa
-  de hasta dos decimales; las fechas las pone el backend.
+  en `--text-muted` y valor 600 tabular a la derecha (capital, tasa «5,56 % mensual», plazo «4 meses», interés
+  mensual, primer pago y fin del plazo, avalúo y préstamo sobre avalúo cuando la categoría tiene LTV, de dónde
+  sale), el **total a entregar** en un recuadro `--brand-50` de radio 10 y, debajo, el botón de bloque «Registrar
+  préstamo $ X» con ese total y «Enter no registra». En el celular el resumen va al final, antes del botón. **Las
+  cifras son la cotización del backend** (`POST /contracts/quote`, ARQUITECTURA §7): la tasa como queda guardada,
+  el interés, el plazo, las fechas, el LTV y el total salen de las mismas funciones que crear; el front no calcula
+  nada. **Lo que no se sabe se dice con un guion o con su origen («Según la categoría»), nunca con un cero**; si la
+  cotización falla (un 4xx a medio escribir), también «—». El préstamo sobre avalúo va en `--danger` solo si se
+  pasa del tope, con «Pasa el tope de $ X» debajo; con la categoría con LTV y sin avalúo, el avalúo dice «Falta el
+  avalúo». Mientras llega una cotización nueva **se ven las cifras anteriores** (no se vacían) y una
+  `RefreshingBar` bajo el título avisa que van a cambiar.
 - **Diálogo con pie fijo** (`AppDialog`, F9-41): el título y el pie no se desplazan; solo el cuerpo hace scroll,
   dentro del 90 % del alto de la ventana. Cuando el cuerpo no cabe, el pie lleva su divisor de `--border`; en un
   diálogo corto no. Un formulario con el submit en el pie lo enlaza con el atributo `form` («Nuevo cliente»).

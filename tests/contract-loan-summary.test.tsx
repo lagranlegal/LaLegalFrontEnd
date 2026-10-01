@@ -5,9 +5,10 @@ import quotes from './fixtures/backend-quote.json'
 
 /**
  * Rediseño P3 (F9-30): «Nuevo contrato» con el resumen del préstamo al lado,
- * en vivo, y el botón «Registrar préstamo $ X» dentro. El interés mensual es
- * la regla del backend (`rules.monthly_interest`: tasa × capital, centavos
- * ROUND_HALF_UP) y solo aparece cuando se puede calcular igual que allá.
+ * en vivo, y el botón «Registrar préstamo $ X» dentro. Desde el 01/10/2026
+ * las cifras son la cotización del backend (`POST /contracts/quote`): el
+ * front no calcula el interés. Fixtures capturados del backend real
+ * (`fixtures/backend-quote.json`).
  */
 vi.mock('@tanstack/react-router', () => ({
   useNavigate: () => vi.fn(),
@@ -30,7 +31,6 @@ vi.mock('@/components/shared/confirmStore', () => ({ confirm: vi.fn(async () => 
 vi.mock('@/lib/accounts/list', () => ({ useAccounts: () => ({ data: [] }) }))
 vi.mock('@/components/shared/PhotoUploader', () => ({ PhotoUploader: () => null }))
 
-const { monthlyInterestPreview, previewRate } = await import('@/features/contracts/loanPreview')
 const { ContractFormPage } = await import('@/features/contracts/pages/ContractFormPage')
 const { LoanSummaryCard } = await import('@/features/contracts/components/LoanSummaryCard')
 
@@ -39,29 +39,6 @@ afterEach(() => {
   quoteState.value = { quote: undefined, error: null, isUpdating: false }
 })
 const text = (el: Element | null | undefined) => (el?.textContent ?? '').replace(/\s+/g, ' ')
-
-describe('monthlyInterestPreview: la regla del backend, en centavos', () => {
-  it('500.000 al 5 % → 25.000 (el ejemplo de F9-30); la coma decimal se acepta', () => {
-    expect(monthlyInterestPreview('500000.00', '5')).toBe('25000.00')
-    expect(monthlyInterestPreview('500000.00', '5,5')).toBe('27500.00')
-  })
-
-  it('redondea a centavos en la mitad hacia arriba, como `quantize` (ROUND_HALF_UP)', () => {
-    // Decimal('1.5') / 100 * Decimal('333333') = 4999.995 → 5000.00
-    expect(monthlyInterestPreview('333333.00', '1.5')).toBe('5000.00')
-  })
-
-  it('sin tasa válida o sin monto, no hay cifra (no un cero)', () => {
-    expect(monthlyInterestPreview('500000.00', '')).toBeNull()
-    expect(monthlyInterestPreview('500000.00', '0')).toBeNull()
-    expect(monthlyInterestPreview('500000.00', 'abc')).toBeNull()
-    expect(monthlyInterestPreview('500000.00', '101')).toBeNull()
-    expect(monthlyInterestPreview('0.00', '5')).toBeNull()
-    // `numeric(5,2)`: con un tercer decimal la base redondea la tasa; mejor no mostrar.
-    expect(monthlyInterestPreview('500000.00', '5,125')).toBeNull()
-    expect(previewRate('5,125')).toBeNull()
-  })
-})
 
 describe('Nuevo contrato: el resumen del préstamo es la cotización', () => {
   it('pinta lo que cotiza el backend y el botón lleva el total a entregar', () => {

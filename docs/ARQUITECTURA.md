@@ -173,8 +173,17 @@ Lo que el front hace distinto del banner genérico:
 La API manda y recibe **strings decimales** (`"1000000.00"`). En el front el dinero nunca pasa por `parseFloat`
 para hacer cuentas: se muestra con `formatCOP` (`es-CO`, puntos de miles: `$ 2.664.500`) y se captura con
 `<MoneyInput>`. Los montos con reglas (intereses, saldos, `expected_cash`, el subtotal real) los calcula el backend
-(`payment-options`, `extension-options`, `/report`). Lo que el front calcula es **de presentación**: lo que se ve
-antes de confirmar. Y tiene que dar lo mismo que el backend.
+(`payment-options`, `extension-options`, `/report`, y para un contrato que todavía no existe, `contracts/quote`).
+Lo que el front calcula es **de presentación**: lo que se ve antes de confirmar. Y tiene que dar lo mismo que el
+backend.
+
+- **Cotizar en vivo es una query, no una cuenta** (`useLoanQuote`, 01/10/2026). El «Resumen del préstamo» de Nuevo
+  contrato calculaba el interés en el navegador espejando `rules.monthly_interest`; ahora lo pide a
+  `POST /contracts/quote`, que responde con las mismas funciones que crear. Es POST pero es lectura: va con
+  `useQuery`, no con `useMoneyMutation`. Debounce de 300 ms sobre el cuerpo ya normalizado (`loanQuoteBody`, la
+  llave de la query), `keepPreviousData` para que las cifras no parpadeen, sin reintentos en 4xx (el formulario a
+  medio llenar) y solo con `contracts.create`. Un 4xx no rompe el formulario: el resumen pinta «—» y la validación
+  real llega al registrar. `loanQuoteBody` solo sanea la forma (lo que aún no es número va `null`); no decide.
 
 - **Aritmética en centavos enteros.** `toCents` (privada) convierte el string a centavos; `sumMoney`,
   `subtractMoney`, `minMoney` y `compareMoney` operan sobre eso. `compareMoney` existe para no comparar con
