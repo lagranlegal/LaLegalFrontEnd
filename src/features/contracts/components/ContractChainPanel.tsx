@@ -110,7 +110,7 @@ export function ContractChainPanel({ contract }: { contract: Contract }) {
       )}
 
       {chain && chain.length > 1 && (
-        <div className="rounded-card border border-border bg-card p-card shadow-card">
+        <div className="rounded-card border border-border bg-card p-card">
           <h2 className="text-sm font-medium text-foreground">Historia de este préstamo</h2>
           <ol className="mt-3 flex flex-col gap-2">
             {chain.map((link, i) => {

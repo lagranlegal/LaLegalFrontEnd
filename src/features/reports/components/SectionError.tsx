@@ -13,7 +13,7 @@ import { isPermissionError } from '@/lib/api/isPermissionError'
 export function SectionError({ title, error, onRetry }: { title: string; error: unknown; onRetry: () => void }) {
   if (isPermissionError(error)) return null
   return (
-    <div className="rounded-card border border-border bg-card p-card shadow-card">
+    <div className="rounded-card border border-border bg-card p-card">
       <h2 className="text-sm font-medium text-foreground">{title}</h2>
       <p role="alert" className="mt-2 text-sm text-danger">
         No se pudo cargar esta sección. Las demás cifras del reporte sí están al día.

@@ -45,7 +45,7 @@ function QuickAction({ action }: { action: Action }) {
   return (
     <Link
       to={action.to}
-      className="flex items-center gap-3 rounded-card border border-border bg-card p-card shadow-card transition-colors hover:bg-accent/50"
+      className="flex items-center gap-3 rounded-card border border-border bg-card p-card transition-colors hover:bg-accent/50"
     >
       <Icon className="size-5 shrink-0 text-brand" aria-hidden />
       <span className="flex flex-col">

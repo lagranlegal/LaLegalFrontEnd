@@ -222,7 +222,7 @@ export function ContractDetailPage() {
         <div className="rounded-input bg-warning-soft px-4 py-2 text-sm text-warning">Este contrato supera el LTV máximo permitido para su categoría.</div>
       )}
 
-      <div className="grid grid-cols-1 gap-4 rounded-card border border-border bg-card p-card shadow-card sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid grid-cols-1 gap-4 rounded-card border border-border bg-card p-card sm:grid-cols-2 lg:grid-cols-4">
         <div>
           <p className="text-xs text-muted-foreground">Capital prestado</p>
           <p className="tnum text-lg font-semibold text-foreground">
@@ -276,13 +276,13 @@ export function ContractDetailPage() {
       </div>
 
       {contract.notes && (
-        <div className="rounded-card border border-border bg-card p-card shadow-card">
+        <div className="rounded-card border border-border bg-card p-card">
           <p className="text-xs text-muted-foreground">Notas</p>
           <p className="mt-1 text-sm text-foreground">{contract.notes}</p>
         </div>
       )}
 
-      <div className="rounded-card border border-border bg-card p-card shadow-card">
+      <div className="rounded-card border border-border bg-card p-card">
         <h2 className="text-sm font-medium text-foreground">Prendas</h2>
         <div className="mt-3 flex flex-col gap-2">
           {contract.items.map((item) => (
@@ -311,7 +311,7 @@ export function ContractDetailPage() {
       </div>
 
       {PAYABLE_STATUSES.has(contract.status) && (
-        <div className="rounded-card border border-border bg-card p-card shadow-card">
+        <div className="rounded-card border border-border bg-card p-card">
           <h2 className="text-sm font-medium text-foreground">Registrar abono</h2>
           <div className="mt-3">
             <PaymentOptionsPanel contractId={contractId} contractNumber={contract.number} customerName={customer?.full_name} />

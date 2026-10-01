@@ -123,7 +123,7 @@ export function ExtendLoanPanel({ contract }: { contract: Contract }) {
 
   return (
     <Can permission="contracts.extend_loan">
-      <div className="rounded-card border border-border bg-card p-card shadow-card">
+      <div className="rounded-card border border-border bg-card p-card">
         <h2 className="text-sm font-medium text-foreground">Ampliar el préstamo</h2>
 
         {/* F9-17: bloqueado, la cifra grande era plata que no se puede usar

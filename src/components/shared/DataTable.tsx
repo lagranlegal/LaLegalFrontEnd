@@ -8,7 +8,7 @@ import { RefreshingBar } from '@/components/shared/RefreshingBar'
 
 function DataTableSkeleton({ columnsCount }: { columnsCount: number }) {
   return (
-    <div className="divide-y divide-border rounded-card border border-border bg-card shadow-card">
+    <div className="divide-y divide-border rounded-card border border-border bg-card">
       {Array.from({ length: 5 }).map((_, row) => (
         <div key={row} className="flex gap-4 p-4">
           {Array.from({ length: columnsCount }).map((_, col) => (
@@ -116,14 +116,14 @@ export function DataTable<T>({
 
   if (data.length === 0) {
     return (
-      <div className="enter-up rounded-card border border-border bg-card shadow-card">
+      <div className="enter-up rounded-card border border-border bg-card">
         <EmptyState title={emptyTitle} description={emptyDescription} action={emptyAction} />
       </div>
     )
   }
 
   return (
-    <div className="enter-up overflow-hidden rounded-card border border-border bg-card shadow-card">
+    <div className="enter-up overflow-hidden rounded-card border border-border bg-card">
       {/* Los datos que se ven siguen siendo válidos, solo están por cambiar:
           una barra delgada arriba avisa sin vaciar la tabla ni hacerla saltar. */}
       <RefreshingBar active={!!isRefreshing} />

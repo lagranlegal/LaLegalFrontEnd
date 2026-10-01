@@ -34,7 +34,7 @@ function AccountCard({
     // liquidar, editar) suman más de 360px, y el bloque derecho es `shrink-0`
     // a propósito para que los botones no se aplasten. Sin envolver, la fila
     // empujaba 15px fuera del viewport (auditoría de QA, F6-03).
-    <li className="flex flex-wrap items-center justify-between gap-4 rounded-card border border-border bg-card p-card shadow-card">
+    <li className="flex flex-wrap items-center justify-between gap-4 rounded-card border border-border bg-card p-card">
       <div className="min-w-0">
         <p className="flex items-center gap-2 truncate text-sm font-medium text-foreground">
           {account.name}

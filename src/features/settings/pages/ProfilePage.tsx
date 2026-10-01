@@ -59,7 +59,7 @@ export function ProfilePage() {
       <BackLink to="/configuracion" label="Configuración" />
       <PageHeader title="Mi perfil" description="Tu nombre y tu foto — lo que ve el resto del equipo." />
 
-      <form onSubmit={handleSubmit} className="flex max-w-2xl flex-col gap-4 rounded-card border border-border bg-card p-card shadow-card" noValidate>
+      <form onSubmit={handleSubmit} className="flex max-w-2xl flex-col gap-4 rounded-card border border-border bg-card p-card" noValidate>
         <div>
           <label htmlFor="profile-name" className="text-sm font-medium text-foreground">
             Nombre
@@ -141,7 +141,7 @@ function ChangePasswordCard() {
   }
 
   return (
-    <form onSubmit={onSubmit} className="flex max-w-2xl flex-col gap-4 rounded-card border border-border bg-card p-card shadow-card" noValidate>
+    <form onSubmit={onSubmit} className="flex max-w-2xl flex-col gap-4 rounded-card border border-border bg-card p-card" noValidate>
       <div>
         <h2 className="text-sm font-medium text-foreground">Cambiar mi contraseña</h2>
         <p className="mt-0.5 text-xs text-muted-foreground">

@@ -69,7 +69,7 @@ export function LoginPage() {
   const reasonMessage = search.reason ? LOGOUT_REASON_MESSAGES[search.reason] : undefined
 
   return (
-    <div className="w-full max-w-sm rounded-card border border-border bg-card p-card shadow-card">
+    <div className="w-full max-w-sm rounded-card border border-border bg-card p-card">
       {/* Acá sí manda Prendo: es la única pantalla donde todavía no sabemos a
           qué empresa entra el usuario, así que no hay marca de inquilino que
           mostrar (DESIGN_SYSTEM §1, "dos marcas en la misma pantalla"). */}

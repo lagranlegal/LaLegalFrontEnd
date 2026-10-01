@@ -29,7 +29,7 @@ export function ContractItemsFields<TFieldValues extends FieldValues & { items: 
   const itemErrors = errors.items as FieldErrors<ContractItemFormValue>[] | undefined
 
   return (
-    <section className="flex flex-col gap-4 rounded-card border border-border bg-card p-card shadow-card">
+    <section className="flex flex-col gap-4 rounded-card border border-border bg-card p-card">
       <div className="flex items-center justify-between">
         <h2 className="text-sm font-medium text-foreground">Prendas</h2>
         <Button type="button" variant="outline" size="sm" onClick={() => append(emptyContractItem() as never)}>

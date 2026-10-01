@@ -139,7 +139,7 @@ export function CashboxPage() {
         {sessionPending ? (
           <div className="h-32 animate-pulse rounded-card bg-border" />
         ) : session ? (
-          <div className="rounded-card border border-border bg-card p-card shadow-card">
+          <div className="rounded-card border border-border bg-card p-card">
             <div className="flex flex-wrap items-center justify-between gap-4">
               <div className="min-w-0">
                 {/* El banner global ya avisa cuando el turno quedó abierto de
@@ -206,7 +206,7 @@ export function CashboxPage() {
             </div>
           </div>
         ) : (
-          <div className="rounded-card border border-border bg-card shadow-card">
+          <div className="rounded-card border border-border bg-card">
             <EmptyState
               title={canReopenToday ? 'La caja de hoy ya se cerró' : 'No hay caja abierta hoy'}
               description={canReopenToday ? 'Si el cierre fue un error, puedes reabrirla.' : 'Ábrela para registrar gastos y poder cerrar el día.'}

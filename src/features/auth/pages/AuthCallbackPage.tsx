@@ -150,7 +150,7 @@ export function AuthCallbackPage() {
   if ((status === 'confirmar' || status === 'verificando' || status === 'fallo') && enlace) {
     const esInvitacion = enlace.tipo === 'invite'
     return (
-      <div className="w-full max-w-sm rounded-card border border-border bg-card p-card text-center shadow-card">
+      <div className="w-full max-w-sm rounded-card border border-border bg-card p-card text-center">
         <h1 className="text-xl font-semibold text-foreground">{esInvitacion ? 'Activa tu cuenta' : 'Cambia tu contraseña'}</h1>
         <p className="mt-2 text-sm text-muted-foreground">
           {esInvitacion
@@ -186,7 +186,7 @@ export function AuthCallbackPage() {
   // en la ficha de la persona (backend-starter/docs/OPERACION.md §6).
   if (status === 'quemado') {
     return (
-      <div className="w-full max-w-sm rounded-card border border-border bg-card p-card text-center shadow-card">
+      <div className="w-full max-w-sm rounded-card border border-border bg-card p-card text-center">
         <h1 className="text-xl font-semibold text-foreground">Este enlace ya se usó o venció</h1>
         <p className="mt-2 text-sm text-muted-foreground">
           Cada enlace sirve una sola vez y por tiempo limitado. Pídele a tu administrador que genere uno nuevo y ábrelo
@@ -202,7 +202,7 @@ export function AuthCallbackPage() {
 
   if (status === 'invalid') {
     return (
-      <div className="w-full max-w-sm rounded-card border border-border bg-card p-card text-center shadow-card">
+      <div className="w-full max-w-sm rounded-card border border-border bg-card p-card text-center">
         <h1 className="text-xl font-semibold text-foreground">Link inválido o expirado</h1>
         <p className="mt-2 text-sm text-muted-foreground">
           Los enlaces caducan por seguridad. Vuelve a pedir uno desde “¿Olvidaste tu contraseña?” en la pantalla de
@@ -217,7 +217,7 @@ export function AuthCallbackPage() {
   }
 
   return (
-    <div className="w-full max-w-sm rounded-card border border-border bg-card p-card shadow-card">
+    <div className="w-full max-w-sm rounded-card border border-border bg-card p-card">
       <h1 className="text-2xl font-semibold text-foreground">Crea tu contraseña</h1>
       <p className="mt-1 text-sm text-muted-foreground">
         Con ella entrarás a tu cuenta de ahora en adelante.

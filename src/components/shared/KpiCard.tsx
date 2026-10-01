@@ -53,7 +53,7 @@ export function KpiCard({
   )
 }
 
-const ROW_BASE = 'enter-up grid grid-cols-1 gap-4 min-[480px]:grid-cols-2 rounded-card border border-border bg-card p-card shadow-card sm:grid-cols-3'
+const ROW_BASE = 'enter-up grid grid-cols-1 gap-4 min-[480px]:grid-cols-2 rounded-card border border-border bg-card p-card sm:grid-cols-3'
 
 /**
  * Una columna por debajo de 480 px (F9-06): a 360 px dos cifras de dinero en

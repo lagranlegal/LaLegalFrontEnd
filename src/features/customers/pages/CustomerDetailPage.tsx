@@ -129,7 +129,7 @@ export function CustomerDetailPage() {
         }
       />
 
-      <div className="rounded-card border border-border bg-card p-card shadow-card">
+      <div className="rounded-card border border-border bg-card p-card">
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <div>
             <p className="text-xs text-muted-foreground">Teléfono</p>

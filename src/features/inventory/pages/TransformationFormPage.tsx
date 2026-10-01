@@ -193,7 +193,7 @@ export function TransformationFormPage() {
       />
 
       {/* ---- QUÉ ENTRA ---- */}
-      <section className="flex flex-col gap-3 rounded-card border border-border bg-card p-card shadow-card">
+      <section className="flex flex-col gap-3 rounded-card border border-border bg-card p-card">
         <div>
           <h2 className="text-sm font-medium text-foreground">Qué entra</h2>
           <p className="text-xs text-muted-foreground">
@@ -254,7 +254,7 @@ export function TransformationFormPage() {
       </section>
 
       {/* ---- COSTO DEL PROCESO ---- */}
-      <section className="flex flex-col gap-3 rounded-card border border-border bg-card p-card shadow-card">
+      <section className="flex flex-col gap-3 rounded-card border border-border bg-card p-card">
         <div>
           <h2 className="text-sm font-medium text-foreground">Costo del proceso (opcional)</h2>
           <p className="text-xs text-muted-foreground">
@@ -298,7 +298,7 @@ export function TransformationFormPage() {
       </div>
 
       {/* ---- QUÉ SALE ---- */}
-      <section className="flex flex-col gap-3 rounded-card border border-border bg-card p-card shadow-card">
+      <section className="flex flex-col gap-3 rounded-card border border-border bg-card p-card">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div>
             <h2 className="text-sm font-medium text-foreground">Qué sale</h2>
@@ -468,7 +468,7 @@ export function TransformationFormPage() {
       </section>
 
       {/* ---- MOTIVO Y RESULTADO ---- */}
-      <section className="flex flex-col gap-3 rounded-card border border-border bg-card p-card shadow-card">
+      <section className="flex flex-col gap-3 rounded-card border border-border bg-card p-card">
         <div>
           <label htmlFor="reason" className="text-sm font-medium text-foreground">
             Motivo

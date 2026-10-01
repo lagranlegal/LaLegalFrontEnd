@@ -10,7 +10,7 @@ import { SectionError } from '@/features/reports/components/SectionError'
 /** El rango no se puede pedir (o el backend lo rechazó): se dice por qué en vez de esconder la tarjeta. */
 function RangeNotice({ title, message }: { title: string; message: string }) {
   return (
-    <div className="rounded-card border border-border bg-card p-card shadow-card">
+    <div className="rounded-card border border-border bg-card p-card">
       <h2 className="text-sm font-medium text-foreground">{title}</h2>
       <p role="status" className="mt-2 text-sm text-warning">
         {message}
@@ -56,7 +56,7 @@ export function ProfitCard({ range }: { range: DateRangeValue | null }) {
   const loss = Number(profit.gross_profit) < 0
 
   return (
-    <div className="rounded-card border border-border bg-card p-card shadow-card">
+    <div className="rounded-card border border-border bg-card p-card">
       <div className="mb-3 flex flex-wrap items-center justify-between gap-x-4 gap-y-1">
         <h2 className="text-sm font-medium text-foreground">Utilidad bruta de tienda</h2>
         <span className="text-xs text-muted-foreground">
@@ -125,7 +125,7 @@ export function PawnCard({ range }: { range: DateRangeValue | null }) {
   const netYield = pawn.net_yield_on_current_portfolio_pct === undefined ? pawn.yield_on_current_portfolio_pct : pawn.net_yield_on_current_portfolio_pct
 
   return (
-    <div className="rounded-card border border-border bg-card p-card shadow-card">
+    <div className="rounded-card border border-border bg-card p-card">
       <div className="mb-3 flex flex-wrap items-center justify-between gap-x-4 gap-y-1">
         <h2 className="text-sm font-medium text-foreground">Rentabilidad del empeño</h2>
         <span className="text-xs text-muted-foreground">

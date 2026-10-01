@@ -64,7 +64,7 @@ function CardShell({ title, subtitle, children }: { title: string; subtitle?: st
   return (
     // `enter-up` en el card, no en cada fila o segmento: animar cada dato por
     // separado convierte un reporte en un espectáculo y retrasa la lectura.
-    <div className="enter-up rounded-card border border-border bg-card p-card shadow-card">
+    <div className="enter-up rounded-card border border-border bg-card p-card">
       <div className="mb-3 flex items-center justify-between gap-2">
         <h2 className="text-sm font-medium text-foreground">{title}</h2>
         {subtitle && <span className="text-xs text-muted-foreground">{subtitle}</span>}
@@ -125,7 +125,7 @@ function IncomeStatementCard({ range }: { range: DateRangeValue | null }) {
   const fuera = rows.filter((r) => r.kind === 'outside')
 
   return (
-    <div className="rounded-card border border-border bg-card p-card shadow-card">
+    <div className="rounded-card border border-border bg-card p-card">
       <div className="mb-3 flex flex-wrap items-center justify-between gap-x-4 gap-y-1">
         <h2 className="text-sm font-medium text-foreground">Estado de resultados</h2>
         <span className="text-xs text-muted-foreground">Del negocio completo — empeño y tienda juntos</span>
@@ -387,11 +387,11 @@ export function ReportesPage() {
       </div>
 
       {!range ? (
-        <div className="rounded-card border border-border bg-card shadow-card">
+        <div className="rounded-card border border-border bg-card">
           <EmptyState title="Elige un rango de fechas" description="O un día específico — arriba a la derecha." />
         </div>
       ) : rangeTooWide ? (
-        <div className="rounded-card border border-border bg-card shadow-card">
+        <div className="rounded-card border border-border bg-card">
           <EmptyState
             title={`Elige un rango de ${MAX_RANGE_DAYS} días o menos`}
             description="Los gastos por categoría todavía se piden sesión por sesión — rangos más largos necesitan un endpoint de agregación para esa dimensión en el backend."
@@ -402,7 +402,7 @@ export function ReportesPage() {
         // rango, así que sin permiso de histórico no hay con qué armarlo.
         // Decirlo así evita el peor mensaje posible: un skeleton eterno o un
         // "no se pudo cargar" que manda a buscar una falla que no existe.
-        <div className="rounded-card border border-border bg-card shadow-card">
+        <div className="rounded-card border border-border bg-card">
           <EmptyState
             title="Necesitas permiso de histórico de caja"
             description="Este reporte se arma con los cierres de caja del período. Pídele a un administrador el permiso “Ver el histórico de cierres de caja”."
@@ -418,7 +418,7 @@ export function ReportesPage() {
           </Button>
         </div>
       ) : !closings || closings.length === 0 ? (
-        <div className="rounded-card border border-border bg-card shadow-card">
+        <div className="rounded-card border border-border bg-card">
           <EmptyState title="No hay cierres de caja en este rango" description="El reporte se arma a partir de las sesiones de caja ya cerradas." />
         </div>
       ) : (
@@ -467,7 +467,7 @@ export function ReportesPage() {
           {showCapitalEmpeño && <PawnCard range={range} />}
 
           {showCapital && (
-            <div className="rounded-card border border-border bg-card p-card shadow-card">
+            <div className="rounded-card border border-border bg-card p-card">
               <div className="mb-3 flex flex-wrap items-center justify-between gap-x-4 gap-y-1">
                 <h2 className="text-sm font-medium text-foreground">Movimiento de capital</h2>
                 <span className="text-xs text-muted-foreground">
@@ -500,7 +500,7 @@ export function ReportesPage() {
               tiene módulo: se cuenta el cajón entero. Faltantes y sobrantes
               por separado — no se compensan; el neto es un dato más, no el
               resumen (ver `aggregateCashDifferences`). */}
-          <div className="enter-up rounded-card border border-border bg-card p-card shadow-card">
+          <div className="enter-up rounded-card border border-border bg-card p-card">
             <div className="mb-3 flex flex-wrap items-center justify-between gap-x-4 gap-y-1">
               <h2 className="text-sm font-medium text-foreground">Descuadres de caja al cierre</h2>
               <span className="text-xs text-muted-foreground">

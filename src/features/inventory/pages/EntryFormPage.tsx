@@ -128,7 +128,7 @@ function ProductSearchAdd({
       <div className="relative">
         <SearchInput value={q} onChange={setQ} placeholder="Busca un producto que ya vendes para agregarlo…" />
         {q.trim() && (
-          <div className="absolute z-10 mt-1 w-full overflow-hidden rounded-input border border-border bg-card shadow-card">
+          <div className="absolute z-10 mt-1 w-full overflow-hidden rounded-input border border-border bg-card shadow-modal">
             {isFetching && <p className="px-3 py-2 text-sm text-muted-foreground">Buscando…</p>}
             {!isFetching && data?.length === 0 && (
               <p className="px-3 py-2 text-sm text-muted-foreground">
@@ -409,7 +409,7 @@ export function EntryFormPage() {
       <CashClosedNotice paymentMethod={isPurchase ? paymentMethod : null} />
 
       <form onKeyDown={preventImplicitSubmit} onSubmit={handleSubmit(onSubmit, señalarProblemas)} className="flex flex-col gap-6" noValidate>
-        <section className="flex flex-col gap-4 rounded-card border border-border bg-card p-card shadow-card">
+        <section className="flex flex-col gap-4 rounded-card border border-border bg-card p-card">
           <h2 className="text-sm font-medium text-foreground">Origen</h2>
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
             <div>
@@ -547,7 +547,7 @@ export function EntryFormPage() {
           </div>
         </section>
 
-        <section className="flex flex-col gap-4 rounded-card border border-border bg-card p-card shadow-card">
+        <section className="flex flex-col gap-4 rounded-card border border-border bg-card p-card">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <h2 className="text-sm font-medium text-foreground">Artículos</h2>
             <span className="text-xs text-muted-foreground">
@@ -876,7 +876,7 @@ export function EntryFormPage() {
           </div>
         </section>
 
-        <section className="rounded-card border border-border bg-card p-card shadow-card">
+        <section className="rounded-card border border-border bg-card p-card">
           <label htmlFor="notes" className="text-sm font-medium text-foreground">
             Notas {originType === 'other' ? '' : '(opcional)'}
           </label>

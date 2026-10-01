@@ -222,7 +222,7 @@ export function ContractFormPage() {
       <CashClosedNotice paymentMethod={disbursementMethod} />
 
       <form onKeyDown={preventImplicitSubmit} onSubmit={handleSubmit(onSubmit, señalarProblemas)} className="flex flex-col gap-6" noValidate>
-        <section className="flex flex-col gap-4 rounded-card border border-border bg-card p-card shadow-card">
+        <section className="flex flex-col gap-4 rounded-card border border-border bg-card p-card">
           <h2 className="text-sm font-medium text-foreground">Cliente</h2>
           <CustomerPicker
             id="customer-picker"
@@ -311,7 +311,7 @@ export function ContractFormPage() {
           )}
         </section>
 
-        <section className="flex flex-col gap-4 rounded-card border border-border bg-card p-card shadow-card">
+        <section className="flex flex-col gap-4 rounded-card border border-border bg-card p-card">
           <h2 className="text-sm font-medium text-foreground">Condiciones del préstamo</h2>
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <div>
@@ -420,7 +420,7 @@ export function ContractFormPage() {
 
         <ContractItemsFields control={control} register={register} errors={errors} categories={categories} />
 
-        <section className="rounded-card border border-border bg-card p-card shadow-card">
+        <section className="rounded-card border border-border bg-card p-card">
           <label htmlFor="notes" className="text-sm font-medium text-foreground">
             Notas (opcional)
           </label>

@@ -64,7 +64,7 @@ function Dato({
 export function PositionCard({ position }: { position: CapitalPosition }) {
   const sinRepartir = Number(position.distributable) < 0
   return (
-    <div className="rounded-card border border-border bg-card p-card shadow-card">
+    <div className="rounded-card border border-border bg-card p-card">
       <h2 className="text-sm font-medium text-foreground">Dónde está el capital, hoy</h2>
       <div className="mt-3 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <Dato label="Disponible" value={position.cash_and_bank} hint="Cajón, bóveda y bancos" />

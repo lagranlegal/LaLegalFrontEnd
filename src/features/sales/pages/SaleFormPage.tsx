@@ -201,7 +201,7 @@ export function SaleFormPage() {
 
       <form onKeyDown={preventImplicitSubmit} onSubmit={handleSubmit} className="grid grid-cols-1 gap-6 lg:grid-cols-[2fr_1fr]" noValidate>
         <div className="flex flex-col gap-4">
-          <div className="rounded-card border border-border bg-card p-card shadow-card">
+          <div className="rounded-card border border-border bg-card p-card">
             {/* El buscador vive DENTRO del <form>: Enter disparaba el submit
                 y cobraba el carrito ya armado (QA F6-03, confirmado en vivo).
                 Ahora Enter AGREGA el artículo de código exacto (lo que manda
@@ -210,7 +210,7 @@ export function SaleFormPage() {
             <ItemPicker onSelect={addToCart} placeholder="Buscar o escanear artículo por código o nombre…" />
           </div>
 
-          <div className="overflow-hidden rounded-card border border-border bg-card shadow-card">
+          <div className="overflow-hidden rounded-card border border-border bg-card">
             {cart.length === 0 ? (
               <p className="p-card text-center text-sm text-muted-foreground">El carrito está vacío — busca un artículo arriba.</p>
             ) : (
@@ -289,7 +289,7 @@ export function SaleFormPage() {
         </div>
 
         <div className="flex flex-col gap-4">
-          <div className="flex flex-col gap-4 rounded-card border border-border bg-card p-card shadow-card">
+          <div className="flex flex-col gap-4 rounded-card border border-border bg-card p-card">
             <div>
               <label className="text-sm font-medium text-foreground">Cliente (opcional)</label>
               <div className="mt-1">
@@ -383,7 +383,7 @@ export function SaleFormPage() {
             )}
           </div>
 
-          <div className="flex flex-col gap-2 rounded-card border border-border bg-card p-card shadow-card text-sm">
+          <div className="flex flex-col gap-2 rounded-card border border-border bg-card p-card text-sm">
             <div className="flex items-center justify-between">
               <span className="text-muted-foreground">Subtotal</span>
               <Money value={subtotal} />
@@ -420,7 +420,7 @@ export function SaleFormPage() {
 
           {/* F9-32: con efectivo, lo recibido y el cambio. Solo en pantalla. */}
           {paymentMethod === 'cash' && (
-            <div className="flex flex-col gap-2 rounded-card border border-border bg-card p-card shadow-card">
+            <div className="flex flex-col gap-2 rounded-card border border-border bg-card p-card">
               <label htmlFor="sale-cash-received" className="text-sm font-medium text-foreground">
                 Efectivo recibido <span className="font-normal text-muted-foreground">(opcional, para calcular el cambio)</span>
               </label>

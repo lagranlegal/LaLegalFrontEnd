@@ -47,7 +47,7 @@ export function CustomerPicker({
     <div className="relative">
       <SearchInput id={id} ariaLabel="Buscar cliente" invalid={invalid} value={q} onChange={setQ} placeholder={placeholder} />
       {q.trim() && (
-        <div className="absolute z-10 mt-1 w-full overflow-hidden rounded-input border border-border bg-card shadow-card">
+        <div className="absolute z-10 mt-1 w-full overflow-hidden rounded-input border border-border bg-card shadow-modal">
           {/* "Sin resultados" con una letra se lee como "ese cliente no
               existe", y manda a crear un duplicado de alguien que sí está.
               Decir que falta escribir es la diferencia entre las dos. */}

@@ -28,7 +28,7 @@ export function UnsubscribePage() {
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-background p-page">
-      <main className="w-full max-w-md rounded-card border border-border bg-card p-card shadow-card">
+      <main className="w-full max-w-md rounded-card border border-border bg-card p-card">
         {info.isPending ? (
           <div aria-busy="true" aria-label="Cargando" className="flex flex-col gap-3">
             <div className="h-6 w-2/3 animate-pulse rounded-input bg-muted" />

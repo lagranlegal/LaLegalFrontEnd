@@ -178,7 +178,7 @@ export function ContractImportPage() {
       />
 
       <form onKeyDown={preventImplicitSubmit} onSubmit={handleSubmit(onSubmit, señalarProblemas)} className="flex flex-col gap-6" noValidate>
-        <section className="flex flex-col gap-4 rounded-card border border-border bg-card p-card shadow-card">
+        <section className="flex flex-col gap-4 rounded-card border border-border bg-card p-card">
           <h2 className="text-sm font-medium text-foreground">Referencia y cliente</h2>
           <div>
             <label htmlFor="legacy_code" className="text-sm font-medium text-foreground">
@@ -201,7 +201,7 @@ export function ContractImportPage() {
           </FieldError>
         </section>
 
-        <section className="flex flex-col gap-4 rounded-card border border-border bg-card p-card shadow-card">
+        <section className="flex flex-col gap-4 rounded-card border border-border bg-card p-card">
           <h2 className="text-sm font-medium text-foreground">Condiciones del contrato viejo</h2>
           <p className="-mt-2 text-xs text-muted-foreground">A diferencia de un contrato nuevo, acá se digitan a mano: son las condiciones reales pactadas en el sistema anterior.</p>
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
@@ -263,7 +263,7 @@ export function ContractImportPage() {
           </div>
         </section>
 
-        <section className="flex flex-col gap-4 rounded-card border border-border bg-card p-card shadow-card">
+        <section className="flex flex-col gap-4 rounded-card border border-border bg-card p-card">
           <h2 className="text-sm font-medium text-foreground">Fechas</h2>
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <div>
@@ -291,7 +291,7 @@ export function ContractImportPage() {
 
         <ContractItemsFields control={control} register={register} errors={errors} categories={categories} />
 
-        <section className="rounded-card border border-border bg-card p-card shadow-card">
+        <section className="rounded-card border border-border bg-card p-card">
           <label htmlFor="notes" className="text-sm font-medium text-foreground">
             Notas (opcional)
           </label>

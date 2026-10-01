@@ -54,7 +54,7 @@ function CategoriesTab() {
         </Can>
       </div>
 
-      <div className="rounded-card border border-border bg-card p-card shadow-card">
+      <div className="rounded-card border border-border bg-card p-card">
         {isPending && (
           <div className="flex flex-col gap-2">
             {Array.from({ length: 4 }).map((_, i) => (

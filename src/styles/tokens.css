@@ -145,12 +145,19 @@
   --platform-foreground: #ffffff;
 
   /* ==== Forma ==== */
+  /* Rediseño P1 (30/09/2026): radios más sobrios. Campo y botón 10, tarjeta
+     12 (era 14), diálogo 16 (era 24). La pastilla queda SOLO para estados y
+     filtros: un botón en pastilla se confundía con un estado. */
   --radius-input: 10px;
-  --radius-card: 14px;
-  --radius-modal: 24px;
+  --radius-card: 12px;
+  --radius-modal: 16px;
   --radius-pill: 9999px;
+  /* Las tarjetas del panel van sin sombra, separadas por borde (P1); esta
+     queda para las tarjetas de la landing, que tiene su propio sistema. */
   --shadow-card: 0 1px 3px rgb(36 33 28 / 0.07);
-  --shadow-modal: 0 20px 50px rgb(36 33 28 / 0.18);
+  /* La sombra de lo que FLOTA: diálogos, menús, listas desplegables y barras
+     fijas de acción. Ninguna otra superficie del panel lleva sombra. */
+  --shadow-modal: 0 12px 32px rgb(36 33 28 / 0.14);
   /* Landing pública (26/09/2026). Tarjetas grandes: entre la card (14) y el
      modal (24). */
   --radius-panel: 20px;
@@ -206,7 +213,7 @@
   --font-size-section: clamp(2.125rem, 1.52rem + 2.47vw, 3.5rem); /* 34 → 56 */
   --font-size-subsection: clamp(1.875rem, 1.49rem + 1.57vw, 2.75rem); /* 30 → 44 */
   --space-page: 24px;
-  --space-card: 20px;
+  --space-card: 16px; /* P1: era 20; gana una fila de datos en 1280×800 */
 }
 
 /* Dark mode (27/08/2026, recoloreado 20/09/2026). Mismas variables que :root,
@@ -293,5 +300,5 @@
 
   /* ==== Forma: sombra dark-on-dark es invisible, sube la opacidad ==== */
   --shadow-card: 0 1px 3px rgb(0 0 0 / 0.4);
-  --shadow-modal: 0 20px 50px rgb(0 0 0 / 0.6);
+  --shadow-modal: 0 12px 32px rgb(0 0 0 / 0.55);
 }

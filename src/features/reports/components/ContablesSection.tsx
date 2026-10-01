@@ -47,7 +47,7 @@ function PayablesCard() {
 
   if (data.entry_count === 0) {
     return (
-      <div className="rounded-card border border-border bg-card shadow-card">
+      <div className="rounded-card border border-border bg-card">
         <EmptyState title="No le debes nada a ningún proveedor" description="Todas las compras registradas están pagadas." />
       </div>
     )
@@ -74,7 +74,7 @@ function PayablesCard() {
         />
       </KpiRow>
 
-      <div className="overflow-x-auto rounded-card border border-border bg-card shadow-card">
+      <div className="overflow-x-auto rounded-card border border-border bg-card">
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-border text-xs text-muted-foreground">
@@ -162,7 +162,7 @@ function ValuationCard() {
       </KpiRow>
 
       {data.by_category.length > 0 && (
-        <div className="overflow-x-auto rounded-card border border-border bg-card shadow-card">
+        <div className="overflow-x-auto rounded-card border border-border bg-card">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-border text-xs text-muted-foreground">
@@ -242,7 +242,7 @@ function StaleCard() {
       )}
 
       {data && data.items.length === 0 && (
-        <div className="rounded-card border border-border bg-card shadow-card">
+        <div className="rounded-card border border-border bg-card">
           <EmptyState
             title={`Nada lleva ${threshold} días o más sin venderse`}
             description="Todo el inventario disponible tiene rotación reciente."
@@ -256,7 +256,7 @@ function StaleCard() {
             <strong className="text-foreground">{data.product_count}</strong> producto(s) con{' '}
             <Money value={data.total_cost_value} className="font-medium text-foreground" /> en costo detenido.
           </p>
-          <div className="overflow-x-auto rounded-card border border-border bg-card shadow-card">
+          <div className="overflow-x-auto rounded-card border border-border bg-card">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-border text-xs text-muted-foreground">

@@ -42,7 +42,7 @@ const inputClass =
 
 function Section({ title, description, children }: { title: string; description?: string; children: React.ReactNode }) {
   return (
-    <section className="flex flex-col gap-4 rounded-card border border-border bg-card p-card shadow-card">
+    <section className="flex flex-col gap-4 rounded-card border border-border bg-card p-card">
       <div>
         <h2 className="text-sm font-medium text-foreground">{title}</h2>
         {description && <p className="mt-0.5 text-xs text-muted-foreground">{description}</p>}

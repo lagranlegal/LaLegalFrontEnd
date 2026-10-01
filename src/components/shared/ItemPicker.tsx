@@ -72,7 +72,7 @@ export function ItemPicker({
     <div className="relative">
       <SearchInput value={q} onChange={setQ} placeholder={placeholder} onEnter={handleEnter} />
       {q.trim() && (
-        <div className="absolute z-10 mt-1 w-full overflow-hidden rounded-input border border-border bg-card shadow-card">
+        <div className="absolute z-10 mt-1 w-full overflow-hidden rounded-input border border-border bg-card shadow-modal">
           {isFetching && <p className="px-3 py-2 text-sm text-muted-foreground">Buscando…</p>}
           {!isFetching && data?.length === 0 && <p className="px-3 py-2 text-sm text-muted-foreground">Sin resultados.</p>}
           {!isFetching &&

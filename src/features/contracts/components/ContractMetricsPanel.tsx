@@ -10,7 +10,7 @@ import type { Contract, Payment } from '@/features/contracts/api'
 
 function CardShell({ title, subtitle, children }: { title: string; subtitle?: ReactNode; children: ReactNode }) {
   return (
-    <div className="rounded-card border border-border bg-card p-card shadow-card">
+    <div className="rounded-card border border-border bg-card p-card">
       <div className="mb-3 flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
         <h3 className="text-sm font-medium text-foreground">{title}</h3>
         {subtitle && <span className="text-xs text-muted-foreground">{subtitle}</span>}
