@@ -174,6 +174,8 @@ describe('Inicio: fecha larga, saludo, mes anterior y hora', () => {
     expect(greetingNow(new Date('2026-09-30T20:00:00Z'))).toBe('Buenas tardes')
     // 01:00 UTC del 1/10 = 8 p. m. del 30/09 en Bogotá.
     expect(greetingNow(new Date('2026-10-01T01:00:00Z'))).toBe('Buenas noches')
+    // 07:20 UTC = 2:20 a. m. en Bogotá: de madrugada todavía es de noche.
+    expect(greetingNow(new Date('2026-10-01T07:20:00Z'))).toBe('Buenas noches')
   })
 
   it('formatClock escribe «a. m.» y «p. m.»', () => {

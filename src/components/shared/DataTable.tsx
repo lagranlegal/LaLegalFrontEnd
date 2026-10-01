@@ -190,7 +190,7 @@ export function DataTable<T>({
         {table.getRowModel().rows.map((row) => (
           <div
             key={row.id}
-            className={cn('flex flex-col gap-1.5 p-4', onRowClick && 'cursor-pointer transition-colors active:bg-accent/60', onRowClick && ROW_FOCUS)}
+            className={cn('flex flex-col gap-1.5', embedded ? 'py-3' : 'p-4', onRowClick && 'cursor-pointer transition-colors active:bg-accent/60', onRowClick && ROW_FOCUS)}
             onClick={() => onRowClick?.(row.original)}
             {...rowKeyboardProps(onRowClick, row.original)}
           >

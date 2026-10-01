@@ -168,11 +168,13 @@ export function previousMonthName(dateOnly: string): string {
 }
 
 /**
- * «Buenos días» hasta las 11:59, «Buenas tardes» hasta las 18:59 y «Buenas
- * noches» después, con la hora de la empresa (no la del equipo).
+ * «Buenos días» de 5:00 a 11:59, «Buenas tardes» hasta las 18:59 y «Buenas
+ * noches» el resto (también de madrugada), con la hora de la empresa (no la
+ * del equipo).
  */
 export function greetingNow(now: Date = new Date()): string {
   const hour = Number(format(now, 'H', { in: tz(activeTimezone) }))
+  if (hour < 5) return 'Buenas noches'
   if (hour < 12) return 'Buenos días'
   if (hour < 19) return 'Buenas tardes'
   return 'Buenas noches'
