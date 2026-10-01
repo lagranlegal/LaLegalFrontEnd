@@ -83,6 +83,24 @@ describe('LoanSummaryCard: lo que trae la cotización', () => {
     expect(text(resumen)).toContain('Sale deEfectivo · Caja principal')
   })
 
+  it('sobre el tope: el préstamo sobre avalúo en rojo y cuánto es el tope', () => {
+    card(quotes.sobre_el_techo.body, '1400000.01')
+    const resumen = screen.getByRole('region', { name: 'Resumen del préstamo' })
+    expect(text(resumen)).toContain('Préstamo sobre avalúo70 % de 70 %Pasa el tope de $ 1.400.000')
+    expect(screen.getByText(/Pasa el tope de/).closest('dd')).toHaveClass('text-danger')
+  })
+
+  it('dentro del tope no hay rojo; con LTV y sin avalúo, «Falta el avalúo»', () => {
+    card(quotes.cotizacion_completa.body)
+    expect(screen.getByText('61,73 %', { exact: false }).closest('dd')).not.toHaveClass('text-danger')
+    expect(screen.queryByText(/Pasa el tope/)).not.toBeInTheDocument()
+    cleanup()
+    card(quotes.con_ltv_sin_avaluo.body, '1000000.00')
+    const resumen = screen.getByRole('region', { name: 'Resumen del préstamo' })
+    expect(text(resumen)).toContain('AvalúoFalta el avalúo')
+    expect(text(resumen)).not.toContain('Préstamo sobre avalúo')
+  })
+
   it('sin categoría ni avalúo no inventa: el plazo lo dice, el LTV no aparece', () => {
     card(quotes.cuerpo_vacio.body, '0.00')
     const resumen = screen.getByRole('region', { name: 'Resumen del préstamo' })
