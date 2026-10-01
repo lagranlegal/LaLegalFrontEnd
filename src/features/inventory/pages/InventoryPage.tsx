@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import type { ColumnDef } from '@tanstack/react-table'
 import { useNavigate } from '@tanstack/react-router'
+import { toast } from 'sonner'
 import { Download, Square, SquareCheck } from 'lucide-react'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { DataTable } from '@/components/shared/DataTable'
@@ -32,6 +33,15 @@ import { isPermissionError } from '@/lib/api/isPermissionError'
 import { ExitFormDialog } from '@/features/inventory/components/ExitFormDialog'
 import { TransformationsTab } from '@/features/inventory/components/TransformationsTab'
 import { useInventorySearch } from '@/features/inventory/useInventorySearch'
+
+/**
+ * `PageLimitError` de `lib/api/pagination` (P3-a, 6997959). Se reconoce por el
+ * nombre para no depender de un export que esta rama todavía no tiene; al unir
+ * las ramas se puede cambiar por `isPageLimitError`.
+ */
+function isPageLimit(error: unknown): error is Error {
+  return error instanceof Error && error.name === 'PageLimitError'
+}
 
 const ITEM_STATUS_TABS = [
   { value: '', label: 'Todos' },
@@ -361,6 +371,14 @@ function ItemsTab() {
         'Fecha de entrada': item.entry_date,
       }))
       await exportRowsToExcel(`inventario-${todayBogota()}.xlsx`, 'Inventario', rows)
+    } catch (error) {
+      // Issue #11: un inventario más grande que el tope de `fetchAllPages` no
+      // se exporta a medias; se dice por qué, igual que contratos y ventas.
+      if (isPageLimit(error)) {
+        toast.error('No se exportó el archivo', { description: error.message })
+        return
+      }
+      throw error
     } finally {
       setIsExporting(false)
     }

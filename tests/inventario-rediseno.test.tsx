@@ -1,5 +1,5 @@
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
-import { act, cleanup, render, screen, within } from '@testing-library/react'
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import p2d from './fixtures/backend-p2d.json'
 import type { Item } from '@/lib/inventory/items'
 import { PageTabs, PageTabsContent } from '@/components/shared/PageTabs'
@@ -12,9 +12,10 @@ import { PageTabs, PageTabsContent } from '@/components/shared/PageTabs'
  */
 const articulo = p2d.articulos_q.body.items[0] as unknown as Item
 
-const state = vi.hoisted(() => ({ search: {} as Record<string, unknown> }))
+const state = vi.hoisted(() => ({ search: {} as Record<string, unknown>, fetchAllItems: (() => Promise.resolve([])) as () => Promise<unknown[]>, toastError: vi.fn() }))
 
 vi.mock('@tanstack/react-router', () => ({ useNavigate: () => vi.fn() }))
+vi.mock('sonner', () => ({ toast: { error: (...args: unknown[]) => state.toastError(...args), success: vi.fn() } }))
 vi.mock('@/features/inventory/useInventorySearch', () => ({
   useInventorySearch: () => ({ search: state.search, setSearch: vi.fn() }),
 }))
@@ -33,7 +34,7 @@ const page = (items: unknown[]) => ({
   fetchNextPage: vi.fn(),
 })
 vi.mock('@/features/inventory/api', () => ({
-  fetchAllItems: vi.fn(),
+  fetchAllItems: () => state.fetchAllItems(),
   useProductsList: () => page([]),
   useItemsList: () => page([articulo]),
   useEntriesList: () => page([]),
@@ -83,6 +84,19 @@ describe('Inventario', () => {
       expect(within(table).getByRole('columnheader', { name })).toHaveClass('text-right')
     }
     expect(within(table).getByText('1 u')).toHaveClass('tnum')
+  })
+})
+
+describe('Exportar inventario con más registros que el tope (issue #11)', () => {
+  it('no descarga un archivo a medias: avisa «No se exportó el archivo» con el motivo', async () => {
+    // Forma de `PageLimitError` (lib/api/pagination, P3-a): un Error con ese nombre.
+    const tope = Object.assign(new Error('Hay más de 5.000 registros y no se pueden traer todos de una vez.'), { name: 'PageLimitError' })
+    state.fetchAllItems = () => Promise.reject(tope)
+    state.search = { tab: 'items' }
+    render(<InventoryPage />)
+    fireEvent.click(screen.getByRole('button', { name: /Exportar a Excel/ }))
+    await waitFor(() => expect(state.toastError).toHaveBeenCalledWith('No se exportó el archivo', { description: tope.message }))
+    expect(screen.getByRole('button', { name: /Exportar a Excel/ })).toBeEnabled()
   })
 })
 
