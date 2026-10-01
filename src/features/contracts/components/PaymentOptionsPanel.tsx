@@ -193,7 +193,7 @@ function CapitalOnlyPaymentForm({ contractId, quote, context }: { contractId: st
       <div className="flex flex-col gap-3">
         <CashClosedNotice paymentMethod={paymentMethod} />
         <p className="text-sm text-muted-foreground">Este contrato está al día en intereses — puedes abonar directo a capital.</p>
-        <div className="flex flex-col gap-3 rounded-input border border-border p-3">
+        <div className="flex flex-col gap-4">
           <div>
             <div className="flex items-center justify-between gap-2">
               <label htmlFor="capital-only-amount" className="text-sm font-medium text-foreground">

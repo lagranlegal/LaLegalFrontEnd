@@ -82,7 +82,7 @@ export function StatusHeroView({ hero }: { hero: StatusHero }) {
             ))}
             <span className="flex-1 bg-border-strong" />
           </div>
-          <ol aria-label="Línea de tiempo del contrato" className={cn('grid gap-1 text-xs', GRID_COLS[hero.timeline.length])}>
+          <ol aria-label="Línea de tiempo del contrato" className={cn('grid gap-0.5 text-2xs sm:gap-1 sm:text-xs', GRID_COLS[hero.timeline.length])}>
           {hero.timeline.map((p) => (
             <li key={p.label} aria-current={p.state === 'now' ? 'date' : undefined} className="relative grid min-w-0 gap-px text-body">
               <span

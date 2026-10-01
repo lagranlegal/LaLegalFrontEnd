@@ -212,6 +212,9 @@
   /* Rediseño P2-a: la cifra principal de la tarjeta de estado del contrato
      («Para ponerse al día», 26); las otras van en el 22 del titular. */
   --font-size-figure-lg: 1.625rem;
+  /* 11 px: solo la línea de tiempo del contrato en el celular, donde cuatro
+     fechas completas tienen que caber en 360 px. */
+  --font-size-2xs: 0.6875rem;
   /* Solo códigos de etiqueta (JOC0007-01R): la mono deja ver cada carácter. */
   --font-mono: 'JetBrains Mono Variable', 'JetBrains Mono', ui-monospace, monospace;
   /* Escala de titulares de la landing: fluida entre 390 y 1280 px de ancho
