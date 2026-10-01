@@ -50,8 +50,8 @@ export function readyForAuctionQueryOptions() {
   })
 }
 
-export function useReadyForAuction() {
-  return useQuery(readyForAuctionQueryOptions())
+export function useReadyForAuction({ enabled = true }: { enabled?: boolean } = {}) {
+  return useQuery({ ...readyForAuctionQueryOptions(), enabled })
 }
 
 /**

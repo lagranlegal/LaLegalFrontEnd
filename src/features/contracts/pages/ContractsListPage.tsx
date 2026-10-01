@@ -11,6 +11,7 @@ import { RecordNumber } from '@/components/shared/RecordNumber'
 import { Money } from '@/components/shared/Money'
 import { PortfolioBalanceCell } from '@/features/contracts/components/PortfolioBalanceCell'
 import { Can } from '@/components/shared/Can'
+import { usePermission } from '@/lib/permissions/usePermission'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { formatDate, todayBogota } from '@/lib/dates'
@@ -40,9 +41,14 @@ export function ContractsListPage() {
   // `useContractsList` se sigue llamando con `''` mientras tanto (reusa el
   // cache de "Todos", sin pedir nada nuevo) porque los hooks no pueden
   // llamarse condicionalmente.
-  const isReadyTab = status === 'ready_for_auction'
+  // El endpoint exige `contracts.auction` (el mismo permiso de Rematar): sin
+  // él la pestaña no se muestra y la lista no se pide — antes cada Asesor
+  // que abría Contratos dejaba un 403 en la consola.
+  const canAuction = usePermission('contracts.auction')
+  const statusTabs = canAuction ? STATUS_TABS : STATUS_TABS.filter((tab) => tab.value !== 'ready_for_auction')
+  const isReadyTab = canAuction && status === 'ready_for_auction'
   const { data, isPending, isError, refetch, hasNextPage, isFetchingNextPage, fetchNextPage } = useContractsList(isReadyTab ? '' : status)
-  const { data: readyContracts, isPending: readyPending, isError: readyError, refetch: refetchReady } = useReadyForAuction()
+  const { data: readyContracts, isPending: readyPending, isError: readyError, refetch: refetchReady } = useReadyForAuction({ enabled: isReadyTab })
   const { data: searchResults, isPending: searchPending, isError: searchError, refetch: refetchSearch } = useContractSearch(q)
   const [isExporting, setIsExporting] = useState(false)
 
@@ -123,7 +129,7 @@ export function ContractsListPage() {
           peor que no entregarlo. */}
       <div className="flex flex-wrap items-center gap-2">
         {!isSearching &&
-          STATUS_TABS.map((tab) => (
+          statusTabs.map((tab) => (
             <button
               key={tab.value}
               type="button"
