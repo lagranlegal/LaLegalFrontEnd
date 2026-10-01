@@ -295,10 +295,14 @@ export function ContractDetailPage() {
           {payable ? (
             <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-12">
               <section aria-labelledby="registrar-abono" className="grid gap-3 rounded-card border border-border bg-card p-card lg:col-span-7">
-                <h2 id="registrar-abono" className="text-md font-semibold text-foreground">
-                  Registrar abono
-                </h2>
-                <PaymentOptionsPanel contractId={contractId} contractNumber={contract.number} customerName={customer?.full_name} />
+                <PaymentOptionsPanel
+                  contractId={contractId}
+                  contractNumber={contract.number}
+                  customerName={customer?.full_name}
+                  interestPaidUntil={contract.interest_paid_until}
+                  status={contract.status}
+                  itemCount={contract.items.length}
+                />
               </section>
               <div className="flex min-w-0 flex-col gap-4 lg:col-span-5">{details}</div>
             </div>

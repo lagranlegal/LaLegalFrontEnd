@@ -57,7 +57,9 @@ afterEach(() => {
 describe('confirmación del abono con resumen', () => {
   it('repite contrato, cliente, meses, total, medio y cuenta', async () => {
     render(<PaymentOptionsPanel contractId="c1" contractNumber={6} customerName="Cliente de Prueba" />)
-    fireEvent.click(screen.getByRole('button', { name: /1 mes/ }))
+    // Rediseño P2-a: con un mes adeudado, «Ponerse al día · 1 mes» viene
+    // preseleccionada; el botón ya trae el monto.
+    expect(screen.getByRole('radio', { name: /Ponerse al día · 1 mes/ })).toBeChecked()
     fireEvent.click(await screen.findByRole('button', { name: /Registrar abono/ }))
     await waitFor(() => expect(confirmMock).toHaveBeenCalled())
     const { summary } = confirmMock.mock.calls[0]![0] as { summary: { label: string; value: string }[] }
