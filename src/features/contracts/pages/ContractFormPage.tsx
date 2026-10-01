@@ -25,7 +25,7 @@ import { applyServerErrors } from '@/lib/forms/applyServerErrors'
 import { collectErrorNames, revealFirstError } from '@/lib/forms/revealFirstError'
 import { serverErrorFieldNames } from '@/lib/forms/applyServerErrors'
 import { ApiError } from '@/lib/api/client'
-import { useCreateContract } from '@/features/contracts/api'
+import { useCreateContract, useLoanQuote } from '@/features/contracts/api'
 import type { Customer } from '@/lib/customers/search'
 import { CustomerPicker } from '@/components/shared/CustomerPicker'
 import { ContractItemsFields } from '@/features/contracts/components/ContractItemsFields'
@@ -37,9 +37,8 @@ import { AccountPicker } from '@/components/shared/AccountPicker'
 import { PAYMENT_METHOD_LABELS } from '@/lib/paymentMethods'
 import { customerNoticePayload, customerNoticeState } from '@/features/contracts/customerNotice'
 import { preventImplicitSubmit } from '@/lib/forms/preventImplicitSubmit'
-import { resolveInheritedParams } from '@/features/catalogs/inheritance'
 import { LoanSummaryCard } from '@/features/contracts/components/LoanSummaryCard'
-import { monthlyInterestPreview, previewRate } from '@/features/contracts/loanPreview'
+import { loanQuoteBody } from '@/features/contracts/loanPreview'
 
 const contractSchema = z.object({
   principal: positiveMoneyField('El monto del préstamo debe ser mayor a cero'),
@@ -131,11 +130,24 @@ export function ContractFormPage() {
   const canOverrideLtv = usePermission('contracts.override_ltv')
   const avaluo = appraisalRequirement({ maxLtvPct, appraisalValue, canOverride: canOverrideLtv })
 
-  // «Resumen del préstamo» (rediseño P3, F9-30). El plazo, como el LTV, sale
-  // de la categoría de la PRIMERA prenda: es la que usa el backend.
+  // «Resumen del préstamo» (rediseño P3, F9-30): lo cotiza el backend
+  // (`POST /contracts/quote`) con lo que va escrito; acá no se calcula el
+  // interés, ni el plazo, ni las fechas.
   const tasaEscrita = useWatch({ control, name: 'interest_rate_pct' })
   const cuentaElegida = useWatch({ control, name: 'account_id' })
-  const plazoMeses = categories && primeraCategoria ? resolveInheritedParams(categories, primeraCategoria).default_term_months : null
+  const prendas = useWatch({ control, name: 'items' })
+  const mesesProrroga = useWatch({ control, name: 'extension_months' })
+  const diasAmpliar = useWatch({ control, name: 'extension_window_days' })
+  const { quote, isUpdating: cotizando } = useLoanQuote(
+    loanQuoteBody({
+      principal,
+      interest_rate_pct: tasaEscrita,
+      appraisal_value: appraisalValue,
+      extension_months: mesesProrroga,
+      extension_window_days: diasAmpliar,
+      items: prendas,
+    }),
+  )
 
   const blocker = useBlocker({
     shouldBlockFn: () => (isDirty || customer !== null) && !submittedRef.current,
@@ -470,11 +482,8 @@ export function ContractFormPage() {
 
         <LoanSummaryCard
           principal={principal}
-          rate={previewRate(tasaEscrita)}
-          termMonths={plazoMeses}
-          monthlyInterest={monthlyInterestPreview(principal, tasaEscrita)}
-          appraisalValue={appraisalValue}
-          ltv={ltv}
+          quote={quote}
+          isUpdating={cotizando}
           paymentMethodLabel={PAYMENT_METHOD_LABELS[disbursementMethod]}
           accountName={accounts?.find((a) => a.id === cuentaElegida)?.name}
         >
@@ -482,10 +491,12 @@ export function ContractFormPage() {
           <Button type="submit" size="lg" disabled={createContract.isPending}>
             {createContract.isPending ? (
               'Registrando…'
-            ) : (
+            ) : quote?.amount_to_disburse ? (
               <>
-                Registrar préstamo <Money value={principal || '0.00'} />
+                Registrar préstamo <Money value={quote.amount_to_disburse} />
               </>
+            ) : (
+              'Registrar préstamo'
             )}
           </Button>
           <p className="text-center text-xs text-muted-foreground">Enter no registra: el préstamo se confirma con el botón.</p>

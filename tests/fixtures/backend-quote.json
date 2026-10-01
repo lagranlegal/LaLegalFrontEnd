@@ -1,0 +1,244 @@
+{
+  "_origen": "Respuestas REALES de POST /api/v1/contracts/quote del backend local (backend-starter HEAD a75cbf5), capturadas el 01/10/2026 envolviendo el TestClient de tests/integration/test_contract_quote.py. No editar a mano: se regeneran corriendo esos tests.",
+  "cotizacion_completa": {
+    "request": {
+      "principal": "1234567.00",
+      "interest_rate_pct": "5.555",
+      "items": [
+        {
+          "category_id": "ac6cf736-4a23-4314-8804-73528d857a6b",
+          "description": "Cadena de oro 10g"
+        }
+      ],
+      "appraisal_value": "2000000.00",
+      "extension_months": 2,
+      "extension_window_days": 10
+    },
+    "status": 200,
+    "body": {
+      "start_date": "2026-10-01",
+      "interest_rate_pct": "5.56",
+      "monthly_interest": "68641.93",
+      "term_months": 4,
+      "arrears_window_months": 4,
+      "extension_months": 2,
+      "extension_window_days": 10,
+      "first_due_date": "2026-11-01",
+      "due_date": "2027-02-01",
+      "appraisal_total": "2000000.00",
+      "ltv_pct": "61.73",
+      "ltv_ceiling": "70.00",
+      "max_loan": "1400000.00",
+      "ltv_exceeded": false,
+      "requires_override": false,
+      "override_reason": null,
+      "amount_to_disburse": "1234567.00"
+    }
+  },
+  "sobre_el_techo": {
+    "request": {
+      "principal": "1400000.01",
+      "interest_rate_pct": "5",
+      "items": [
+        {
+          "category_id": "2344ddbd-739f-4913-85f3-aac714e3f9a9",
+          "description": "Cadena de oro 10g"
+        }
+      ],
+      "appraisal_value": "2000000.00"
+    },
+    "status": 200,
+    "body": {
+      "start_date": "2026-10-01",
+      "interest_rate_pct": "5.00",
+      "monthly_interest": "70000.00",
+      "term_months": 4,
+      "arrears_window_months": 4,
+      "extension_months": 1,
+      "extension_window_days": 28,
+      "first_due_date": "2026-11-01",
+      "due_date": "2027-02-01",
+      "appraisal_total": "2000000.00",
+      "ltv_pct": "70.00",
+      "ltv_ceiling": "70.00",
+      "max_loan": "1400000.00",
+      "ltv_exceeded": true,
+      "requires_override": true,
+      "override_reason": "ltv_exceeded",
+      "amount_to_disburse": "1400000.01"
+    }
+  },
+  "con_ltv_sin_avaluo": {
+    "request": {
+      "principal": "1000000.00",
+      "interest_rate_pct": "5",
+      "items": [
+        {
+          "category_id": "630c2da6-4977-4ada-b907-c7f3e5c06b59",
+          "description": "Cadena de oro 10g"
+        }
+      ],
+      "appraisal_value": null
+    },
+    "status": 200,
+    "body": {
+      "start_date": "2026-10-01",
+      "interest_rate_pct": "5.00",
+      "monthly_interest": "50000.00",
+      "term_months": 4,
+      "arrears_window_months": 4,
+      "extension_months": 1,
+      "extension_window_days": 28,
+      "first_due_date": "2026-11-01",
+      "due_date": "2027-02-01",
+      "appraisal_total": null,
+      "ltv_pct": null,
+      "ltv_ceiling": "70.00",
+      "max_loan": null,
+      "ltv_exceeded": false,
+      "requires_override": true,
+      "override_reason": "appraisal_missing",
+      "amount_to_disburse": "1000000.00"
+    }
+  },
+  "cuerpo_vacio": {
+    "request": {},
+    "status": 200,
+    "body": {
+      "start_date": "2026-10-01",
+      "interest_rate_pct": null,
+      "monthly_interest": null,
+      "term_months": null,
+      "arrears_window_months": null,
+      "extension_months": 1,
+      "extension_window_days": 28,
+      "first_due_date": "2026-11-01",
+      "due_date": null,
+      "appraisal_total": null,
+      "ltv_pct": null,
+      "ltv_ceiling": null,
+      "max_loan": null,
+      "ltv_exceeded": false,
+      "requires_override": false,
+      "override_reason": null,
+      "amount_to_disburse": null
+    }
+  },
+  "capital_cero_sin_categoria": {
+    "request": {
+      "principal": "0.00",
+      "interest_rate_pct": "5",
+      "items": [
+        {
+          "category_id": null,
+          "description": ""
+        }
+      ]
+    },
+    "status": 200,
+    "body": {
+      "start_date": "2026-10-01",
+      "interest_rate_pct": "5.00",
+      "monthly_interest": null,
+      "term_months": null,
+      "arrears_window_months": null,
+      "extension_months": 1,
+      "extension_window_days": 28,
+      "first_due_date": "2026-11-01",
+      "due_date": null,
+      "appraisal_total": null,
+      "ltv_pct": null,
+      "ltv_ceiling": null,
+      "max_loan": null,
+      "ltv_exceeded": false,
+      "requires_override": false,
+      "override_reason": null,
+      "amount_to_disburse": null
+    }
+  },
+  "tasa_invalida_422": {
+    "request": {
+      "interest_rate_pct": "150"
+    },
+    "status": 422,
+    "body": {
+      "code": "VALIDATION_ERROR",
+      "message": "Los datos enviados no son válidos.",
+      "details": {
+        "errors": [
+          {
+            "type": "less_than_equal",
+            "loc": [
+              "body",
+              "interest_rate_pct"
+            ],
+            "msg": "Input should be less than or equal to 100",
+            "input": "150",
+            "ctx": {
+              "le": 100
+            }
+          }
+        ]
+      }
+    }
+  },
+  "categoria_no_hoja_400": {
+    "request": {
+      "principal": "1000000.00",
+      "interest_rate_pct": "5",
+      "items": [
+        {
+          "category_id": "a0d9dc18-876f-45a4-b64e-e7fd161e2b9e"
+        }
+      ]
+    },
+    "status": 400,
+    "body": {
+      "code": "BAD_REQUEST",
+      "message": "Los artículos deben clasificarse en una categoría de nivel 3 (la más específica).",
+      "details": {
+        "category_id": "a0d9dc18-876f-45a4-b64e-e7fd161e2b9e"
+      }
+    }
+  },
+  "sin_permiso_403": {
+    "request": {
+      "principal": "1000000.00",
+      "interest_rate_pct": "5",
+      "items": [
+        {
+          "category_id": "7bb804ea-0619-41a6-9522-91cd51275c87",
+          "description": "Cadena de oro 10g"
+        }
+      ]
+    },
+    "status": 403,
+    "body": {
+      "code": "PERMISSION_DENIED",
+      "message": "Falta el permiso 'contracts.create'.",
+      "details": {
+        "permission": "contracts.create"
+      }
+    }
+  },
+  "categoria_ajena_404": {
+    "request": {
+      "principal": "1000000.00",
+      "interest_rate_pct": "5",
+      "items": [
+        {
+          "category_id": "5c6912ba-0675-4b00-ab3f-12c32bac6b23",
+          "description": "Cadena de oro 10g"
+        }
+      ]
+    },
+    "status": 404,
+    "body": {
+      "code": "NOT_FOUND",
+      "message": "Una de las categorías de los artículos no existe.",
+      "details": {
+        "category_id": "5c6912ba-0675-4b00-ab3f-12c32bac6b23"
+      }
+    }
+  }
+}

@@ -21,7 +21,10 @@ vi.mock('@/lib/catalogs/categories', () => ({ useCategories: () => ({ data: [] }
 vi.mock('@/lib/catalogs/suppliers', () => ({ useSuppliers: () => ({ data: [] }) }))
 vi.mock('@/lib/customers/search', () => ({ useCustomerSearch: () => ({ data: [], isFetching: false }) }))
 vi.mock('@/lib/inventory/productSearch', () => ({ useProductSearch: () => ({ data: [], isFetching: false }) }))
-vi.mock('@/features/contracts/api', () => ({ useCreateContract: () => ({ mutateAsync: vi.fn(), isPending: false }) }))
+vi.mock('@/features/contracts/api', () => ({
+  useCreateContract: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useLoanQuote: () => ({ quote: undefined, error: null, isUpdating: false }),
+}))
 vi.mock('@/features/inventory/api', () => ({ useCreateEntry: () => ({ mutateAsync: vi.fn(), isPending: false }) }))
 vi.mock('@/components/shared/CashClosedNotice', () => ({ CashClosedNotice: () => null }))
 vi.mock('@/components/shared/CashSessionRequiredDialog', () => ({ CashSessionRequiredDialog: () => null }))
