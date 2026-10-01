@@ -1,3 +1,28 @@
+import {
+  Archive,
+  ArrowRight,
+  Ban,
+  Check,
+  CheckCheck,
+  Circle,
+  CircleCheck,
+  CircleMinus,
+  CircleX,
+  Clock,
+  Flag,
+  Hourglass,
+  Layers,
+  Lock,
+  LockOpen,
+  Mail,
+  PencilLine,
+  RotateCw,
+  Send,
+  ShieldAlert,
+  Star,
+  TriangleAlert,
+  type LucideIcon,
+} from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 /**
@@ -53,65 +78,126 @@ export const STATUS_LABELS = {
 
 export type KnownStatus = keyof typeof STATUS_LABELS
 
-// Clases completas y estáticas a propósito — Tailwind no genera CSS para
-// nombres de clase construidos con interpolación (`bg-${token}/15`).
-const STATUS_CLASSES: Record<KnownStatus, string> = {
-  active: 'bg-status-active/15 text-status-active',
-  in_arrears: 'bg-status-arrears/15 text-status-arrears',
-  in_extension: 'bg-status-extension/15 text-status-extension',
-  ready_for_auction: 'bg-status-arrears/15 text-status-arrears',
-  auctioned: 'bg-status-auctioned/15 text-status-auctioned',
-  paid: 'bg-status-paid/15 text-status-paid',
-  draft: 'bg-status-arrears/15 text-status-arrears',
-  available: 'bg-status-active/15 text-status-active',
-  sold: 'bg-status-paid/15 text-status-paid',
-  written_off: 'bg-status-neutral/15 text-status-neutral',
-  invited: 'bg-status-neutral/15 text-status-neutral',
-  open: 'bg-status-active/15 text-status-active',
-  closed: 'bg-status-neutral/15 text-status-neutral',
-  in_custody: 'bg-status-active/15 text-status-active',
-  // Mismos tokens que sus equivalentes: una venta completada se lee como
-  // «vendido» y una anulada comparte semántica con «rematado / vencida»
-  // (DESIGN_SYSTEM §2, estados de dominio).
-  completed: 'bg-status-paid/15 text-status-paid',
-  voided: 'bg-status-auctioned/15 text-status-auctioned',
-  // Neutro a propósito: un contrato ampliado no es ni bueno ni malo, es un
-  // documento reemplazado. Pintarlo como `paid` diría que se saldó.
-  superseded: 'bg-status-neutral/15 text-status-neutral',
-  transferred: 'bg-status-neutral/15 text-status-neutral',
-  // Entregas: el color de «pagado» para lo que salió, ámbar lo que está en vuelo o se va a
-  // reintentar, rojo solo lo que se perdió. Todo lo que no salió POR DISEÑO
-  // (sin correo, suprimido, tope, tarde, sin proveedor) va neutro — pintarlo
-  // de rojo mandaría a buscar un problema que no existe.
-  pending: 'bg-status-extension/15 text-status-extension',
-  sending: 'bg-status-extension/15 text-status-extension',
-  sent: 'bg-status-paid/15 text-status-paid',
-  delivered: 'bg-status-paid/15 text-status-paid',
-  bounced: 'bg-status-auctioned/15 text-status-auctioned',
-  failed: 'bg-status-arrears/15 text-status-arrears',
-  dead: 'bg-status-auctioned/15 text-status-auctioned',
-  unroutable: 'bg-status-neutral/15 text-status-neutral',
-  suppressed: 'bg-status-neutral/15 text-status-neutral',
-  throttled: 'bg-status-neutral/15 text-status-neutral',
-  skipped_stale: 'bg-status-neutral/15 text-status-neutral',
-  skipped_no_provider: 'bg-status-neutral/15 text-status-neutral',
+/**
+ * Estados de CLIENTE (`customer_status`: active, frequent, alert). `active`
+ * también es un estado de contrato («Vigente») y un cliente no está vigente:
+ * está activo (F9-42). Por eso el cliente pasa `kind="customer"`.
+ */
+const CUSTOMER_STATUS_LABELS: Record<string, string> = {
+  active: 'Activo',
+  frequent: 'Frecuente',
+  alert: 'En alerta',
 }
 
-const FALLBACK_CLASSES = 'bg-status-neutral/15 text-status-neutral'
+/**
+ * Los tonos de la propuesta (rediseño P1, §3 «Estados de contrato»). Ningún
+ * estado depende solo del color: cada uno lleva ícono y palabra. Clases
+ * completas y estáticas a propósito: Tailwind no ve una clase interpolada.
+ */
+const TONE_CLASSES = {
+  /** «Listo para remate»: el ÚNICO estado relleno, porque pide actuar hoy. */
+  'danger-solid': 'bg-danger-solid text-on-danger-solid',
+  danger: 'bg-danger-soft text-danger',
+  warning: 'bg-warning-soft text-warning',
+  success: 'bg-success-soft text-success',
+  info: 'bg-info-soft text-info',
+  neutral: 'bg-neutral-soft text-body',
+} as const
+
+type Tone = keyof typeof TONE_CLASSES
+
+/**
+ * El orden de urgencia de los estados de contrato, de arriba abajo: lo que
+ * pide actuar hoy primero. Lo usan las leyendas y los conteos por estado.
+ */
+export const CONTRACT_STATUS_URGENCY = ['ready_for_auction', 'in_arrears', 'in_extension', 'active', 'paid', 'auctioned'] as const
+
+const STATUS_STYLE: Record<KnownStatus, { tone: Tone; Icon: LucideIcon }> = {
+  // Contrato, en el orden de urgencia.
+  ready_for_auction: { tone: 'danger-solid', Icon: Flag },
+  in_arrears: { tone: 'danger', Icon: TriangleAlert },
+  in_extension: { tone: 'warning', Icon: Hourglass },
+  active: { tone: 'success', Icon: CircleCheck },
+  paid: { tone: 'info', Icon: Check },
+  auctioned: { tone: 'neutral', Icon: Archive },
+  // Un contrato ampliado no es ni bueno ni malo, es un documento reemplazado;
+  // pintarlo como pagado diría que se saldó.
+  superseded: { tone: 'neutral', Icon: Layers },
+  // Inventario y prendas.
+  draft: { tone: 'warning', Icon: PencilLine },
+  available: { tone: 'success', Icon: CircleCheck },
+  sold: { tone: 'info', Icon: Check },
+  written_off: { tone: 'neutral', Icon: CircleMinus },
+  in_custody: { tone: 'success', Icon: Lock },
+  transferred: { tone: 'neutral', Icon: ArrowRight },
+  // Usuarios y caja.
+  invited: { tone: 'neutral', Icon: Mail },
+  open: { tone: 'success', Icon: LockOpen },
+  closed: { tone: 'neutral', Icon: Lock },
+  // Ventas: una completada se lee como «vendido»; la anulada, en rojo.
+  completed: { tone: 'info', Icon: Check },
+  voided: { tone: 'danger', Icon: Ban },
+  // Entregas: info para lo que salió, ámbar lo que está en vuelo o se va a
+  // reintentar, rojo solo lo que se perdió. Lo que no salió POR DISEÑO (sin
+  // correo, suprimido, tope, tarde, sin proveedor) va neutro: pintarlo de rojo
+  // mandaría a buscar un problema que no existe.
+  pending: { tone: 'warning', Icon: Clock },
+  sending: { tone: 'warning', Icon: Send },
+  sent: { tone: 'info', Icon: Check },
+  delivered: { tone: 'info', Icon: CheckCheck },
+  bounced: { tone: 'danger', Icon: CircleX },
+  failed: { tone: 'warning', Icon: RotateCw },
+  dead: { tone: 'danger', Icon: CircleX },
+  unroutable: { tone: 'neutral', Icon: CircleMinus },
+  suppressed: { tone: 'neutral', Icon: CircleMinus },
+  throttled: { tone: 'neutral', Icon: CircleMinus },
+  skipped_stale: { tone: 'neutral', Icon: CircleMinus },
+  skipped_no_provider: { tone: 'neutral', Icon: CircleMinus },
+}
+
+const CUSTOMER_STYLE: Record<string, { tone: Tone; Icon: LucideIcon }> = {
+  active: { tone: 'success', Icon: CircleCheck },
+  frequent: { tone: 'info', Icon: Star },
+  alert: { tone: 'warning', Icon: ShieldAlert },
+}
+
+const FALLBACK_STYLE = { tone: 'neutral' as Tone, Icon: Circle }
+
+type StatusKind = 'customer'
 
 function isKnownStatus(status: string): status is KnownStatus {
   return status in STATUS_LABELS
 }
 
-export function statusLabel(status: string): string {
+export function statusLabel(status: string, kind?: StatusKind): string {
+  const customer = kind === 'customer' ? CUSTOMER_STATUS_LABELS[status] : undefined
+  if (customer) return customer
   return isKnownStatus(status) ? STATUS_LABELS[status] : status
 }
 
-export function StatusBadge({ status, className }: { status: string; className?: string }) {
-  const statusClasses = isKnownStatus(status) ? STATUS_CLASSES[status] : FALLBACK_CLASSES
+function statusStyle(status: string, kind?: StatusKind) {
+  if (kind === 'customer') return CUSTOMER_STYLE[status] ?? FALLBACK_STYLE
+  return isKnownStatus(status) ? STATUS_STYLE[status] : FALLBACK_STYLE
+}
+
+/**
+ * Pastilla de estado: ícono Lucide + palabra + tono. 24 px de alto, 600 · 12,
+ * ícono de 13. Es (con los filtros) lo único que lleva forma de pastilla en la
+ * app: un botón es un rectángulo.
+ */
+export function StatusBadge({ status, kind, className }: { status: string; kind?: StatusKind; className?: string }) {
+  const { tone, Icon } = statusStyle(status, kind)
   return (
-    <span className={cn('inline-flex items-center rounded-pill px-2.5 py-0.5 text-xs font-medium', statusClasses, className)}>
-      {statusLabel(status)}
+    <span
+      data-tone={tone}
+      className={cn(
+        'inline-flex h-6 items-center gap-1.25 rounded-pill pr-2.25 pl-1.75 text-xs font-semibold whitespace-nowrap',
+        TONE_CLASSES[tone],
+        className,
+      )}
+    >
+      <Icon className="size-3.25 shrink-0" aria-hidden />
+      {statusLabel(status, kind)}
     </span>
   )
 }

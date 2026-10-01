@@ -7,6 +7,6 @@ import { cn } from '@/lib/utils'
  */
 export function LegacyCodeBadge({ code, className }: { code: string; className?: string }) {
   return (
-    <span className={cn('inline-flex items-center rounded-pill bg-status-neutral/15 px-2.5 py-0.5 font-mono text-xs font-medium text-status-neutral', className)}>{code}</span>
+    <span className={cn('inline-flex items-center h-6 rounded-pill bg-neutral-soft px-2.25 font-mono text-xs font-medium text-body', className)}>{code}</span>
   )
 }

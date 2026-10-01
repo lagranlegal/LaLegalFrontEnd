@@ -113,7 +113,7 @@ export function CustomerDetailPage() {
                 Saldo a favor: {formatCOP(creditNoteBalance)}
               </span>
             )}
-            <StatusBadge status={customer.status} />
+            <StatusBadge kind="customer" status={customer.status} />
             <Can permission="customers.create">
               <Button
                 variant="outline"

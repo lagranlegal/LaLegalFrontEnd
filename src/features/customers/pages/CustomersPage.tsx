@@ -14,7 +14,7 @@ const columns: ColumnDef<Customer>[] = [
   { accessorKey: 'full_name', header: 'Nombre' },
   { accessorKey: 'doc_number', header: 'Documento', cell: (info) => `${info.row.original.doc_type.toUpperCase()} ${info.getValue<string>()}` },
   { accessorKey: 'phone', header: 'Teléfono' },
-  { accessorKey: 'status', header: 'Estado', cell: (info) => <StatusBadge status={info.getValue<string>()} /> },
+  { accessorKey: 'status', header: 'Estado', cell: (info) => <StatusBadge kind="customer" status={info.getValue<string>()} /> },
 ]
 
 export function CustomersPage() {
