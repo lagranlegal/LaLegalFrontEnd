@@ -13,6 +13,7 @@ vi.mock('@/lib/auth/me', () => ({ useMe: () => ({ data: { user: { full_name: 'An
 vi.mock('@/features/dashboard/api', () => ({
   useDashboard: () => ({ data: DASHBOARD, isPending: false, isError: false }),
   useReadyForAuction: () => ({ data: [] }),
+  useContractAttention: () => ({ data: undefined, isPending: true, error: null, refetch: vi.fn() }),
 }))
 
 const { DashboardPage } = await import('@/features/dashboard/pages/DashboardPage')

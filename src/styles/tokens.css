@@ -215,6 +215,9 @@
   /* 11 px: solo la línea de tiempo del contrato en el celular, donde cuatro
      fechas completas tienen que caber en 360 px. */
   --font-size-2xs: 0.6875rem;
+  /* Rediseño P2-c: 13 px, el texto de las tarjetas «Para hoy» del Inicio y de
+     la franja de caja; el 14 es el text-sm y el 12 el text-xs. */
+  --font-size-caption: 0.8125rem;
   /* Solo códigos de etiqueta (JOC0007-01R): la mono deja ver cada carácter. */
   --font-mono: 'JetBrains Mono Variable', 'JetBrains Mono', ui-monospace, monospace;
   /* Escala de titulares de la landing: fluida entre 390 y 1280 px de ancho

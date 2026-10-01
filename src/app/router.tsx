@@ -264,10 +264,23 @@ const supplierDetailRoute = createRoute({
 // la lista y el detalle/formulario son pantallas independientes, no un
 // layout compartido. Estático antes que dinámico en el array por claridad
 // (el matcher de TanStack ya prioriza segmentos estáticos igual).
+/**
+ * El filtro de estado de la lista entra por la URL (`?estado=`) para que las
+ * tarjetas «Para hoy» del Inicio abran la lista ya filtrada (rediseño P2-c).
+ * No se llama `status`: el reductor de búsqueda de Inventario ve la unión de
+ * todas las rutas (mismo motivo que `seccion` en el detalle).
+ */
+const contractsSearchSchema = z.object({
+  estado: z.enum(['active', 'in_arrears', 'in_extension', 'ready_for_auction', 'auctioned']).optional().catch(undefined),
+})
+
+export type ContractsSearch = z.infer<typeof contractsSearchSchema>
+
 const contractsRoute = createRoute({
   getParentRoute: () => appLayoutRoute,
   path: '/contratos',
   component: ContractsListPage,
+  validateSearch: contractsSearchSchema,
   beforeLoad: ({ context, preload }) => {
     const me = context.queryClient.getQueryData(meQueryOptions().queryKey)
     if (me && !me.permissions.includes('contracts.view')) {

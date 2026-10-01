@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import type { ColumnDef } from '@tanstack/react-table'
-import { useNavigate } from '@tanstack/react-router'
+import { useNavigate, useSearch } from '@tanstack/react-router'
 import { Download } from 'lucide-react'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { DataTable } from '@/components/shared/DataTable'
@@ -31,7 +31,13 @@ const STATUS_TABS = [
 ]
 
 export function ContractsListPage() {
-  const [status, setStatus] = useState('')
+  // `?estado=` llega desde las tarjetas «Para hoy» del Inicio; de ahí en
+  // adelante el filtro sigue siendo estado local, como antes.
+  const search = useSearch({ strict: false }) as { estado?: string }
+  const canAuction = usePermission('contracts.auction')
+  // Sin `contracts.auction` la pestaña de remate no existe: ese `?estado=`
+  // cae en «Todos» (no hay un `?status=ready_for_auction` en `GET /contracts`).
+  const [status, setStatus] = useState(search.estado === 'ready_for_auction' && !canAuction ? '' : (search.estado ?? ''))
   const [q, setQ] = useState('')
   const navigate = useNavigate()
   const isSearching = q.trim().length > 0
@@ -44,7 +50,6 @@ export function ContractsListPage() {
   // El endpoint exige `contracts.auction` (el mismo permiso de Rematar): sin
   // él la pestaña no se muestra y la lista no se pide — antes cada Asesor
   // que abría Contratos dejaba un 403 en la consola.
-  const canAuction = usePermission('contracts.auction')
   const statusTabs = canAuction ? STATUS_TABS : STATUS_TABS.filter((tab) => tab.value !== 'ready_for_auction')
   const isReadyTab = canAuction && status === 'ready_for_auction'
   const { data, isPending, isError, refetch, hasNextPage, isFetchingNextPage, fetchNextPage } = useContractsList(isReadyTab ? '' : status)

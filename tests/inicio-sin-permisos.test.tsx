@@ -67,8 +67,9 @@ describe('Inicio sin reportes, remate ni caja', () => {
     expect(screen.queryByText(/Caja (abierta|cerrada)/)).toBeNull()
   })
 
-  it('Asesor (ve la caja pero no la abre): el acceso «Caja» no le ofrece abrirla', async () => {
-    permisos.list = ['contracts.view', 'cashbox.view']
+  it('quien ve la caja pero no la abre: el acceso «Caja» no le ofrece abrirla', async () => {
+    // Sin `contracts.view`: con él, el Inicio lleva «Para hoy» y no accesos (P2-c).
+    permisos.list = ['cashbox.view']
     get.mockResolvedValue({ data: null })
     renderizar(<DashboardPage />)
     const caja = await screen.findByRole('link', { name: /Caja/ })

@@ -11,7 +11,9 @@ vi.mock('@tanstack/react-router', () => ({
   Link: ({ to, children }: { to: string; children: ReactNode }) => <a href={to}>{children}</a>,
 }))
 vi.mock('@/lib/auth/me', () => ({ useMe: () => ({ data: { user: { full_name: 'Asesor' } } }) }))
-vi.mock('@/lib/permissions/usePermission', () => ({ usePermission: (code: string) => ['contracts.create', 'contracts.view', 'sales.create'].includes(code) }))
+// Sin `contracts.view` ni `reports.view`: con contratos, el Inicio ya tiene
+// «Para hoy» y «Requieren acción» (rediseño P2-c) y no lleva accesos.
+vi.mock('@/lib/permissions/usePermission', () => ({ usePermission: (code: string) => ['contracts.create', 'customers.view', 'sales.create'].includes(code) }))
 vi.mock('@/features/dashboard/api', () => ({
   useDashboard: () => ({
     data: undefined,
@@ -21,6 +23,7 @@ vi.mock('@/features/dashboard/api', () => ({
     refetch: vi.fn(),
   }),
   useReadyForAuction: () => ({ data: undefined }),
+  useContractAttention: () => ({ data: undefined, isPending: true, error: null, refetch: vi.fn() }),
 }))
 
 const { DashboardPage } = await import('@/features/dashboard/pages/DashboardPage')
@@ -32,7 +35,8 @@ describe('Inicio sin reportes', () => {
     // Las dos puertas del mostrador van en el encabezado, una sola vez (P2-c).
     expect(screen.getByRole('link', { name: /Nuevo contrato/ }).getAttribute('href')).toBe('/contratos/nuevo')
     expect(screen.getByRole('link', { name: /Nueva venta/ }).getAttribute('href')).toBe('/ventas/nueva')
-    expect(screen.getByRole('link', { name: /^Contratos/ })).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: /^Clientes/ })).toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: /^Contratos/ })).toBeNull()
     expect(screen.queryByRole('link', { name: /Caja/ })).toBeNull()
     expect(screen.queryByRole('link', { name: /Nuevo ingreso/ })).toBeNull()
   })

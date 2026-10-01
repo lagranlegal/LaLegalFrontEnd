@@ -138,6 +138,7 @@
   --text-md: var(--font-size-md);
   --text-figure-lg: var(--font-size-figure-lg);
   --text-2xs: var(--font-size-2xs);
+  --text-caption: var(--font-size-caption);
   --text-hero: var(--font-size-hero);
   --text-closing: var(--font-size-closing);
   --text-section: var(--font-size-section);

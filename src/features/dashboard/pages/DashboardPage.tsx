@@ -1,6 +1,7 @@
 import { Link } from '@tanstack/react-router'
 import { usePermission } from '@/lib/permissions/usePermission'
-import { useDashboard, useReadyForAuction } from '@/features/dashboard/api'
+import { useContractAttention, useDashboard, useReadyForAuction } from '@/features/dashboard/api'
+import { TodayTasks } from '@/features/dashboard/components/TodayTasks'
 import { InicioHeader } from '@/features/dashboard/components/InicioHeader'
 import { KpiCard, KpiRow } from '@/components/shared/KpiCard'
 import { QuickActions } from '@/features/dashboard/components/QuickActions'
@@ -45,40 +46,54 @@ export function DashboardPage() {
   // Sin el permiso la consulta no sale: el 403 era seguro, pero evitable
   // (issue #9). El 403 se sigue atendiendo abajo por si `/me` quedó viejo.
   const canViewReports = usePermission('reports.view')
+  const canViewContracts = usePermission('contracts.view')
   const canAuction = usePermission('contracts.auction')
   const { data, isPending, isError, error, refetch } = useDashboard({ enabled: canViewReports })
+  const attention = useContractAttention({ enabled: canViewContracts })
   const { data: readyForAuction } = useReadyForAuction({ enabled: canAuction })
+  const reportsDenied = !canViewReports || (isError && isPermissionError(error))
 
-  // `/` es el destino al que redirigen TODOS los guards de ruta, así que es la
-  // pantalla que ve un usuario cuyo rol no le da acceso a casi nada. Sin
-  // `reports.view` el dashboard no carga, y decirle "no se pudo" lo deja
-  // creyendo que la app está rota — cuando en realidad no tiene permiso.
-  // F9-60: y no una pantalla vacía — los accesos a lo que sí puede hacer.
-  if (!canViewReports || (isError && isPermissionError(error))) {
-    return (
-      <div className="flex flex-col gap-6">
-        <InicioHeader />
-        <QuickActions />
-        <p className="text-xs text-muted-foreground">
-          El resumen de cifras del inicio es para quien tiene el permiso «Dashboard y reportes».
-        </p>
-      </div>
-    )
-  }
+  return (
+    <div className="flex flex-col gap-4.5">
+      <InicioHeader />
+      {/* «Para hoy» es de todo el que ve contratos, también el Asesor (F9-60). */}
+      {canViewContracts && (
+        <TodayTasks data={attention.data} isPending={attention.isPending} error={attention.error} onRetry={() => void attention.refetch()} />
+      )}
+      {/* `/` es el destino de TODOS los guards de ruta: un rol sin contratos ni
+          reportes (Bodega) ve sus accesos directos, no una pantalla vacía. */}
+      {reportsDenied && !canViewContracts && (
+        <>
+          <QuickActions />
+          <p className="text-xs text-muted-foreground">
+            El resumen de cifras del inicio es para quien tiene el permiso «Dashboard y reportes».
+          </p>
+        </>
+      )}
+      {!reportsDenied &&
+        (isPending ? (
+          <DashboardSkeleton />
+        ) : isError ? (
+          <div className="flex flex-col items-center gap-3 rounded-card border border-border bg-card p-card text-center">
+            <p className="text-sm text-muted-foreground">No se pudo cargar el resumen de cifras.</p>
+            <Button variant="outline" onClick={() => refetch()}>
+              Reintentar
+            </Button>
+          </div>
+        ) : (
+          <ReportsSection data={data} readyForAuction={readyForAuction} />
+        ))}
+    </div>
+  )
+}
 
-  if (isPending) return <DashboardSkeleton />
-
-  if (isError) {
-    return (
-      <div className="flex flex-col items-center gap-3 rounded-card border border-border bg-card p-card text-center">
-        <p className="text-sm text-muted-foreground">No se pudo cargar el dashboard.</p>
-        <Button variant="outline" onClick={() => refetch()}>
-          Reintentar
-        </Button>
-      </div>
-    )
-  }
-
+function ReportsSection({
+  data,
+  readyForAuction,
+}: {
+  data: NonNullable<ReturnType<typeof useDashboard>['data']>
+  readyForAuction: ReturnType<typeof useReadyForAuction>['data']
+}) {
   const contractsByStatus: StatusDatum[] = [
     { key: 'active', label: 'Vigentes', count: data.contracts.active_count, color: 'var(--status-active)' },
     { key: 'in_arrears', label: 'En mora', count: data.contracts.in_arrears_count, color: 'var(--status-arrears)' },
@@ -88,9 +103,7 @@ export function DashboardPage() {
   ]
 
   return (
-    <div className="flex flex-col gap-6">
-      <InicioHeader />
-
+    <>
       <KpiRow>
         <KpiCard label="Cartera activa" value={<Money value={data.contracts.capital_outstanding} />} />
         {/* F7-07: `today_total`/`month_total` ya vienen NETOS de
@@ -161,6 +174,6 @@ export function DashboardPage() {
           )}
         </div>
       </div>
-    </div>
+    </>
   )
 }
