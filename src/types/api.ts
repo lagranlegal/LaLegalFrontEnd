@@ -3142,6 +3142,95 @@ export interface components {
              */
             auctioned_this_month: number;
         };
+        /**
+         * ContractListItemOut
+         * @description Un contrato del LISTADO (`GET /contracts`): `ContractOut` más el cliente.
+         *
+         *     Subclase y no campos opcionales en `ContractOut`: así el nombre es
+         *     obligatorio donde siempre viene (un JOIN en la misma consulta del
+         *     listado) y no aparece como `null` en el detalle ni en las respuestas de
+         *     crear, abonar o ampliar, que no lo traen. Para el front es un superconjunto
+         *     de `ContractOut`: lo que ya tipaba la lista con `ContractOut` sigue
+         *     compilando (issue #10 del front, rediseño P2-d).
+         */
+        ContractListItemOut: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Number */
+            number: number;
+            /** Legacy Code */
+            legacy_code: string | null;
+            /**
+             * Customer Id
+             * Format: uuid
+             */
+            customer_id: string;
+            /** Principal */
+            principal: string;
+            /** Capital Balance */
+            capital_balance: string;
+            /** Appraisal Value */
+            appraisal_value: string | null;
+            /** Interest Rate Pct */
+            interest_rate_pct: string;
+            /** Term Months */
+            term_months: number;
+            /** Arrears Window Months */
+            arrears_window_months: number;
+            /** Extension Months */
+            extension_months: number;
+            /**
+             * Start Date
+             * Format: date
+             */
+            start_date: string;
+            /**
+             * Due Date
+             * Format: date
+             */
+            due_date: string;
+            /**
+             * Interest Paid Until
+             * Format: date
+             */
+            interest_paid_until: string;
+            /** Status */
+            status: string;
+            /** Extension Ends At */
+            extension_ends_at: string | null;
+            /** Ltv Warning */
+            ltv_warning: boolean;
+            /** Notes */
+            notes: string | null;
+            /** Signed Photo Url */
+            signed_photo_url: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Extension Window Days */
+            extension_window_days: number;
+            /** Extension Interest Policy */
+            extension_interest_policy: string;
+            /** Parent Contract Id */
+            parent_contract_id: string | null;
+            /** Root Contract Id */
+            root_contract_id: string | null;
+            /** Extended On */
+            extended_on: string | null;
+            /** Extension Amount */
+            extension_amount: string | null;
+            /** Items */
+            items: components["schemas"]["ContractItemOut"][];
+            /** Customer Name */
+            customer_name: string;
+            /** Customer Document */
+            customer_document: string;
+        };
         /** ContractOut */
         ContractOut: {
             /**
@@ -3308,10 +3397,10 @@ export interface components {
             /** Next Cursor */
             next_cursor?: string | null;
         };
-        /** CursorPage[ContractOut] */
-        CursorPage_ContractOut_: {
+        /** CursorPage[ContractListItemOut] */
+        CursorPage_ContractListItemOut_: {
             /** Items */
-            items: components["schemas"]["ContractOut"][];
+            items: components["schemas"]["ContractListItemOut"][];
             /** Next Cursor */
             next_cursor?: string | null;
         };
@@ -7786,6 +7875,8 @@ export interface operations {
                 customer_id?: string | null;
                 /** @description Número, código anterior o nombre/documento del cliente */
                 q?: string | null;
+                /** @description Orden. `next_due_asc` (default): vivos primero, el que más meses debe arriba; terminales al final, el más nuevo primero. `number_desc`/`number_asc`: por número. `customer_asc`: por nombre del cliente. El `cursor` solo vale con el mismo `sort` con que se emitió. */
+                sort?: "next_due_asc" | "number_desc" | "number_asc" | "customer_asc";
             };
             header?: never;
             path?: never;
@@ -7799,7 +7890,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["CursorPage_ContractOut_"];
+                    "application/json": components["schemas"]["CursorPage_ContractListItemOut_"];
                 };
             };
             /** @description Validation Error */
