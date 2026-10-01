@@ -27,7 +27,7 @@ export function SubscriptionBlockedPage() {
           La suscripción de tu empresa venció. Contacta al administrador de la plataforma para reactivarla.
         </p>
         <div className="mt-4 flex flex-col gap-2">
-          <Button className="w-full rounded-pill" onClick={() => void navigate({ to: '/inicio' })}>
+          <Button className="w-full" onClick={() => void navigate({ to: '/inicio' })}>
             Ya la reactivaron: volver a intentar
           </Button>
           <Button variant="ghost" className="w-full" disabled={logout.isPending} onClick={() => void handleLogout()}>

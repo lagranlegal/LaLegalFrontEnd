@@ -198,7 +198,7 @@ export function SettingsPage() {
           title="No se pudo cargar la configuración"
           description="Revisa tu conexión e intenta de nuevo."
           action={
-            <Button onClick={() => refetch()} className="rounded-pill">
+            <Button onClick={() => refetch()}>
               Reintentar
             </Button>
           }
@@ -352,7 +352,7 @@ export function SettingsPage() {
         {formError && <p className="rounded-input bg-danger-soft px-3 py-2 text-sm text-danger">{formError}</p>}
 
         <div className="flex justify-end">
-          <Button type="submit" disabled={updateSettings.isPending || !isDirty} className="w-full rounded-pill sm:w-auto">
+          <Button type="submit" disabled={updateSettings.isPending || !isDirty} className="w-full sm:w-auto">
             {updateSettings.isPending ? 'Guardando…' : 'Guardar cambios'}
           </Button>
         </div>

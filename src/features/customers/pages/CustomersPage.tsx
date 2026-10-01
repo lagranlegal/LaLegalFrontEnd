@@ -34,7 +34,6 @@ export function CustomersPage() {
         actions={
           <Can permission="customers.create">
             <Button
-              className="rounded-pill"
               onClick={() => {
                 setDialogNonce((n) => n + 1)
                 setDialogOpen(true)

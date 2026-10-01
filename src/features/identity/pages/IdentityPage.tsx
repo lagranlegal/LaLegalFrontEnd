@@ -45,7 +45,6 @@ function UsersTab() {
       <div className="flex justify-end">
         <Can permission="identity.manage_users">
           <Button
-            className="rounded-pill"
             onClick={() => {
               setInviteNonce((n) => n + 1)
               setInviteOpen(true)
@@ -152,7 +151,6 @@ function RolesTab() {
       <div className="flex justify-end">
         <Can permission="identity.manage_roles">
           <Button
-            className="rounded-pill"
             onClick={() => {
               setEditingRole(undefined)
               setFormNonce((n) => n + 1)

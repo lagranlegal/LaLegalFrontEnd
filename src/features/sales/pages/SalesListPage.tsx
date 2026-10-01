@@ -79,7 +79,7 @@ export function SalesListPage() {
               {isExporting ? 'Exportando…' : 'Exportar a Excel'}
             </Button>
             <Can permission="sales.create">
-              <Button className="rounded-pill" onClick={() => navigate({ to: '/ventas/nueva' })}>
+              <Button onClick={() => navigate({ to: '/ventas/nueva' })}>
                 + Nueva venta
               </Button>
             </Can>

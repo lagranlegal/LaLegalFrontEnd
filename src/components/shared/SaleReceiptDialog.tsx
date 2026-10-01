@@ -297,19 +297,19 @@ export function SaleReceiptDialog({ open, onOpenChange, sale }: { open: boolean;
         footer={
           <div className="flex w-full flex-col gap-2">
             <CompanyDataNotice />
-            <Button type="button" className="w-full rounded-pill" onClick={() => window.print()}>
+            <Button type="button" className="w-full" onClick={() => window.print()}>
               Imprimir comprobante
             </Button>
             {!isVoided && (
               <Can permission="sales.return">
-                <Button type="button" variant="outline" className="w-full rounded-pill" onClick={() => setReturnDialogOpen(true)}>
+                <Button type="button" variant="outline" className="w-full" onClick={() => setReturnDialogOpen(true)}>
                   Devolver
                 </Button>
               </Can>
             )}
             {!isVoided && (
               <Can permission="sales.void">
-                <Button type="button" variant="outline" disabled={voidSale.isPending} className="w-full rounded-pill text-danger hover:text-danger" onClick={handleVoid}>
+                <Button type="button" variant="destructive" disabled={voidSale.isPending} className="w-full" onClick={handleVoid}>
                   {voidSale.isPending ? 'Anulando…' : 'Anular venta'}
                 </Button>
               </Can>

@@ -67,10 +67,10 @@ export function RoleFormDialog({ open, onOpenChange, role }: { open: boolean; on
       description={mode === 'create' ? 'Los permisos se ajustan después, desde "Ver permisos".' : undefined}
       footer={
         <div className="flex w-full gap-2">
-          <Button type="button" variant="outline" className="flex-1 rounded-pill" onClick={() => onOpenChange(false)} disabled={isPending}>
+          <Button type="button" variant="outline" className="flex-1" onClick={() => onOpenChange(false)} disabled={isPending}>
             Cancelar
           </Button>
-          <Button form="role-form" type="submit" disabled={isPending} className="flex-1 rounded-pill">
+          <Button form="role-form" type="submit" disabled={isPending} className="flex-1">
             {isPending ? 'Guardando…' : mode === 'create' ? 'Crear rol' : 'Guardar cambios'}
           </Button>
         </div>

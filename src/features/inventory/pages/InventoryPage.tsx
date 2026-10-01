@@ -654,7 +654,6 @@ function ExitsTab() {
         />
         <Can permission="inventory.exit">
           <Button
-            className="rounded-pill"
             onClick={() => {
               setDialogNonce((n) => n + 1)
               setDialogOpen(true)
@@ -698,12 +697,12 @@ export function InventoryPage() {
             {/* Transformar va como acción secundaria: es menos frecuente que
                 comprar, y destruye inventario. */}
             <Can permission="inventory.transform">
-              <Button variant="outline" className="rounded-pill" onClick={() => navigate({ to: '/inventario/transformaciones/nueva' })}>
+              <Button variant="outline" onClick={() => navigate({ to: '/inventario/transformaciones/nueva' })}>
                 Transformar
               </Button>
             </Can>
             <Can permission="inventory.create">
-              <Button className="rounded-pill" onClick={() => navigate({ to: '/inventario/ingresos/nuevo' })}>
+              <Button onClick={() => navigate({ to: '/inventario/ingresos/nuevo' })}>
                 + Nuevo ingreso
               </Button>
             </Can>

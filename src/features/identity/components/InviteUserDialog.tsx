@@ -85,7 +85,7 @@ export function InviteUserDialog({ open, onOpenChange }: { open: boolean; onOpen
       }
       footer={
         inviteLink ? (
-          <Button onClick={() => onOpenChange(false)} className="w-full rounded-pill">
+          <Button onClick={() => onOpenChange(false)} className="w-full">
             Listo
           </Button>
         ) : (
@@ -94,7 +94,7 @@ export function InviteUserDialog({ open, onOpenChange }: { open: boolean; onOpen
               type="button"
               disabled={inviteUser.isPending}
               onClick={handleSubmit((values) => submitInvite(values, true))}
-              className="w-full rounded-pill"
+              className="w-full"
             >
               <Mail className="size-4" />
               {inviteUser.isPending ? 'Enviando…' : 'Enviar por correo'}
@@ -106,7 +106,7 @@ export function InviteUserDialog({ open, onOpenChange }: { open: boolean; onOpen
               variant="outline"
               disabled={inviteUser.isPending}
               onClick={handleSubmit((values) => submitInvite(values, false))}
-              className="w-full rounded-pill"
+              className="w-full"
             >
               <Link2 className="size-4" />
               Generar enlace
@@ -123,7 +123,7 @@ export function InviteUserDialog({ open, onOpenChange }: { open: boolean; onOpen
           <p className="rounded-input border border-border bg-muted px-3 py-2 font-mono text-xs break-all text-foreground">
             {inviteLink}
           </p>
-          <Button type="button" variant="outline" onClick={copyLink} className="w-full rounded-pill">
+          <Button type="button" variant="outline" onClick={copyLink} className="w-full">
             {copied ? <Check className="size-4" /> : <Copy className="size-4" />}
             {copied ? 'Copiado' : 'Copiar enlace'}
           </Button>

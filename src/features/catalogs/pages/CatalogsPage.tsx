@@ -48,7 +48,7 @@ function CategoriesTab() {
     <div className="flex flex-col gap-4">
       <div className="flex justify-end">
         <Can permission="catalogs.manage">
-          <Button className="rounded-pill" onClick={() => openCreate(undefined)}>
+          <Button onClick={() => openCreate(undefined)}>
             + Categoría
           </Button>
         </Can>
@@ -92,7 +92,6 @@ function SuppliersTab() {
       <div className="flex justify-end">
         <Can permission="catalogs.manage">
           <Button
-            className="rounded-pill"
             onClick={() => {
               setEditingSupplier(undefined)
               setDialogNonce((n) => n + 1)

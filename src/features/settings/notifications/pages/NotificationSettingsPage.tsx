@@ -417,7 +417,7 @@ function ParamsForm({ settings }: { settings: NotificationSettings }) {
 
       {formError && <div className="rounded-input bg-danger-soft px-4 py-2 text-sm text-danger">{formError}</div>}
       <div className="flex justify-end">
-        <Button type="submit" className="rounded-pill" disabled={!patch || update.isPending}>
+        <Button type="submit" disabled={!patch || update.isPending}>
           Guardar parámetros
         </Button>
       </div>

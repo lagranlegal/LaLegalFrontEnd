@@ -500,7 +500,7 @@ export function TransformationFormPage() {
         </div>
         <Button
           type="button"
-          className="w-full rounded-pill sm:w-auto"
+          className="w-full sm:w-auto"
           disabled={!puedeGuardar || createTransformation.isPending}
           onClick={handleSubmit}
         >
@@ -516,7 +516,7 @@ export function TransformationFormPage() {
         size="sm"
         footer={
           <div className="flex w-full flex-col gap-2">
-            <Button className="w-full rounded-pill bg-danger hover:bg-danger/90" onClick={() => blocker.proceed?.()}>
+            <Button variant="danger-solid" className="w-full" onClick={() => blocker.proceed?.()}>
               Descartar cambios
             </Button>
             <Button variant="ghost" className="w-full" onClick={() => blocker.reset?.()}>

@@ -166,7 +166,7 @@ export function AuthCallbackPage() {
           type="button"
           onClick={() => void canjear()}
           disabled={status === 'verificando'}
-          className="mt-6 w-full rounded-pill"
+          className="mt-6 w-full"
         >
           {status === 'verificando' ? 'Verificando…' : status === 'fallo' ? 'Intentar de nuevo' : 'Continuar'}
         </Button>
@@ -193,7 +193,7 @@ export function AuthCallbackPage() {
           apenas te llegue.
         </p>
         {/* F9-61: la misma salida que `invalid`; es el caso real más común. */}
-        <Button asChild className="mt-4 w-full rounded-pill">
+        <Button asChild className="mt-4 w-full">
           <Link to="/auth/login">Ir a ingresar</Link>
         </Button>
       </div>
@@ -209,7 +209,7 @@ export function AuthCallbackPage() {
           ingreso, o pide a tu administrador que te genere un enlace nuevo.
         </p>
         {/* F9-61: con salida, no un callejón. */}
-        <Button asChild className="mt-4 w-full rounded-pill">
+        <Button asChild className="mt-4 w-full">
           <Link to="/auth/login">Ir a ingresar</Link>
         </Button>
       </div>
@@ -259,7 +259,7 @@ export function AuthCallbackPage() {
           <p className="rounded-input bg-danger-soft px-3 py-2 text-sm text-danger">{setPasswordErrorMessage(setPassword.error)}</p>
         )}
 
-        <Button type="submit" disabled={setPassword.isPending || entrando} className="mt-2 w-full rounded-pill">
+        <Button type="submit" disabled={setPassword.isPending || entrando} className="mt-2 w-full">
           {entrando ? 'Entrando…' : setPassword.isPending ? 'Guardando…' : 'Guardar contraseña'}
         </Button>
 

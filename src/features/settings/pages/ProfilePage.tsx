@@ -93,7 +93,7 @@ export function ProfilePage() {
         {formError && <p className="rounded-input bg-danger-soft px-3 py-2 text-sm text-danger">{formError}</p>}
 
         <div className="flex justify-end">
-          <Button type="submit" className="rounded-pill" disabled={updateMe.isPending || nameMissing || !dirty}>
+          <Button type="submit" disabled={updateMe.isPending || nameMissing || !dirty}>
             {updateMe.isPending ? 'Guardando…' : 'Guardar cambios'}
           </Button>
         </div>
@@ -176,7 +176,7 @@ function ChangePasswordCard() {
       {error && <p className="rounded-input bg-danger-soft px-3 py-2 text-sm text-danger">{error}</p>}
 
       <div className="flex justify-end">
-        <Button type="submit" className="rounded-pill" disabled={cambiar.isPending || !listo}>
+        <Button type="submit" disabled={cambiar.isPending || !listo}>
           {cambiar.isPending ? 'Cambiando…' : 'Cambiar contraseña'}
         </Button>
       </div>

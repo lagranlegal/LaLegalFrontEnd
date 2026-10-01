@@ -198,7 +198,6 @@ export function ExtendLoanPanel({ contract }: { contract: Contract }) {
               <AccountPicker paymentMethod={method} direction="out" value={accountId} onChange={setAccountId} />
             </div>
             <Button
-              className="rounded-pill"
               disabled={!amount || Number(amount) <= 0}
               onClick={() => setConfirmOpen(true)}
             >
@@ -228,13 +227,13 @@ export function ExtendLoanPanel({ contract }: { contract: Contract }) {
           <div className="flex w-full gap-2">
             <Button
               variant="outline"
-              className="flex-1 rounded-pill"
+              className="flex-1"
               onClick={() => setConfirmOpen(false)}
               disabled={extend.isPending}
             >
               Cancelar
             </Button>
-            <Button className="flex-1 rounded-pill" onClick={confirmar} disabled={extend.isPending}>
+            <Button className="flex-1" onClick={confirmar} disabled={extend.isPending}>
               {extend.isPending ? 'Ampliando…' : 'Ampliar y entregar'}
             </Button>
           </div>

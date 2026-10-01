@@ -107,7 +107,7 @@ export function ContractsListPage() {
               </Button>
             </Can>
             <Can permission="contracts.create">
-              <Button className="rounded-pill" onClick={() => navigate({ to: '/contratos/nuevo' })}>
+              <Button onClick={() => navigate({ to: '/contratos/nuevo' })}>
                 + Nuevo contrato
               </Button>
             </Can>

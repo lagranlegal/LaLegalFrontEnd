@@ -73,7 +73,7 @@ export function ProductPriceDialog({
       description={product.name}
       size="sm"
       footer={
-        <Button type="button" className="w-full rounded-pill" disabled={updateProduct.isPending} onClick={handleSave}>
+        <Button type="button" className="w-full" disabled={updateProduct.isPending} onClick={handleSave}>
           {updateProduct.isPending ? 'Guardando…' : 'Aplicar a todos los lotes'}
         </Button>
       }

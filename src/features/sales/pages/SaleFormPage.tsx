@@ -448,7 +448,7 @@ export function SaleFormPage() {
 
           {formError && <p className="rounded-input bg-danger-soft px-3 py-2 text-sm text-danger">{formError}</p>}
 
-          <Button type="submit" disabled={createSale.isPending} className="w-full rounded-pill">
+          <Button type="submit" disabled={createSale.isPending} className="w-full">
             {createSale.isPending ? 'Vendiendo…' : (
               <>
                 Vender <Money value={total} className="ml-1" />
@@ -466,7 +466,7 @@ export function SaleFormPage() {
         size="sm"
         footer={
           <div className="flex w-full flex-col gap-2">
-            <Button className="w-full rounded-pill bg-danger hover:bg-danger/90" onClick={() => blocker.proceed?.()}>
+            <Button variant="danger-solid" className="w-full" onClick={() => blocker.proceed?.()}>
               Descartar cambios
             </Button>
             <Button variant="ghost" className="w-full" onClick={() => blocker.reset?.()}>

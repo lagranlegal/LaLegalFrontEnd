@@ -69,7 +69,7 @@ export function UnsubscribePage() {
                 {confirm.error instanceof ApiError ? userMessage(confirm.error) : 'No se pudo conectar. Intente de nuevo.'}
               </p>
             )}
-            <Button className="mt-4 w-full rounded-pill" onClick={() => confirm.mutate()} disabled={confirm.isPending}>
+            <Button className="mt-4 w-full" onClick={() => confirm.mutate()} disabled={confirm.isPending}>
               {confirm.isPending ? 'Registrando…' : 'Dejar de recibir avisos'}
             </Button>
           </div>
@@ -96,7 +96,7 @@ function InvalidOrUnreachable({ error, onRetry }: { error: unknown; onRetry: () 
       <p className="mt-2 text-sm text-muted-foreground">
         {error instanceof ApiError ? userMessage(error) : 'No se pudo conectar con el servidor.'}
       </p>
-      <Button variant="outline" className="mt-4 w-full rounded-pill" onClick={onRetry}>
+      <Button variant="outline" className="mt-4 w-full" onClick={onRetry}>
         Reintentar
       </Button>
     </div>

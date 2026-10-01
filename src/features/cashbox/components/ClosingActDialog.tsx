@@ -52,7 +52,7 @@ export function ClosingActDialog({ open, onOpenChange, closing }: { open: boolea
         footer={
           <div className="flex w-full flex-col gap-2">
             <CompanyDataNotice />
-            <Button type="button" className="w-full rounded-pill" disabled={!report} onClick={() => window.print()}>
+            <Button type="button" className="w-full" disabled={!report} onClick={() => window.print()}>
               {report ? 'Imprimir' : 'Cargando desglose…'}
             </Button>
           </div>

@@ -1,7 +1,6 @@
 import { useState } from 'react'
 import { AppDialog } from '@/components/shared/AppDialog'
 import { Button } from '@/components/ui/button'
-import { cn } from '@/lib/utils'
 import { type ConfirmOptions, resolveConfirm, useConfirmStore } from '@/components/shared/confirmStore'
 
 const inputClass = 'mt-1 w-full rounded-input border border-border bg-background px-3 py-2 text-sm text-foreground outline-none focus:border-primary'
@@ -26,7 +25,8 @@ function ConfirmDialogInner({ options }: { options: ConfirmOptions }) {
       footer={
         <div className="flex w-full flex-col gap-2">
           <Button
-            className={cn('w-full rounded-pill', options.tone === 'danger' && 'bg-danger hover:bg-danger/90')}
+            variant={options.tone === 'danger' ? 'danger-solid' : 'default'}
+            className="w-full"
             disabled={reasonMissing}
             onClick={() => close({ confirmed: true })}
           >

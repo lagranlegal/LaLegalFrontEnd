@@ -77,7 +77,7 @@ export function ContractEditDialog({ open, onOpenChange, contract }: { open: boo
       onOpenChange={onOpenChange}
       title="Editar contrato"
       footer={
-        <Button form="contract-edit-form" type="submit" disabled={updateContract.isPending} className="w-full rounded-pill">
+        <Button form="contract-edit-form" type="submit" disabled={updateContract.isPending} className="w-full">
           {updateContract.isPending ? 'Guardando…' : 'Guardar cambios'}
         </Button>
       }

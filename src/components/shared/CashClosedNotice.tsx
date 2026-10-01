@@ -50,7 +50,7 @@ export function CashClosedNotice({
         title="La caja está cerrada"
         action={
           <Can permission="cashbox.open_close" fallback={<span className="text-muted-foreground">Pídele a un responsable que la abra.</span>}>
-            <Button type="button" size="sm" className="rounded-pill" onClick={() => setOpenDialog(true)}>
+            <Button type="button" size="sm" onClick={() => setOpenDialog(true)}>
               Abrir caja
             </Button>
           </Can>

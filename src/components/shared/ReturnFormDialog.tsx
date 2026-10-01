@@ -232,7 +232,7 @@ export function ReturnFormDialog({ open, onOpenChange, sale }: { open: boolean; 
 
           {formError && <p className="rounded-input bg-danger-soft px-3 py-2 text-sm text-danger">{formError}</p>}
 
-          <Button type="submit" disabled={createReturn.isPending} className="w-full rounded-pill">
+          <Button type="submit" disabled={createReturn.isPending} className="w-full">
             {createReturn.isPending ? 'Registrando…' : 'Registrar devolución'}
           </Button>
         </form>

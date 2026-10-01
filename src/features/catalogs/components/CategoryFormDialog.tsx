@@ -150,10 +150,10 @@ export function CategoryFormDialog({
       title={mode === 'create' ? 'Nueva categoría' : 'Editar categoría'}
       footer={
         <div className="flex w-full gap-2">
-          <Button type="button" variant="outline" className="flex-1 rounded-pill" onClick={() => onOpenChange(false)} disabled={isPending}>
+          <Button type="button" variant="outline" className="flex-1" onClick={() => onOpenChange(false)} disabled={isPending}>
             Cancelar
           </Button>
-          <Button form="category-form" type="submit" disabled={isPending} className="flex-1 rounded-pill">
+          <Button form="category-form" type="submit" disabled={isPending} className="flex-1">
             {isPending ? 'Guardando…' : mode === 'create' ? 'Crear categoría' : 'Guardar cambios'}
           </Button>
         </div>

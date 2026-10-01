@@ -74,7 +74,7 @@ function PermissionsChecklist({ role, catalog, initialCodes, onSaved }: { role: 
 
       {error && <p className="rounded-input bg-danger-soft px-3 py-2 text-sm text-danger">{error}</p>}
 
-      <Button disabled={updatePermissions.isPending} onClick={handleSave} className="w-full rounded-pill">
+      <Button disabled={updatePermissions.isPending} onClick={handleSave} className="w-full">
         {updatePermissions.isPending ? 'Guardando…' : 'Guardar permisos'}
       </Button>
     </div>

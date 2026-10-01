@@ -75,14 +75,14 @@ export function OpenSessionDialog({ open, onOpenChange }: { open: boolean; onOpe
       description="Empieza el turno. El efectivo del cajón ya se sabe: lo que puedes hacer es confirmarlo contándolo."
       footer={
         <div className="flex w-full gap-2">
-          <Button type="button" variant="outline" className="flex-1 rounded-pill" onClick={cerrar} disabled={openSession.isPending}>
+          <Button type="button" variant="outline" className="flex-1" onClick={cerrar} disabled={openSession.isPending}>
             Cancelar
           </Button>
           <Button
             form="open-session-form"
             type="submit"
             disabled={openSession.isPending || accountsPending || faltaMotivo}
-            className="flex-1 rounded-pill"
+            className="flex-1"
           >
             {openSession.isPending ? 'Abriendo…' : 'Abrir caja'}
           </Button>

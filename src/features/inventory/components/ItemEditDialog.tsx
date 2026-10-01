@@ -209,13 +209,13 @@ export function ItemEditDialog({ open, onOpenChange, item }: { open: boolean; on
       footer={
         item.status === 'draft' ? (
           <div className="flex w-full flex-col gap-2">
-            <Button type="button" className="w-full rounded-pill" disabled={!canPublish || busy} onClick={handlePublish}>
+            <Button type="button" className="w-full" disabled={!canPublish || busy} onClick={handlePublish}>
               {busy ? 'Publicando…' : 'Publicar'}
             </Button>
             {/* Secundario y solo cuando hay algo sin guardar: el camino normal
                 es publicar de una. */}
             {hasUnsavedPhotos && (
-              <Button type="button" variant="ghost" className="w-full rounded-pill" disabled={busy} onClick={handleSaveDraft}>
+              <Button type="button" variant="ghost" className="w-full" disabled={busy} onClick={handleSaveDraft}>
                 {updateItem.isPending ? 'Guardando…' : 'Guardar y seguir en borrador'}
               </Button>
             )}

@@ -24,7 +24,7 @@ function LastAdminSafeguardDialog({ open, onOpenChange, message }: { open: boole
       description={message}
       size="sm"
       footer={
-        <Button className="w-full rounded-pill" onClick={() => onOpenChange(false)}>
+        <Button className="w-full" onClick={() => onOpenChange(false)}>
           Entendido
         </Button>
       }
@@ -125,7 +125,7 @@ export function UserDetailDialog({ open, onOpenChange, user, isSelf }: { open: b
         footer={
           <div className="flex w-full flex-col gap-2">
             {roleChanged && (
-              <Button disabled={isPending} onClick={handleSaveRole} className="w-full rounded-pill">
+              <Button disabled={isPending} onClick={handleSaveRole} className="w-full">
                 {updateUserRole.isPending ? 'Guardando…' : 'Guardar rol'}
               </Button>
             )}
@@ -152,7 +152,7 @@ export function UserDetailDialog({ open, onOpenChange, user, isSelf }: { open: b
                 variant="outline"
                 disabled={isPending || recoveryLink.isPending}
                 onClick={handleRecoveryLink}
-                className="w-full rounded-pill"
+                className="w-full"
               >
                 <Link2 className="size-4" />
                 {recoveryLink.isPending
@@ -168,12 +168,10 @@ export function UserDetailDialog({ open, onOpenChange, user, isSelf }: { open: b
               </p>
             ) : (
               <Button
-                variant="outline"
+                variant={user.status !== 'inactive' ? 'destructive' : 'outline'}
                 disabled={isPending}
                 onClick={handleToggleStatus}
-                className={
-                  user.status !== 'inactive' ? 'w-full rounded-pill border-danger text-danger hover:bg-danger-soft' : 'w-full rounded-pill'
-                }
+                className="w-full"
               >
                 {isPending
                   ? 'Procesando…'
@@ -194,7 +192,7 @@ export function UserDetailDialog({ open, onOpenChange, user, isSelf }: { open: b
               <p className="rounded-input border border-border bg-background px-3 py-2 font-mono text-xs break-all text-foreground">
                 {enlace}
               </p>
-              <Button type="button" variant="outline" size="sm" onClick={copiarEnlace} className="rounded-pill">
+              <Button type="button" variant="outline" size="sm" onClick={copiarEnlace}>
                 {copiado ? <Check className="size-4" /> : <Copy className="size-4" />}
                 {copiado ? 'Copiado' : 'Copiar enlace'}
               </Button>

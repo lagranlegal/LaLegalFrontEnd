@@ -12,7 +12,7 @@ export function ErrorPage({ error, reset }: ErrorComponentProps) {
       <div className="w-full max-w-md rounded-card border border-border bg-card p-card text-center">
         <h1 className="text-xl font-semibold text-foreground">No se pudo cargar la app</h1>
         <p className="mt-2 text-sm text-muted-foreground">{error.message || 'Ocurrió un error inesperado.'}</p>
-        <Button className="mt-4 rounded-pill" onClick={() => reset()}>
+        <Button className="mt-4" onClick={() => reset()}>
           Reintentar
         </Button>
       </div>

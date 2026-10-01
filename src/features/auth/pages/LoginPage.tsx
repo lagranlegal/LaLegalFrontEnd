@@ -135,7 +135,7 @@ export function LoginPage() {
           </button>
         )}
 
-        <Button type="submit" disabled={submitting} className="mt-2 w-full rounded-pill">
+        <Button type="submit" disabled={submitting} className="mt-2 w-full">
           {/* Dos textos distintos: autenticar es rápido, cargar la sesión puede
               tardar. Decir qué está pasando evita que la espera se lea como
               que algo se colgó. */}

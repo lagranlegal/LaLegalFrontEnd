@@ -147,13 +147,13 @@ export function CapitalMovementDialog({
           <div className="flex w-full gap-2">
             <Button
               variant="outline"
-              className="flex-1 rounded-pill"
+              className="flex-1"
               onClick={() => onOpenChange(false)}
               disabled={mutation.isPending}
             >
               Cancelar
             </Button>
-            <Button className="flex-1 rounded-pill" onClick={confirmar} disabled={!puedeGuardar}>
+            <Button className="flex-1" onClick={confirmar} disabled={!puedeGuardar}>
               {mutation.isPending ? 'Registrando…' : esRetiro ? 'Registrar retiro' : 'Registrar aporte'}
             </Button>
           </div>

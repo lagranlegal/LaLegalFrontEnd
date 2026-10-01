@@ -193,7 +193,7 @@ function NoticeConsentHelp({ editor, included }: { editor: Editor; included: boo
       icon={FileSignature}
       title="Agrega la cláusula de autorización de avisos"
       action={
-        <Button type="button" size="sm" className="rounded-pill" onClick={insert}>
+        <Button type="button" size="sm" onClick={insert}>
           Insertar cláusula de avisos
         </Button>
       }

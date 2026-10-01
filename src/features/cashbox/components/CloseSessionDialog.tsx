@@ -54,7 +54,7 @@ export function CloseSessionDialog({ open, onOpenChange, session }: { open: bool
       description="Cuenta el efectivo físico y regístralo — el desglose de abajo es lo que el sistema espera encontrar."
       size="lg"
       footer={
-        <Button form="close-session-form" type="submit" disabled={isPending || !report || closeSession.isPending || reasonMissing} className="w-full rounded-pill">
+        <Button form="close-session-form" type="submit" disabled={isPending || !report || closeSession.isPending || reasonMissing} className="w-full">
           {closeSession.isPending ? 'Cerrando…' : 'Cerrar caja'}
         </Button>
       }

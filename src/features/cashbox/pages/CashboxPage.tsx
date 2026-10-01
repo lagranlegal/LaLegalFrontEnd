@@ -193,7 +193,6 @@ export function CashboxPage() {
                 </Can>
                 <Can permission="cashbox.open_close">
                   <Button
-                    className="rounded-pill"
                     onClick={() => {
                       setCloseDialogNonce((n) => n + 1)
                       setCloseDialogOpen(true)
@@ -213,13 +212,13 @@ export function CashboxPage() {
               action={
                 canReopenToday ? (
                   <Can permission="cashbox.reopen" fallback={<p className="text-sm text-muted-foreground">Pídele a un responsable que la reabra.</p>}>
-                    <Button className="rounded-pill" disabled={reopenSession.isPending} onClick={handleReopen}>
+                    <Button disabled={reopenSession.isPending} onClick={handleReopen}>
                       {reopenSession.isPending ? 'Reabriendo…' : 'Reabrir caja'}
                     </Button>
                   </Can>
                 ) : (
                   <Can permission="cashbox.open_close" fallback={<p className="text-sm text-muted-foreground">Pídele a un responsable que la abra.</p>}>
-                    <Button className="rounded-pill" onClick={() => setOpenSessionDialogOpen(true)}>
+                    <Button onClick={() => setOpenSessionDialogOpen(true)}>
                       Abrir caja
                     </Button>
                   </Can>

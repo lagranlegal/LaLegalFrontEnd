@@ -187,12 +187,12 @@ export function CapitalPage() {
         actions={
           <>
             <Can permission="capital.contribute">
-              <Button variant="outline" className="rounded-pill" onClick={() => setDialog('contribution')}>
+              <Button variant="outline" onClick={() => setDialog('contribution')}>
                 Registrar aporte
               </Button>
             </Can>
             <Can permission="capital.withdraw">
-              <Button className="rounded-pill" onClick={() => setDialog('withdrawal')}>
+              <Button onClick={() => setDialog('withdrawal')}>
                 Registrar retiro
               </Button>
             </Can>

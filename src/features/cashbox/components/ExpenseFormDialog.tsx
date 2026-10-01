@@ -143,10 +143,10 @@ export function ExpenseFormDialog({ open, onOpenChange }: { open: boolean; onOpe
         title="Nuevo gasto"
         footer={
           <div className="flex w-full gap-2">
-            <Button type="button" variant="outline" className="flex-1 rounded-pill" onClick={() => onOpenChange(false)} disabled={createExpense.isPending}>
+            <Button type="button" variant="outline" className="flex-1" onClick={() => onOpenChange(false)} disabled={createExpense.isPending}>
               Cancelar
             </Button>
-            <Button form="expense-form" type="submit" disabled={createExpense.isPending} className="flex-1 rounded-pill">
+            <Button form="expense-form" type="submit" disabled={createExpense.isPending} className="flex-1">
               {createExpense.isPending ? 'Registrando…' : 'Registrar gasto'}
             </Button>
           </div>

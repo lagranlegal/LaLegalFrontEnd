@@ -38,14 +38,14 @@ export function CashSessionRequiredDialog({ open, onOpenChange }: { open: boolea
                   No tienes permiso para abrir la caja. Pídele a un administrador o al responsable del turno que la abra
                   y vuelve a intentarlo.
                 </p>
-                <Button variant="outline" className="w-full rounded-pill" onClick={() => onOpenChange(false)}>
+                <Button variant="outline" className="w-full" onClick={() => onOpenChange(false)}>
                   Entendido
                 </Button>
               </div>
             }
           >
             <Button
-              className="w-full rounded-pill"
+              className="w-full"
               onClick={() => {
                 onOpenChange(false)
                 setOpenSessionDialogOpen(true)

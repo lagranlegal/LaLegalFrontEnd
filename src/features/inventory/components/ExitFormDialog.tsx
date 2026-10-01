@@ -94,7 +94,7 @@ export function ExitFormDialog({ open, onOpenChange }: { open: boolean; onOpenCh
       description="Saca artículos disponibles del inventario — ajuste, daño, pérdida, devolución o uso interno."
       size="lg"
       footer={
-        <Button form="exit-form" type="submit" disabled={createExit.isPending} className="w-full rounded-pill">
+        <Button form="exit-form" type="submit" disabled={createExit.isPending} className="w-full">
           {createExit.isPending ? 'Registrando…' : 'Registrar egreso'}
         </Button>
       }

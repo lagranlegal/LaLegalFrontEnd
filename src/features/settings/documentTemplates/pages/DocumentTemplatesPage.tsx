@@ -255,7 +255,7 @@ function TemplateDraftPanel({
               Eliminar
             </Button>
           )}
-          <Button type="button" className="rounded-pill" onClick={handleSave} disabled={createTemplate.isPending || updateTemplate.isPending}>
+          <Button type="button" onClick={handleSave} disabled={createTemplate.isPending || updateTemplate.isPending}>
             Guardar
           </Button>
         </div>

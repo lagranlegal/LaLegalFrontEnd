@@ -178,7 +178,7 @@ function CapitalOnlyPaymentForm({ contractId, quote, context }: { contractId: st
           )}
           <PaymentMethodField value={paymentMethod} onChange={setPaymentMethod} accountId={accountId} onAccountChange={setAccountId} />
           {error && <p className="text-sm text-danger">{error}</p>}
-          <Button className="w-full rounded-pill" disabled={!hasAmount || createPayment.isPending} onClick={handleConfirm}>
+          <Button className="w-full" disabled={!hasAmount || createPayment.isPending} onClick={handleConfirm}>
             {createPayment.isPending ? (
               'Registrando…'
             ) : (
@@ -321,7 +321,7 @@ export function PaymentOptionsPanel({ contractId, contractNumber, customerName }
 
             {error && <p className="text-sm text-danger">{error}</p>}
 
-            <Button className="w-full rounded-pill" disabled={createPayment.isPending} onClick={handleConfirm}>
+            <Button className="w-full" disabled={createPayment.isPending} onClick={handleConfirm}>
               {createPayment.isPending ? (
                 'Registrando…'
               ) : (

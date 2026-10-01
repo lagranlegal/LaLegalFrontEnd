@@ -78,7 +78,7 @@ function PayPendingPurchase({ entry }: { entry: Entry }) {
           permission="inventory.pay_purchase"
           fallback={<p className="text-xs text-muted-foreground">No tienes permiso para pagar compras.</p>}
         >
-          <Button type="button" className="rounded-pill" disabled={payEntry.isPending} onClick={handlePay}>
+          <Button type="button" disabled={payEntry.isPending} onClick={handlePay}>
             {payEntry.isPending ? 'Registrando…' : 'Registrar pago'}
           </Button>
         </Can>

@@ -168,10 +168,10 @@ export function CustomerFormDialog({ open, onOpenChange, customer }: { open: boo
       size="lg"
       footer={
         <div className="flex w-full gap-2">
-          <Button type="button" variant="outline" className="flex-1 rounded-pill" onClick={() => onOpenChange(false)} disabled={isPending}>
+          <Button type="button" variant="outline" className="flex-1" onClick={() => onOpenChange(false)} disabled={isPending}>
             Cancelar
           </Button>
-          <Button form="customer-form" type="submit" disabled={isPending} className="flex-1 rounded-pill">
+          <Button form="customer-form" type="submit" disabled={isPending} className="flex-1">
             {isPending ? 'Guardando…' : mode === 'create' ? 'Crear cliente' : 'Guardar cambios'}
           </Button>
         </div>

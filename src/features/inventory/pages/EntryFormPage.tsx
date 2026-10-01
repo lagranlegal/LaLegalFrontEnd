@@ -916,7 +916,7 @@ export function EntryFormPage() {
               )}
             </p>
           </div>
-          <Button type="submit" disabled={createEntry.isPending} className="w-full rounded-pill sm:w-auto">
+          <Button type="submit" disabled={createEntry.isPending} className="w-full sm:w-auto">
             {createEntry.isPending ? 'Registrando…' : 'Registrar ingreso'}
           </Button>
         </div>
@@ -930,7 +930,7 @@ export function EntryFormPage() {
         size="sm"
         footer={
           <div className="flex w-full flex-col gap-2">
-            <Button className="w-full rounded-pill bg-danger hover:bg-danger/90" onClick={() => blocker.proceed?.()}>
+            <Button variant="danger-solid" className="w-full" onClick={() => blocker.proceed?.()}>
               Descartar cambios
             </Button>
             <Button variant="ghost" className="w-full" onClick={() => blocker.reset?.()}>

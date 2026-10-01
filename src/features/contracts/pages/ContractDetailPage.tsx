@@ -199,7 +199,7 @@ export function ContractDetailPage() {
             </Can>
             {isReadyForAuction(contract) && (
               <Can permission="contracts.auction">
-                <Button className="rounded-pill bg-danger hover:bg-danger/90" disabled={auctionContract.isPending} onClick={handleAuction}>
+                <Button variant="destructive" disabled={auctionContract.isPending} onClick={handleAuction}>
                   {auctionContract.isPending ? 'Rematando…' : 'Rematar'}
                 </Button>
               </Can>

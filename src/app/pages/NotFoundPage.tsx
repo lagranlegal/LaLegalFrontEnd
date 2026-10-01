@@ -8,7 +8,7 @@ export function NotFoundPage() {
       <div className="w-full max-w-md rounded-card border border-border bg-card p-card text-center">
         <h1 className="text-xl font-semibold text-foreground">Página no encontrada</h1>
         <p className="mt-2 text-sm text-muted-foreground">La dirección no existe o cambió. Revisa la URL o vuelve al inicio.</p>
-        <Button asChild className="mt-4 rounded-pill">
+        <Button asChild className="mt-4">
           <Link to="/inicio">Ir al inicio</Link>
         </Button>
       </div>
