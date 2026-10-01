@@ -28,6 +28,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel,
 import { CashSessionBanner } from '@/components/shared/CashSessionBanner'
 import { ThemeToggle } from '@/components/shared/ThemeToggle'
 import { AppFooter } from '@/components/shared/AppFooter'
+import { GlobalSearch } from '@/components/shared/GlobalSearch'
 
 interface NavItem {
   label: string
@@ -195,12 +196,10 @@ export function AppShell() {
             <Menu className="size-5" />
           </Button>
 
-          {/* Acá vivía un <input type="search" disabled> que nunca estuvo
-              conectado a nada. Un buscador que no busca comunica "esto está a
-              medio hacer" peor que no tener buscador: se quitó. Una búsqueda
-              global real queda como mejora propuesta
-              (backend-starter/docs/QA.md §5). */}
-          <div className="flex-1" />
+          {/* La búsqueda global (rediseño P2-d): campo con «/» desde 768 px,
+              lupa que abre la pantalla completa debajo. Cada grupo con su
+              permiso; sin ninguno, no aparece y queda el espacio. */}
+          <GlobalSearch />
 
           <ThemeToggle />
 
