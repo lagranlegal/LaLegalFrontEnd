@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { cn } from '@/lib/utils'
 import { confirm } from '@/components/shared/confirmStore'
@@ -16,9 +16,38 @@ const SIZE_CLASSES = {
 } as const
 
 /**
+ * ¿El cuerpo tiene más de lo que se ve? Con eso el pie fijo muestra su
+ * divisor: en un diálogo corto no hay nada debajo y una raya ahí solo sería
+ * ruido. Sin `ResizeObserver` (jsdom), se queda sin raya.
+ */
+function useOverflows() {
+  // Ref de callback y no `useRef`: Radix monta el contenido en un portal un
+  // render después, sin volver a renderizar este componente; con `useRef` el
+  // efecto nunca veía el cuerpo.
+  const [el, setEl] = useState<HTMLDivElement | null>(null)
+  const [overflows, setOverflows] = useState(false)
+  useEffect(() => {
+    if (!el || typeof ResizeObserver === 'undefined') return
+    const measure = () => setOverflows(el.scrollHeight > el.clientHeight + 1)
+    const observer = new ResizeObserver(measure)
+    observer.observe(el)
+    for (const child of Array.from(el.children)) observer.observe(child)
+    measure()
+    return () => observer.disconnect()
+  }, [el])
+  return [setEl, overflows] as const
+}
+
+/**
  * EL modal de la app (docs/DESIGN_SYSTEM.md §3): centrado, `--radius-modal`,
  * X arriba derecha, título grande centrado, subtítulo, footer con acciones
  * centradas. **Prohibido crear otro modal** — todo diálogo pasa por acá.
+ *
+ * Rediseño P3 (F9-41): el título y el pie quedan fijos y solo el cuerpo hace
+ * scroll. Antes todo el diálogo se desplazaba y en «Nuevo cliente» a 1280 el
+ * botón de guardar quedaba bajo el pliegue. Cuando el cuerpo no cabe, el pie
+ * lleva su divisor. Un formulario cuyo submit va en el pie lo enlaza con el
+ * atributo `form` (como «Nuevo cliente»).
  */
 export function AppDialog({
   open,
@@ -60,15 +89,33 @@ export function AppDialog({
     onOpenChange(next)
   }
 
+  const [bodyRef, overflows] = useOverflows()
+
   return (
     <Dialog open={open} onOpenChange={(next) => void handleOpenChange(next)}>
-      <DialogContent className={cn('rounded-modal p-6', SIZE_CLASSES[size])}>
-        <DialogHeader>
+      {/* `max-h` y `flex` en el contenedor; el scroll, solo en el cuerpo
+          (`min-h-0` para que el hijo flexible pueda encogerse). */}
+      <DialogContent className={cn('flex max-h-[90dvh] flex-col gap-0 overflow-hidden rounded-modal p-0', SIZE_CLASSES[size])}>
+        <DialogHeader className="shrink-0 px-6 pt-6 pb-4">
           <DialogTitle className="text-center text-xl">{title}</DialogTitle>
           {description && <DialogDescription className="text-center">{description}</DialogDescription>}
         </DialogHeader>
-        {children}
-        {footer && <DialogFooter className="mx-0 mb-0 flex-col rounded-b-none border-0 bg-transparent p-0 sm:flex-col sm:justify-center">{footer}</DialogFooter>}
+        {children !== undefined && children !== null && children !== false && (
+          <div ref={bodyRef} data-slot="dialog-body" className={cn('min-h-0 flex-1 overflow-y-auto px-6', footer ? 'pb-4' : 'pb-6')}>
+            {children}
+          </div>
+        )}
+        {footer && (
+          <DialogFooter
+            data-overflows={overflows || undefined}
+            className={cn(
+              'mx-0 mb-0 shrink-0 flex-col rounded-b-none border-0 bg-transparent px-6 pt-0 pb-6 sm:flex-col sm:justify-center',
+              overflows && 'border-t border-border pt-4',
+            )}
+          >
+            {footer}
+          </DialogFooter>
+        )}
       </DialogContent>
     </Dialog>
   )

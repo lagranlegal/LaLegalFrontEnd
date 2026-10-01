@@ -9,6 +9,7 @@ import { ItemPicker } from '@/components/shared/ItemPicker'
 import { MoneyInput } from '@/components/shared/MoneyInput'
 import { Money } from '@/components/shared/Money'
 import { Button } from '@/components/ui/button'
+import { StickyActionBar } from '@/components/shared/StickyActionBar'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { AccountPicker } from '@/components/shared/AccountPicker'
@@ -509,25 +510,23 @@ export function TransformationFormPage() {
 
       {formError && <p className="rounded-input bg-danger-soft px-3 py-2 text-sm text-danger">{formError}</p>}
 
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="text-sm">
-          <p className="text-muted-foreground">
-            Costo que viaja <Money value={costoTotal} className="font-medium text-foreground" />
-          </p>
-          <p className="text-xs text-muted-foreground">
-            {formatQuantity(String(entradasN.reduce((a, e) => a + Number(e.quantity || 0), 0)))} de entrada ·{' '}
-            {salidas.length} salida(s)
-          </p>
-        </div>
-        <Button
-          type="button"
-          className="w-full sm:w-auto"
-          disabled={!puedeGuardar || createTransformation.isPending}
-          onClick={handleSubmit}
-        >
+      <StickyActionBar
+        summary={
+          <>
+            <p className="text-muted-foreground">
+              Costo que viaja <Money value={costoTotal} className="font-medium text-foreground" />
+            </p>
+            <p className="text-xs text-muted-foreground">
+              {formatQuantity(String(entradasN.reduce((a, e) => a + Number(e.quantity || 0), 0)))} de entrada ·{' '}
+              {salidas.length} salida(s)
+            </p>
+          </>
+        }
+      >
+        <Button type="button" disabled={!puedeGuardar || createTransformation.isPending} onClick={handleSubmit}>
           {createTransformation.isPending ? 'Transformando…' : 'Transformar'}
         </Button>
-      </div>
+      </StickyActionBar>
 
       <AppDialog
         open={blocker.status === 'blocked'}

@@ -10,6 +10,7 @@ import { AppDialog } from '@/components/shared/AppDialog'
 import { MoneyInput } from '@/components/shared/MoneyInput'
 import { DatePicker } from '@/components/shared/DatePicker'
 import { Button } from '@/components/ui/button'
+import { StickyActionBar } from '@/components/shared/StickyActionBar'
 import { FieldError, Input, Textarea } from '@/components/ui/input'
 import { useCategories } from '@/lib/catalogs/categories'
 import { normalizeDecimalInput } from '@/lib/money'
@@ -297,9 +298,11 @@ export function ContractImportPage() {
 
         {formError && <p className="rounded-input bg-danger-soft px-3 py-2 text-sm text-danger">{formError}</p>}
 
-        <Button type="submit" disabled={importContract.isPending} className="w-full sm:w-auto sm:self-end">
-          {importContract.isPending ? 'Registrando…' : 'Registrar contrato'}
-        </Button>
+        <StickyActionBar>
+          <Button type="submit" disabled={importContract.isPending}>
+            {importContract.isPending ? 'Registrando…' : 'Registrar contrato'}
+          </Button>
+        </StickyActionBar>
       </form>
 
       <AppDialog

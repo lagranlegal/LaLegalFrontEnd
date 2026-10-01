@@ -21,6 +21,7 @@ import { PhotoUploader } from '@/components/shared/PhotoUploader'
 import { Money } from '@/components/shared/Money'
 import { CashSessionRequiredDialog } from '@/components/shared/CashSessionRequiredDialog'
 import { Button } from '@/components/ui/button'
+import { StickyActionBar } from '@/components/shared/StickyActionBar'
 import { FieldError, Input, Textarea, invalidFieldProps } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { ApiError } from '@/lib/api/client'
@@ -892,34 +893,37 @@ export function EntryFormPage() {
 
         {formError && <p className="rounded-input bg-danger-soft px-3 py-2 text-sm text-danger">{formError}</p>}
 
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="text-sm text-muted-foreground">
-            <p>
-              Costo total estimado <Money value={totalCost} className="font-medium text-foreground" />
-            </p>
-            {/* Lo que va a pasar, dicho ANTES de guardar. Un borrador es un
-                estado silencioso —no está en la vitrina y nadie se entera—,
-                así que el momento de enterarse es este y no cuando alguien lo
-                busque para vender. */}
-            <p className="mt-0.5 text-xs">
-              {listasCount === fields.length ? (
-                <span className="text-success">
-                  {fields.length === 1 ? 'El artículo queda listo para vender' : `Los ${fields.length} artículos quedan listos para vender`}
-                </span>
-              ) : (
-                <>
-                  {listasCount > 0 && <span className="text-success">{listasCount} listo(s) para vender</span>}
-                  {listasCount > 0 && ' · '}
-                  <span className="text-warning">{fields.length - listasCount} en borrador</span>
-                  <span className="text-muted-foreground"> (les falta precio o foto)</span>
-                </>
-              )}
-            </p>
-          </div>
-          <Button type="submit" disabled={createEntry.isPending} className="w-full sm:w-auto">
+        <StickyActionBar
+          summary={
+            <div className="text-sm text-muted-foreground">
+              <p>
+                Costo total estimado <Money value={totalCost} className="font-medium text-foreground" />
+              </p>
+              {/* Lo que va a pasar, dicho ANTES de guardar. Un borrador es un
+                  estado silencioso —no está en la vitrina y nadie se entera—,
+                  así que el momento de enterarse es este y no cuando alguien lo
+                  busque para vender. */}
+              <p className="mt-0.5 text-xs">
+                {listasCount === fields.length ? (
+                  <span className="text-success">
+                    {fields.length === 1 ? 'El artículo queda listo para vender' : `Los ${fields.length} artículos quedan listos para vender`}
+                  </span>
+                ) : (
+                  <>
+                    {listasCount > 0 && <span className="text-success">{listasCount} listo(s) para vender</span>}
+                    {listasCount > 0 && ' · '}
+                    <span className="text-warning">{fields.length - listasCount} en borrador</span>
+                    <span className="text-muted-foreground"> (les falta precio o foto)</span>
+                  </>
+                )}
+              </p>
+            </div>
+          }
+        >
+          <Button type="submit" disabled={createEntry.isPending}>
             {createEntry.isPending ? 'Registrando…' : 'Registrar ingreso'}
           </Button>
-        </div>
+        </StickyActionBar>
       </form>
 
       <AppDialog

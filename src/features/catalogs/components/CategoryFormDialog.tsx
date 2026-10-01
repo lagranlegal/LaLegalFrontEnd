@@ -167,7 +167,7 @@ export function CategoryFormDialog({
           <FieldError fieldId="cat-name">{errors.name?.message}</FieldError>
         </div>
 
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 gap-3 min-[480px]:grid-cols-2">
           <div>
             <label htmlFor="cat-code" className="text-sm font-medium text-foreground">
               Letra de código
@@ -207,7 +207,7 @@ export function CategoryFormDialog({
           </div>
         </div>
 
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 gap-3 min-[480px]:grid-cols-3">
           <div>
             <label htmlFor="cat-term" className="text-sm font-medium text-foreground">
               Plazo (meses)

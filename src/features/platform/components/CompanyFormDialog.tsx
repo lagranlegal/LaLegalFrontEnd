@@ -112,7 +112,7 @@ export function CompanyFormDialog({ open, onOpenChange }: { open: boolean; onOpe
           <FieldError fieldId="company-name">{errors.name?.message}</FieldError>
         </div>
 
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 gap-3 min-[480px]:grid-cols-2">
           <div>
             <label htmlFor="company-plan" className="text-sm font-medium text-foreground">
               Plan

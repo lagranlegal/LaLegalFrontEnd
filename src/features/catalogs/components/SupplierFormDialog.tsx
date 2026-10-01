@@ -121,7 +121,7 @@ export function SupplierFormDialog({ open, onOpenChange, supplier }: { open: boo
       }
     >
       <form id="supplier-form" onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-4" noValidate>
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 gap-3 min-[480px]:grid-cols-2">
           <div>
             <label htmlFor="sup-name" className="text-sm font-medium text-foreground">
               Nombre
@@ -139,7 +139,7 @@ export function SupplierFormDialog({ open, onOpenChange, supplier }: { open: boo
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 gap-3 min-[480px]:grid-cols-2">
           <div>
             <label htmlFor="sup-doc-type" className="text-sm font-medium text-foreground">
               Tipo de documento
@@ -172,7 +172,7 @@ export function SupplierFormDialog({ open, onOpenChange, supplier }: { open: boo
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 gap-3 min-[480px]:grid-cols-2">
           <div>
             <label htmlFor="sup-phone" className="text-sm font-medium text-foreground">
               Teléfono
