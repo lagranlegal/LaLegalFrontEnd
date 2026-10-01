@@ -1,4 +1,3 @@
-import type { ReactNode } from 'react'
 import { Link } from '@tanstack/react-router'
 import { Gem } from 'lucide-react'
 import { Money } from '@/components/shared/Money'
@@ -6,27 +5,9 @@ import { PhotoThumbnail } from '@/components/shared/PhotoThumbnail'
 import { StatusBadge } from '@/components/shared/StatusBadge'
 import { formatDate } from '@/lib/dates'
 import { formatPercent } from '@/lib/percent'
+import { SummaryCard, SummaryField as Field } from '@/components/shared/SummaryCard'
 import type { Item } from '@/lib/inventory/items'
 import type { Contract } from '@/features/contracts/api'
-
-/** Tarjeta de la columna derecha del Resumen: título 600 · 15 y contenido. */
-export function SummaryCard({ title, children }: { title: string; children: ReactNode }) {
-  return (
-    <section className="grid min-w-0 gap-3 rounded-card border border-border bg-card p-card">
-      <h2 className="text-md font-semibold text-foreground">{title}</h2>
-      {children}
-    </section>
-  )
-}
-
-function Field({ label, children }: { label: string; children: ReactNode }) {
-  return (
-    <div className="grid min-w-0 gap-px">
-      <dt className="text-xs text-muted-foreground">{label}</dt>
-      <dd className="tnum text-sm font-semibold text-foreground">{children}</dd>
-    </div>
-  )
-}
 
 /**
  * «Préstamo» (rediseño P2-a): lo pactado y lo que queda, en una grilla de dos.
@@ -126,3 +107,6 @@ export function NotesCard({ notes }: { notes: string }) {
     </SummaryCard>
   )
 }
+
+// Compatibilidad: la tarjeta subió a `components/shared/SummaryCard`.
+export { SummaryCard }
