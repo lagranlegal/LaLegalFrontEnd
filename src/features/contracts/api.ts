@@ -1,5 +1,7 @@
-import { queryOptions, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { api, unwrap } from '@/lib/api/client'
+import { useEffect, useMemo, useState } from 'react'
+import { keepPreviousData, queryOptions, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { api, ApiError, unwrap } from '@/lib/api/client'
+import { usePermission } from '@/lib/permissions/usePermission'
 import { useCursorInfiniteQuery, fetchAllPages } from '@/lib/api/pagination'
 import { useMoneyMutation } from '@/lib/api/useMoneyMutation'
 import type { components, operations } from '@/types/api'
@@ -18,6 +20,8 @@ export type PaymentOption = components['schemas']['PaymentOptionOut']
 export type Payment = components['schemas']['PaymentOut']
 export type PaymentCreateIn = components['schemas']['PaymentCreateIn']
 export type ContractChainLink = components['schemas']['ContractChainLinkOut']
+export type ContractQuoteIn = components['schemas']['ContractQuoteIn']
+export type ContractQuote = components['schemas']['ContractQuoteOut']
 
 // `useCustomerSearch`/`useCustomer` viven en `lib/customers/search.ts` — el
 // paso 7 (sales) los necesita también, se promovieron de acá (mismo
@@ -94,6 +98,60 @@ export function useCreateContract() {
     // autorización de avisos en la misma operación (backend-starter/docs/DOMINIO.md §9.2).
     invalidateKeys: [['contracts'], ['dashboard'], ['cashbox', 'current'], ['customers']],
   })
+}
+
+// ---- Cotización de un contrato nuevo: el «Resumen del préstamo» -------------
+
+/** Cuánto se espera desde la última tecla antes de cotizar (como `SearchInput`). */
+export const LOAN_QUOTE_DEBOUNCE_MS = 300
+
+/**
+ * `POST /contracts/quote`: lo que crear el contrato daría HOY con estos datos
+ * —tasa como queda guardada, interés mensual, plazo, fechas, LTV y total a
+ * entregar—, calculado por el backend con las mismas funciones que
+ * `POST /contracts` (CLAUDE.md regla 6: el interés no se calcula acá).
+ *
+ * Es una LECTURA aunque sea POST: sin caja, sin `Idempotency-Key`, sin
+ * efectos. Por eso es una query y no una mutación.
+ *
+ * - **Debounce** de `LOAN_QUOTE_DEBOUNCE_MS`: teclear «500000» es una sola
+ *   petición, no seis. La llave es el cuerpo ya normalizado (serializado para
+ *   que dos objetos iguales sean la misma consulta).
+ * - **`keepPreviousData`**: mientras llega la nueva cotización se sigue
+ *   viendo la anterior; `isUpdating` avisa que está por cambiar.
+ * - **Sin reintentos en 4xx**: un 422/404/400 es el formulario a medio llenar
+ *   (una tasa sobre 100, una categoría que no aplica) y repetirlo no cambia
+ *   nada. El formulario no se rompe: el resumen pinta «—» y la validación
+ *   real ocurre al registrar.
+ * - **Solo con `contracts.create`**: es el permiso del endpoint; sin él ni
+ *   se pide (un 403 no es una falla, regla 8).
+ */
+export function useLoanQuote(body: ContractQuoteIn) {
+  const canCreate = usePermission('contracts.create')
+  const serialized = JSON.stringify(body)
+  const [debounced, setDebounced] = useState(serialized)
+  useEffect(() => {
+    if (serialized === debounced) return
+    const timeout = setTimeout(() => setDebounced(serialized), LOAN_QUOTE_DEBOUNCE_MS)
+    return () => clearTimeout(timeout)
+  }, [serialized, debounced])
+  const debouncedBody = useMemo(() => JSON.parse(debounced) as ContractQuoteIn, [debounced])
+
+  const query = useQuery({
+    queryKey: ['contracts', 'quote', debouncedBody] as const,
+    queryFn: () => unwrap(api.POST('/api/v1/contracts/quote', { body: debouncedBody })),
+    enabled: canCreate,
+    placeholderData: keepPreviousData,
+    retry: (failureCount, error) => !(error instanceof ApiError && error.status < 500) && failureCount < 2,
+  })
+
+  return {
+    /** La cotización vigente (o la anterior mientras llega la nueva); `undefined` tras un error. */
+    quote: query.data,
+    error: query.error,
+    /** Hay una cotización en camino: lo que se ve puede cambiar. */
+    isUpdating: canCreate && (serialized !== debounced || query.isFetching),
+  }
 }
 
 /**
