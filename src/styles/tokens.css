@@ -190,6 +190,13 @@
      permite `font-src 'self' data:`. */
   --font-display: 'Archivo Variable', 'Archivo', system-ui, sans-serif;
   --tracking-display: -0.035em;
+  /* Rediseño P1: Archivo pasa de la landing al panel, solo en el título de
+     página (600 · 24/28) y en el titular de estado del contrato (700 · 22).
+     Las cifras siguen en Inter con tnum: Archivo no alinea montos en columna. */
+  --tracking-title: -0.025em; /* título de página */
+  --tracking-headline: -0.02em; /* titular de estado */
+  --font-size-headline: 1.375rem; /* 22 px */
+  --line-height-headline: 1.2;
   /* Solo códigos de etiqueta (JOC0007-01R): la mono deja ver cada carácter. */
   --font-mono: 'JetBrains Mono Variable', 'JetBrains Mono', ui-monospace, monospace;
   /* Escala de titulares de la landing: fluida entre 390 y 1280 px de ancho

@@ -129,6 +129,10 @@
   --font-display: var(--font-display);
   --font-mono: var(--font-mono);
   --tracking-display: var(--tracking-display);
+  --tracking-title: var(--tracking-title);
+  --tracking-headline: var(--tracking-headline);
+  --text-headline: var(--font-size-headline);
+  --text-headline--line-height: var(--line-height-headline);
   --text-hero: var(--font-size-hero);
   --text-closing: var(--font-size-closing);
   --text-section: var(--font-size-section);

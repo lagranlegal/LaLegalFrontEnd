@@ -19,7 +19,9 @@ export function PageHeader({ title, description, actions }: { title: ReactNode; 
   return (
     <div className="flex flex-wrap items-start justify-between gap-4">
       <div className="min-w-0">
-        <h1 className="text-2xl font-semibold text-foreground">{title}</h1>
+        {/* Archivo 600 · 24/28 · −0.025em (rediseño P1): el título de página es
+            tipografía de marca; las cifras de adentro siguen en Inter. */}
+        <h1 className="font-display text-2xl leading-7 font-semibold tracking-title text-foreground">{title}</h1>
         {description && <p className="mt-1 text-sm text-muted-foreground">{description}</p>}
       </div>
       {actions && <div className="flex flex-wrap items-center gap-2">{actions}</div>}

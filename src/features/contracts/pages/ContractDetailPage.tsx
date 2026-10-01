@@ -20,11 +20,11 @@ import { PAYMENT_METHOD_LABELS } from '@/lib/paymentMethods'
 import { confirm } from '@/components/shared/confirmStore'
 import { useCategories } from '@/lib/catalogs/categories'
 import { useItemsByIds, type Item } from '@/lib/inventory/items'
-import { usePaymentOptions, usePaymentsList, useAuctionContract, type Contract, type Payment } from '@/features/contracts/api'
-import { AlertTriangle } from 'lucide-react'
-import { contractStatusHeadline, effectiveContractStatus, isReadyForAuction } from '@/features/contracts/contractStatus'
+import { usePaymentsList, useAuctionContract, type Payment } from '@/features/contracts/api'
+import { effectiveContractStatus, isReadyForAuction } from '@/features/contracts/contractStatus'
 import { useContract } from '@/lib/contracts/reference'
 import { useCustomer } from '@/lib/customers/search'
+import { ContractStatusHeadline } from '@/features/contracts/components/ContractStatusHeadline'
 import { PaymentOptionsPanel } from '@/features/contracts/components/PaymentOptionsPanel'
 import { ContractMetricsPanel } from '@/features/contracts/components/ContractMetricsPanel'
 import { ContractEditDialog } from '@/features/contracts/components/ContractEditDialog'
@@ -357,28 +357,5 @@ export function ContractDetailPage() {
       <ContractPrintView contract={contract} customer={customer} categories={categories} />
     )}
     </>
-  )
-}
-
-/** Encabezado de estado (F9-16). Solo se monta para estados que piden acción. */
-function ContractStatusHeadline({ contract }: { contract: Contract }) {
-  const needsHeadline = contract.status === 'in_arrears' || contract.status === 'in_extension'
-  if (!needsHeadline) return null
-  return <ContractStatusHeadlineInner contract={contract} />
-}
-
-function ContractStatusHeadlineInner({ contract }: { contract: Contract }) {
-  // Misma key que `PaymentOptionsPanel`: no es un request más.
-  const { data: quote } = usePaymentOptions(contract.id)
-  const headline = contractStatusHeadline(contract, quote)
-  if (!headline) return null
-  return (
-    <div role="status" className="flex gap-3 rounded-card border border-danger/30 bg-danger-soft px-4 py-3">
-      <AlertTriangle className="mt-0.5 size-5 shrink-0 text-danger" aria-hidden />
-      <div className="flex flex-col gap-0.5">
-        <p className="text-base font-semibold text-foreground">{headline.title}</p>
-        {headline.detail && <p className="tnum text-sm text-foreground">{headline.detail}</p>}
-      </div>
-    </div>
   )
 }
