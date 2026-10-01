@@ -1,5 +1,6 @@
-import { useState } from 'react'
+import { useImperativeHandle, useRef, useState, type Ref } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
+import { ScanBarcode } from 'lucide-react'
 import { SearchInput } from '@/components/shared/SearchInput'
 import { Money } from '@/components/shared/Money'
 import {
@@ -24,6 +25,8 @@ export function ItemPicker({
   placeholder = 'Buscar artículo por código o nombre…',
   scope = 'available',
   id,
+  variant = 'default',
+  ref,
 }: {
   onSelect: (item: Item) => void
   placeholder?: string
@@ -36,8 +39,20 @@ export function ItemPicker({
    * sabía que iba al crisol.
    */
   scope?: 'available' | 'transformable'
+  /**
+   * `scanner`: el escáner del punto de venta (F9-27, F9-33). Nace con foco,
+   * dice «Listo para escanear» mientras lo tiene y, tras agregar, el foco
+   * vuelve al campo para la siguiente lectura.
+   */
+  variant?: 'default' | 'scanner'
+  /** Para devolverle el foco desde afuera («Nueva venta»). */
+  ref?: Ref<HTMLInputElement>
 }) {
   const [q, setQ] = useState('')
+  const [focused, setFocused] = useState(false)
+  const inputRef = useRef<HTMLInputElement>(null)
+  useImperativeHandle(ref, () => inputRef.current as HTMLInputElement, [])
+  const scanner = variant === 'scanner'
   const queryClient = useQueryClient()
   // Los dos hooks se llaman siempre (regla de hooks); el que no aplica queda
   // deshabilitado por término vacío y no dispara ninguna request.
@@ -67,13 +82,35 @@ export function ItemPicker({
     }
     const elegido = pickOnEnter(items, t)
     if (!elegido) return
-    onSelect(elegido)
+    select(elegido)
+  }
+
+  function select(item: Item) {
+    onSelect(item)
     setQ('')
+    // Con un clic en la lista el foco quedó en el botón del resultado: el
+    // escáner lo recupera para que la siguiente lectura no se pierda.
+    if (scanner) inputRef.current?.focus()
   }
 
   return (
     <div className="relative">
-      <SearchInput id={id} value={q} onChange={setQ} placeholder={placeholder} onEnter={handleEnter} />
+      <SearchInput
+        ref={inputRef}
+        id={id}
+        value={q}
+        onChange={setQ}
+        placeholder={placeholder}
+        onEnter={handleEnter}
+        ariaLabel={scanner ? 'Escanear o buscar artículo' : undefined}
+        {...(scanner && {
+          size: 'lg' as const,
+          icon: ScanBarcode,
+          autoFocus: true,
+          onFocusChange: setFocused,
+          trailing: focused ? <ScannerReady /> : undefined,
+        })}
+      />
       {q.trim() && (
         <div className="absolute z-10 mt-1 w-full overflow-hidden rounded-input border border-border bg-card shadow-modal">
           {isFetching && <p className="px-3 py-2 text-sm text-muted-foreground">Buscando…</p>}
@@ -84,10 +121,7 @@ export function ItemPicker({
                 key={item.id}
                 type="button"
                 className="flex w-full items-center justify-between gap-3 px-3 py-2 text-left text-sm hover:bg-accent"
-                onClick={() => {
-                  onSelect(item)
-                  setQ('')
-                }}
+                onClick={() => select(item)}
               >
                 <div>
                   <span className="font-medium text-foreground">{item.name}</span>
@@ -99,5 +133,15 @@ export function ItemPicker({
         </div>
       )}
     </div>
+  )
+}
+
+/** El punto verde del escáner con foco. Bajo 480 px queda el punto y el texto solo para el lector de pantalla. */
+function ScannerReady() {
+  return (
+    <span className="inline-flex items-center gap-1.5 text-xs font-semibold whitespace-nowrap text-success" role="status">
+      <span aria-hidden className="block size-2 rounded-pill bg-success" />
+      <span className="max-[480px]:sr-only">Listo para escanear</span>
+    </span>
   )
 }

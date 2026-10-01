@@ -64,7 +64,7 @@ async function montar(cost: string) {
       <SaleFormPage />
     </QueryClientProvider>,
   )
-  const buscador = screen.getByPlaceholderText(/artículo por código/i)
+  const buscador = screen.getByPlaceholderText(/Escanea o escribe código o nombre/i)
   fireEvent.change(buscador, { target: { value: 'JOA0009-01K' } })
   fireEvent.keyDown(buscador, { key: 'Enter' })
   await waitFor(() => expect(screen.queryByText(/El carrito está vacío/i)).toBeNull())
@@ -82,16 +82,17 @@ describe('POS — vender por debajo del costo', () => {
     permisos = ['sales.apply_discount']
     await montar(LINEA.unit_cost)
     expect(screen.queryByText(/por debajo del costo/i)).toBeNull()
-    fireEvent.change(screen.getByLabelText(/Precio de Pulsera oro/i), { target: { value: '250.000' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Cambiar precio de Pulsera oro' }))
+    fireEvent.change(screen.getByRole('textbox', { name: /^Precio de Pulsera oro/ }), { target: { value: '250.000' } })
     expect(screen.getByText(/Por debajo del costo \(/)).toBeInTheDocument()
 
     fireEvent.change(screen.getByLabelText(/Motivo del descuento/i), { target: { value: 'Liquidación' } })
-    fireEvent.click(screen.getByRole('button', { name: /Vender/ }))
+    fireEvent.click(screen.getByRole('button', { name: /^Cobrar/ }))
     await waitFor(() => expect(screen.getByText(/confirma que quieres venderlos con pérdida/i)).toBeInTheDocument())
     expect(mutateAsync).not.toHaveBeenCalled()
 
     fireEvent.click(screen.getByLabelText(/Confirmo que vendo por debajo del costo/i))
-    fireEvent.click(screen.getByRole('button', { name: /Vender/ }))
+    fireEvent.click(screen.getByRole('button', { name: /^Cobrar/ }))
     await waitFor(() => expect(mutateAsync).toHaveBeenCalled())
     expect(mutateAsync.mock.calls[0]![0].lines[0].unit_price).toBe('250000.00')
   })
@@ -100,7 +101,7 @@ describe('POS — vender por debajo del costo', () => {
     // El costo que cargó la pantalla no dejaba ver la pérdida (cambió con el carrito armado).
     mutateAsync.mockRejectedValueOnce(parseApiError(403, RECHAZO))
     await montar('100000.00')
-    fireEvent.click(screen.getByRole('button', { name: /Vender/ }))
+    fireEvent.click(screen.getByRole('button', { name: /^Cobrar/ }))
     await waitFor(() => expect(screen.getByText(/la venta perdería/)).toBeInTheDocument())
     expect(screen.getByText(/Por debajo del costo \(/)).toBeInTheDocument()
   })

@@ -110,7 +110,7 @@ describe('venta', () => {
         <SaleFormPage />
       </QueryClientProvider>,
     )
-    const buscador = screen.getByPlaceholderText(/artículo por código/i)
+    const buscador = screen.getByPlaceholderText(/Escanea o escribe código o nombre/i)
     fireEvent.change(buscador, { target: { value: 'JOA0009-01K' } })
     fireEvent.keyDown(buscador, { key: 'Enter' })
     await waitFor(() => expect(screen.queryByText(/El carrito está vacío/i)).toBeNull())
@@ -119,11 +119,11 @@ describe('venta', () => {
   it('pide confirmar con el resumen y no vende si se vuelve', async () => {
     confirmMock.mockResolvedValue({ confirmed: false })
     await montarVenta()
-    fireEvent.click(screen.getByRole('button', { name: /Vender/ }))
+    fireEvent.click(screen.getByRole('button', { name: /^Cobrar/ }))
     await waitFor(() => expect(confirmMock).toHaveBeenCalled())
     const opciones = confirmMock.mock.calls[0]![0]
     expect(opciones.title).toBe('¿Registrar la venta?')
-    expect(opciones.confirmLabel).toMatch(/^Vender \$\s400\.000$/)
+    expect(opciones.confirmLabel).toMatch(/^Cobrar \$\s400\.000$/)
     const filas = Object.fromEntries(opciones.summary.map((r: { label: string; value: string }) => [r.label, r.value]))
     expect(filas).toMatchObject({ Cliente: 'Consumidor final', Artículos: 'Pulsera oro', 'Medio de pago': 'Efectivo' })
     expect(opciones.summary.at(-1)).toMatchObject({ label: 'Total', emphasis: 'total' })
@@ -134,7 +134,7 @@ describe('venta', () => {
     confirmMock.mockResolvedValue({ confirmed: true })
     mutateAsync.mockResolvedValue({ number: 7 })
     await montarVenta()
-    fireEvent.click(screen.getByRole('button', { name: /Vender/ }))
+    fireEvent.click(screen.getByRole('button', { name: /^Cobrar/ }))
     await waitFor(() => expect(mutateAsync).toHaveBeenCalled())
   })
 })
