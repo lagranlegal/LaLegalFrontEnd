@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import type { ColumnDef } from '@tanstack/react-table'
 import { useNavigate } from '@tanstack/react-router'
-import { Download } from 'lucide-react'
+import { Download, Square, SquareCheck } from 'lucide-react'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { DataTable } from '@/components/shared/DataTable'
 import { StatusBadge } from '@/components/shared/StatusBadge'
@@ -13,7 +13,7 @@ import { SearchInput } from '@/components/shared/SearchInput'
 import { RefreshingBar } from '@/components/shared/RefreshingBar'
 import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { PageTabs, PageTabsContent, type PageTab } from '@/components/shared/PageTabs'
 import { FilterChip } from '@/components/shared/FilterChip'
 import { formatDate, formatDateTime, todayBogota } from '@/lib/dates'
 import { useCategories, type Category } from '@/lib/catalogs/categories'
@@ -21,7 +21,7 @@ import { useSuppliers } from '@/lib/catalogs/suppliers'
 import { entryOriginLabel, exitTypeLabel, SELECTABLE_ENTRY_ORIGINS, SELECTABLE_EXIT_TYPES } from '@/lib/inventory/entryTypes'
 import { fetchAllItems, useEntriesList, useExitsList, useItemsList, useProductsList, type Entry, type Exit, type Product } from '@/features/inventory/api'
 import type { Item } from '@/lib/inventory/items'
-import { unitLabel } from '@/lib/inventory/units'
+import { formatQuantity, unitLabel } from '@/lib/inventory/units'
 import { exportRowsToExcel } from '@/lib/export/xlsx'
 import { ItemEditDialog } from '@/features/inventory/components/ItemEditDialog'
 import { EntryDetailDialog } from '@/components/shared/EntryDetailDialog'
@@ -95,10 +95,16 @@ function FilterSelect({
   )
 }
 
-/** Filtro de sí/no, como píldora. Para lo que no es una lista de opciones. */
+/**
+ * Filtro de sí/no, como píldora. Para lo que no es una lista de opciones.
+ * F9-37: apagado se leía como texto suelto; ahora lleva la casilla dibujada
+ * (vacía o con chequeo) además del borde de controles, y `aria-pressed`.
+ */
 function FilterToggle({ active, onToggle, label }: { active: boolean; onToggle: () => void; label: string }) {
+  const Icon = active ? SquareCheck : Square
   return (
-    <FilterChip active={active} onClick={onToggle}>
+    <FilterChip active={active} onClick={onToggle} className="gap-1.5 pl-2.5">
+      <Icon className="size-4" aria-hidden />
       {label}
     </FilterChip>
   )
@@ -372,11 +378,35 @@ function ItemsTab() {
   const items = data?.pages.flatMap((page) => page.items) ?? []
 
   const columns: ColumnDef<Item>[] = [
-    { accessorKey: 'code', header: 'Código', cell: (info) => info.getValue<string | null>() ?? '—' },
+    // Rediseño P3: el código en mono (se lee carácter por carácter, como la
+    // etiqueta), dinero y cantidades a la derecha en cifras tabulares.
+    {
+      accessorKey: 'code',
+      header: 'Código',
+      cell: (info) => {
+        const code = info.getValue<string | null>()
+        return code ? <span className="font-mono text-xs">{code}</span> : <span className="text-muted-foreground">—</span>
+      },
+    },
     { accessorKey: 'name', header: 'Nombre' },
-    { accessorKey: 'cost', header: 'Costo', cell: (info) => <Money value={info.getValue<string>()} /> },
-    { accessorKey: 'sale_price', header: 'Precio', cell: (info) => (info.getValue<string | null>() ? <Money value={info.getValue<string>()} /> : '—') },
-    { accessorKey: 'quantity', header: 'Cantidad' },
+    { accessorKey: 'cost', header: 'Costo', meta: { align: 'right' }, cell: (info) => <Money value={info.getValue<string>()} className="whitespace-nowrap" /> },
+    {
+      accessorKey: 'sale_price',
+      header: 'Precio',
+      meta: { align: 'right' },
+      cell: (info) =>
+        info.getValue<string | null>() ? (
+          <Money value={info.getValue<string>()} className="whitespace-nowrap" />
+        ) : (
+          <span className="text-muted-foreground">—</span>
+        ),
+    },
+    {
+      accessorKey: 'quantity',
+      header: 'Cantidad',
+      meta: { align: 'right' },
+      cell: (info) => <span className="tnum whitespace-nowrap">{formatQuantity(info.getValue<string>(), info.row.original.unit)}</span>,
+    },
     { accessorKey: 'status', header: 'Estado', cell: (info) => <StatusBadge status={info.getValue<string>()} /> },
   ]
 
@@ -510,11 +540,16 @@ function EntriesTab() {
   const columns: ColumnDef<Entry>[] = [
     { accessorKey: 'number', header: 'Número', cell: (info) => <RecordNumber value={info.getValue<number>()} /> },
     { accessorKey: 'origin_type', header: 'Origen', cell: (info) => entryOriginLabel(info.getValue<string>()) },
-    { accessorKey: 'items', header: 'Artículos', cell: (info) => info.row.original.items.length },
-    { accessorKey: 'total_cost', header: 'Costo total', cell: (info) => <Money value={info.getValue<string>()} /> },
+    { accessorKey: 'items', header: 'Artículos', meta: { align: 'right' }, cell: (info) => <span className="tnum">{info.row.original.items.length}</span> },
+    {
+      accessorKey: 'total_cost',
+      header: 'Costo total',
+      meta: { align: 'right' },
+      cell: (info) => <Money value={info.getValue<string>()} className="whitespace-nowrap" />,
+    },
     // La fecha de ENTRADA de la mercancía, no la de digitación: puede ser
     // anterior, y es la que importa para inventario y costo de ventas.
-    { accessorKey: 'entry_date', header: 'Entrada', cell: (info) => formatDate(info.getValue<string>()) },
+    { accessorKey: 'entry_date', header: 'Entrada', cell: (info) => <span className="tnum whitespace-nowrap">{formatDate(info.getValue<string>())}</span> },
     {
       id: 'payment',
       header: 'Pago',
@@ -616,7 +651,7 @@ function ExitsTab() {
     { accessorKey: 'number', header: 'Número', cell: (info) => <RecordNumber value={info.getValue<number>()} /> },
     { accessorKey: 'exit_type', header: 'Tipo', cell: (info) => exitTypeLabel(info.getValue<string>()) },
     { accessorKey: 'reason', header: 'Motivo' },
-    { accessorKey: 'created_at', header: 'Fecha', cell: (info) => formatDateTime(info.getValue<string>()) },
+    { accessorKey: 'created_at', header: 'Fecha', cell: (info) => <span className="tnum whitespace-nowrap">{formatDateTime(info.getValue<string>())}</span> },
   ]
 
   return (
@@ -659,6 +694,16 @@ function ExitsTab() {
   )
 }
 
+type InventoryTab = NonNullable<ReturnType<typeof useInventorySearch>['search']['tab']>
+
+const INVENTORY_TABS: PageTab<InventoryTab>[] = [
+  { value: 'products', label: 'Productos' },
+  { value: 'items', label: 'Lotes' },
+  { value: 'entries', label: 'Ingresos' },
+  { value: 'exits', label: 'Egresos' },
+  { value: 'transformations', label: 'Transformaciones' },
+]
+
 export function InventoryPage() {
   const navigate = useNavigate()
   const { search, setSearch } = useInventorySearch()
@@ -691,12 +736,16 @@ export function InventoryPage() {
           con el filtro puesto en una pestaña que no se ve.
           Al cambiar de pestaña se limpian los filtros: los de Lotes no
           significan lo mismo en Egresos, y arrastrarlos daría una lista vacía
-          sin explicación. */}
-      <Tabs
+          sin explicación.
+          Rediseño P3: `PageTabs` (44 px, subrayado neutro) con su propio
+          scroll y la señal de que hay más a los lados (F9-38). */}
+      <PageTabs
+        label="Secciones del inventario"
+        tabs={INVENTORY_TABS}
         value={search.tab ?? 'products'}
         onValueChange={(tab) =>
           setSearch({
-            tab: tab as NonNullable<typeof search.tab>,
+            tab,
             q: '',
             status: '',
             cat1: '',
@@ -710,37 +759,22 @@ export function InventoryPage() {
           })
         }
       >
-        {/* Cinco pestañas no caben en un teléfono: `TabsList` es `inline-flex
-            w-fit`, así que sin este contenedor la última se cortaba sin
-            forma de llegar a ella. El scroll horizontal vive acá y no en
-            `TabsList` (componente de shadcn/ui, se themea por tokens y no se
-            edita a mano) — las demás pantallas tienen 2-3 pestañas y no lo
-            necesitan. */}
-        <div className="overflow-x-auto">
-          <TabsList>
-            <TabsTrigger value="products">Productos</TabsTrigger>
-            <TabsTrigger value="items">Lotes</TabsTrigger>
-            <TabsTrigger value="entries">Ingresos</TabsTrigger>
-            <TabsTrigger value="exits">Egresos</TabsTrigger>
-            <TabsTrigger value="transformations">Transformaciones</TabsTrigger>
-          </TabsList>
-        </div>
-        <TabsContent value="products">
+        <PageTabsContent value="products">
           <ProductsTab />
-        </TabsContent>
-        <TabsContent value="items">
+        </PageTabsContent>
+        <PageTabsContent value="items">
           <ItemsTab />
-        </TabsContent>
-        <TabsContent value="entries">
+        </PageTabsContent>
+        <PageTabsContent value="entries">
           <EntriesTab />
-        </TabsContent>
-        <TabsContent value="exits">
+        </PageTabsContent>
+        <PageTabsContent value="exits">
           <ExitsTab />
-        </TabsContent>
-        <TabsContent value="transformations">
+        </PageTabsContent>
+        <PageTabsContent value="transformations">
           <TransformationsTab />
-        </TabsContent>
-      </Tabs>
+        </PageTabsContent>
+      </PageTabs>
     </div>
   )
 }

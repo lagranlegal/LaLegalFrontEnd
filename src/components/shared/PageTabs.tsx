@@ -1,5 +1,6 @@
-import { useEffect, useRef, type ReactNode } from 'react'
+import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 import { Tabs as TabsPrimitive } from 'radix-ui'
+import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 export interface PageTab<T extends string> {
@@ -18,6 +19,11 @@ export interface PageTab<T extends string> {
  *
  * Sobre Radix: flechas, Home/End y `aria-selected` vienen de ahí. El contenido
  * va en `PageTabsContent`.
+ *
+ * Si las pestañas no caben (Inventario a 360 px), el lado que esconde algo
+ * lleva un degradado con una flecha que corre la tira (F9-38: antes se cortaba
+ * en «Tran…» sin ninguna señal). La flecha es para el puntero; el teclado ya
+ * recorre las pestañas con las flechas de Radix, así que queda fuera del Tab.
  */
 export function PageTabs<T extends string>({
   value,
@@ -36,38 +42,92 @@ export function PageTabs<T extends string>({
   // desde la URL: se corre la tira, no la página (sin `scrollIntoView`, que
   // también movería la página en vertical).
   const listRef = useRef<HTMLDivElement>(null)
+  const [hidden, setHidden] = useState({ left: false, right: false })
+  const measure = useCallback(() => {
+    const list = listRef.current
+    if (!list) return
+    const left = list.scrollLeft > 1
+    const right = list.scrollLeft + list.clientWidth < list.scrollWidth - 1
+    setHidden((prev) => (prev.left === left && prev.right === right ? prev : { left, right }))
+  }, [])
   useEffect(() => {
     const list = listRef.current
     const active = list?.querySelector<HTMLElement>('[data-state="active"]')
-    if (!list || !active) return
-    const overflowRight = active.offsetLeft + active.offsetWidth - (list.scrollLeft + list.clientWidth)
-    if (overflowRight > 0) list.scrollLeft += overflowRight
-    else if (active.offsetLeft < list.scrollLeft) list.scrollLeft = active.offsetLeft
-  }, [value])
+    if (list && active) {
+      const overflowRight = active.offsetLeft + active.offsetWidth - (list.scrollLeft + list.clientWidth)
+      if (overflowRight > 0) list.scrollLeft += overflowRight
+      else if (active.offsetLeft < list.scrollLeft) list.scrollLeft = active.offsetLeft
+    }
+    measure()
+  }, [value, measure])
+  useEffect(() => {
+    const list = listRef.current
+    if (!list || typeof ResizeObserver === 'undefined') return
+    const observer = new ResizeObserver(measure)
+    observer.observe(list)
+    return () => observer.disconnect()
+  }, [measure])
+  const scrollBy = (direction: 1 | -1) => {
+    const list = listRef.current
+    if (list)
+      list.scrollBy({
+        left: direction * list.clientWidth * 0.7,
+        behavior: 'smooth',
+      })
+  }
   return (
     <TabsPrimitive.Root value={value} onValueChange={(v) => onValueChange(v as T)} className="flex flex-col gap-4">
-      <TabsPrimitive.List ref={listRef} aria-label={label} className="relative flex gap-1 overflow-x-auto border-b border-border">
-        {tabs.map((tab) => (
-          <TabsPrimitive.Trigger
-            key={tab.value}
-            value={tab.value}
-            className={cn(
-              '-mb-px inline-flex min-h-11 shrink-0 items-center gap-1.5 border-b-2 border-transparent px-3.5 text-sm whitespace-nowrap text-muted-foreground',
-              'transition-colors duration-(--duration-fast) outline-none hover:text-foreground focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring',
-              'data-[state=active]:border-foreground data-[state=active]:font-semibold data-[state=active]:text-foreground',
-            )}
+      <div className="relative" data-hidden-left={hidden.left || undefined} data-hidden-right={hidden.right || undefined}>
+        <TabsPrimitive.List
+          ref={listRef}
+          aria-label={label}
+          onScroll={measure}
+          className="relative flex gap-1 overflow-x-auto border-b border-border [scrollbar-width:none]"
+        >
+          {tabs.map((tab) => (
+            <TabsPrimitive.Trigger
+              key={tab.value}
+              value={tab.value}
+              className={cn(
+                '-mb-px inline-flex min-h-11 shrink-0 items-center gap-1.5 border-b-2 border-transparent px-3.5 text-sm whitespace-nowrap text-muted-foreground',
+                'transition-colors duration-(--duration-fast) outline-none hover:text-foreground focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring',
+                'data-[state=active]:border-foreground data-[state=active]:font-semibold data-[state=active]:text-foreground',
+              )}
+            >
+              {tab.label}
+              {tab.count !== undefined && (
+                // El espacio hace que el nombre accesible sea «Abonos 3», no «Abonos3».
+                <>
+                  {' '}
+                  <span className="tnum rounded-pill bg-muted px-1.75 text-xs font-normal text-body">{tab.count}</span>
+                </>
+              )}
+            </TabsPrimitive.Trigger>
+          ))}
+        </TabsPrimitive.List>
+        {hidden.left && (
+          <button
+            type="button"
+            tabIndex={-1}
+            aria-label="Ver pestañas anteriores"
+            onClick={() => scrollBy(-1)}
+            className="absolute inset-y-0 left-0 mb-px flex w-10 items-center justify-start bg-linear-to-r from-background from-40% to-transparent text-muted-foreground hover:text-foreground"
           >
-            {tab.label}
-            {tab.count !== undefined && (
-              // El espacio hace que el nombre accesible sea «Abonos 3», no «Abonos3».
-              <>
-                {' '}
-                <span className="tnum rounded-pill bg-muted px-1.75 text-xs font-normal text-body">{tab.count}</span>
-              </>
-            )}
-          </TabsPrimitive.Trigger>
-        ))}
-      </TabsPrimitive.List>
+            <ChevronLeft className="size-4" aria-hidden />
+          </button>
+        )}
+        {hidden.right && (
+          <button
+            type="button"
+            tabIndex={-1}
+            aria-label="Ver más pestañas"
+            onClick={() => scrollBy(1)}
+            className="absolute inset-y-0 right-0 mb-px flex w-10 items-center justify-end bg-linear-to-l from-background from-40% to-transparent text-muted-foreground hover:text-foreground"
+          >
+            <ChevronRight className="size-4" aria-hidden />
+          </button>
+        )}
+      </div>
       {children}
     </TabsPrimitive.Root>
   )
