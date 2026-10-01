@@ -141,7 +141,10 @@ export function DataTable<T>({
   }
 
   return (
-    <div className={cn('enter-up overflow-hidden', !embedded && 'rounded-card border border-border bg-card')}>
+    // `overflow-x-auto`, no `overflow-hidden`: una tabla más ancha que su
+    // columna (la de contratos en la ficha del cliente, a 1280 px) se desplaza
+    // en vez de cortar la última columna («Vige…»). Igual recorta al radio.
+    <div data-table-scroll className={cn('enter-up overflow-x-auto', !embedded && 'rounded-card border border-border bg-card')}>
       {/* Los datos que se ven siguen siendo válidos, solo están por cambiar:
           una barra delgada arriba avisa sin vaciar la tabla ni hacerla saltar. */}
       <RefreshingBar active={!!isRefreshing} />
