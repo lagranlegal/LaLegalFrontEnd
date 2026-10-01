@@ -4,6 +4,7 @@ import { BackLink } from '@/components/shared/BackLink'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { PrintLayout } from '@/components/shared/PrintLayout'
 import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
 import { confirm } from '@/components/shared/confirmStore'
 import { cn } from '@/lib/utils'
 import { useMe } from '@/lib/auth/me'
@@ -95,8 +96,6 @@ const SAMPLE_ITEMS: PrintableContractItem[] = [
   { id: '1', description: 'Cadena de oro 10g', categoryName: 'Oro', weight_grams: '10', serial_imei: null, item_appraisal: '1200000.00' },
   { id: '2', description: 'Anillo de oro', categoryName: 'Oro', weight_grams: '4', serial_imei: null, item_appraisal: '450000.00' },
 ]
-
-const inputClass = 'mt-1 w-full rounded-input border border-border bg-background px-3 py-2 text-sm text-foreground outline-none focus:border-primary'
 
 /** El motivo del backend si lo hay (`TEMPLATE_*`); si no, el genérico. */
 function errorText(error: unknown, fallback: string): string {
@@ -219,7 +218,7 @@ function TemplateDraftPanel({
           <label htmlFor="template-name" className="text-sm text-muted-foreground">
             Nombre de la plantilla
           </label>
-          <input id="template-name" className={inputClass} value={draftName} onChange={(e) => setDraftName(e.target.value)} />
+          <Input id="template-name" value={draftName} onChange={(e) => setDraftName(e.target.value)} />
         </div>
         <div>
           <span className="block text-sm text-muted-foreground">Formato</span>
