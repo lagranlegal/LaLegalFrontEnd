@@ -37,6 +37,9 @@ import { AccountPicker } from '@/components/shared/AccountPicker'
 import { PAYMENT_METHOD_LABELS } from '@/lib/paymentMethods'
 import { customerNoticePayload, customerNoticeState } from '@/features/contracts/customerNotice'
 import { preventImplicitSubmit } from '@/lib/forms/preventImplicitSubmit'
+import { resolveInheritedParams } from '@/features/catalogs/inheritance'
+import { LoanSummaryCard } from '@/features/contracts/components/LoanSummaryCard'
+import { monthlyInterestPreview, previewRate } from '@/features/contracts/loanPreview'
 
 const contractSchema = z.object({
   principal: positiveMoneyField('El monto del préstamo debe ser mayor a cero'),
@@ -128,6 +131,12 @@ export function ContractFormPage() {
   const canOverrideLtv = usePermission('contracts.override_ltv')
   const avaluo = appraisalRequirement({ maxLtvPct, appraisalValue, canOverride: canOverrideLtv })
 
+  // «Resumen del préstamo» (rediseño P3, F9-30). El plazo, como el LTV, sale
+  // de la categoría de la PRIMERA prenda: es la que usa el backend.
+  const tasaEscrita = useWatch({ control, name: 'interest_rate_pct' })
+  const cuentaElegida = useWatch({ control, name: 'account_id' })
+  const plazoMeses = categories && primeraCategoria ? resolveInheritedParams(categories, primeraCategoria).default_term_months : null
+
   const blocker = useBlocker({
     shouldBlockFn: () => (isDirty || customer !== null) && !submittedRef.current,
     enableBeforeUnload: true,
@@ -179,7 +188,7 @@ export function ContractFormPage() {
         { label: 'Sale de', value: accounts?.find((a) => a.id === values.account_id)?.name },
         { label: 'Entrega', value: formatCOP(values.principal), emphasis: 'total' },
       ],
-      confirmLabel: `Crear contrato ${formatCOP(values.principal)}`,
+      confirmLabel: `Registrar préstamo ${formatCOP(values.principal)}`,
       cancelLabel: 'Volver',
     })
     if (!confirmed) return
@@ -241,222 +250,246 @@ export function ContractFormPage() {
       <PageHeader title="Nuevo contrato" description="Registra el préstamo y las prendas que quedan en garantía." />
       <CashClosedNotice paymentMethod={disbursementMethod} />
 
-      <form onKeyDown={preventImplicitSubmit} onSubmit={handleSubmit(onSubmit, señalarProblemas)} className="flex flex-col gap-6" noValidate>
-        <section className="flex flex-col gap-4 rounded-card border border-border bg-card p-card">
-          <h2 className="text-sm font-medium text-foreground">Cliente</h2>
-          <CustomerPicker
-            id="customer-picker"
-            invalid={!!customerError}
-            value={customer}
-            onChange={(next) => {
-              setCustomer(next)
-              // Lo capturado era de OTRO cliente: la autorización es de una
-              // persona, no del formulario.
-              setValue('customer_email', '')
-              setValue('customer_email_consent', false)
-              if (next) setCustomerError(null)
-            }}
-          />
-          <FieldError fieldId="customer-picker" className="mt-0">
-            {customerError}
-          </FieldError>
+      {/* Dos columnas desde 1024 px: el formulario y, fijo a la derecha, el
+          resumen con el botón. En el celular el resumen queda al final, antes
+          del botón. Un solo <form> envuelve las dos para que el botón siga
+          siendo su submit. */}
+      <form
+        onKeyDown={preventImplicitSubmit}
+        onSubmit={handleSubmit(onSubmit, señalarProblemas)}
+        className="grid grid-cols-1 items-start gap-6 lg:grid-cols-[minmax(0,1fr)_20rem] xl:grid-cols-[minmax(0,1fr)_22rem]"
+        noValidate
+      >
+        <div className="flex min-w-0 flex-col gap-6">
+          <section className="flex flex-col gap-4 rounded-card border border-border bg-card p-card">
+            <h2 className="text-sm font-medium text-foreground">Cliente</h2>
+            <CustomerPicker
+              id="customer-picker"
+              invalid={!!customerError}
+              value={customer}
+              onChange={(next) => {
+                setCustomer(next)
+                // Lo capturado era de OTRO cliente: la autorización es de una
+                // persona, no del formulario.
+                setValue('customer_email', '')
+                setValue('customer_email_consent', false)
+                if (next) setCustomerError(null)
+              }}
+            />
+            <FieldError fieldId="customer-picker" className="mt-0">
+              {customerError}
+            </FieldError>
 
-          {/* backend-starter/docs/DOMINIO.md §9.2: la autorización EXPRESA se pregunta donde
-              se firma el contrato, en una casilla aparte y con su texto. Nunca
-              se marca sola ni vuelve obligatorio el correo: la mayoría de los
-              clientes no lo tiene (§1), y eso es lo normal. */}
-          {customer && (
-            <fieldset className="flex flex-col gap-3 rounded-input border border-border p-3">
-              <legend className="px-1 text-sm font-medium text-foreground">Avisos por correo</legend>
-              {correoGuardado ? (
-                <p className="text-sm text-muted-foreground">
-                  Correo: <span className="break-all font-medium text-foreground">{correoGuardado}</span>
-                  {customer.email_invalid_at && (
-                    <span className="mt-0.5 block text-xs text-warning">El correo rebotó: corrígelo en su ficha.</span>
-                  )}
-                </p>
-              ) : (
-                <div>
-                  <label htmlFor="customer_email" className="text-sm font-medium text-foreground">
-                    Correo del cliente (opcional)
-                  </label>
-                  <Input id="customer_email" type="email" inputMode="email" invalid={!!errors.customer_email} {...register('customer_email')} />
-                  {errors.customer_email ? (
-                    <FieldError fieldId="customer_email">{errors.customer_email.message}</FieldError>
-                  ) : (
-                    <p className="mt-1 text-xs text-muted-foreground">
-                      Sin correo no recibe avisos de sus cuotas ni de sus abonos. Si lo da, queda guardado en su ficha.
-                    </p>
-                  )}
-                </div>
-              )}
-              {customer.email_opt_out_at ? (
-                <p className="text-sm text-warning">
-                  Pidió no recibir avisos por correo ({formatDateTime(customer.email_opt_out_at)}). Solo se levanta desde su ficha.
-                </p>
-              ) : customer.email_basis === 'consent' && customer.email_consent_at ? (
-                <p className="text-sm text-muted-foreground">
-                  Autorizó recibir avisos por correo el {formatDateTime(customer.email_consent_at)}.
-                </p>
-              ) : (
-                <Controller
-                  control={control}
-                  name="customer_email_consent"
-                  render={({ field }) => (
-                    <label className="flex items-start gap-2 text-sm text-foreground">
-                      <Checkbox
-                        id="customer_email_consent"
-                        checked={field.value && tieneCorreo}
-                        onCheckedChange={(checked) => field.onChange(checked === true)}
-                        disabled={!tieneCorreo}
-                        className="mt-0.5"
-                        aria-describedby="customer-email-consent-help"
-                      />
-                      <span>
-                        El cliente autoriza recibir avisos por correo
-                        <span id="customer-email-consent-help" className="mt-0.5 block text-xs text-muted-foreground">
-                          {tieneCorreo
-                            ? 'Cuotas, abonos y demás avisos de sus contratos y compras, y otras comunicaciones de la compraventa. Puede retirarla cuando quiera desde su ficha. Sin esta casilla solo se le escribe sobre sus contratos vigentes.'
-                            : 'Primero escribe el correo.'}
-                        </span>
-                        {errors.customer_email_consent && (
-                          <span className="mt-0.5 block text-sm text-danger">{errors.customer_email_consent.message}</span>
-                        )}
-                      </span>
+            {/* backend-starter/docs/DOMINIO.md §9.2: la autorización EXPRESA se pregunta donde
+                se firma el contrato, en una casilla aparte y con su texto. Nunca
+                se marca sola ni vuelve obligatorio el correo: la mayoría de los
+                clientes no lo tiene (§1), y eso es lo normal. */}
+            {customer && (
+              <fieldset className="flex flex-col gap-3 rounded-input border border-border p-3">
+                <legend className="px-1 text-sm font-medium text-foreground">Avisos por correo</legend>
+                {correoGuardado ? (
+                  <p className="text-sm text-muted-foreground">
+                    Correo: <span className="break-all font-medium text-foreground">{correoGuardado}</span>
+                    {customer.email_invalid_at && (
+                      <span className="mt-0.5 block text-xs text-warning">El correo rebotó: corrígelo en su ficha.</span>
+                    )}
+                  </p>
+                ) : (
+                  <div>
+                    <label htmlFor="customer_email" className="text-sm font-medium text-foreground">
+                      Correo del cliente (opcional)
                     </label>
-                  )}
-                />
-              )}
-            </fieldset>
-          )}
-        </section>
-
-        <section className="flex flex-col gap-4 rounded-card border border-border bg-card p-card">
-          <h2 className="text-sm font-medium text-foreground">Condiciones del préstamo</h2>
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            <div>
-              <label htmlFor="principal" className="text-sm font-medium text-foreground">
-                Monto del préstamo
-              </label>
-              <Controller control={control} name="principal" render={({ field }) => <MoneyInput ref={field.ref} invalid={!!errors.principal} id="principal" className="mt-1" value={field.value} onChange={field.onChange} />} />
-              <FieldError fieldId="principal">{errors.principal?.message}</FieldError>
-            </div>
-            <div>
-              <label htmlFor="interest_rate_pct" className="text-sm font-medium text-foreground">
-                Tasa de interés mensual (%)
-              </label>
-              <Input id="interest_rate_pct" inputMode="decimal" invalid={!!errors.interest_rate_pct} {...register('interest_rate_pct')} />
-              <FieldError fieldId="interest_rate_pct">{errors.interest_rate_pct?.message}</FieldError>
-            </div>
-            <div>
-              <label htmlFor="appraisal_value" className="text-sm font-medium text-foreground">
-                Avalúo total {avaluo.required ? <span className="text-danger">*</span> : <span className="text-muted-foreground">(opcional)</span>}
-              </label>
-              <Controller
-                control={control}
-                name="appraisal_value"
-                render={({ field }) => <MoneyInput ref={field.ref} invalid={!!errors.appraisal_value} optional id="appraisal_value" className="mt-1" value={field.value ?? ''} onChange={field.onChange} />}
-              />
-              <FieldError fieldId="appraisal_value">{errors.appraisal_value?.message}</FieldError>
-              {avaluo.required && !errors.appraisal_value && (
-                <p className="mt-1 text-xs text-muted-foreground">Obligatorio: la categoría presta sobre un porcentaje del avalúo.</p>
-              )}
-              {canOverrideLtv && maxLtvPct !== null && !appraisalValue && (
-                <p className="mt-1 text-xs text-muted-foreground">
-                  Sin avalúo no se puede comprobar el cupo: tu rol puede registrarlo igual y el contrato queda marcado.
-                </p>
-              )}
-              <LtvHint estado={ltv} />
-            </div>
-            <div>
-              <label htmlFor="extension_window_days" className="text-sm font-medium text-foreground">
-                Días para ampliar (opcional)
-              </label>
-              <Input
-                id="extension_window_days"
-                inputMode="numeric"
-                placeholder="Política de la empresa"
-                {...register('extension_window_days')}
-              />
-              {/* Se congela en el contrato al firmarlo, como la tasa: cambiar
-                  la política mañana no puede alterar lo que el cliente firmó
-                  hoy. `0` = este contrato no admite ampliaciones. */}
-              <p className="mt-1 text-xs text-muted-foreground">
-                Hasta cuántos días después puede volver a retirar sobre esta garantía. Vacío usa la
-                política de la empresa; 0 la desactiva.
-              </p>
-            </div>
-            <div>
-              <label htmlFor="payment_method" className="text-sm font-medium text-foreground">
-                Medio de pago del desembolso
-              </label>
-              <Controller
-                control={control}
-                name="payment_method"
-                render={({ field }) => (
-                  <Select value={field.value} onValueChange={field.onChange}>
-                    <SelectTrigger id="payment_method" className="mt-1 w-full">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {Object.entries(PAYMENT_METHOD_LABELS).map(([value, label]) => (
-                        <SelectItem key={value} value={value}>
-                          {label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                    <Input id="customer_email" type="email" inputMode="email" invalid={!!errors.customer_email} {...register('customer_email')} />
+                    {errors.customer_email ? (
+                      <FieldError fieldId="customer_email">{errors.customer_email.message}</FieldError>
+                    ) : (
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        Sin correo no recibe avisos de sus cuotas ni de sus abonos. Si lo da, queda guardado en su ficha.
+                      </p>
+                    )}
+                  </div>
                 )}
-              />
-            </div>
-            {/* De qué cuenta SALE el préstamo — el desembolso es un egreso. */}
-            <div>
-              <label htmlFor="contract-account" className="text-sm font-medium text-foreground">
-                ¿De dónde sale?
-              </label>
-              <Controller
-                control={control}
-                name="account_id"
-                render={({ field }) => (
-                  <AccountPicker
-                    id="contract-account"
-                    paymentMethod={disbursementMethod}
-                    direction="out"
-                    value={field.value}
-                    onChange={field.onChange}
-                    onAutoSelect={(accountId) => resetField('account_id', { defaultValue: accountId })}
+                {customer.email_opt_out_at ? (
+                  <p className="text-sm text-warning">
+                    Pidió no recibir avisos por correo ({formatDateTime(customer.email_opt_out_at)}). Solo se levanta desde su ficha.
+                  </p>
+                ) : customer.email_basis === 'consent' && customer.email_consent_at ? (
+                  <p className="text-sm text-muted-foreground">
+                    Autorizó recibir avisos por correo el {formatDateTime(customer.email_consent_at)}.
+                  </p>
+                ) : (
+                  <Controller
+                    control={control}
+                    name="customer_email_consent"
+                    render={({ field }) => (
+                      <label className="flex items-start gap-2 text-sm text-foreground">
+                        <Checkbox
+                          id="customer_email_consent"
+                          checked={field.value && tieneCorreo}
+                          onCheckedChange={(checked) => field.onChange(checked === true)}
+                          disabled={!tieneCorreo}
+                          className="mt-0.5"
+                          aria-describedby="customer-email-consent-help"
+                        />
+                        <span>
+                          El cliente autoriza recibir avisos por correo
+                          <span id="customer-email-consent-help" className="mt-0.5 block text-xs text-muted-foreground">
+                            {tieneCorreo
+                              ? 'Cuotas, abonos y demás avisos de sus contratos y compras, y otras comunicaciones de la compraventa. Puede retirarla cuando quiera desde su ficha. Sin esta casilla solo se le escribe sobre sus contratos vigentes.'
+                              : 'Primero escribe el correo.'}
+                          </span>
+                          {errors.customer_email_consent && (
+                            <span className="mt-0.5 block text-sm text-danger">{errors.customer_email_consent.message}</span>
+                          )}
+                        </span>
+                      </label>
+                    )}
                   />
                 )}
-              />
+              </fieldset>
+            )}
+          </section>
+
+          <section className="flex flex-col gap-4 rounded-card border border-border bg-card p-card">
+            <h2 className="text-sm font-medium text-foreground">Condiciones del préstamo</h2>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <div>
+                <label htmlFor="principal" className="text-sm font-medium text-foreground">
+                  Monto del préstamo
+                </label>
+                <Controller control={control} name="principal" render={({ field }) => <MoneyInput ref={field.ref} invalid={!!errors.principal} id="principal" className="mt-1" value={field.value} onChange={field.onChange} />} />
+                <FieldError fieldId="principal">{errors.principal?.message}</FieldError>
+              </div>
+              <div>
+                <label htmlFor="interest_rate_pct" className="text-sm font-medium text-foreground">
+                  Tasa de interés mensual (%)
+                </label>
+                <Input id="interest_rate_pct" inputMode="decimal" invalid={!!errors.interest_rate_pct} {...register('interest_rate_pct')} />
+                <FieldError fieldId="interest_rate_pct">{errors.interest_rate_pct?.message}</FieldError>
+              </div>
+              <div>
+                <label htmlFor="appraisal_value" className="text-sm font-medium text-foreground">
+                  Avalúo total {avaluo.required ? <span className="text-danger">*</span> : <span className="text-muted-foreground">(opcional)</span>}
+                </label>
+                <Controller
+                  control={control}
+                  name="appraisal_value"
+                  render={({ field }) => <MoneyInput ref={field.ref} invalid={!!errors.appraisal_value} optional id="appraisal_value" className="mt-1" value={field.value ?? ''} onChange={field.onChange} />}
+                />
+                <FieldError fieldId="appraisal_value">{errors.appraisal_value?.message}</FieldError>
+                {avaluo.required && !errors.appraisal_value && (
+                  <p className="mt-1 text-xs text-muted-foreground">Obligatorio: la categoría presta sobre un porcentaje del avalúo.</p>
+                )}
+                {canOverrideLtv && maxLtvPct !== null && !appraisalValue && (
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Sin avalúo no se puede comprobar el cupo: tu rol puede registrarlo igual y el contrato queda marcado.
+                  </p>
+                )}
+                <LtvHint estado={ltv} />
+              </div>
+              <div>
+                <label htmlFor="extension_window_days" className="text-sm font-medium text-foreground">
+                  Días para ampliar (opcional)
+                </label>
+                <Input
+                  id="extension_window_days"
+                  inputMode="numeric"
+                  placeholder="Política de la empresa"
+                  {...register('extension_window_days')}
+                />
+                {/* Se congela en el contrato al firmarlo, como la tasa: cambiar
+                    la política mañana no puede alterar lo que el cliente firmó
+                    hoy. `0` = este contrato no admite ampliaciones. */}
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Hasta cuántos días después puede volver a retirar sobre esta garantía. Vacío usa la
+                  política de la empresa; 0 la desactiva.
+                </p>
+              </div>
+              <div>
+                <label htmlFor="payment_method" className="text-sm font-medium text-foreground">
+                  Medio de pago del desembolso
+                </label>
+                <Controller
+                  control={control}
+                  name="payment_method"
+                  render={({ field }) => (
+                    <Select value={field.value} onValueChange={field.onChange}>
+                      <SelectTrigger id="payment_method" className="mt-1 w-full">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {Object.entries(PAYMENT_METHOD_LABELS).map(([value, label]) => (
+                          <SelectItem key={value} value={value}>
+                            {label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
+                />
+              </div>
+              {/* De qué cuenta SALE el préstamo — el desembolso es un egreso. */}
+              <div>
+                <label htmlFor="contract-account" className="text-sm font-medium text-foreground">
+                  ¿De dónde sale?
+                </label>
+                <Controller
+                  control={control}
+                  name="account_id"
+                  render={({ field }) => (
+                    <AccountPicker
+                      id="contract-account"
+                      paymentMethod={disbursementMethod}
+                      direction="out"
+                      value={field.value}
+                      onChange={field.onChange}
+                      onAutoSelect={(accountId) => resetField('account_id', { defaultValue: accountId })}
+                    />
+                  )}
+                />
+              </div>
+              <div>
+                <label htmlFor="extension_months" className="text-sm font-medium text-foreground">
+                  Meses de prórroga permitidos
+                </label>
+                <Input id="extension_months" type="number" min={0} {...register('extension_months', { valueAsNumber: true })} />
+              </div>
             </div>
-            <div>
-              <label htmlFor="extension_months" className="text-sm font-medium text-foreground">
-                Meses de prórroga permitidos
-              </label>
-              <Input id="extension_months" type="number" min={0} {...register('extension_months', { valueAsNumber: true })} />
-            </div>
-          </div>
-        </section>
+          </section>
 
-        <ContractItemsFields control={control} register={register} errors={errors} categories={categories} />
+          <ContractItemsFields control={control} register={register} errors={errors} categories={categories} />
 
-        <section className="rounded-card border border-border bg-card p-card">
-          <label htmlFor="notes" className="text-sm font-medium text-foreground">
-            Notas (opcional)
-          </label>
-          <Textarea id="notes" rows={2} invalid={!!errors.notes} {...register('notes')} />
-          <FieldError fieldId="notes">{errors.notes?.message}</FieldError>
-        </section>
+          <section className="rounded-card border border-border bg-card p-card">
+            <label htmlFor="notes" className="text-sm font-medium text-foreground">
+              Notas (opcional)
+            </label>
+            <Textarea id="notes" rows={2} invalid={!!errors.notes} {...register('notes')} />
+            <FieldError fieldId="notes">{errors.notes?.message}</FieldError>
+          </section>
+        </div>
 
-        {formError && <p className="rounded-input bg-danger-soft px-3 py-2 text-sm text-danger">{formError}</p>}
-
-        <Button type="submit" disabled={createContract.isPending} className="w-full sm:w-auto sm:self-end">
-          {createContract.isPending ? 'Creando…' : (
-            <>
-              Crear contrato <Money value={principal || '0.00'} className="ml-1" />
-            </>
-          )}
-        </Button>
+        <LoanSummaryCard
+          principal={principal}
+          rate={previewRate(tasaEscrita)}
+          termMonths={plazoMeses}
+          monthlyInterest={monthlyInterestPreview(principal, tasaEscrita)}
+          appraisalValue={appraisalValue}
+          ltv={ltv}
+          paymentMethodLabel={PAYMENT_METHOD_LABELS[disbursementMethod]}
+          accountName={accounts?.find((a) => a.id === cuentaElegida)?.name}
+        >
+          {formError && <p className="rounded-input bg-danger-soft px-3 py-2 text-sm text-danger">{formError}</p>}
+          <Button type="submit" size="lg" disabled={createContract.isPending}>
+            {createContract.isPending ? (
+              'Registrando…'
+            ) : (
+              <>
+                Registrar préstamo <Money value={principal || '0.00'} />
+              </>
+            )}
+          </Button>
+          <p className="text-center text-xs text-muted-foreground">Enter no registra: el préstamo se confirma con el botón.</p>
+        </LoanSummaryCard>
       </form>
 
       <AppDialog

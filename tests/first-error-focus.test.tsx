@@ -61,7 +61,7 @@ describe('revealFirstError', () => {
 describe('foco al primer error', () => {
   it('Nuevo contrato vacío: el buscador de cliente, no la tasa', async () => {
     render(<ContractFormPage />)
-    fireEvent.click(screen.getByRole('button', { name: /Crear contrato/ }))
+    fireEvent.click(screen.getByRole('button', { name: /Registrar préstamo/ }))
     await screen.findByText('Selecciona un cliente')
     await waitFor(() => expect(document.activeElement?.id).toBe('customer-picker'))
   })
