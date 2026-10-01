@@ -259,6 +259,46 @@ Issue #10: la lista decía números sin dueño. Lo que vale para otras listas y 
   lista y, otra vez, la búsqueda. Un grupo **solo existe con el permiso de lectura de su módulo**: sin él ni se pide
   ni se nombra.
 
+### Clientes, Caja, Inventario, Configuración y páginas de salida (rediseño P3-b, 01/10/2026)
+
+Las pantallas que faltaban, con las piezas de P1 y P2. Lo reutilizable:
+
+- **Lista con persona**: la columna «Cliente» lleva el nombre en 500 y el tipo y número de documento debajo (12,
+  `--text-muted`, cifras tabulares), igual que Contratos e Inicio. El estado del cliente dice «Activo» (F9-42).
+- **Ficha de detalle** (cliente, como el contrato): el nombre en Archivo, debajo los datos que identifican
+  (documento · teléfono · estado) y las acciones en **«Más»**; los datos en una `SummaryCard` a la derecha desde
+  1024 px (arriba en el celular) y las tablas del historial en tarjetas con la tabla embebida. Los contratos de un
+  cliente muestran su **estado efectivo** (`lib/contracts/status.ts`): una prórroga vencida es «Listo para remate».
+- **Diferencia de arqueo con palabra** (`CashDifference`, F9-43): «Faltante $ 7.000» en `--danger` (pide acción),
+  «Sobrante $ 3.000» en `--warning` (también exige justificación) y «Sin diferencia» atenuado; el monto sin signo,
+  porque la palabra ya dice la dirección. Igual en el histórico, el acta (también impresa) y el cierre en vivo,
+  que pinta su fondo con el `-soft` del mismo tono.
+- **Un vacío no es un período sin actividad** (issue #12): el histórico de cierres con un rango sin cierres dice
+  que los cierres solo cuentan el efectivo y, si alguna cuenta que no es efectivo se movió en el rango, lo lista
+  («entró / salió») con el enlace a Cuentas. Sin `accounts.view` no afirma nada de las cuentas.
+- **Un gasto no va en rojo**: el rojo es para lo que pide acción (el faltante), no para toda salida de plata.
+- **Pestañas que no caben** (`PageTabs`, F9-38): el lado que esconde pestañas lleva un degradado del fondo con una
+  flecha que corre la tira; la flecha es solo para el puntero (fuera del Tab: el teclado recorre con las flechas).
+- **Filtro de sí/no** («Solo con stock», F9-37): `FilterChip` con la casilla dibujada (vacía o con chequeo) además
+  del borde de controles; así se lee como control también apagado.
+- **Un solo modelo de guardado por página** (issue #6): en una página de ajustes todo se edita en borrador y se
+  guarda junto con «Guardar cambios». `SaveBar` va al pie del formulario; con cambios se queda pegada abajo,
+  flotando (`--shadow-modal`), con «Tienes cambios sin guardar» y «Descartar»; sin cambios, en su lugar, con «Todo
+  está guardado». `UnsavedChangesGuard` pregunta al salir con cambios. Lo que se **enciende** hacia afuera (avisos
+  a clientes) se confirma al guardar, diciendo a quién se le escribe. Se eligió el botón y no el guardado
+  automático porque una casilla de más no puede escribirle sola a un cliente.
+- **Horas de reloj** (franjas de contacto): un selector de medias horas que dice «7:00 a. m.», no el campo `time`
+  nativo, que sigue el idioma del sistema («07:00 AM»).
+- **Lo opcional se rotula «(opcional)»** junto a la etiqueta, en `--text-muted`; lo obligatorio no lleva marca
+  visible pero sí `aria-required` (F9-28).
+- **Página de salida** (`ExitPage`, F9-61): 404, suscripción vencida y error general. Prendo arriba (logo y
+  wordmark en Archivo: son páginas de la plataforma), ícono de 24 en un cuadro de 48 y radio 10 (neutro; ámbar en
+  la suscripción; rojo solo si algo falló), el titular en Archivo 600 · 24, qué pasó y qué hacer, **una** acción
+  primaria de bloque y una terciaria. Un mensaje técnico va chico al pie, para soporte.
+- **Un detalle que no existe** (`DetailLoadError`, F9-58): «Este contrato no existe o no es de tu empresa» con
+  «Volver a contratos»; reintentar queda solo para la falla de red.
+- **Formatos**: horas «1:31 p. m.» y porcentajes «5,00 %» en toda la app (issue #16, ARQUITECTURA §7).
+
 ## 3. Componentes compartidos (`components/shared`)
 
 Construidos una vez sobre shadcn/ui + tokens; las features los componen. Si una feature necesita una variante, se
@@ -272,7 +312,7 @@ agrega como prop al compartido, no se clona. **Un solo modal, un solo calendario
 | `PageHeader` | título + descripción + acciones a la derecha (un solo primario). Toda página lo usa. El título va en Archivo 600 · 24/28 (rediseño P1). Envuelve a 360 px |
 | `BackLink` | el «Volver» único de los detalles y formularios de página completa |
 | `KpiCard` / `KpiRow` | etiqueta pequeña + cifra grande tabular **en color de texto**, divisores. El único tono es `danger`, y significa **«pide acción»** (lo vencido, los cierres descuadrados), nunca «es una salida de plata»: ni verde ni oro ni rojo para una cifra que solo informa (F9-07). Una tarjeta, sin sombra. Una columna bajo 480 px, dos hasta 640, tres después; en una sola fila con divisores desde 1024 px si son hasta 4 tarjetas y desde 1536 si son más (el Inicio tiene 6). **La cifra nunca se parte dentro de un número**: que quepa lo resuelve el número de columnas, no un corte de palabra (medido en Chrome de 360 a 1920 px). `delta` opcional («▲ 12 % vs período anterior», o con su `label`, «vs. agosto»): **`favorable` decide el color, no el signo** (bajar gastos también es verde), y solo la flecha y el % llevan color. Con `tiles`, cada KPI en su tarjeta (el Inicio) |
-| `DataTable` | sobre TanStack Table: hover de fila, dinero a la derecha, estados de carga/vacío/error integrados, «Cargar más» por cursor, **tarjetas en celular**. Con `onRowClick`, la fila entra al orden de Tab y se abre con Enter o Espacio (F9-11). `embedded` para ir dentro de otra tarjeta y `meta.align: 'right'` en la columna de dinero (§2 «Inicio») |
+| `DataTable` | sobre TanStack Table: hover de fila, dinero a la derecha, estados de carga/vacío/error integrados, «Cargar más» por cursor, **tarjetas en celular**. Con `onRowClick`, la fila entra al orden de Tab y se abre con Enter o Espacio (F9-11). `embedded` para ir dentro de otra tarjeta (desde P3-b, también su carga, su vacío y su error van sin caja propia) y `meta.align: 'right'` en la columna de dinero (§2 «Inicio») |
 | `TableSkeleton` / `RefreshingBar` / `RouteTransitionBar` | carga con la forma del contenido (una barra gris se lee como "no hay nada"); barra delgada cuando una lista *ya* tiene datos y está pidiendo otros (`isPending` solo cubre la primera carga); barra fija mientras el router resuelve una navegación (el `beforeLoad` espera `/me` y la pantalla anterior se quedaba quieta) |
 | `AppDialog` | **el** modal (§1): tamaños `sm` `md` `lg` `xl`, sobre Radix (foco atrapado, Escape, scroll bloqueado); limita la altura al viewport y hace scroll adentro. `confirmDiscard` (con `formState.isDirty`): Escape, clic afuera o la X preguntan antes de descartar lo escrito (F9-40); Cancelar no pregunta. **Prohibido crear otro modal** |
 | `ConfirmDialog` / `confirm()` | confirmación imperativa (`await confirm({ title, tone: 'danger' })`) para acciones destructivas o de dinero; `requireReason` exige motivo (anular, reabrir, descuadre). `summary` pinta un resumen renglón por renglón: una confirmación de dinero repite a quién, cuánto, cómo y a dónde (el abono: contrato, cliente, qué paga, total, medio y cuenta; F9-18). Es la pieza «Confirmación con resumen» de la propuesta (`ConfirmSummary`): renglones con divisor dentro de un recuadro de radio 10, `emphasis: 'total'` para el monto (va **último**, en negrita sobre `--brand-50`) y `emphasis: 'after'` para cómo queda (en verde). El botón de confirmar es de bloque, con el monto adentro; con `tone: 'danger'` va en el relleno rojo. La usan préstamo, abono, venta, gasto y traslado, con título en pregunta y «Volver». Se monta una vez (`ConfirmDialogHost`) |
@@ -280,7 +320,12 @@ agrega como prop al compartido, no se clona. **Un solo modal, un solo calendario
 | `Money` / `MoneyInput` | nadie formatea ni captura dinero fuera de estos dos (reglas de `MoneyInput`: ARQUITECTURA §7). `MoneyInput` tiene tamaño `lg` (cifra 600 · 18) para lo recibido en el POS |
 | `StatusBadge` | pastilla de estado con el **único** mapa estado → tono + ícono Lucide + etiqueta en español: 24 px, 600 · 12, ícono de 13, fondo `-soft` de su semántico (o `--neutral-soft`) y «Listo para remate» como **único estado relleno** (`--danger-solid`). Orden de urgencia en `CONTRACT_STATUS_URGENCY`. Un cliente pasa `kind="customer"`: su «active» dice **«Activo»**, no «Vigente» (F9-42). Un reintento de correo es ámbar; rojo solo lo que se perdió. Las clases van completas y estáticas, nunca interpoladas (ARQUITECTURA §16) |
 | `FilterChip` | la pestaña de filtro en pastilla (estado de contratos e inventario, módulo y antigüedad de Reportes, tipo de plantilla). La activa va en **neutro invertido** con `aria-pressed`, nunca en el oro del primario (F9-13); la inactiva, con el borde de controles |
-| `PageTabs` / `PageTabsContent` | pestañas de sección de una página de detalle (rediseño P2-a; hoy, el contrato): subrayado de 2 px en el color de texto sobre un divisor de ancho completo, nunca una cápsula ni el oro; la activa en tinta y negrita, las demás en `--text-muted`; 44 px de alto y scroll horizontal propio si no caben (el documento no desborda a 360 px). Contador opcional en pastilla gris («Abonos 3»). Sobre Radix (flechas, Home/End). La pestaña activa la decide quien llama: en el contrato va en la URL |
+| `PageTabs` / `PageTabsContent` | pestañas de sección de una página de detalle (rediseño P2-a; hoy, el contrato): subrayado de 2 px en el color de texto sobre un divisor de ancho completo, nunca una cápsula ni el oro; la activa en tinta y negrita, las demás en `--text-muted`; 44 px de alto y scroll horizontal propio si no caben (el documento no desborda a 360 px). Contador opcional en pastilla gris («Abonos 3»). Sobre Radix (flechas, Home/End). La pestaña activa la decide quien llama: en el contrato va en la URL. Si no caben, el lado cortado lleva degradado y flecha (P3-b, F9-38) |
+| `SummaryCard` / `SummaryField` | tarjeta de datos (P2-a, compartida desde P3-b): título 600 · 15, `description` opcional (12, atenuada) y `action` a la derecha del título (un enlace, un rango de fechas; nunca un primario). `SummaryField` es un dato de la grilla: etiqueta 12 atenuada y valor 600 · 14 tabular, dentro de un `dl`. La usan contrato, cliente, Caja y Configuración |
+| `SaveBar` / `UnsavedChangesGuard` | pie de guardar de una página de ajustes y la pregunta al salir con cambios (§2, «P3-b»). Van dentro del `form`; el primario de `SaveBar` es su `submit` |
+| `CashDifference` | la diferencia de un arqueo con palabra y monto («Faltante $ 7.000»), sobre `lib/cashbox/difference.ts` |
+| `ExitPage` / `PrendoMark` | página de salida con marca (§2, «P3-b») y el logo de Prendo inline por tokens (`PrendoWordmark`: logo + «Prendo» en Archivo). La landing reexporta el mismo `PrendoMark` |
+| `DetailLoadError` | el error de una página de detalle según lo que pasó: no existe → volver a la lista; sin permiso → qué falta; red → reintentar |
 | `LegacyCodeBadge` | pastilla neutra con el código del sistema anterior de un contrato importado. No es un estado |
 | `RecordNumber` | el número de un documento (`#123`) con el `#` atenuado y el número en cifras tabulares |
 | `Callout` | recuadro de ayuda: explica algo que el usuario no sabe y trae la acción para resolverlo. Tonos `info` `success` `warning` sobre el `-soft`; **el texto en el color normal y solo el ícono en el semántico** (un párrafo entero en color de advertencia se lee peor) |
