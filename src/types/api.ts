@@ -833,6 +833,29 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/contracts/quote": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Quote Contract
+         * @description Cotiza un contrato nuevo sin crearlo: el «Resumen del préstamo» del
+         *     formulario. Es una LECTURA —POST solo porque el cuerpo es estructurado—:
+         *     no escribe, no pide caja abierta ni `Idempotency-Key`. Los números salen
+         *     de las mismas funciones que `POST /contracts` (docs/API_GUIDE.md §7).
+         */
+        post: operations["quote_contract_api_v1_contracts_quote_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/contracts/import": {
         parameters: {
             query?: never;
@@ -3305,6 +3328,89 @@ export interface components {
             extension_amount: string | null;
             /** Items */
             items: components["schemas"]["ContractItemOut"][];
+        };
+        /**
+         * ContractQuoteIn
+         * @description `POST /contracts/quote`: lo que define el préstamo en `ContractCreateIn`,
+         *     todo opcional para cotizar MIENTRAS se llena el formulario. Lo que falta
+         *     sale `null` en la respuesta, no como error; lo que viene mal (una tasa
+         *     sobre 100, una categoría ajena) sí es error, con el mismo código que
+         *     daría crear.
+         */
+        ContractQuoteIn: {
+            /** Principal */
+            principal?: number | string | null;
+            /** Interest Rate Pct */
+            interest_rate_pct?: number | string | null;
+            /** Appraisal Value */
+            appraisal_value?: number | string | null;
+            /** Items */
+            items?: components["schemas"]["ContractQuoteItemIn"][];
+            /**
+             * Extension Months
+             * @default 1
+             */
+            extension_months: number;
+            /** Extension Window Days */
+            extension_window_days?: number | null;
+        };
+        /**
+         * ContractQuoteItemIn
+         * @description Una prenda en la cotización: solo pesa su categoría. El resto de
+         *     `ContractItemIn` (descripción, peso, fotos…) se acepta y se ignora, para
+         *     que el formulario mande la prenda como la tenga.
+         */
+        ContractQuoteItemIn: {
+            /** Category Id */
+            category_id?: string | null;
+        };
+        /**
+         * ContractQuoteOut
+         * @description El «Resumen del préstamo» de Nuevo contrato, calculado con las mismas
+         *     funciones que `create_contract`: crear con el mismo cuerpo, hoy, da
+         *     exactamente estos números. `null` = falta el dato para calcularlo.
+         */
+        ContractQuoteOut: {
+            /**
+             * Start Date
+             * Format: date
+             */
+            start_date: string;
+            /** Interest Rate Pct */
+            interest_rate_pct: string | null;
+            /** Monthly Interest */
+            monthly_interest: string | null;
+            /** Term Months */
+            term_months: number | null;
+            /** Arrears Window Months */
+            arrears_window_months: number | null;
+            /** Extension Months */
+            extension_months: number;
+            /** Extension Window Days */
+            extension_window_days: number;
+            /**
+             * First Due Date
+             * Format: date
+             */
+            first_due_date: string;
+            /** Due Date */
+            due_date: string | null;
+            /** Appraisal Total */
+            appraisal_total: string | null;
+            /** Ltv Pct */
+            ltv_pct: string | null;
+            /** Ltv Ceiling */
+            ltv_ceiling: string | null;
+            /** Max Loan */
+            max_loan: string | null;
+            /** Ltv Exceeded */
+            ltv_exceeded: boolean;
+            /** Requires Override */
+            requires_override: boolean;
+            /** Override Reason */
+            override_reason: ("appraisal_missing" | "ltv_exceeded") | null;
+            /** Amount To Disburse */
+            amount_to_disburse: string | null;
         };
         /** ContractUpdateIn */
         ContractUpdateIn: {
@@ -7928,6 +8034,39 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ContractOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    quote_contract_api_v1_contracts_quote_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ContractQuoteIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ContractQuoteOut"];
                 };
             };
             /** @description Validation Error */
