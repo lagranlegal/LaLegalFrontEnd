@@ -146,13 +146,10 @@ describe('POS — columna de cobro', () => {
   })
 })
 
-describe('la confirmación antes de cobrar', () => {
-  it('se apaga desde UNA sola constante', () => {
+describe('sin confirmación antes de cobrar (decisión de Mateo, 01/10)', () => {
+  it('el POS no abre «¿Registrar la venta?»: el botón con el monto es la confirmación', () => {
     const fuente = readFileSync('src/features/sales/pages/SaleFormPage.tsx', 'utf8')
-    expect(fuente.match(/export const CONFIRM_BEFORE_CHARGE = (true|false)/g)).toHaveLength(1)
-    expect(fuente.match(/await confirm\(\{\s*title: '¿Registrar la venta\?'/g)).toHaveLength(1)
-    const guarda = fuente.indexOf('if (CONFIRM_BEFORE_CHARGE)')
-    expect(guarda).toBeGreaterThan(-1)
-    expect(fuente.indexOf("title: '¿Registrar la venta?'")).toBeGreaterThan(guarda)
+    expect(fuente).not.toMatch(/¿Registrar la venta\?/)
+    expect(fuente).not.toMatch(/CONFIRM_BEFORE_CHARGE/)
   })
 })

@@ -131,7 +131,8 @@ compartidos; las pantallas vienen después (P2, P3).
   zoom.
 - **Objetivos de 44 px** en la topbar (menú, tema, avatar) y en «Abrir caja» del banner (F9-02); cuando el botón
   visible es más chico, un pseudo-elemento amplía el área táctil.
-- **Antes de mover plata, confirmación con resumen** (F9-18): préstamo, abono, venta, gasto y traslado.
+- **Antes de mover plata, confirmación con resumen** (F9-18): préstamo, abono, gasto y traslado. La venta no: en el
+  mostrador el botón «Cobrar $ X» es la confirmación (decisión del 01/10).
 - `tests/token-contrast.test.ts` mide cada par nuevo contra el ratio aprobado (§«rediseño P1»); el papel no cambió:
   `--paper-muted` conserva el gris anterior a propósito.
 
@@ -190,8 +191,8 @@ pantallas de cobro:
 - **Cierre**: al cobrar no se vuelve a la lista; una tarjeta con el chequeo sobre `--success-soft` dice «Venta #N
   registrada», el cambio entregado y el cliente, con «Imprimir comprobante» (el `PrintLayout` de
   `SaleReceiptDialog`) y «Nueva venta». Escanear otro artículo ya empieza la venta siguiente.
-- **Confirmación con resumen antes de cobrar**: sigue activa, detrás de la constante `CONFIRM_BEFORE_CHARGE` de
-  `SaleFormPage` (el dueño aún no decide si se queda). Apagarla es cambiar esa línea.
+- **Sin diálogo antes de cobrar** (decisión del 01/10): total, recibido y cambio están a la vista y el botón dice
+  el monto; Enter no cobra y la Idempotency-Key evita el doble cobro. Descuento y venta bajo costo piden su paso.
 - Sin título visible: la pantalla es el mostrador (queda un `h1` solo para el lector de pantalla).
 - **`cn` y los tamaños propios**: `lib/utils.ts` le enseña a tailwind-merge los tamaños de texto de `globals.css`
   (15, botón chico y grande, titular…). Sin eso los tomaba por un color y, junto a un color real, borraba uno de los
@@ -356,7 +357,7 @@ agrega como prop al compartido, no se clona. **Un solo modal, un solo calendario
 | `DataTable` | sobre TanStack Table: hover de fila, dinero a la derecha, estados de carga/vacío/error integrados, «Cargar más» por cursor, **tarjetas en celular**. Con `onRowClick`, la fila entra al orden de Tab y se abre con Enter o Espacio (F9-11). `embedded` para ir dentro de otra tarjeta (desde P3-b, también su carga, su vacío y su error van sin caja propia) y `meta.align: 'right'` en la columna de dinero (§2 «Inicio») |
 | `TableSkeleton` / `RefreshingBar` / `RouteTransitionBar` | carga con la forma del contenido (una barra gris se lee como "no hay nada"); barra delgada cuando una lista *ya* tiene datos y está pidiendo otros (`isPending` solo cubre la primera carga); barra fija mientras el router resuelve una navegación (el `beforeLoad` espera `/me` y la pantalla anterior se quedaba quieta) |
 | `AppDialog` | **el** modal (§1): tamaños `sm` `md` `lg` `xl`, sobre Radix (foco atrapado, Escape, scroll bloqueado); limita la altura al viewport y **solo el cuerpo hace scroll**: título y pie fijos, el pie con divisor cuando el cuerpo no cabe (rediseño P3, F9-41). `confirmDiscard` (con `formState.isDirty`): Escape, clic afuera o la X preguntan antes de descartar lo escrito (F9-40); Cancelar no pregunta. **Prohibido crear otro modal** |
-| `ConfirmDialog` / `confirm()` | confirmación imperativa (`await confirm({ title, tone: 'danger' })`) para acciones destructivas o de dinero; `requireReason` exige motivo (anular, reabrir, descuadre). `summary` pinta un resumen renglón por renglón: una confirmación de dinero repite a quién, cuánto, cómo y a dónde (el abono: contrato, cliente, qué paga, total, medio y cuenta; F9-18). Es la pieza «Confirmación con resumen» de la propuesta (`ConfirmSummary`): renglones con divisor dentro de un recuadro de radio 10, `emphasis: 'total'` para el monto (va **último**, en negrita sobre `--brand-50`) y `emphasis: 'after'` para cómo queda (en verde). El botón de confirmar es de bloque, con el monto adentro; con `tone: 'danger'` va en el relleno rojo. La usan préstamo, abono, venta, gasto y traslado, con título en pregunta y «Volver». Se monta una vez (`ConfirmDialogHost`) |
+| `ConfirmDialog` / `confirm()` | confirmación imperativa (`await confirm({ title, tone: 'danger' })`) para acciones destructivas o de dinero; `requireReason` exige motivo (anular, reabrir, descuadre). `summary` pinta un resumen renglón por renglón: una confirmación de dinero repite a quién, cuánto, cómo y a dónde (el abono: contrato, cliente, qué paga, total, medio y cuenta; F9-18). Es la pieza «Confirmación con resumen» de la propuesta (`ConfirmSummary`): renglones con divisor dentro de un recuadro de radio 10, `emphasis: 'total'` para el monto (va **último**, en negrita sobre `--brand-50`) y `emphasis: 'after'` para cómo queda (en verde). El botón de confirmar es de bloque, con el monto adentro; con `tone: 'danger'` va en el relleno rojo. La usan préstamo, abono, gasto y traslado (la venta no, ver «Punto de venta»), con título en pregunta y «Volver». Se monta una vez (`ConfirmDialogHost`) |
 | `DatePicker` / `DateRangePicker` | **el** calendario: español, semana desde el lunes, `dd/MM/yyyy`, "hoy" = `todayBogota()`, presets (Hoy, Ayer, Esta semana, Este mes) |
 | `Money` / `MoneyInput` | nadie formatea ni captura dinero fuera de estos dos (reglas de `MoneyInput`: ARQUITECTURA §7). `MoneyInput` tiene tamaño `lg` (cifra 600 · 18) para lo recibido en el POS |
 | `StatusBadge` | pastilla de estado con el **único** mapa estado → tono + ícono Lucide + etiqueta en español: 24 px, 600 · 12, ícono de 13, fondo `-soft` de su semántico (o `--neutral-soft`) y «Listo para remate» como **único estado relleno** (`--danger-solid`). Orden de urgencia en `CONTRACT_STATUS_URGENCY`. Un cliente pasa `kind="customer"`: su «active» dice **«Activo»**, no «Vigente» (F9-42). Un reintento de correo es ámbar; rojo solo lo que se perdió. Las clases van completas y estáticas, nunca interpoladas (ARQUITECTURA §16) |

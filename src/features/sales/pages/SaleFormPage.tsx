@@ -17,10 +17,8 @@ import { compareMoney, formatCOP, multiplyMoney, subtractMoney, sumMoney } from 
 import { usePermission } from '@/lib/permissions/usePermission'
 import { belowPriceDiscount } from '@/lib/sales/discount'
 import { AccountPicker } from '@/components/shared/AccountPicker'
-import { PAYMENT_METHOD_LABELS } from '@/lib/paymentMethods'
 import { cashChange } from '@/features/sales/cashChange'
 import { confirm } from '@/components/shared/confirmStore'
-import { useAccounts } from '@/lib/accounts/list'
 import { useCreateSale, type Sale } from '@/features/sales/api'
 import { SaleDoneCard } from '@/features/sales/components/SaleDoneCard'
 import { SaleReceiptDialog } from '@/components/shared/SaleReceiptDialog'
@@ -37,17 +35,8 @@ import { ReceiptEmailNotice } from '@/features/sales/components/ReceiptEmailNoti
 import { preventImplicitSubmit } from '@/lib/forms/preventImplicitSubmit'
 
 
-/**
- * ¿Pedir la confirmación con resumen (rediseño P1, F9-18) antes de cobrar?
- * La maqueta del POS cobra con el botón; el dueño aún no decide si la
- * confirmación se queda. Es el ÚNICO interruptor: en `false`, «Cobrar» registra
- * directo (Enter sigue sin cobrar y la Idempotency-Key no cambia).
- */
-export const CONFIRM_BEFORE_CHARGE = true
-
 export function SaleFormPage() {
   const createSale = useCreateSale()
-  const { data: accounts } = useAccounts()
   const canDiscount = usePermission('sales.apply_discount')
 
   const [cart, setCart] = useState<CartLine[]>([])
@@ -203,27 +192,10 @@ export function SaleFormPage() {
       setFormError('Hay artículos por debajo del costo: confirma que quieres venderlos con pérdida.')
       return
     }
-    // Confirmación con resumen (rediseño P1, F9-18): a quién, qué, cómo y a
-    // dónde, con el total al final. El dueño aún no decide si se queda en el
-    // POS: se apaga con `CONFIRM_BEFORE_CHARGE`.
-    if (CONFIRM_BEFORE_CHARGE) {
-      const { confirmed } = await confirm({
-        title: '¿Registrar la venta?',
-        summary: [
-          { label: 'Cliente', value: customer?.full_name ?? 'Consumidor final' },
-          { label: 'Artículos', value: cart.length === 1 ? cart[0]!.item.name : `${cart.length} artículos` },
-          { label: 'Descuento', value: hasDiscount ? formatCOP(discountAmount) : null },
-          { label: 'Nota crédito', value: hasCreditNote ? formatCOP(creditNoteAmount) : null },
-          { label: 'Medio de pago', value: PAYMENT_METHOD_LABELS[paymentMethod] },
-          { label: 'Entra a', value: accounts?.find((a) => a.id === accountId)?.name },
-          { label: 'Cambio', value: change?.kind === 'change' ? formatCOP(change.amount) : null },
-          { label: 'Total', value: formatCOP(cashAmount), emphasis: 'total' },
-        ],
-        confirmLabel: `Cobrar ${formatCOP(cashAmount)}`,
-        cancelLabel: 'Volver',
-      })
-      if (!confirmed) return
-    }
+    // Sin diálogo de confirmación (decisión de Mateo, 01/10): en el mostrador
+    // el botón «Cobrar $ X» ya es la confirmación — total, recibido y cambio
+    // están a la vista, Enter no cobra y la Idempotency-Key evita el doble
+    // cobro. Descuento y venta bajo costo siguen pidiendo su propio paso.
     try {
       const sale = await createSale.mutateAsync({
         customer_id: customer?.id ?? null,
