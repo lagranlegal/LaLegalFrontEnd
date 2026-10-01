@@ -272,6 +272,9 @@ const supplierDetailRoute = createRoute({
  */
 const contractsSearchSchema = z.object({
   estado: z.enum(['active', 'in_arrears', 'in_extension', 'ready_for_auction', 'auctioned']).optional().catch(undefined),
+  // El orden de la lista (rediseño P2-d). Sin él, «Más urgente», el default
+  // del backend. Valores en español: son lo que se lee en la URL compartida.
+  orden: z.enum(['numero_desc', 'numero_asc', 'cliente']).optional().catch(undefined),
 })
 
 export type ContractsSearch = z.infer<typeof contractsSearchSchema>

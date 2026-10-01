@@ -1,0 +1,282 @@
+{
+  "_origen": "Respuestas REALES del backend local (backend-starter HEAD b201920), capturadas el 01/10/2026 envolviendo el TestClient de sus tests de integración. Nombres y documentos son los sintéticos de esos tests. No editar a mano: se regeneran corriendo esos tests.",
+  "contratos_listado": {
+    "_test": "test_contract_list.py::test_cada_item_trae_el_nombre_y_documento_del_cliente",
+    "params": {},
+    "status": 200,
+    "body": {
+      "items": [
+        {
+          "id": "746993c2-621f-4d0e-be1c-8653ec3e0744",
+          "number": 2,
+          "legacy_code": "LST-9b5dffc9",
+          "customer_id": "b884ffc8-13d7-461a-9c0c-acb926be6a00",
+          "principal": "100000.00",
+          "capital_balance": "100000.00",
+          "appraisal_value": null,
+          "interest_rate_pct": "5.00",
+          "term_months": 4,
+          "arrears_window_months": 4,
+          "extension_months": 1,
+          "start_date": "2026-09-21",
+          "due_date": "2027-01-21",
+          "interest_paid_until": "2026-09-21",
+          "status": "active",
+          "extension_ends_at": null,
+          "ltv_warning": false,
+          "notes": null,
+          "signed_photo_url": null,
+          "created_at": "2026-10-01T07:28:20.173116Z",
+          "extension_window_days": 28,
+          "extension_interest_policy": "keep_anchor",
+          "parent_contract_id": null,
+          "root_contract_id": null,
+          "extended_on": null,
+          "extension_amount": null,
+          "items": [
+            {
+              "id": "281c0775-00b3-45ce-9552-151ae88b8e42",
+              "category_id": "9eefcf19-1ea8-43a5-8e70-e146aae63c7e",
+              "description": "Cadena",
+              "weight_grams": null,
+              "serial_imei": null,
+              "item_appraisal": null,
+              "status": "in_custody",
+              "photos": [],
+              "inventory_item_id": null
+            }
+          ],
+          "customer_name": "José Gómez",
+          "customer_document": "1006411735"
+        },
+        {
+          "id": "803eab68-b3d7-4e43-8922-324ea1348482",
+          "number": 1,
+          "legacy_code": "LST-eac18624",
+          "customer_id": "d8808ac3-6b4a-4380-80bf-2d3afaba74d1",
+          "principal": "100000.00",
+          "capital_balance": "100000.00",
+          "appraisal_value": null,
+          "interest_rate_pct": "5.00",
+          "term_months": 4,
+          "arrears_window_months": 4,
+          "extension_months": 1,
+          "start_date": "2026-09-26",
+          "due_date": "2027-01-26",
+          "interest_paid_until": "2026-09-26",
+          "status": "active",
+          "extension_ends_at": null,
+          "ltv_warning": false,
+          "notes": null,
+          "signed_photo_url": null,
+          "created_at": "2026-10-01T07:28:20.120893Z",
+          "extension_window_days": 28,
+          "extension_interest_policy": "keep_anchor",
+          "parent_contract_id": null,
+          "root_contract_id": null,
+          "extended_on": null,
+          "extension_amount": null,
+          "items": [
+            {
+              "id": "2342a52f-99a9-43a3-871d-29c3c0b92ef9",
+              "category_id": "9eefcf19-1ea8-43a5-8e70-e146aae63c7e",
+              "description": "Cadena",
+              "weight_grams": null,
+              "serial_imei": null,
+              "item_appraisal": null,
+              "status": "in_custody",
+              "photos": [],
+              "inventory_item_id": null
+            }
+          ],
+          "customer_name": "María Pérez",
+          "customer_document": "2723680827"
+        }
+      ],
+      "next_cursor": null
+    }
+  },
+  "contratos_q": {
+    "_test": "test_contract_list.py::test_cada_item_trae_el_nombre_y_documento_del_cliente",
+    "params": {
+      "q": "mar"
+    },
+    "status": 200,
+    "body": {
+      "items": [
+        {
+          "id": "803eab68-b3d7-4e43-8922-324ea1348482",
+          "number": 1,
+          "legacy_code": "LST-eac18624",
+          "customer_id": "d8808ac3-6b4a-4380-80bf-2d3afaba74d1",
+          "principal": "100000.00",
+          "capital_balance": "100000.00",
+          "appraisal_value": null,
+          "interest_rate_pct": "5.00",
+          "term_months": 4,
+          "arrears_window_months": 4,
+          "extension_months": 1,
+          "start_date": "2026-09-26",
+          "due_date": "2027-01-26",
+          "interest_paid_until": "2026-09-26",
+          "status": "active",
+          "extension_ends_at": null,
+          "ltv_warning": false,
+          "notes": null,
+          "signed_photo_url": null,
+          "created_at": "2026-10-01T07:28:20.120893Z",
+          "extension_window_days": 28,
+          "extension_interest_policy": "keep_anchor",
+          "parent_contract_id": null,
+          "root_contract_id": null,
+          "extended_on": null,
+          "extension_amount": null,
+          "items": [
+            {
+              "id": "2342a52f-99a9-43a3-871d-29c3c0b92ef9",
+              "category_id": "9eefcf19-1ea8-43a5-8e70-e146aae63c7e",
+              "description": "Cadena",
+              "weight_grams": null,
+              "serial_imei": null,
+              "item_appraisal": null,
+              "status": "in_custody",
+              "photos": [],
+              "inventory_item_id": null
+            }
+          ],
+          "customer_name": "María Pérez",
+          "customer_document": "2723680827"
+        }
+      ],
+      "next_cursor": null
+    }
+  },
+  "contratos_orden_con_cursor": {
+    "_test": "test_contract_list.py::test_el_orden_se_combina_con_los_filtros",
+    "params": {
+      "sort": "number_desc",
+      "customer_id": "f18135e3-4f2c-40e2-a285-e2498cf76883",
+      "limit": 1
+    },
+    "status": 200,
+    "body": {
+      "items": [
+        {
+          "id": "26321bae-8860-4765-966f-60538dc1a41a",
+          "number": 4,
+          "legacy_code": "LST-7fdf2013",
+          "customer_id": "f18135e3-4f2c-40e2-a285-e2498cf76883",
+          "principal": "100000.00",
+          "capital_balance": "100000.00",
+          "appraisal_value": null,
+          "interest_rate_pct": "5.00",
+          "term_months": 4,
+          "arrears_window_months": 4,
+          "extension_months": 1,
+          "start_date": "2026-08-22",
+          "due_date": "2026-12-22",
+          "interest_paid_until": "2026-08-22",
+          "status": "in_arrears",
+          "extension_ends_at": null,
+          "ltv_warning": false,
+          "notes": null,
+          "signed_photo_url": null,
+          "created_at": "2026-10-01T07:28:21.151148Z",
+          "extension_window_days": 28,
+          "extension_interest_policy": "keep_anchor",
+          "parent_contract_id": null,
+          "root_contract_id": null,
+          "extended_on": null,
+          "extension_amount": null,
+          "items": [
+            {
+              "id": "eff451d5-cf9f-43d5-9135-39ec0ae60e0d",
+              "category_id": "80bff9cb-5ba6-4d54-839f-9c3e56ad8172",
+              "description": "Cadena",
+              "weight_grams": null,
+              "serial_imei": null,
+              "item_appraisal": null,
+              "status": "in_custody",
+              "photos": [],
+              "inventory_item_id": null
+            }
+          ],
+          "customer_name": "Beatriz Mora",
+          "customer_document": "3512640504"
+        }
+      ],
+      "next_cursor": "eyJzIjogIm51bWJlcl9kZXNjIiwgImsiOiBbNCwgIjI2MzIxYmFlLTg4NjAtNDc2NS05NjZmLTYwNTM4ZGMxYTQxYSJdfQ=="
+    }
+  },
+  "clientes_q": {
+    "_test": "test_customers.py::test_list_customers_search_matches_doc_number",
+    "params": {
+      "q": "Gómez"
+    },
+    "status": 200,
+    "body": {
+      "items": [
+        {
+          "id": "2c5c6cd2-813e-40cc-b8dd-86eef1150304",
+          "full_name": "Ana Gómez",
+          "doc_type": "cc",
+          "doc_number": "900123456",
+          "doc_issue_place": null,
+          "address": null,
+          "phone": "3001234567",
+          "email": null,
+          "doc_photos": [],
+          "doc_photo_url": null,
+          "status": "active",
+          "alert_reason": null,
+          "notes": null,
+          "created_at": "2026-10-01T07:29:13.348755Z",
+          "email_basis": null,
+          "email_basis_at": null,
+          "email_consent_at": null,
+          "email_consent_source": null,
+          "email_opt_out_at": null,
+          "email_invalid_at": null
+        }
+      ],
+      "next_cursor": null
+    }
+  },
+  "articulos_q": {
+    "_test": "test_inventory.py::test_search_items_by_name_fulltext",
+    "params": {
+      "q": "cadena"
+    },
+    "status": 200,
+    "body": {
+      "items": [
+        {
+          "id": "94e24417-bd67-417f-b10f-bb225e880635",
+          "code": null,
+          "name": "Cadena de oro 18k",
+          "cat1_id": "7cf4d511-d49b-480c-9cb1-a5dcdade0c05",
+          "cat2_id": "9a72d7c4-3f75-4ad3-aeaa-e41852f9aa10",
+          "cat3_id": "f0426e5f-37c0-4c94-9c74-e81240fd303d",
+          "description": null,
+          "origin": "supplier",
+          "supplier_id": "9c27a7f5-abad-41a9-9f4c-e159f81bb835",
+          "source_contract_id": null,
+          "source_transformation_id": null,
+          "source_return_id": null,
+          "cost": "500000.00",
+          "sale_price": null,
+          "quantity": "1.000",
+          "unit": "unit",
+          "unit_abbr": "u",
+          "status": "draft",
+          "photos": [],
+          "entry_date": "2026-10-01",
+          "product_id": "e0df52ef-a86b-4e6b-bd00-042d9709601e",
+          "lot_number": 1,
+          "created_at": "2026-10-01T07:29:13.809287Z"
+        }
+      ],
+      "next_cursor": null
+    }
+  }
+}

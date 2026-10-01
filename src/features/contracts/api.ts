@@ -2,9 +2,13 @@ import { queryOptions, useMutation, useQuery, useQueryClient } from '@tanstack/r
 import { api, unwrap } from '@/lib/api/client'
 import { useCursorInfiniteQuery, fetchAllPages } from '@/lib/api/pagination'
 import { useMoneyMutation } from '@/lib/api/useMoneyMutation'
-import type { components } from '@/types/api'
+import type { components, operations } from '@/types/api'
 
 export type Contract = components['schemas']['ContractOut']
+/** Un contrato del listado (`GET /contracts`): `ContractOut` + `customer_name` y `customer_document` (issue #10). */
+export type ContractListItem = components['schemas']['ContractListItemOut']
+/** Orden del listado. El cursor lleva el orden: cambiarlo obliga a volver a la primera página (otro `sort` con un cursor ajeno da 400). */
+export type ContractSort = NonNullable<NonNullable<operations['list_contracts_api_v1_contracts_get']['parameters']['query']>['sort']>
 export type ContractCreateIn = components['schemas']['ContractCreateIn']
 export type ContractImportIn = components['schemas']['ContractImportIn']
 export type ContractUpdateIn = components['schemas']['ContractUpdateIn']
@@ -25,21 +29,26 @@ export type ContractChainLink = components['schemas']['ContractChainLinkOut']
 
 // ---- Listado (cursor) + listos-para-remate (lista chica sin paginar, GET propio) ----
 
-export function useContractsList(status: string) {
-  return useCursorInfiniteQuery(['contracts', 'list', { status }] as const, (cursor) =>
-    unwrap(api.GET('/api/v1/contracts', { params: { query: { status: status || undefined, cursor } } })),
+/**
+ * El `sort` va en la llave: cambiar de orden es otra consulta que arranca sin
+ * cursor (la primera página). Reusar las páginas ya cargadas mandaría un
+ * cursor emitido con otro orden, y el backend lo rechaza con 400.
+ */
+export function useContractsList(status: string, sort: ContractSort = 'next_due_asc') {
+  return useCursorInfiniteQuery(['contracts', 'list', { status, sort }] as const, (cursor) =>
+    unwrap(api.GET('/api/v1/contracts', { params: { query: { status: status || undefined, sort, cursor } } })),
   )
 }
 
 /**
  * Trae TODOS los contratos que matchean el estado elegido — para exportar a
  * Excel, no para una tabla con scroll infinito (eso es `useContractsList`).
- * Mismo query que arma `useContractsList`, así el archivo exportado
+ * Mismo query que arma `useContractsList` (estado y orden), así el archivo exportado
  * coincide con lo que la pestaña de estado está mostrando en pantalla.
  */
-export function fetchAllContracts(status: string): Promise<Contract[]> {
+export function fetchAllContracts(status: string, sort: ContractSort = 'next_due_asc'): Promise<Contract[]> {
   return fetchAllPages<Contract>((cursor) =>
-    unwrap(api.GET('/api/v1/contracts', { params: { query: { status: status || undefined, cursor } } })),
+    unwrap(api.GET('/api/v1/contracts', { params: { query: { status: status || undefined, sort, cursor } } })),
   )
 }
 
@@ -61,11 +70,11 @@ export function useReadyForAuction({ enabled = true }: { enabled?: boolean } = {
  * traía 200 contratos y filtraba en el navegador SIN poder buscar por
  * cliente (`ContractOut` solo trae `customer_id`, no el nombre).
  */
-export function useContractSearch(q: string) {
+export function useContractSearch(q: string, sort: ContractSort = 'next_due_asc') {
   const query = q.trim()
   return useQuery({
-    queryKey: ['contracts', 'search', query] as const,
-    queryFn: () => unwrap(api.GET('/api/v1/contracts', { params: { query: { q: query, limit: 20 } } })),
+    queryKey: ['contracts', 'search', query, sort] as const,
+    queryFn: () => unwrap(api.GET('/api/v1/contracts', { params: { query: { q: query, limit: 20, sort } } })),
     select: (page) => page.items,
     enabled: query.length > 0,
   })

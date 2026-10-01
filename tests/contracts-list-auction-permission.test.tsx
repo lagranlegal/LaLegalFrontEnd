@@ -11,14 +11,21 @@ const perms = vi.hoisted(() => ({ auction: false }))
 const ready = vi.hoisted(() => ({ calls: [] as Array<{ enabled?: boolean } | undefined> }))
 const url = vi.hoisted(() => ({ search: {} as { estado?: string }, listCalls: [] as string[] }))
 
-vi.mock('@tanstack/react-router', () => ({ useNavigate: () => vi.fn(), useSearch: () => url.search }))
+// El estado vive en `?estado=` (rediseño P2-d): el `navigate` simulado aplica
+// el reductor de búsqueda sobre la URL de prueba.
+vi.mock('@tanstack/react-router', () => ({
+  useNavigate: () => (opts: { search?: (prev: object) => object }) => {
+    if (typeof opts.search === 'function') url.search = opts.search(url.search) as typeof url.search
+  },
+  useSearch: () => url.search,
+}))
 vi.mock('@/lib/permissions/usePermission', () => ({
   usePermission: (p: string) => (p === 'contracts.auction' ? perms.auction : true),
 }))
 vi.mock('@/features/customers/api', () => ({ fetchAllCustomers: vi.fn() }))
 vi.mock('@/features/contracts/api', () => ({
   fetchAllContracts: vi.fn(),
-  useContractsList: (status: string) => (url.listCalls.push(status), { data: { pages: [] }, isPending: false, isError: false, refetch: vi.fn(), hasNextPage: false, isFetchingNextPage: false, fetchNextPage: vi.fn() }),
+  useContractsList: (status: string, _sort?: string) => (url.listCalls.push(status), { data: { pages: [] }, isPending: false, isError: false, refetch: vi.fn(), hasNextPage: false, isFetchingNextPage: false, fetchNextPage: vi.fn() }),
   useContractSearch: () => ({ data: [], isPending: false, isError: false, refetch: vi.fn() }),
   useReadyForAuction: (opts?: { enabled?: boolean }) => {
     ready.calls.push(opts)
@@ -46,8 +53,10 @@ describe('Contratos y el permiso de remate', () => {
 
   it('con contracts.auction la pestaña está, y la lista se pide solo al abrirla', () => {
     perms.auction = true
-    render(<ContractsListPage />)
+    const { rerender } = render(<ContractsListPage />)
     fireEvent.click(screen.getByRole('button', { name: 'Listos para remate' }))
+    expect(url.search).toEqual({ estado: 'ready_for_auction' })
+    rerender(<ContractsListPage />)
     expect(ready.calls[0]?.enabled).toBe(false)
     expect(ready.calls.at(-1)?.enabled).toBe(true)
   })

@@ -13,11 +13,23 @@ import { PortfolioBalanceCell } from '@/features/contracts/components/PortfolioB
 import { Can } from '@/components/shared/Can'
 import { usePermission } from '@/lib/permissions/usePermission'
 import { Button } from '@/components/ui/button'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { FilterChip } from '@/components/shared/FilterChip'
 import { formatDate, todayBogota } from '@/lib/dates'
-import { fetchAllContracts, useContractsList, useContractSearch, useReadyForAuction, type Contract } from '@/features/contracts/api'
+import { useCustomer } from '@/lib/customers/search'
+import {
+  fetchAllContracts,
+  useContractsList,
+  useContractSearch,
+  useReadyForAuction,
+  type Contract,
+  type ContractListItem,
+  type ContractSort,
+} from '@/features/contracts/api'
 import { fetchAllCustomers } from '@/features/customers/api'
 import { effectiveContractStatus } from '@/features/contracts/contractStatus'
+import { CONTRACT_SORT_OPTIONS, sortFromOrden } from '@/features/contracts/listSort'
+import type { ContractsSearch } from '@/app/router'
 import { exportRowsToExcel } from '@/lib/export/xlsx'
 import { contractsExportRows } from '@/features/contracts/export'
 
@@ -30,17 +42,112 @@ const STATUS_TABS = [
   { value: 'auctioned', label: 'Rematados' },
 ]
 
+/**
+ * Una fila de la tabla: el listado trae el cliente (`ContractListItemOut`,
+ * issue #10); «Listos para remate» sale de otro endpoint, que devuelve
+ * `ContractOut` sin él.
+ */
+type ContractRow = Contract & Partial<Pick<ContractListItem, 'customer_name' | 'customer_document'>>
+
+type ContractsListSearch = ContractsSearch
+
+/** Nombre y documento en subleyenda, como «Requieren acción» del Inicio. */
+function CustomerLines({ name, document }: { name: string; document?: string }) {
+  return (
+    <span className="block min-w-0">
+      <span className="block font-medium break-words text-foreground">{name}</span>
+      {document && <span className="tnum block text-xs text-muted-foreground">{document}</span>}
+    </span>
+  )
+}
+
+/**
+ * El cliente de una fila de «Listos para remate», que llega sin él: se pide
+ * por id (la lista es corta y cada cliente queda en caché) y solo con
+ * `customers.view`; sin el permiso la celda queda en raya, nunca un 403.
+ */
+function ReadyCustomerCell({ customerId }: { customerId: string }) {
+  const canViewCustomers = usePermission('customers.view')
+  const { data } = useCustomer(canViewCustomers ? customerId : '')
+  if (!data) return <span className="text-muted-foreground">—</span>
+  return <CustomerLines name={data.full_name} document={data.doc_number} />
+}
+
+const columns: ColumnDef<ContractRow>[] = [
+  {
+    accessorKey: 'number',
+    header: 'Número',
+    cell: (info) => (
+      <div className="flex flex-wrap items-center justify-end gap-2 md:justify-start">
+        <RecordNumber value={info.getValue<number>()} />
+        {info.row.original.legacy_code && <LegacyCodeBadge code={info.row.original.legacy_code} />}
+      </div>
+    ),
+  },
+  {
+    id: 'customer',
+    header: 'Cliente',
+    cell: (info) => {
+      const row = info.row.original
+      return row.customer_name !== undefined ? (
+        <CustomerLines name={row.customer_name} document={row.customer_document} />
+      ) : (
+        <ReadyCustomerCell customerId={row.customer_id} />
+      )
+    },
+  },
+  {
+    accessorKey: 'principal',
+    header: 'Capital',
+    meta: { align: 'right' },
+    cell: (info) => <Money value={info.getValue<string>()} className="whitespace-nowrap" />,
+  },
+  {
+    accessorKey: 'capital_balance',
+    header: 'Saldo en cartera',
+    meta: { align: 'right' },
+    cell: (info) => <PortfolioBalanceCell contract={info.row.original} />,
+  },
+  {
+    accessorKey: 'due_date',
+    header: 'Vencimiento',
+    cell: (info) => <span className="tnum whitespace-nowrap">{formatDate(info.getValue<string>())}</span>,
+  },
+  { accessorKey: 'status', header: 'Estado', cell: (info) => <StatusBadge status={effectiveContractStatus(info.row.original)} /> },
+]
+
 export function ContractsListPage() {
-  // `?estado=` llega desde las tarjetas «Para hoy» del Inicio; de ahí en
-  // adelante el filtro sigue siendo estado local, como antes.
-  const search = useSearch({ strict: false }) as { estado?: string }
+  // `?estado=` (las tarjetas «Para hoy» del Inicio abren la lista filtrada) y
+  // `?orden=` viven en la URL: sobreviven al F5 y el enlace se comparte.
+  const search = useSearch({ strict: false }) as ContractsListSearch
   const canAuction = usePermission('contracts.auction')
+  const navigate = useNavigate()
   // Sin `contracts.auction` la pestaña de remate no existe: ese `?estado=`
   // cae en «Todos» (no hay un `?status=ready_for_auction` en `GET /contracts`).
-  const [status, setStatus] = useState(search.estado === 'ready_for_auction' && !canAuction ? '' : (search.estado ?? ''))
+  const status = search.estado === 'ready_for_auction' && !canAuction ? '' : (search.estado ?? '')
+  const sort = sortFromOrden(search.orden)
   const [q, setQ] = useState('')
-  const navigate = useNavigate()
   const isSearching = q.trim().length > 0
+
+  // `replace`: cambiar un filtro no es una página nueva en el historial. Lo
+  // vacío se borra de la URL (la pantalla limpia es `/contratos` a secas).
+  function setSearch(cambios: ContractsListSearch) {
+    void navigate({
+      to: '/contratos',
+      search: (prev: ContractsListSearch) => {
+        const next = { ...prev, ...cambios }
+        if (!next.estado) delete next.estado
+        if (!next.orden) delete next.orden
+        return next
+      },
+      replace: true,
+    })
+  }
+  const setStatus = (value: string) => setSearch({ estado: (value || undefined) as ContractsSearch['estado'] })
+  // Cambiar de orden es otra consulta (el `sort` va en la llave de
+  // `useContractsList`): arranca en la primera página, como exige el cursor.
+  const setSort = (value: ContractSort) => setSearch({ orden: CONTRACT_SORT_OPTIONS.find((o) => o.sort === value)?.value })
+
   // "Listos para remate" NO es un status real (ver `contractStatus.ts`) — no
   // existe un `?status=ready_for_auction` en `GET /contracts`. Esa pestaña
   // usa el endpoint dedicado `GET /contracts/ready-for-auction` en su lugar;
@@ -52,23 +159,27 @@ export function ContractsListPage() {
   // que abría Contratos dejaba un 403 en la consola.
   const statusTabs = canAuction ? STATUS_TABS : STATUS_TABS.filter((tab) => tab.value !== 'ready_for_auction')
   const isReadyTab = canAuction && status === 'ready_for_auction'
-  const { data, isPending, isError, refetch, hasNextPage, isFetchingNextPage, fetchNextPage } = useContractsList(isReadyTab ? '' : status)
+  const { data, isPending, isError, refetch, hasNextPage, isFetchingNextPage, fetchNextPage } = useContractsList(isReadyTab ? '' : status, sort)
   const { data: readyContracts, isPending: readyPending, isError: readyError, refetch: refetchReady } = useReadyForAuction({ enabled: isReadyTab })
-  const { data: searchResults, isPending: searchPending, isError: searchError, refetch: refetchSearch } = useContractSearch(q)
+  const { data: searchResults, isPending: searchPending, isError: searchError, refetch: refetchSearch } = useContractSearch(q, sort)
   const [isExporting, setIsExporting] = useState(false)
 
-  const contracts = isSearching ? (searchResults ?? []) : isReadyTab ? (readyContracts ?? []) : (data?.pages.flatMap((page) => page.items) ?? [])
+  const contracts: ContractRow[] = isSearching
+    ? (searchResults ?? [])
+    : isReadyTab
+      ? (readyContracts ?? [])
+      : (data?.pages.flatMap((page) => page.items) ?? [])
 
   // Exporta por ESTADO (igual que la pestaña activa), no por el buscador
-  // libre de arriba — ese es un parche client-side de 200 registros (ver
-  // `useContractSearch`), no un filtro real del backend. "Listos para
-  // remate" tampoco es un `status` real (`GET /contracts/ready-for-auction`
-  // es su propio endpoint, sin cursor) — se exporta la lista completa tal
-  // cual la trae ese endpoint, sin pasar por `fetchAllContracts`.
+  // libre de arriba. "Listos para remate" tampoco es un `status` real
+  // (`GET /contracts/ready-for-auction` es su propio endpoint, sin cursor) —
+  // se exporta la lista completa tal cual la trae ese endpoint, sin pasar por
+  // `fetchAllContracts`. Los clientes se siguen bajando aparte: el Excel
+  // dice «CC 1032456789» y el listado trae el documento sin su tipo.
   async function handleExport() {
     setIsExporting(true)
     try {
-      const allContracts = isReadyTab ? (readyContracts ?? []) : await fetchAllContracts(status)
+      const allContracts = isReadyTab ? (readyContracts ?? []) : await fetchAllContracts(status, sort)
       const customers = await fetchAllCustomers()
       const customerById = new Map(customers.map((c) => [c.id, c]))
       // F7-10: saldo en 0 fuera de la cartera viva y fila de total, ver `contractsExportRows`.
@@ -78,23 +189,6 @@ export function ContractsListPage() {
       setIsExporting(false)
     }
   }
-
-  const columns: ColumnDef<Contract>[] = [
-    {
-      accessorKey: 'number',
-      header: 'Número',
-      cell: (info) => (
-        <div className="flex items-center gap-2">
-          <RecordNumber value={info.getValue<number>()} />
-          {info.row.original.legacy_code && <LegacyCodeBadge code={info.row.original.legacy_code} />}
-        </div>
-      ),
-    },
-    { accessorKey: 'principal', header: 'Capital', cell: (info) => <Money value={info.getValue<string>()} /> },
-    { accessorKey: 'capital_balance', header: 'Saldo en cartera', cell: (info) => <PortfolioBalanceCell contract={info.row.original} /> },
-    { accessorKey: 'due_date', header: 'Vencimiento', cell: (info) => formatDate(info.getValue<string>()) },
-    { accessorKey: 'status', header: 'Estado', cell: (info) => <StatusBadge status={effectiveContractStatus(info.row.original)} /> },
-  ]
 
   return (
     <div className="flex flex-col gap-6">
@@ -120,7 +214,36 @@ export function ContractsListPage() {
         }
       />
 
-      <SearchInput ariaLabel="Buscar contratos" value={q} onChange={setQ} placeholder="Buscar por número o código anterior…" className="max-w-sm" />
+      <div className="flex flex-wrap items-center gap-3">
+        <SearchInput
+          ariaLabel="Buscar contratos"
+          value={q}
+          onChange={setQ}
+          placeholder="Buscar por número, código o cliente…"
+          className="w-full sm:max-w-sm sm:flex-1"
+        />
+        {/* «Listos para remate» sale de un endpoint sin orden elegible: ahí el
+            selector no aparece en vez de prometer un orden que no aplica. */}
+        {(!isReadyTab || isSearching) && (
+          <div className="flex w-full items-center gap-2 sm:ml-auto sm:w-auto">
+            <label htmlFor="contracts-sort" className="shrink-0 text-sm text-muted-foreground">
+              Ordenar por
+            </label>
+            <Select value={sort} onValueChange={(value) => setSort(value as ContractSort)}>
+              <SelectTrigger id="contracts-sort" className="min-w-0 flex-1 sm:w-44 sm:flex-none">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {CONTRACT_SORT_OPTIONS.map((option) => (
+                  <SelectItem key={option.sort} value={option.sort}>
+                    {option.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        )}
+      </div>
 
       {/* Las pestañas se ocultan al buscar porque el buscador cruza TODOS los
           estados: dejarlas visibles sugeriría que el resultado está acotado a
