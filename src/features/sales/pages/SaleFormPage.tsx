@@ -2,7 +2,6 @@ import { useRef, useState } from 'react'
 import { CashClosedNotice } from '@/components/shared/CashClosedNotice'
 import { useNavigate, useBlocker } from '@tanstack/react-router'
 import { toast } from 'sonner'
-import { Minus, Plus, Trash2 } from 'lucide-react'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { BackLink } from '@/components/shared/BackLink'
 import { AppDialog } from '@/components/shared/AppDialog'
@@ -27,8 +26,9 @@ import { cashChange } from '@/features/sales/cashChange'
 import { confirm } from '@/components/shared/confirmStore'
 import { useAccounts } from '@/lib/accounts/list'
 import { useCreateSale } from '@/features/sales/api'
-import { QuantityInput } from '@/features/sales/components/QuantityInput'
-import { allowsFractions, clampQuantity, unitAbbr } from '@/lib/inventory/units'
+import { PosCart } from '@/features/sales/components/PosCart'
+import type { CartLine } from '@/features/sales/cart'
+import { clampQuantity } from '@/lib/inventory/units'
 import { useCustomerCreditNotes } from '@/lib/sales/creditNotes'
 import { minMoney } from '@/lib/money'
 import type { Item } from '@/lib/inventory/items'
@@ -36,17 +36,6 @@ import type { Customer } from '@/lib/customers/search'
 import { ReceiptEmailNotice } from '@/features/sales/components/ReceiptEmailNotice'
 import { preventImplicitSubmit } from '@/lib/forms/preventImplicitSubmit'
 
-interface CartLine {
-  item: Item
-  quantity: number
-  /**
-   * Lo que se cobra por unidad. Arranca en el precio publicado; solo quien
-   * tiene `sales.apply_discount` lo puede cambiar, porque bajarlo es un
-   * descuento (F6-05 del backend) y subirlo sin ese permiso no tiene caso de
-   * uso en el mostrador.
-   */
-  unitPrice: string
-}
 
 export function SaleFormPage() {
   const navigate = useNavigate()
@@ -131,6 +120,19 @@ export function SaleFormPage() {
 
   function removeLine(itemId: string) {
     setCart((prev) => prev.filter((line) => line.item.id !== itemId))
+  }
+
+  async function clearCart() {
+    const { confirmed } = await confirm({
+      title: '¿Vaciar el carrito?',
+      description: 'Se quitan todos los artículos de esta venta.',
+      tone: 'danger',
+      confirmLabel: 'Vaciar carrito',
+      cancelLabel: 'Volver',
+    })
+    if (!confirmed) return
+    setCart([])
+    scannerRef.current?.focus()
   }
 
   const subtotal = sumMoney(...cart.map((line) => multiplyMoney(line.unitPrice, line.quantity)))
@@ -231,82 +233,15 @@ export function SaleFormPage() {
               con foco y lo recupera tras agregar (F9-27, F9-33). */}
           <ItemPicker ref={scannerRef} variant="scanner" onSelect={addToCart} placeholder="Escanea o escribe código o nombre" />
 
-          <div className="overflow-hidden rounded-card border border-border bg-card">
-            {cart.length === 0 ? (
-              <p className="p-card text-center text-sm text-muted-foreground">El carrito está vacío — busca un artículo arriba.</p>
-            ) : (
-              <div className="divide-y divide-border">
-                {cart.map((line) => {
-                  const { item, quantity, unitPrice } = line
-                  const belowPublished = item.sale_price !== null && compareMoney(unitPrice, item.sale_price) < 0
-                  const belowCost = isBelowCost(line)
-                  return (
-                  <div key={item.id} className="flex flex-wrap items-center justify-between gap-3 p-4">
-                    <div>
-                      <p className="font-medium text-foreground">{item.name}</p>
-                      <p className="text-xs text-muted-foreground">
-                        {item.code && <span className="font-mono">{item.code}</span>} · <Money value={item.sale_price ?? '0.00'} />
-                      </p>
-                      {/* Cambiar el precio de la línea: solo con permiso de
-                          descuentos. Bajarlo del publicado ES un descuento
-                          (F6-05 del backend): pide motivo y queda auditado. */}
-                      {canDiscount && (
-                        <div className="mt-2 flex items-center gap-2">
-                          <label htmlFor={`precio-${item.id}`} className="text-xs text-muted-foreground">
-                            Precio
-                          </label>
-                          <MoneyInput id={`precio-${item.id}`} ariaLabel={`Precio de ${item.name}`} className="w-36" value={unitPrice} onChange={(v) => updateUnitPrice(item.id, v)} />
-                        </div>
-                      )}
-                      {belowPublished && (
-                        <p className="mt-1 text-xs text-warning">Por debajo del precio publicado: cuenta como descuento y necesita motivo.</p>
-                      )}
-                      {belowCost && (
-                        <p className="mt-1 text-xs font-medium text-danger">
-                          Por debajo del costo (<Money value={item.cost} />): esta pieza se vende con pérdida.
-                        </p>
-                      )}
-                    </div>
-                    <div className="flex items-center gap-3">
-                      {/* Contar y PESAR son gestos distintos. Los botones +/-
-                          son correctos para cadenas y anillos; para gramos o
-                          metros lo natural es escribir la cantidad, y sumar de
-                          a 1 g sería absurdo. Por eso la interacción la decide
-                          la unidad del producto. */}
-                      {allowsFractions(item.unit) ? (
-                        <div className="flex items-center gap-1">
-                          <QuantityInput item={item} quantity={quantity} onChange={(q) => updateQuantity(item.id, q)} />
-                          <span className="text-xs text-muted-foreground">{unitAbbr(item.unit)}</span>
-                        </div>
-                      ) : (
-                        <div className="flex items-center gap-1 rounded-input border border-border">
-                          <Button type="button" variant="ghost" size="icon-sm" aria-label="Restar" onClick={() => updateQuantity(item.id, quantity - 1)}>
-                            <Minus className="size-3.5" />
-                          </Button>
-                          <span className="w-6 text-center text-sm tnum">{quantity}</span>
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="icon-sm"
-                            aria-label="Sumar"
-                            onClick={() => updateQuantity(item.id, quantity + 1)}
-                            disabled={quantity >= Number(item.quantity)}
-                          >
-                            <Plus className="size-3.5" />
-                          </Button>
-                        </div>
-                      )}
-                      <Money value={multiplyMoney(unitPrice, quantity)} className="w-24 text-right font-medium" />
-                      <Button type="button" variant="ghost" size="icon-sm" aria-label="Quitar" onClick={() => removeLine(item.id)}>
-                        <Trash2 className="size-4 text-danger" />
-                      </Button>
-                    </div>
-                  </div>
-                  )
-                })}
-              </div>
-            )}
-          </div>
+          <PosCart
+            cart={cart}
+            canDiscount={canDiscount}
+            isBelowCost={isBelowCost}
+            onQuantity={updateQuantity}
+            onPrice={updateUnitPrice}
+            onRemove={removeLine}
+            onClear={clearCart}
+          />
         </div>
 
         <div className="flex flex-col gap-4">
