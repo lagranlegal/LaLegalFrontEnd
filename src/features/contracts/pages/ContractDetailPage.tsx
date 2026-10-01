@@ -19,10 +19,10 @@ import { confirm } from '@/components/shared/confirmStore'
 import { useCategories } from '@/lib/catalogs/categories'
 import { useItemsByIds, type Item } from '@/lib/inventory/items'
 import { usePaymentsList, useAuctionContract, type Payment } from '@/features/contracts/api'
-import { effectiveContractStatus, isReadyForAuction } from '@/features/contracts/contractStatus'
+import { isReadyForAuction } from '@/features/contracts/contractStatus'
 import { useContract } from '@/lib/contracts/reference'
 import { useCustomer } from '@/lib/customers/search'
-import { ContractStatusHeadline } from '@/features/contracts/components/ContractStatusHeadline'
+import { ContractStatusHero, PAYABLE_STATUSES } from '@/features/contracts/components/ContractStatusHero'
 import { PaymentOptionsPanel } from '@/features/contracts/components/PaymentOptionsPanel'
 import { ContractMetricsPanel } from '@/features/contracts/components/ContractMetricsPanel'
 import { ContractHeaderActions } from '@/features/contracts/components/ContractHeaderActions'
@@ -32,8 +32,6 @@ import { RecordNumber } from '@/components/shared/RecordNumber'
 import { SettlementPrintView } from '@/features/contracts/components/SettlementPrintView'
 import { useSettlementInfo } from '@/features/contracts/settlement'
 import { useActiveDocumentTemplate } from '@/features/settings/documentTemplates/api'
-
-const PAYABLE_STATUSES = new Set(['active', 'in_arrears', 'in_extension'])
 
 const paymentColumns: ColumnDef<Payment>[] = [
   { accessorKey: 'receipt_number', header: 'Recibo', cell: (info) => <RecordNumber value={info.getValue<number>()} /> },
@@ -164,9 +162,7 @@ export function ContractDetailPage() {
           ) : undefined
         }
         actions={
-          <>
-            <StatusBadge status={effectiveContractStatus(contract)} />
-            <ContractHeaderActions
+          <ContractHeaderActions
               printLoading={contractTemplateLoading}
               onPrint={() => {
                 // `window.print()` es sincrónico y bloquea — sin `flushSync`,
@@ -190,9 +186,11 @@ export function ContractDetailPage() {
               auctionPending={auctionContract.isPending}
               onAuction={() => void handleAuction()}
             />
-          </>
         }
       />
+
+      {/* F9-16: el estado es el encabezado (rediseño P2-a). */}
+      <ContractStatusHero contract={contract} settlement={settlement} />
 
       {/* F8-10: el contrato y el paz y salvo se imprimen desde acá. */}
       <CompanyDataNotice className="print:hidden" />
@@ -200,9 +198,6 @@ export function ContractDetailPage() {
       {/* La cadena de ampliaciones: a cuál pasó la deuda, de cuál viene, y la
           historia completa si hay varias (backend-starter/docs/DOMINIO.md §3). */}
       <ContractChainPanel contract={contract} />
-
-      {/* F9-16: la mora y la prórroga en grande, arriba de los datos. */}
-      <ContractStatusHeadline contract={contract} />
 
       {contract.ltv_warning && (
         <div className="rounded-input bg-warning-soft px-4 py-2 text-sm text-warning">Este contrato supera el LTV máximo permitido para su categoría.</div>

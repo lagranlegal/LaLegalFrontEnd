@@ -209,6 +209,9 @@
   --font-size-button-lg: 0.96875rem;
   /* 15 px: el total de una confirmación con resumen. */
   --font-size-md: 0.9375rem;
+  /* Rediseño P2-a: la cifra principal de la tarjeta de estado del contrato
+     («Para ponerse al día», 26); las otras van en el 22 del titular. */
+  --font-size-figure-lg: 1.625rem;
   /* Solo códigos de etiqueta (JOC0007-01R): la mono deja ver cada carácter. */
   --font-mono: 'JetBrains Mono Variable', 'JetBrains Mono', ui-monospace, monospace;
   /* Escala de titulares de la landing: fluida entre 390 y 1280 px de ancho

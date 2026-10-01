@@ -136,6 +136,7 @@
   --text-button-sm: var(--font-size-button-sm);
   --text-button-lg: var(--font-size-button-lg);
   --text-md: var(--font-size-md);
+  --text-figure-lg: var(--font-size-figure-lg);
   --text-hero: var(--font-size-hero);
   --text-closing: var(--font-size-closing);
   --text-section: var(--font-size-section);

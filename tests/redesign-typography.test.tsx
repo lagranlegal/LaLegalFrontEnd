@@ -3,7 +3,10 @@ import { resolve } from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
 import { cleanup, render, screen } from '@testing-library/react'
 import { PageHeader } from '@/components/shared/PageHeader'
-import { StatusHeadlineView } from '@/features/contracts/components/ContractStatusHeadline'
+import { StatusHeroView } from '@/features/contracts/components/ContractStatusHero'
+import type { StatusHero } from '@/features/contracts/contractStatus'
+
+const hero = (h: Partial<StatusHero>): StatusHero => ({ status: 'in_arrears', tone: 'danger', title: 'En mora', detail: null, figures: [], timeline: null, segments: [], ...h })
 
 /**
  * Rediseño P1, tipografía: Archivo (la de la landing) pasa al título de página
@@ -35,18 +38,18 @@ describe('tipografía del rediseño P1', () => {
   })
 
   it('el titular de estado va en Archivo 700 · 22 y la cifra del detalle en tnum', () => {
-    render(<StatusHeadlineView tone="danger" title="En mora desde el 28/09/2026" detail="Debe 1 mes" />)
-    const titulo = screen.getByText('En mora desde el 28/09/2026')
+    render(<StatusHeroView hero={hero({ title: 'En mora hace 2 días', detail: 'Debe 1 mes' })} />)
+    const titulo = screen.getByText('En mora hace 2 días')
     for (const c of ['font-display', 'text-headline', 'font-bold', 'tracking-headline']) expect(titulo).toHaveClass(c)
     expect(screen.getByText('Debe 1 mes')).toHaveClass('tnum')
   })
 
   it('la mora es roja y la prórroga ámbar, cada una con su ícono', () => {
-    const { container, unmount } = render(<StatusHeadlineView tone="danger" title="En mora" />)
+    const { container, unmount } = render(<StatusHeroView hero={hero({})} />)
     expect(screen.getByRole('status')).toHaveClass('bg-danger-soft')
     expect(container.querySelector('svg.lucide-triangle-alert, svg.lucide-alert-triangle')).not.toBeNull()
     unmount()
-    const r = render(<StatusHeadlineView tone="warning" title="En prórroga" />)
+    const r = render(<StatusHeroView hero={hero({ status: 'in_extension', tone: 'warning', title: 'En prórroga' })} />)
     expect(screen.getByRole('status')).toHaveClass('bg-warning-soft')
     expect(r.container.querySelector('svg.lucide-hourglass')).not.toBeNull()
   })
