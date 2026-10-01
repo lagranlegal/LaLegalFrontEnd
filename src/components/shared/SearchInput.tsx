@@ -68,7 +68,7 @@ export function SearchInput({
           onEnter?.(draft)
         }}
         placeholder={placeholder}
-        className="w-full rounded-input border border-border bg-background py-2 pr-3 pl-9 text-sm text-foreground outline-none focus:border-primary"
+        className="min-h-11 w-full rounded-input border border-border-strong bg-card py-2 pr-3 pl-9 text-base text-foreground outline-none focus:border-ring sm:text-sm"
       />
     </div>
   )

@@ -19,8 +19,15 @@ import { cn } from '@/lib/utils'
  * React 19: `ref` es una prop, y `{...register('x')}` la pasa tal cual, así
  * que React Hook Form puede llevar el foco al primer error.
  */
+/*
+ * Rediseño P1 (§4 «Campo»): radio 10, 44 px de alto, fondo de superficie y el
+ * borde de CONTROLES (`--border-strong`), que se distingue del de una card.
+ * Al enfocar, el borde toma el color de foco y `globals.css` suma el anillo
+ * de 2 px. Texto de 16 px en el celular (iOS no hace zoom al enfocar) y 14 en
+ * escritorio.
+ */
 const FIELD_CLASS =
-  'mt-1 w-full rounded-input border border-border bg-background px-3 py-2 text-sm text-foreground outline-none disabled:bg-muted disabled:text-muted-foreground'
+  'mt-1 min-h-11 w-full rounded-input border border-border-strong bg-card px-3 py-2 text-base text-foreground outline-none placeholder:text-muted-foreground focus-visible:border-ring disabled:bg-muted disabled:text-muted-foreground sm:text-sm'
 
 /** El `id` del mensaje de error de un campo: lo que enlaza `aria-describedby`. */
 export function fieldErrorId(fieldId: string): string {

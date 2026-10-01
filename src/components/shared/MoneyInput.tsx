@@ -74,7 +74,7 @@ export function MoneyInput({
   }
 
   return (
-    <div data-focus-ring="within" className={cn('flex items-center rounded-input border border-border bg-background px-3 focus-within:border-primary', className)}>
+    <div data-focus-ring="within" className={cn('flex min-h-11 items-center rounded-input border border-border-strong bg-card px-3 focus-within:border-ring', className)}>
       <span className="text-sm text-muted-foreground">$</span>
       <input
         ref={ref}
