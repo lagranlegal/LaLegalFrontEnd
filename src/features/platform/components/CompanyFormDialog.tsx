@@ -5,6 +5,7 @@ import { Controller, useForm } from 'react-hook-form'
 import { z } from 'zod'
 import { AppDialog } from '@/components/shared/AppDialog'
 import { Button } from '@/components/ui/button'
+import { FieldError, Input, invalidFieldProps } from '@/components/ui/input'
 import { DatePicker } from '@/components/shared/DatePicker'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { applyServerErrors } from '@/lib/forms/applyServerErrors'
@@ -20,8 +21,6 @@ const companySchema = z.object({
 })
 
 type CompanyFormValues = z.infer<typeof companySchema>
-
-const inputClass = 'mt-1 w-full rounded-input border border-border bg-background px-3 py-2 text-sm text-foreground outline-none focus:border-primary'
 
 /** El caller monta este diálogo con una `key` que cambie en cada apertura (mismo patrón que `SupplierFormDialog`). */
 export function CompanyFormDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (open: boolean) => void }) {
@@ -109,8 +108,8 @@ export function CompanyFormDialog({ open, onOpenChange }: { open: boolean; onOpe
           <label htmlFor="company-name" className="text-sm font-medium text-foreground">
             Nombre de la empresa
           </label>
-          <input id="company-name" className={inputClass} {...register('name')} />
-          {errors.name && <p className="mt-1 text-sm text-danger">{errors.name.message}</p>}
+          <Input id="company-name" invalid={!!errors.name} {...register('name')} />
+          <FieldError fieldId="company-name">{errors.name?.message}</FieldError>
         </div>
 
         <div className="grid grid-cols-2 gap-3">
@@ -123,7 +122,7 @@ export function CompanyFormDialog({ open, onOpenChange }: { open: boolean; onOpe
               name="plan_code"
               render={({ field }) => (
                 <Select value={field.value} onValueChange={field.onChange}>
-                  <SelectTrigger id="company-plan" className="mt-1 w-full">
+                  <SelectTrigger id="company-plan" className="mt-1 w-full" {...invalidFieldProps('company-plan', !!errors.plan_code)}>
                     <SelectValue placeholder="Elige un plan" />
                   </SelectTrigger>
                   <SelectContent>
@@ -136,7 +135,7 @@ export function CompanyFormDialog({ open, onOpenChange }: { open: boolean; onOpe
                 </Select>
               )}
             />
-            {errors.plan_code && <p className="mt-1 text-sm text-danger">{errors.plan_code.message}</p>}
+            <FieldError fieldId="company-plan">{errors.plan_code?.message}</FieldError>
           </div>
           <div>
             <label htmlFor="company-expires" className="text-sm font-medium text-foreground">
@@ -145,9 +144,9 @@ export function CompanyFormDialog({ open, onOpenChange }: { open: boolean; onOpe
             <Controller
               control={control}
               name="subscription_expires_at"
-              render={({ field }) => <DatePicker id="company-expires" value={field.value} onChange={field.onChange} minDate={todayBogota()} />}
+              render={({ field }) => <DatePicker id="company-expires" invalid={!!errors.subscription_expires_at} value={field.value} onChange={field.onChange} minDate={todayBogota()} />}
             />
-            {errors.subscription_expires_at && <p className="mt-1 text-sm text-danger">{errors.subscription_expires_at.message}</p>}
+            <FieldError fieldId="company-expires">{errors.subscription_expires_at?.message}</FieldError>
           </div>
         </div>
 
@@ -155,16 +154,16 @@ export function CompanyFormDialog({ open, onOpenChange }: { open: boolean; onOpe
           <label htmlFor="company-admin-name" className="text-sm font-medium text-foreground">
             Nombre del primer Admin
           </label>
-          <input id="company-admin-name" className={inputClass} {...register('first_admin_full_name')} />
-          {errors.first_admin_full_name && <p className="mt-1 text-sm text-danger">{errors.first_admin_full_name.message}</p>}
+          <Input id="company-admin-name" invalid={!!errors.first_admin_full_name} {...register('first_admin_full_name')} />
+          <FieldError fieldId="company-admin-name">{errors.first_admin_full_name?.message}</FieldError>
         </div>
 
         <div>
           <label htmlFor="company-admin-email" className="text-sm font-medium text-foreground">
             Correo del primer Admin
           </label>
-          <input id="company-admin-email" type="email" className={inputClass} {...register('first_admin_email')} />
-          {errors.first_admin_email && <p className="mt-1 text-sm text-danger">{errors.first_admin_email.message}</p>}
+          <Input id="company-admin-email" invalid={!!errors.first_admin_email} type="email" {...register('first_admin_email')} />
+          <FieldError fieldId="company-admin-email">{errors.first_admin_email?.message}</FieldError>
         </div>
 
         {formError && <p className="rounded-input bg-danger-soft px-3 py-2 text-sm text-danger">{formError}</p>}

@@ -5,6 +5,7 @@ import { Controller, useForm } from 'react-hook-form'
 import { z } from 'zod'
 import { AppDialog } from '@/components/shared/AppDialog'
 import { Button } from '@/components/ui/button'
+import { FieldError, Input, invalidFieldProps } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { applyServerErrors } from '@/lib/forms/applyServerErrors'
 import { useInviteUser, useRoles } from '@/features/identity/api'
@@ -16,8 +17,6 @@ const inviteSchema = z.object({
 })
 
 type InviteFormValues = z.infer<typeof inviteSchema>
-
-const inputClass = 'mt-1 w-full rounded-input border border-border bg-background px-3 py-2 text-sm text-foreground outline-none focus:border-primary'
 
 /** El caller monta este diálogo con una `key` que cambie en cada apertura (mismo patrón que `SupplierFormDialog`). */
 export function InviteUserDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (open: boolean) => void }) {
@@ -140,16 +139,16 @@ export function InviteUserDialog({ open, onOpenChange }: { open: boolean; onOpen
           <label htmlFor="invite-name" className="text-sm font-medium text-foreground">
             Nombre completo
           </label>
-          <input id="invite-name" className={inputClass} {...register('full_name')} />
-          {errors.full_name && <p className="mt-1 text-sm text-danger">{errors.full_name.message}</p>}
+          <Input id="invite-name" invalid={!!errors.full_name} {...register('full_name')} />
+          <FieldError fieldId="invite-name">{errors.full_name?.message}</FieldError>
         </div>
 
         <div>
           <label htmlFor="invite-email" className="text-sm font-medium text-foreground">
             Correo
           </label>
-          <input id="invite-email" type="email" className={inputClass} {...register('email')} />
-          {errors.email && <p className="mt-1 text-sm text-danger">{errors.email.message}</p>}
+          <Input id="invite-email" invalid={!!errors.email} type="email" {...register('email')} />
+          <FieldError fieldId="invite-email">{errors.email?.message}</FieldError>
         </div>
 
         <div>
@@ -161,7 +160,7 @@ export function InviteUserDialog({ open, onOpenChange }: { open: boolean; onOpen
             name="role_id"
             render={({ field }) => (
               <Select value={field.value} onValueChange={field.onChange}>
-                <SelectTrigger id="invite-role" className="mt-1 w-full">
+                <SelectTrigger id="invite-role" className="mt-1 w-full" {...invalidFieldProps('invite-role', !!errors.role_id)}>
                   <SelectValue placeholder="Elige un rol" />
                 </SelectTrigger>
                 <SelectContent>
@@ -174,7 +173,7 @@ export function InviteUserDialog({ open, onOpenChange }: { open: boolean; onOpen
               </Select>
             )}
           />
-          {errors.role_id && <p className="mt-1 text-sm text-danger">{errors.role_id.message}</p>}
+          <FieldError fieldId="invite-role">{errors.role_id?.message}</FieldError>
         </div>
 
         {formError && <p className="rounded-input bg-danger-soft px-3 py-2 text-sm text-danger">{formError}</p>}
