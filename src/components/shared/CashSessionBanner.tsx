@@ -3,9 +3,17 @@ import { useCashboxCurrent } from '@/features/cashbox/api'
 import { OpenSessionDialog } from '@/features/cashbox/components/OpenSessionDialog'
 import { Can } from '@/components/shared/Can'
 import { Button } from '@/components/ui/button'
-import { formatDate, formatTime, todayBogota } from '@/lib/dates'
+import { Money } from '@/components/shared/Money'
+import { formatClock, formatDate, todayBogota } from '@/lib/dates'
+import { useMe } from '@/lib/auth/me'
 import { isPermissionError } from '@/lib/api/isPermissionError'
 import { usePermission } from '@/lib/permissions/usePermission'
+
+/** «Laura M.» de «Laura Martínez»: el nombre con la inicial del apellido. */
+function shortName(fullName: string): string {
+  const [first = '', second] = fullName.trim().split(/\s+/)
+  return second ? `${first} ${second.charAt(0)}.` : first
+}
 
 /**
  * Franja global bajo la topbar: estado de caja visible en toda la app
@@ -16,6 +24,7 @@ export function CashSessionBanner() {
   const canView = usePermission('cashbox.view')
   const { data: session, isPending, error } = useCashboxCurrent()
   const [openDialog, setOpenDialog] = useState(false)
+  const { data: me } = useMe()
 
   // Sin `cashbox.view` la consulta ni sale (`useCashboxCurrent`): la franja no
   // afirma nada, y tampoco se queda cargando para siempre.
@@ -50,12 +59,15 @@ export function CashSessionBanner() {
     // incomprensible — o peor, se asume que es de hoy. El dato ya viaja en la
     // respuesta (`session_date`) y no se estaba usando (auditoría de QA, F9-01).
     const deOtroDia = session.session_date !== todayBogota()
+    // `opened_by` es un id: el nombre solo se sabe si es quien está usando la
+    // app («Laura M.»). De otro, no se inventa ni se pide una lista de usuarios.
+    const openedBy = me && session.opened_by === me.user.id ? shortName(me.user.full_name) : null
     return (
       <div
         className={
           deOtroDia
             ? 'flex min-h-11 flex-wrap items-center justify-center gap-x-1.5 border-b border-border bg-warning-soft px-4 py-2 text-sm text-body'
-            : 'flex min-h-11 flex-wrap items-center justify-center gap-x-1.5 border-b border-border bg-success-soft px-4 py-2 text-sm text-body'
+            : 'flex min-h-11 flex-wrap items-center justify-between gap-x-3.5 gap-y-1 border-b border-border bg-success-soft px-4 py-2 text-caption text-body'
         }
       >
         {/* Un solo texto cuando es de otro día: con «Caja abierta» y «desde…»
@@ -64,17 +76,26 @@ export function CashSessionBanner() {
           <span>
             <span aria-hidden className="mr-1.5 inline-block size-2 rounded-full bg-warning" />
             <b className="font-semibold text-foreground">Caja abierta desde el {formatDate(session.session_date)}</b> a las{' '}
-            {formatTime(session.opened_at)} — ciérrala para empezar el turno de hoy
+            {formatClock(session.opened_at)} — ciérrala para empezar el turno de hoy
           </span>
         ) : (
           <>
-            {/* Rediseño P1: franja fina, texto en tinta (el verde a 70 % no
-                llegaba a AA) y el punto verde como única señal de color. */}
+            {/* Rediseño P1: texto en tinta (el verde a 70 % no llegaba a AA) y
+                el punto verde como única señal de color. P2-c: quién la abrió
+                y desde qué hora, a la izquierda. */}
             <span>
               <span aria-hidden className="mr-1.5 inline-block size-2 rounded-full bg-success" />
               <b className="font-semibold text-foreground">Caja abierta</b>
+              {openedBy && <> por {openedBy}</>} desde {formatClock(session.opened_at)}
             </span>
-            <span>· desde las {formatTime(session.opened_at)}</span>
+            {/* «Efectivo esperado» a la derecha: el backend solo lo llena al
+                cerrar (`expected_cash` es null con la caja abierta), así que
+                hoy no se muestra. Si llega con dato, aparece. */}
+            {session.expected_cash && (
+              <span>
+                Efectivo esperado <Money value={session.expected_cash} className="font-semibold text-foreground" />
+              </span>
+            )}
           </>
         )}
       </div>

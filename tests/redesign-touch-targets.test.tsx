@@ -12,6 +12,7 @@ const cashbox = vi.hoisted(() => ({ current: { data: null as unknown, isPending:
 vi.mock('@/features/cashbox/api', () => ({ useCashboxCurrent: () => cashbox.current }))
 vi.mock('@/features/cashbox/components/OpenSessionDialog', () => ({ OpenSessionDialog: () => null }))
 vi.mock('@/lib/permissions/usePermission', () => ({ usePermission: () => true }))
+vi.mock('@/lib/auth/me', () => ({ useMe: () => ({ data: { user: { id: 'u-laura', full_name: 'Laura Martínez' } } }) }))
 vi.mock('@/lib/dates', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/lib/dates')>()),
   todayBogota: () => '2026-09-30',
@@ -53,5 +54,35 @@ describe('objetivos táctiles de 44 px', () => {
     expect(franja).toHaveClass('min-h-11', 'bg-success-soft', 'text-body')
     expect(container.innerHTML).not.toMatch(/text-success\/70/)
     expect(screen.getByText('Caja abierta').tagName).toBe('B')
+  })
+
+  it('P2-c: abierta dice quién y desde qué hora, en «a. m.»; sin «Efectivo esperado» mientras el backend no lo da', () => {
+    cashbox.current = {
+      data: { session_date: '2026-09-30', opened_at: '2026-09-30T13:02:00Z', opened_by: 'u-laura', expected_cash: null },
+      isPending: false,
+      error: null,
+    }
+    const { container } = render(<CashSessionBanner />)
+    expect(container.textContent).toBe('Caja abierta por Laura M. desde 8:02 a. m.')
+  })
+
+  it('P2-c: abierta por otra persona no inventa el nombre', () => {
+    cashbox.current = {
+      data: { session_date: '2026-09-30', opened_at: '2026-09-30T13:02:00Z', opened_by: 'otro', expected_cash: null },
+      isPending: false,
+      error: null,
+    }
+    const { container } = render(<CashSessionBanner />)
+    expect(container.textContent).toBe('Caja abierta desde 8:02 a. m.')
+  })
+
+  it('P2-c: si la sesión trae el efectivo esperado, va a la derecha', () => {
+    cashbox.current = {
+      data: { session_date: '2026-09-30', opened_at: '2026-09-30T13:02:00Z', opened_by: 'otro', expected_cash: '1240000.00' },
+      isPending: false,
+      error: null,
+    }
+    render(<CashSessionBanner />)
+    expect(screen.getByText(/Efectivo esperado/).textContent?.replace(/\s+/g, ' ')).toBe('Efectivo esperado $ 1.240.000')
   })
 })

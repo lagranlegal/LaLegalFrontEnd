@@ -10,6 +10,7 @@ const cashbox = vi.hoisted(() => ({ current: { data: null as unknown, isPending:
 vi.mock('@/features/cashbox/api', () => ({ useCashboxCurrent: () => cashbox.current }))
 vi.mock('@/features/cashbox/components/OpenSessionDialog', () => ({ OpenSessionDialog: () => null }))
 vi.mock('@/lib/permissions/usePermission', () => ({ usePermission: () => true }))
+vi.mock('@/lib/auth/me', () => ({ useMe: () => ({ data: { user: { id: 'u-laura', full_name: 'Laura Martínez' } } }) }))
 vi.mock('@/lib/dates', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/lib/dates')>()),
   todayBogota: () => '2026-09-30',
