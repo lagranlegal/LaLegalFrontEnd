@@ -26,6 +26,10 @@ vi.mock('@/features/inventory/api', () => ({ useCreateEntry: () => ({ mutateAsyn
 vi.mock('@/components/shared/CashClosedNotice', () => ({ CashClosedNotice: () => null }))
 vi.mock('@/components/shared/CashSessionRequiredDialog', () => ({ CashSessionRequiredDialog: () => null }))
 vi.mock('@/components/shared/AccountPicker', () => ({ AccountPicker: () => null }))
+// Rediseño P1: el envío pasa por la confirmación con resumen (F9-18); acá se
+// acepta sola para probar lo que viene después.
+vi.mock('@/components/shared/confirmStore', () => ({ confirm: vi.fn(async () => ({ confirmed: true })) }))
+vi.mock('@/lib/accounts/list', () => ({ useAccounts: () => ({ data: [] }) }))
 vi.mock('@/components/shared/PhotoUploader', () => ({ PhotoUploader: () => null }))
 
 const { revealFirstError } = await import('@/lib/forms/revealFirstError')

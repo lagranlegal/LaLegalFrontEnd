@@ -7,7 +7,7 @@ import { Can } from '@/components/shared/Can'
 import { CashSessionRequiredDialog } from '@/components/shared/CashSessionRequiredDialog'
 import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { confirm } from '@/components/shared/confirmStore'
+import { confirm, type ConfirmSummaryRow } from '@/components/shared/confirmStore'
 import { ApiError } from '@/lib/api/client'
 import { userMessage } from '@/lib/api/errors'
 import { compareMoney, formatCOP, subtractMoney, sumMoney } from '@/lib/money'
@@ -71,14 +71,16 @@ function paymentSummary({
   total: string
   paymentMethod: 'cash' | 'transfer' | 'other'
   accountName: string | null | undefined
-}): { label: string; value: string | null | undefined }[] {
+}): ConfirmSummaryRow[] {
+  // El orden de la pieza compartida (rediseño P1): a quién, qué, cómo y a
+  // dónde; el total al final, resaltado.
   return [
     { label: 'Contrato', value: context.contractNumber !== undefined ? `#${context.contractNumber}` : null },
     { label: 'Cliente', value: context.customerName },
     { label: 'Paga', value: concept },
-    { label: 'Total', value: formatCOP(total) },
     { label: 'Medio de pago', value: PAYMENT_METHOD_LABELS[paymentMethod] },
     { label: 'Entra a', value: accountName },
+    { label: 'Total', value: formatCOP(total), emphasis: 'total' },
   ]
 }
 
@@ -121,7 +123,7 @@ function CapitalOnlyPaymentForm({ contractId, quote, context }: { contractId: st
   async function handleConfirm() {
     setError(null)
     const result = await confirm({
-      title: isPayoff ? 'Saldar el contrato' : 'Registrar abono a capital',
+      title: isPayoff ? '¿Saldar el contrato?' : '¿Registrar el abono a capital?',
       description: isPayoff
         ? 'Saldar causa como mínimo un mes de interés.'
         : `Contrato al día — este abono va completo a reducir el capital prestado.`,
@@ -135,6 +137,7 @@ function CapitalOnlyPaymentForm({ contractId, quote, context }: { contractId: st
         accountName: accounts?.find((a) => a.id === accountId)?.name,
       }),
       confirmLabel: `Registrar abono ${formatCOP(total)}`,
+      cancelLabel: 'Volver',
     })
     if (!result.confirmed) return
 
@@ -252,7 +255,7 @@ export function PaymentOptionsPanel({ contractId, contractNumber, customerName }
     setError(null)
     const hasCapital = selected.allows_capital && Number(capitalAmount) > 0
     const result = await confirm({
-      title: 'Registrar abono',
+      title: '¿Registrar el abono?',
       summary: paymentSummary({
         context: { contractNumber, customerName },
         concept: `${selected.months} ${selected.months === 1 ? 'mes' : 'meses'} de interés${hasCapital ? ` + ${formatCOP(capitalAmount)} a capital` : ''}`,
@@ -261,6 +264,7 @@ export function PaymentOptionsPanel({ contractId, contractNumber, customerName }
         accountName: accounts?.find((a) => a.id === accountId)?.name,
       }),
       confirmLabel: `Registrar abono ${formatCOP(total)}`,
+      cancelLabel: 'Volver',
     })
     if (!result.confirmed) return
 

@@ -1,9 +1,41 @@
 import { useState } from 'react'
 import { AppDialog } from '@/components/shared/AppDialog'
 import { Button } from '@/components/ui/button'
-import { type ConfirmOptions, resolveConfirm, useConfirmStore } from '@/components/shared/confirmStore'
+import { Textarea } from '@/components/ui/input'
+import { cn } from '@/lib/utils'
+import { type ConfirmOptions, type ConfirmSummaryRow, resolveConfirm, useConfirmStore } from '@/components/shared/confirmStore'
 
-const inputClass = 'mt-1 w-full rounded-input border border-border bg-background px-3 py-2 text-sm text-foreground outline-none focus:border-primary'
+/**
+ * «Confirmación con resumen» (rediseño P1, F9-18): renglones etiqueta → valor
+ * con divisores, el total al final sobre el fondo de marca. Los renglones sin
+ * valor no se pintan.
+ */
+export function ConfirmSummary({ rows }: { rows: ConfirmSummaryRow[] }) {
+  const visibles = rows.filter((row) => row.value)
+  if (visibles.length === 0) return null
+  return (
+    <dl data-confirm-summary className="overflow-hidden rounded-input border border-border text-sm">
+      {visibles.map((row) => (
+        <div
+          key={row.label}
+          data-emphasis={row.emphasis}
+          className={cn('flex justify-between gap-3 border-b border-border px-3 py-2 last:border-b-0', row.emphasis === 'total' && 'bg-brand-50')}
+        >
+          <dt className="text-muted-foreground">{row.label}</dt>
+          <dd
+            className={cn(
+              'tnum text-right font-medium text-foreground',
+              row.emphasis === 'total' && 'text-md font-bold',
+              row.emphasis === 'after' && 'text-success',
+            )}
+          >
+            {row.value}
+          </dd>
+        </div>
+      ))}
+    </dl>
+  )
+}
 
 function ConfirmDialogInner({ options }: { options: ConfirmOptions }) {
   const [open, setOpen] = useState(true)
@@ -24,9 +56,12 @@ function ConfirmDialogInner({ options }: { options: ConfirmOptions }) {
       size="sm"
       footer={
         <div className="flex w-full flex-col gap-2">
+          {/* De bloque (52 px), con el monto adentro cuando es dinero: es el
+              último control antes de mover plata. Destructivo = relleno rojo,
+              y solo aquí. */}
           <Button
             variant={options.tone === 'danger' ? 'danger-solid' : 'default'}
-            className="w-full"
+            size="lg"
             disabled={reasonMissing}
             onClick={() => close({ confirmed: true })}
           >
@@ -38,24 +73,13 @@ function ConfirmDialogInner({ options }: { options: ConfirmOptions }) {
         </div>
       }
     >
-      {options.summary && (
-        <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1.5 rounded-input bg-muted px-3 py-2.5 text-sm">
-          {options.summary
-            .filter((row) => row.value)
-            .map((row) => (
-              <div key={row.label} className="contents">
-                <dt className="text-muted-foreground">{row.label}</dt>
-                <dd className="tnum text-right font-medium text-foreground">{row.value}</dd>
-              </div>
-            ))}
-        </dl>
-      )}
+      {options.summary && <ConfirmSummary rows={options.summary} />}
       {options.requireReason && (
         <div>
           <label htmlFor="confirm-reason" className="text-sm font-medium text-foreground">
             {options.reasonLabel ?? 'Motivo'}
           </label>
-          <textarea id="confirm-reason" rows={3} className={inputClass} value={reason} onChange={(e) => setReason(e.target.value)} />
+          <Textarea id="confirm-reason" rows={3} value={reason} onChange={(e) => setReason(e.target.value)} />
         </div>
       )}
     </AppDialog>

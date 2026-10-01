@@ -11,6 +11,8 @@ import { ApiError } from '@/lib/api/client'
 import { useAccounts } from '@/lib/accounts/list'
 import { accountTypeLabel } from '@/lib/accounts/types'
 import { useCreateTransfer, type Account } from '@/features/accounts/api'
+import { confirm } from '@/components/shared/confirmStore'
+import { formatCOP, subtractMoney } from '@/lib/money'
 
 const inputClass =
   'mt-1 w-full rounded-input border border-border bg-background px-3 py-2 text-sm text-foreground outline-none focus:border-primary'
@@ -100,7 +102,7 @@ export function TransferDialog({
 
   const excede = !!origen && !!amount && Number(amount) > Number(origen.balance)
 
-  function submit() {
+  async function submit() {
     setError(null)
     if (!origen || !destino) {
       setError('Elige de qué cuenta sale y a cuál entra.')
@@ -114,6 +116,21 @@ export function TransferDialog({
       setError('No puedes trasladar más de lo que hay en la cuenta de origen.')
       return
     }
+    // Confirmación con resumen (rediseño P1, F9-18): de dónde sale, a dónde
+    // entra y cómo queda el origen, con el monto al final.
+    const { confirmed } = await confirm({
+      title: '¿Registrar el traslado?',
+      summary: [
+        { label: 'Sale de', value: origen.name },
+        { label: 'Entra a', value: destino.name },
+        { label: 'Nota', value: notes.trim() || null },
+        { label: `Queda en ${origen.name}`, value: formatCOP(subtractMoney(origen.balance, amount)), emphasis: 'after' },
+        { label: 'Total', value: formatCOP(amount), emphasis: 'total' },
+      ],
+      confirmLabel: `Trasladar ${formatCOP(amount)}`,
+      cancelLabel: 'Volver',
+    })
+    if (!confirmed) return
     createTransfer.mutate(
       {
         from_account_id: origen.id,
@@ -165,7 +182,7 @@ export function TransferDialog({
             <Button variant="outline" className="flex-1" onClick={() => onOpenChange(false)} disabled={createTransfer.isPending}>
               Cancelar
             </Button>
-            <Button className="flex-1" onClick={submit} disabled={createTransfer.isPending}>
+            <Button className="flex-1" onClick={() => void submit()} disabled={createTransfer.isPending}>
               {createTransfer.isPending ? 'Registrando…' : 'Trasladar'}
             </Button>
           </div>

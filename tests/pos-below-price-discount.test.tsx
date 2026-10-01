@@ -45,6 +45,10 @@ vi.mock('@/features/sales/api', () => ({ useCreateSale: () => ({ mutateAsync, is
 vi.mock('@/lib/sales/creditNotes', () => ({ useCustomerCreditNotes: () => ({ data: undefined }) }))
 vi.mock('@/components/shared/CustomerPicker', () => ({ CustomerPicker: () => <input aria-label="Cliente" /> }))
 vi.mock('@/components/shared/AccountPicker', () => ({ AccountPicker: () => null }))
+// Rediseño P1: el envío pasa por la confirmación con resumen (F9-18); acá se
+// acepta sola para probar lo que viene después.
+vi.mock('@/components/shared/confirmStore', () => ({ confirm: vi.fn(async () => ({ confirmed: true })) }))
+vi.mock('@/lib/accounts/list', () => ({ useAccounts: () => ({ data: [] }) }))
 vi.mock('@/components/shared/CashSessionRequiredDialog', () => ({ CashSessionRequiredDialog: () => null }))
 
 const { SaleFormPage } = await import('@/features/sales/pages/SaleFormPage')

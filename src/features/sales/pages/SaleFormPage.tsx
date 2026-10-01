@@ -24,6 +24,8 @@ import { belowPriceDiscount } from '@/lib/sales/discount'
 import { AccountPicker } from '@/components/shared/AccountPicker'
 import { PAYMENT_METHOD_LABELS } from '@/lib/paymentMethods'
 import { cashChange } from '@/features/sales/cashChange'
+import { confirm } from '@/components/shared/confirmStore'
+import { useAccounts } from '@/lib/accounts/list'
 import { useCreateSale } from '@/features/sales/api'
 import { QuantityInput } from '@/features/sales/components/QuantityInput'
 import { allowsFractions, clampQuantity, unitAbbr } from '@/lib/inventory/units'
@@ -49,6 +51,7 @@ interface CartLine {
 export function SaleFormPage() {
   const navigate = useNavigate()
   const createSale = useCreateSale()
+  const { data: accounts } = useAccounts()
   const canDiscount = usePermission('sales.apply_discount')
 
   const [cart, setCart] = useState<CartLine[]>([])
@@ -164,6 +167,24 @@ export function SaleFormPage() {
       setFormError('Hay artículos por debajo del costo: confirma que quieres venderlos con pérdida.')
       return
     }
+    // Confirmación con resumen (rediseño P1, F9-18): a quién, qué, cómo y a
+    // dónde, con el total al final. Es el último control antes de cobrar.
+    const { confirmed } = await confirm({
+      title: '¿Registrar la venta?',
+      summary: [
+        { label: 'Cliente', value: customer?.full_name ?? 'Consumidor final' },
+        { label: 'Artículos', value: cart.length === 1 ? cart[0]!.item.name : `${cart.length} artículos` },
+        { label: 'Descuento', value: hasDiscount ? formatCOP(discountAmount) : null },
+        { label: 'Nota crédito', value: hasCreditNote ? formatCOP(creditNoteAmount) : null },
+        { label: 'Medio de pago', value: PAYMENT_METHOD_LABELS[paymentMethod] },
+        { label: 'Entra a', value: accounts?.find((a) => a.id === accountId)?.name },
+        { label: 'Cambio', value: change?.kind === 'change' ? formatCOP(change.amount) : null },
+        { label: 'Total', value: formatCOP(total), emphasis: 'total' },
+      ],
+      confirmLabel: `Vender ${formatCOP(total)}`,
+      cancelLabel: 'Volver',
+    })
+    if (!confirmed) return
     try {
       const sale = await createSale.mutateAsync({
         customer_id: customer?.id ?? null,

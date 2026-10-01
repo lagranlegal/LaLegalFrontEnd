@@ -19,6 +19,9 @@ import { PAYMENT_METHOD_LABELS } from '@/lib/paymentMethods'
 import { MODULE_LABELS } from '@/lib/modules'
 import { useCreateExpense, useCreateExpenseCategory, useExpenseCategories } from '@/features/cashbox/api'
 import { preventImplicitSubmit } from '@/lib/forms/preventImplicitSubmit'
+import { confirm } from '@/components/shared/confirmStore'
+import { useAccounts } from '@/lib/accounts/list'
+import { formatCOP } from '@/lib/money'
 
 const expenseSchema = z.object({
   category_id: z.string().min(1, 'Selecciona una categoría'),
@@ -101,6 +104,8 @@ export function ExpenseFormDialog({ open, onOpenChange }: { open: boolean; onOpe
   // `CustomerFormDialog` al crear).
   const [draftId] = useState(() => crypto.randomUUID())
   const createExpense = useCreateExpense()
+  const { data: categories } = useExpenseCategories()
+  const { data: accounts } = useAccounts()
   const {
     register,
     handleSubmit,
@@ -119,6 +124,22 @@ export function ExpenseFormDialog({ open, onOpenChange }: { open: boolean; onOpe
 
   async function onSubmit(values: ExpenseFormValues) {
     setFormError(null)
+    // Confirmación con resumen (rediseño P1, F9-18): qué se paga, cómo y de
+    // dónde sale, con el monto al final.
+    const { confirmed } = await confirm({
+      title: '¿Registrar el gasto?',
+      summary: [
+        { label: 'Categoría', value: categories?.find((c) => c.id === values.category_id)?.name },
+        { label: 'Descripción', value: values.description.trim() },
+        { label: 'Módulo', value: MODULE_LABELS[values.module] },
+        { label: 'Medio de pago', value: PAYMENT_METHOD_LABELS[values.payment_method] },
+        { label: 'Sale de', value: accounts?.find((a) => a.id === values.account_id)?.name },
+        { label: 'Total', value: formatCOP(values.amount), emphasis: 'total' },
+      ],
+      confirmLabel: `Registrar gasto ${formatCOP(values.amount)}`,
+      cancelLabel: 'Volver',
+    })
+    if (!confirmed) return
     try {
       const { receipt, ...rest } = values
       await createExpense.mutateAsync({ ...rest, receipt_url: receipt[0] ?? null })

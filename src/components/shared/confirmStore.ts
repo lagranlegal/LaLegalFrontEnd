@@ -1,12 +1,23 @@
 import { create } from 'zustand'
 
+/**
+ * Un renglón del resumen. `emphasis: 'total'` es el monto que se mueve (va
+ * último, en fondo de marca y en negrita); `'after'` dice cómo queda la cosa
+ * después («Al día, pagado hasta…»), en verde.
+ */
+export interface ConfirmSummaryRow {
+  label: string
+  value: string | null | undefined
+  emphasis?: 'total' | 'after'
+}
+
 export interface ConfirmOptions {
   title: string
   description?: string
   /** Resumen de lo que se va a registrar, renglón por renglón (F9-18): es el
    *  último control antes de mover plata, así que repite a quién, cuánto, cómo
    *  y a dónde. Los renglones sin valor no se pintan. */
-  summary?: { label: string; value: string | null | undefined }[]
+  summary?: ConfirmSummaryRow[]
   tone?: 'default' | 'danger'
   confirmLabel?: string
   cancelLabel?: string

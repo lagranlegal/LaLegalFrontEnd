@@ -18,7 +18,9 @@ import { Checkbox } from '@/components/ui/checkbox'
 import { formatDateTime } from '@/lib/dates'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { useCategories } from '@/lib/catalogs/categories'
-import { normalizeDecimalInput } from '@/lib/money'
+import { formatCOP, normalizeDecimalInput } from '@/lib/money'
+import { confirm } from '@/components/shared/confirmStore'
+import { useAccounts } from '@/lib/accounts/list'
 import { applyServerErrors } from '@/lib/forms/applyServerErrors'
 import { collectErrorNames, revealFirstError } from '@/lib/forms/revealFirstError'
 import { serverErrorFieldNames } from '@/lib/forms/applyServerErrors'
@@ -75,6 +77,7 @@ export function ContractFormPage() {
   const [cashDialogOpen, setCashDialogOpen] = useState(false)
   const submittedRef = useRef(false)
   const createContract = useCreateContract()
+  const { data: accounts } = useAccounts()
 
   const {
     register,
@@ -163,6 +166,23 @@ export function ContractFormPage() {
       revealFirstError(['appraisal_value'])
       return
     }
+    // Confirmación con resumen (rediseño P1, F9-18): el desembolso es plata
+    // que sale; se repite a quién, contra qué, a qué tasa y de dónde.
+    const prendas = values.items.filter((item) => item.description.trim())
+    const { confirmed } = await confirm({
+      title: '¿Registrar el préstamo?',
+      summary: [
+        { label: 'Cliente', value: customer.full_name },
+        { label: 'Prendas', value: prendas.length === 1 ? prendas[0]!.description.trim() : `${values.items.length} prendas` },
+        { label: 'Interés', value: values.interest_rate_pct ? `${normalizeDecimalInput(values.interest_rate_pct).replace('.', ',')} % mensual` : null },
+        { label: 'Medio de pago', value: PAYMENT_METHOD_LABELS[values.payment_method] },
+        { label: 'Sale de', value: accounts?.find((a) => a.id === values.account_id)?.name },
+        { label: 'Entrega', value: formatCOP(values.principal), emphasis: 'total' },
+      ],
+      confirmLabel: `Crear contrato ${formatCOP(values.principal)}`,
+      cancelLabel: 'Volver',
+    })
+    if (!confirmed) return
     try {
       const contract = await createContract.mutateAsync({
         customer_id: customer.id,
