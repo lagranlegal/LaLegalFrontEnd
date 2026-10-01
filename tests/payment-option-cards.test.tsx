@@ -46,7 +46,8 @@ vi.mock('@/components/shared/CashClosedNotice', () => ({ CashClosedNotice: () =>
 vi.mock('@/components/shared/confirmStore', () => ({ confirm: confirmMock }))
 vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn() } }))
 
-const { PaymentOptionsPanel, paymentConsequence } = await import('@/features/contracts/components/PaymentOptionsPanel')
+const { PaymentOptionsPanel } = await import('@/features/contracts/components/PaymentOptionsPanel')
+const { paymentConsequence } = await import('@/features/contracts/paymentConsequence')
 
 function renderPanel() {
   return render(<PaymentOptionsPanel contractId="c1" contractNumber={43} customerName="Cliente de Prueba" interestPaidUntil="2026-08-28" status="in_arrears" itemCount={1} />)

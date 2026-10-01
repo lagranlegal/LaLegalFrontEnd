@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { flushSync } from 'react-dom'
-import { Link, useNavigate, useParams, useSearch } from '@tanstack/react-router'
+import { useNavigate, useParams, useSearch } from '@tanstack/react-router'
 import { Printer } from 'lucide-react'
 import type { ColumnDef } from '@tanstack/react-table'
 import { toast } from 'sonner'
@@ -10,7 +10,6 @@ import { PageTabs, PageTabsContent, type PageTab } from '@/components/shared/Pag
 import { CompanyDataNotice } from '@/components/shared/CompanyDataNotice'
 import { ExtendLoanPanel } from '@/features/contracts/components/ExtendLoanPanel'
 import { ContractChainPanel } from '@/features/contracts/components/ContractChainPanel'
-import { StatusBadge } from '@/components/shared/StatusBadge'
 import { PhotoThumbnail } from '@/components/shared/PhotoThumbnail'
 import { Money } from '@/components/shared/Money'
 import { DataTable } from '@/components/shared/DataTable'
@@ -19,7 +18,7 @@ import { formatDateTime } from '@/lib/dates'
 import { PAYMENT_METHOD_LABELS } from '@/lib/paymentMethods'
 import { confirm } from '@/components/shared/confirmStore'
 import { useCategories } from '@/lib/catalogs/categories'
-import { useItemsByIds, type Item } from '@/lib/inventory/items'
+import { useItemsByIds } from '@/lib/inventory/items'
 import { usePaymentsList, useAuctionContract, type Payment } from '@/features/contracts/api'
 import { isReadyForAuction } from '@/features/contracts/contractStatus'
 import { useContract } from '@/lib/contracts/reference'
@@ -28,6 +27,7 @@ import { ContractStatusHero, PAYABLE_STATUSES } from '@/features/contracts/compo
 import { PaymentOptionsPanel } from '@/features/contracts/components/PaymentOptionsPanel'
 import { ContractMetricsPanel } from '@/features/contracts/components/ContractMetricsPanel'
 import { ContractHeaderActions } from '@/features/contracts/components/ContractHeaderActions'
+import { ItemsCard, LoanCard, NotesCard } from '@/features/contracts/components/ContractSummaryCards'
 import { ContractEditDialog } from '@/features/contracts/components/ContractEditDialog'
 import { ContractPrintView } from '@/features/contracts/components/ContractPrintView'
 import { RecordNumber } from '@/components/shared/RecordNumber'
@@ -58,24 +58,6 @@ function ContractDetailSkeleton() {
       <div className="h-40 animate-pulse rounded-card bg-border" />
       <div className="h-40 animate-pulse rounded-card bg-border" />
     </div>
-  )
-}
-
-function categoryName(categories: { id: string; name: string }[] | undefined, categoryId: string): string {
-  return categories?.find((c) => c.id === categoryId)?.name ?? '—'
-}
-
-/**
- * Vínculo inverso prenda→artículo (`ContractItemOut.inventory_item_id`,
- * resuelto por backend 19/08/2026). Sin ruta propia de detalle de artículo en el front (se editan
- * desde un diálogo abierto desde la lista, no una página) — el link lleva
- * a `/inventario` sin más, el código mostrado es lo que se busca ahí.
- */
-function AuctionedItemLink({ inventoryItem }: { inventoryItem: Item | undefined }) {
-  return (
-    <Link to="/inventario" className="text-xs text-brand hover:underline">
-      Convertido en {inventoryItem?.code ?? inventoryItem?.name ?? 'un artículo de inventario'}
-    </Link>
   )
 }
 
@@ -178,70 +160,12 @@ export function ContractDetailPage() {
     { value: 'documentos', label: 'Documentos' },
   ]
 
+  // Columna derecha del Resumen (rediseño P2-a): préstamo, prendas, notas y ampliar.
   const details = (
     <>
-      {contract.ltv_warning && (
-        <div className="rounded-input bg-warning-soft px-4 py-2 text-sm text-warning">Este contrato supera el LTV máximo permitido para su categoría.</div>
-      )}
-
-      <div className="grid grid-cols-1 gap-4 rounded-card border border-border bg-card p-card sm:grid-cols-2">
-        <div>
-          <p className="text-xs text-muted-foreground">Capital prestado</p>
-          <p className="tnum text-lg font-semibold text-foreground">
-            <Money value={contract.principal} />
-          </p>
-        </div>
-        <div>
-          <p className="text-xs text-muted-foreground">Saldo de capital</p>
-          <p className="tnum text-lg font-semibold text-foreground">
-            <Money value={contract.capital_balance} />
-          </p>
-        </div>
-        <div>
-          <p className="text-xs text-muted-foreground">Tasa de interés</p>
-          <p className="tnum text-lg font-semibold text-foreground">{contract.interest_rate_pct}%</p>
-        </div>
-        <div>
-          <p className="text-xs text-muted-foreground">Avalúo</p>
-          <p className="tnum text-lg font-semibold text-foreground">{contract.appraisal_value ? <Money value={contract.appraisal_value} /> : '—'}</p>
-        </div>
-      </div>
-
-      {contract.notes && (
-        <div className="rounded-card border border-border bg-card p-card">
-          <p className="text-xs text-muted-foreground">Notas</p>
-          <p className="mt-1 text-sm text-foreground">{contract.notes}</p>
-        </div>
-      )}
-
-      <div className="rounded-card border border-border bg-card p-card">
-        <h2 className="text-sm font-medium text-foreground">Prendas</h2>
-        <div className="mt-3 flex flex-col gap-2">
-          {contract.items.map((item) => (
-            <div key={item.id} className="flex flex-wrap items-center justify-between gap-3 rounded-input border border-border p-3 text-sm">
-              <div className="flex items-center gap-3">
-                {item.photos.length > 0 && <PhotoThumbnail path={item.photos[0] as string} className="size-12 shrink-0" />}
-                <div>
-                  <p className="font-medium text-foreground">{item.description}</p>
-                  <p className="text-xs text-muted-foreground">
-                    {categoryName(categories, item.category_id)}
-                    {item.weight_grams && ` · ${item.weight_grams} g`}
-                    {item.serial_imei && ` · ${item.serial_imei}`}
-                  </p>
-                  {item.inventory_item_id && (
-                    <AuctionedItemLink inventoryItem={auctionedItemsById?.get(item.inventory_item_id)} />
-                  )}
-                </div>
-              </div>
-              <div className="flex items-center gap-3">
-                {item.item_appraisal && <Money value={item.item_appraisal} className="text-sm" />}
-                <StatusBadge status={item.status} />
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-
+      <LoanCard contract={contract} />
+      <ItemsCard contract={contract} auctionedItemsById={auctionedItemsById} />
+      {contract.notes && <NotesCard notes={contract.notes} />}
       <ExtendLoanPanel contract={contract} />
     </>
   )
@@ -307,7 +231,7 @@ export function ContractDetailPage() {
               <div className="flex min-w-0 flex-col gap-4 lg:col-span-5">{details}</div>
             </div>
           ) : (
-            <div className="flex flex-col gap-4">{details}</div>
+            <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-2">{details}</div>
           )}
         </PageTabsContent>
 

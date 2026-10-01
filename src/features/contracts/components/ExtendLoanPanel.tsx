@@ -17,6 +17,7 @@ import { percentOfMoney, subtractMoney, sumMoney } from '@/lib/money'
 import { useContractChain, useExtendLoan, useExtensionOptions, type Contract } from '@/features/contracts/api'
 import { extensionBlock } from '@/features/contracts/extensionBlock'
 import { usePermission } from '@/lib/permissions/usePermission'
+import { Lock } from 'lucide-react'
 
 /**
  * "Ampliar el préstamo" — el recargo (backend-starter/docs/DOMINIO.md §3).
@@ -123,23 +124,22 @@ export function ExtendLoanPanel({ contract }: { contract: Contract }) {
 
   return (
     <Can permission="contracts.extend_loan">
-      <div className="rounded-card border border-border bg-card p-card">
-        <h2 className="text-sm font-medium text-foreground">Ampliar el préstamo</h2>
+      <section className="grid min-w-0 gap-3 rounded-card border border-border bg-card p-card">
+        <h2 className="text-md font-semibold text-foreground">Ampliar el préstamo</h2>
 
-        {/* F9-17: bloqueado, la cifra grande era plata que no se puede usar
-            («Puede retirar hasta $ 1.100.000» con la ventana vencida). En su
-            lugar va el motivo; el cupo queda como dato chico debajo. */}
+        {/* F9-17 y rediseño P2-a: bloqueado, la cifra del cupo es plata que no
+            se puede usar, así que no se muestra; va el motivo y la salida. */}
         {estado.kind === 'blocked' ? (
-          <div className="mt-3 flex flex-col gap-1">
-            <p className="rounded-input bg-muted px-3 py-2 text-sm text-foreground">{estado.message}</p>
-            <p className="text-xs text-muted-foreground">
-              Cupo sobre el avalúo: <Money value={cupo.available} />
+          <div role="status" className="grid grid-cols-[auto_minmax(0,1fr)] gap-2.5 rounded-input bg-muted p-3 text-sm text-body">
+            <Lock className="mt-0.5 size-4 text-muted-foreground" aria-hidden />
+            <p>
+              <b className="font-semibold text-foreground">{estado.title}</b> {estado.message}
             </p>
           </div>
         ) : (
           <>
 
-        <div className="mt-3 flex flex-wrap items-baseline justify-between gap-x-6 gap-y-1">
+        <div className="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-1">
           <div>
             <p className="text-xs text-muted-foreground">Puede retirar hasta</p>
             <Money value={cupo.available} className="tnum text-lg font-semibold text-foreground" />
@@ -197,7 +197,9 @@ export function ExtendLoanPanel({ contract }: { contract: Contract }) {
             <div className="min-w-44">
               <AccountPicker paymentMethod={method} direction="out" value={accountId} onChange={setAccountId} />
             </div>
+            {/* Secundario: el primario dorado de la pantalla es «Registrar abono» (F9-13). */}
             <Button
+              variant="outline"
               disabled={!amount || Number(amount) <= 0}
               onClick={() => setConfirmOpen(true)}
             >
@@ -214,7 +216,7 @@ export function ExtendLoanPanel({ contract }: { contract: Contract }) {
           </p>
         )}
 
-      </div>
+      </section>
 
       {/* La confirmación es la parte crítica: sin ella alguien amplía creyendo
           que es un ajuste y se encuentra con un contrato distinto. */}

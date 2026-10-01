@@ -23,7 +23,7 @@ import { formatDate } from '@/lib/dates'
 export type ExtensionBlock =
   | { kind: 'hidden' }
   | { kind: 'open'; overLimitOnly: boolean }
-  | { kind: 'blocked'; message: string }
+  | { kind: 'blocked'; title: string; message: string }
 
 export interface ExtensionBlockInput {
   blockedReason: string | null | undefined
@@ -33,9 +33,11 @@ export interface ExtensionBlockInput {
   root?: { number: number; start_date: string } | null
 }
 
-const FIJOS: Record<string, string> = {
-  CONTRACT_INTEREST_OVERDUE: 'Primero hay que ponerse al día con los intereses, acá arriba.',
-  CONTRACT_WITHOUT_APPRAISAL: 'Sin avalúo no se puede calcular cuánto puede retirar. Regístralo en Editar.',
+// El título dice que no se puede; el mensaje, la salida (rediseño P2-a, F9-17:
+// «Lo bloqueado explica, no promete»).
+const FIJOS: Record<string, { title: string; message: string }> = {
+  CONTRACT_INTEREST_OVERDUE: { title: 'No disponible mientras esté en mora.', message: 'Ponlo al día para ver cuánto puede retirar.' },
+  CONTRACT_WITHOUT_APPRAISAL: { title: 'No disponible sin avalúo.', message: 'Sin avalúo no se puede calcular cuánto puede retirar. Regístralo en Editar.' },
 }
 
 function ventanaCerrada(windowEndsOn: string | null, root: ExtensionBlockInput['root']): string {
@@ -62,11 +64,14 @@ export function extensionBlock({ blockedReason, canOverrideLtv, windowEndsOn, ro
     if (canOverrideLtv) return { kind: 'open', overLimitOnly: true }
     return {
       kind: 'blocked',
+      title: 'No queda cupo sobre el avalúo.',
       message:
         'La garantía ya no da para más: el préstamo llegó al tope del avalúo. Prestar por encima ' +
         'solo lo puede autorizar quien tenga el permiso para hacerlo.',
     }
   }
-  if (blockedReason === 'EXTENSION_WINDOW_CLOSED') return { kind: 'blocked', message: ventanaCerrada(windowEndsOn, root) }
-  return { kind: 'blocked', message: FIJOS[blockedReason] ?? 'No se puede ampliar este préstamo ahora.' }
+  if (blockedReason === 'EXTENSION_WINDOW_CLOSED') {
+    return { kind: 'blocked', title: 'Ya no se puede ampliar.', message: ventanaCerrada(windowEndsOn, root) }
+  }
+  return { kind: 'blocked', ...(FIJOS[blockedReason] ?? { title: 'No disponible.', message: 'No se puede ampliar este préstamo ahora.' }) }
 }

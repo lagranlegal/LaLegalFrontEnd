@@ -5,7 +5,8 @@ import type { ReactNode } from 'react'
 /**
  * F9-17: con la ventana de ampliación vencida, el panel mostraba en grande
  * «Puede retirar hasta $ 1.100.000», plata que no se puede usar. Bloqueado,
- * muestra el motivo en su lugar y el cupo solo como dato chico.
+ * muestra el motivo en su lugar. Rediseño P2-a: tampoco el cupo como dato
+ * chico — una cifra de plata que no se puede usar no va (como la maqueta).
  */
 const cupo = vi.hoisted(() => ({
   current: { ceiling: '2000000.00', available: '1100000.00', window_ends_on: '2026-09-19', is_open: false, blocked_reason: 'EXTENSION_WINDOW_CLOSED' as string | null },
@@ -41,7 +42,15 @@ describe('panel de ampliación', () => {
     render(<ExtendLoanPanel contract={contract} />)
     expect(screen.queryByText('Puede retirar hasta')).toBeNull()
     expect(screen.queryByLabelText('Monto a entregar')).toBeNull()
-    expect(screen.getByText(/Cupo sobre el avalúo/)).toBeInTheDocument()
+    expect(screen.queryByText(/Cupo sobre el avalúo/)).toBeNull()
+    expect(screen.queryByText(/1\.100\.000/)).toBeNull()
+    expect(screen.getByRole('status')).toHaveTextContent(/Ya no se puede ampliar\. El plazo para ampliar este préstamo venció el 19\/09\/2026/)
+  })
+
+  it('en mora: «No disponible mientras esté en mora» y la salida', () => {
+    cupo.current = { ...cupo.current, blocked_reason: 'CONTRACT_INTEREST_OVERDUE' }
+    render(<ExtendLoanPanel contract={contract} />)
+    expect(screen.getByRole('status')).toHaveTextContent('No disponible mientras esté en mora. Ponlo al día para ver cuánto puede retirar.')
   })
 
   it('abierto: la cifra grande y el formulario siguen', () => {

@@ -5,6 +5,7 @@ import { KpiCard, KpiRow } from '@/components/shared/KpiCard'
 import { DonutChart, type DonutDatum } from '@/components/shared/charts/DonutChart'
 import { formatDate, todayBogota } from '@/lib/dates'
 import { formatCOP } from '@/lib/money'
+import { formatPercent } from '@/lib/percent'
 import { buildBalanceHistory, computeContractMetrics, daysSinceStart, splitCollected } from '@/features/contracts/metrics'
 import type { Contract, Payment } from '@/features/contracts/api'
 
@@ -53,7 +54,7 @@ export function ContractMetricsPanel({ contract, payments }: { contract: Contrac
           label="Rendimiento"
           value={
             <span className="tnum">
-              {metrics.rendimientoPct === null ? '—' : `${metrics.rendimientoPct.toFixed(1)}%`}
+              {metrics.rendimientoPct === null ? '—' : formatPercent(metrics.rendimientoPct, 1)}
             </span>
           }
         />
