@@ -94,20 +94,18 @@ export function DashboardPage() {
       <PageHeader title={`Hola, ${me?.user.full_name ?? ''}`} description={`Actualizado al ${formatDate(data.as_of)}`} />
 
       <KpiRow>
-        <KpiCard label="Cartera activa" value={<Money value={data.contracts.capital_outstanding} />} tone="danger" />
+        <KpiCard label="Cartera activa" value={<Money value={data.contracts.capital_outstanding} />} />
         {/* F7-07: `today_total`/`month_total` ya vienen NETOS de
             devoluciones. Si hubo alguna, la cifra baja sin explicación —
             se nombran el bruto y lo devuelto debajo. */}
         <KpiCard
           label="Ventas de hoy"
           value={<Money value={data.sales.today_total} />}
-          tone="brand"
           hint={<ReturnsHint gross={data.sales.today_gross} returns={data.sales.today_returns} />}
         />
         <KpiCard
           label="Ventas del mes"
           value={<Money value={data.sales.month_total} />}
-          tone="brand"
           hint={<ReturnsHint gross={data.sales.month_gross} returns={data.sales.month_returns} />}
         />
         <KpiCard label="Contratos activos" value={data.contracts.active_count} />
@@ -122,7 +120,7 @@ export function DashboardPage() {
             </>
           }
         />
-        <KpiCard label="Estado de caja" value={data.cashbox.session_open ? 'Abierta' : 'Cerrada'} tone={data.cashbox.session_open ? 'success' : 'danger'} />
+        <KpiCard label="Estado de caja" value={data.cashbox.session_open ? 'Abierta' : 'Cerrada'} />
       </KpiRow>
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">

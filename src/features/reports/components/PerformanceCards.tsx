@@ -53,8 +53,6 @@ export function ProfitCard({ range }: { range: DateRangeValue | null }) {
   if (isError) return <SectionError title="Utilidad bruta de tienda" error={error} onRetry={() => void refetch()} />
   if (!profit) return null
 
-  const loss = Number(profit.gross_profit) < 0
-
   return (
     <div className="rounded-card border border-border bg-card p-card">
       <div className="mb-3 flex flex-wrap items-center justify-between gap-x-4 gap-y-1">
@@ -64,15 +62,14 @@ export function ProfitCard({ range }: { range: DateRangeValue | null }) {
         </span>
       </div>
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-        <KpiCard label="Ingreso por ventas" value={<Money value={profit.net_revenue} tone="in" />} />
-        <KpiCard label="Costo de lo vendido" value={<Money value={profit.cost_of_goods_sold} tone="out" />} />
-        <KpiCard label="Utilidad bruta" value={<Money value={profit.gross_profit} />} tone={loss ? 'danger' : 'success'} />
+        <KpiCard label="Ingreso por ventas" value={<Money value={profit.net_revenue} />} />
+        <KpiCard label="Costo de lo vendido" value={<Money value={profit.cost_of_goods_sold} />} />
+        <KpiCard label="Utilidad bruta" value={<Money value={profit.gross_profit} />} />
         <KpiCard
           label="Margen"
           // `null` cuando no hubo ventas: un 0% afirmaría "vendí sin ganar",
           // que es distinto de "no hay datos en el período".
           value={<span className="tnum">{profit.margin_pct === null ? '—' : `${Number(profit.margin_pct).toFixed(1)}%`}</span>}
-          tone={profit.margin_pct === null ? undefined : loss ? 'danger' : 'success'}
         />
       </div>
       {profit.sale_count > 0 && (
@@ -136,7 +133,7 @@ export function PawnCard({ range }: { range: DateRangeValue | null }) {
         {/* F7-06: el interés NETO de descuentos —la misma cifra que
             «Intereses cobrados» del estado de resultados—. El bruto y el
             descuento van abajo, para explicar la resta. */}
-        <KpiCard label="Intereses cobrados" value={<Money value={pawn.interest_revenue} tone="in" />} tone="success" />
+        <KpiCard label="Intereses cobrados" value={<Money value={pawn.interest_revenue} />} />
         <KpiCard label="Cartera al corte de hoy" value={<Money value={pawn.capital_outstanding} />} />
         <KpiCard
           label="Rendimiento del período"
@@ -145,7 +142,6 @@ export function PawnCard({ range }: { range: DateRangeValue | null }) {
               {netYield === null ? '—' : `${Number(netYield).toFixed(2)}%`}
             </span>
           }
-          tone={netYield === null ? undefined : 'success'}
         />
         <KpiCard label="Contratos abiertos" value={<span className="tnum">{pawn.open_contracts}</span>} />
       </div>

@@ -1,11 +1,16 @@
 import { Children, type ReactNode } from 'react'
 import { cn } from '@/lib/utils'
 
+/**
+ * La cifra va en color de texto (rediseño P1, F9-07): la «Cartera activa» en
+ * rojo se leía como alarma todos los días. El rojo queda SOLO para lo que pide
+ * acción («Más de 60 días» vencido, cierres con descuadre); el resto del color
+ * va en el `delta`. Ni verde ni oro para una cifra: el monto no es un estado.
+ */
 const TONE_CLASSES = {
   default: 'text-foreground',
+  /** Pide acción. Nunca para una cifra que solo informa. */
   danger: 'text-danger',
-  success: 'text-success',
-  brand: 'text-brand',
 } as const
 
 /** `pct: null` = sin base de comparación (período anterior en 0) — se muestra "—". `favorable` decide el color, no el signo (bajar gastos también es verde). */
@@ -38,7 +43,7 @@ export function KpiCard({
 }) {
   return (
     <div className="flex min-w-0 flex-col gap-1">
-      <span className="text-xs text-muted-foreground">{label}</span>
+      <span className="text-xs font-medium text-muted-foreground">{label}</span>
       {/* La cifra NUNCA se parte dentro de un número («$ 6.000.00 / 0» a 1024–1280
           px, verificación del 29/09): nada de `wrap-anywhere`. Que quepa es trabajo
           de la fila, que no pone más columnas de las que caben (`KpiRow`). */}

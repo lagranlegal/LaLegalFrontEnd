@@ -61,7 +61,6 @@ function PayablesCard() {
         <KpiCard
           label="Total por pagar"
           value={<Money value={data.total} />}
-          tone="danger"
           hint={`${data.entry_count} compra(s) · al ${formatDate(data.as_of)}`}
         />
         <KpiCard label="0 a 30 días" value={<Money value={data.days_0_30} />} hint="Al día" />
@@ -147,14 +146,12 @@ function ValuationCard() {
         <KpiCard
           label="Valor al costo"
           value={<Money value={data.cost_value} />}
-          tone="brand"
           hint={`${formatQuantity(data.units)} unidad(es) en ${data.lot_count} lote(s)`}
         />
         <KpiCard label="A precio de venta" value={<Money value={data.retail_value} />} hint="Referencia, no valorización" />
         <KpiCard
           label="Utilidad potencial"
           value={<Money value={data.potential_profit} />}
-          tone={enPerdida ? 'danger' : 'success'}
           // Negativa significa que hay mercancía por debajo del costo. Es
           // información, no un error, y por eso se muestra en vez de taparla.
           hint={enPerdida ? 'Hay mercancía por debajo del costo' : 'Si se vendiera todo hoy'}

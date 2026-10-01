@@ -47,8 +47,7 @@ export function ContractMetricsPanel({ contract, payments }: { contract: Contrac
       <KpiRow>
         <KpiCard
           label="Intereses cobrados"
-          value={<Money value={metrics.interesesCobrados} tone="in" />}
-          tone="success"
+          value={<Money value={metrics.interesesCobrados} />}
         />
         <KpiCard
           label="Rendimiento"

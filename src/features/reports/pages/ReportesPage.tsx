@@ -431,14 +431,12 @@ export function ReportesPage() {
                 hace que nadie le crea a ninguna. */}
             <KpiCard
               label="Cobros operativos, netos"
-              value={<Money value={cobrosOperativos} tone="in" />}
-              tone="success"
+              value={<Money value={cobrosOperativos} />}
               delta={delta(cobrosOperativos, previousCobrosOperativos, 'up')}
             />
             <KpiCard
               label="Gastos operativos"
-              value={<Money value={summary.gastosOperativos} tone="out" />}
-              tone="danger"
+              value={<Money value={summary.gastosOperativos} />}
               delta={delta(summary.gastosOperativos, previousSummary?.gastosOperativos, 'down')}
             />
             {/* La utilidad ya NO se calcula acá. El KPI que vivía en este
@@ -452,7 +450,6 @@ export function ReportesPage() {
             <KpiCard
               label="Ventas cobradas, netas"
               value={<Money value={ventasFlujo.neto} />}
-              tone="brand"
               delta={delta(ventasFlujo.neto, previousVentasFlujo?.neto, 'up')}
             />
           </KpiRow>
@@ -477,8 +474,8 @@ export function ReportesPage() {
               <div className="grid grid-cols-2 gap-4 lg:grid-cols-3">
                 {showCapitalEmpeño && (
                   <>
-                    <KpiCard label="Capital desembolsado (préstamos nuevos)" value={<Money value={summary.capitalDesembolsado} tone="out" />} />
-                    <KpiCard label="Capital abonado (recuperado)" value={<Money value={summary.capitalAbonado} tone="in" />} />
+                    <KpiCard label="Capital desembolsado (préstamos nuevos)" value={<Money value={summary.capitalDesembolsado} />} />
+                    <KpiCard label="Capital abonado (recuperado)" value={<Money value={summary.capitalAbonado} />} />
                   </>
                 )}
                 {showCapitalTienda && (
@@ -488,7 +485,7 @@ export function ReportesPage() {
                   // de resultados como «Compras causadas».
                   <KpiCard
                     label="Pagos de compras (inversión en inventario)"
-                    value={<Money value={incomeStatement?.inventory_purchases_paid ?? '0.00'} tone="out" />}
+                    value={<Money value={incomeStatement?.inventory_purchases_paid ?? '0.00'} />}
                     delta={incomeStatement ? delta(incomeStatement.inventory_purchases_paid, previousIncomeStatement?.inventory_purchases_paid, 'down') : undefined}
                   />
                 )}
@@ -510,7 +507,7 @@ export function ReportesPage() {
             <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
               <KpiCard
                 label="Faltantes"
-                value={<Money value={cashDifferences.faltantes} tone={cashDifferences.shortageCount > 0 ? 'out' : undefined} />}
+                value={<Money value={cashDifferences.faltantes} />}
                 hint={cashDifferences.shortageCount === 1 ? 'En 1 cierre' : `En ${cashDifferences.shortageCount} cierres`}
               />
               <KpiCard
@@ -520,7 +517,7 @@ export function ReportesPage() {
               />
               <KpiCard
                 label="Neto (sobrantes − faltantes)"
-                value={<Money value={cashDifferences.neto} tone={compareMoney(cashDifferences.neto, '0') < 0 ? 'out' : undefined} />}
+                value={<Money value={cashDifferences.neto} />}
                 hint="No se compensan: cada descuadre es un error de conteo"
               />
               <KpiCard
