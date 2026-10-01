@@ -1,4 +1,5 @@
 import { useMe } from '@/lib/auth/me'
+import { usePermission } from '@/lib/permissions/usePermission'
 import { joinSpanish, missingCompanyFields } from '@/lib/documents/companyData'
 import { cn } from '@/lib/utils'
 
@@ -9,10 +10,13 @@ import { cn } from '@/lib/utils'
  */
 export function CompanyDataNotice({ className }: { className?: string }) {
   const { data: me } = useMe()
+  // F9-36: solo a quien lo puede arreglar. Para el asesor era ruido en cada
+  // comprobante, sobre algo que no puede cambiar.
+  const canConfigure = usePermission('company.configure')
   const faltan = missingCompanyFields(me?.company)
-  if (faltan.length === 0) return null
+  if (!canConfigure || faltan.length === 0) return null
   return (
-    <p role="status" className={cn('rounded-input bg-warning-soft px-3 py-2 text-xs text-warning', className)}>
+    <p role="status" className={cn('rounded-input bg-warning-soft px-3 py-2 text-xs text-foreground', className)}>
       Al documento le {faltan.length === 1 ? 'falta' : 'faltan'} {joinSpanish(faltan)} de la empresa: {faltan.length === 1 ? 'saldrá' : 'saldrán'} en
       blanco. Completa los datos de la empresa en Configuración.
     </p>

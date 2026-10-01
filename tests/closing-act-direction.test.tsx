@@ -8,7 +8,7 @@ import { movementLabel } from '@/lib/modules'
 const { report, closing } = fixtures.acta_con_anulacion.body
 
 vi.mock('@/lib/auth/me', () => ({
-  useMe: () => ({ data: { company: { name: 'ZZ QA', legal_name: 'QA S.A.S.', tax_id: '900123456-7', logo_url: null, signature_url: null, address: 'Calle 1', contact_phone: '300', documents: {} } } }),
+  useMe: () => ({ data: { company: { name: 'ZZ QA', legal_name: 'QA S.A.S.', tax_id: '900123456-7', logo_url: null, signature_url: null, address: 'Calle 1', contact_phone: '300', documents: {} }, permissions: [] } }),
 }))
 vi.mock('@/lib/storage/photos', () => ({ useSignedPhotoUrl: () => ({ data: undefined }) }))
 vi.mock('@/features/cashbox/api', () => ({ useSessionReport: () => ({ data: report, isPending: false, isError: false }) }))

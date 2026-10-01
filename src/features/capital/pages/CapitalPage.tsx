@@ -191,8 +191,11 @@ export function CapitalPage() {
                 Registrar aporte
               </Button>
             </Can>
+            {/* F9-45: el retiro iba en el oro del primario y resaltaba la
+                operación que saca plata del negocio. Las dos son secundarias:
+                ninguna es «la» acción de la pantalla. */}
             <Can permission="capital.withdraw">
-              <Button onClick={() => setDialog('withdrawal')}>
+              <Button variant="outline" onClick={() => setDialog('withdrawal')}>
                 Registrar retiro
               </Button>
             </Can>

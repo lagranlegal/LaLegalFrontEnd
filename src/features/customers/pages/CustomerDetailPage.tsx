@@ -3,6 +3,7 @@ import { ChevronDown } from 'lucide-react'
 import { useNavigate, useParams } from '@tanstack/react-router'
 import type { ColumnDef } from '@tanstack/react-table'
 import { BackLink } from '@/components/shared/BackLink'
+import { DetailLoadError } from '@/components/shared/DetailLoadError'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { StatusBadge } from '@/components/shared/StatusBadge'
 import { PhotoThumbnail } from '@/components/shared/PhotoThumbnail'
@@ -113,7 +114,7 @@ function CustomerDetailSkeleton() {
 export function CustomerDetailPage() {
   const { customerId } = useParams({ from: '/app-layout/clientes/$customerId' })
   const navigate = useNavigate()
-  const { data: customer, isPending, isError, refetch } = useCustomer(customerId)
+  const { data: customer, isPending, isError, error, refetch } = useCustomer(customerId)
   const { data: contracts, isPending: contractsPending, isError: contractsError, refetch: refetchContracts } = useCustomerContracts(customerId)
   const {
     data: salesData,
@@ -144,12 +145,14 @@ export function CustomerDetailPage() {
 
   if (isError || !customer) {
     return (
-      <div className="flex flex-col items-center gap-3 rounded-card border border-border bg-card p-card text-center">
-        <p className="text-sm text-muted-foreground">No se pudo cargar el cliente.</p>
-        <Button variant="outline" onClick={() => refetch()}>
-          Reintentar
-        </Button>
-      </div>
+      <DetailLoadError
+        error={error}
+        notFoundTitle="Este cliente no existe o no es de tu empresa"
+        loadFailedText="No se pudo cargar el cliente."
+        backTo="/clientes"
+        backLabel="Volver a clientes"
+        onRetry={() => refetch()}
+      />
     )
   }
 

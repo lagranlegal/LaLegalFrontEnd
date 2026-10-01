@@ -48,7 +48,7 @@ export function AuditPage() {
 
       <div className="flex flex-wrap gap-3">
         <Select value={moduleFilter} onValueChange={setModuleFilter}>
-          <SelectTrigger className="w-full sm:w-48">
+          <SelectTrigger className="w-full sm:w-48" aria-label="Filtrar por módulo">
             <SelectValue placeholder="Módulo" />
           </SelectTrigger>
           <SelectContent>
@@ -62,7 +62,7 @@ export function AuditPage() {
         </Select>
 
         <Select value={entityTypeFilter} onValueChange={setEntityTypeFilter}>
-          <SelectTrigger className="w-full sm:w-48">
+          <SelectTrigger className="w-full sm:w-48" aria-label="Filtrar por tipo de entidad">
             <SelectValue placeholder="Tipo de entidad" />
           </SelectTrigger>
           <SelectContent>
@@ -76,7 +76,7 @@ export function AuditPage() {
         </Select>
 
         <Select value={userFilter} onValueChange={setUserFilter}>
-          <SelectTrigger className="w-full sm:w-48">
+          <SelectTrigger className="w-full sm:w-48" aria-label="Filtrar por usuario">
             <SelectValue placeholder="Usuario" />
           </SelectTrigger>
           <SelectContent>

@@ -5,6 +5,7 @@ import { Printer } from 'lucide-react'
 import type { ColumnDef } from '@tanstack/react-table'
 import { toast } from 'sonner'
 import { BackLink } from '@/components/shared/BackLink'
+import { DetailLoadError } from '@/components/shared/DetailLoadError'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { PageTabs, PageTabsContent, type PageTab } from '@/components/shared/PageTabs'
 import { CompanyDataNotice } from '@/components/shared/CompanyDataNotice'
@@ -70,7 +71,7 @@ export function ContractDetailPage() {
   const { seccion } = useSearch({ from: '/app-layout/contratos/$contractId' })
   const section: Section = seccion ?? 'resumen'
   const navigate = useNavigate({ from: '/contratos/$contractId' })
-  const { data: contract, isPending, isError, refetch } = useContract(contractId)
+  const { data: contract, isPending, isError, error, refetch } = useContract(contractId)
   const { data: customer } = useCustomer(contract?.customer_id ?? '')
   const { data: categories } = useCategories()
   // Un solo request para las prendas ya rematadas, en vez de uno por prenda
@@ -107,12 +108,14 @@ export function ContractDetailPage() {
 
   if (isError || !contract) {
     return (
-      <div className="flex flex-col items-center gap-3 rounded-card border border-border bg-card p-card text-center">
-        <p className="text-sm text-muted-foreground">No se pudo cargar el contrato.</p>
-        <Button variant="outline" onClick={() => refetch()}>
-          Reintentar
-        </Button>
-      </div>
+      <DetailLoadError
+        error={error}
+        notFoundTitle="Este contrato no existe o no es de tu empresa"
+        loadFailedText="No se pudo cargar el contrato."
+        backTo="/contratos"
+        backLabel="Volver a contratos"
+        onRetry={() => refetch()}
+      />
     )
   }
 
