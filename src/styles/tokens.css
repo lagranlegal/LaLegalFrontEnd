@@ -37,12 +37,22 @@
      #3f8065 da 4.41. El tono se mantiene: solo baja la luminosidad lo justo. */
   --success: #2f6b50;
   --success-soft: #e6f1ea;
-  --warning: #8a5b14;
-  --warning-soft: #fbf0dc;
+  /* Ámbar TOSTADO (rediseño P1, 30/09/2026): el #8a5b14 de antes era un
+     marrón al lado del oro de marca; girado hacia naranja se separa de él.
+     5.44:1 sobre su soft. Es el tono de la prórroga y de los avisos. */
+  --warning: #94500f;
+  --warning-soft: #fcefe2;
   --danger: #a33c36; /* gastos, cuentas por cobrar, anulaciones, mora */
   --danger-soft: #faeae8;
+  /* El único estado RELLENO: «Listo para remate» (actuar hoy) y el botón
+     destructivo dentro de su confirmación. Blanco encima da 6.45:1. */
+  --danger-solid: #a33c36;
+  --on-danger-solid: #ffffff;
   --info: #1a5fa8;
   --info-soft: #e7f0f9;
+  /* Fondo de un estado neutro que terminó («Rematado», «Ampliado»):
+     --text-body encima da 7.87:1. */
+  --neutral-soft: #efebe2;
 
   /* ==== Neutrales (superficies y texto) ====
      Cálidos, no los grises azulados de antes: sobre un fondo frío el oro se
@@ -50,10 +60,18 @@
   --bg-app: #faf8f2; /* fondo general — Marfil */
   --bg-surface: #ffffff; /* cards, topbar, modales */
   --bg-muted: #f1ebdd; /* hover de botones/filas, skeletons — Beige cálido; tiene que notarse tanto sobre el marfil como sobre una card blanca */
-  --border: #ddd7c9; /* bordes de cards, inputs, divisores */
+  --border: #ddd7c9; /* bordes de cards y divisores */
+  /* Borde de CONTROLES (campo, botón secundario, segmentado): se distingue del
+     borde de una card, que es --border. Rediseño P1. */
+  --border-strong: #c3baa6;
   --text-strong: #24211c; /* títulos, cifras — Carbón */
   --text-body: #4b463d;
-  --text-muted: #716c63; /* labels de KPI, hints, placeholders — Gris cálido */
+  /* Labels de KPI, hints, placeholders — Gris cálido. Era #716c63, que daba
+     4.39:1 sobre --bg-muted (F9-22); este da 5.02 ahí y 5.62 sobre marfil. */
+  --text-muted: #68635a;
+  /* Anillo de foco de 2 px de todo control (WCAG 1.4.11): 5.98:1 sobre
+     marfil. Antes el foco de un campo era el borde en oro, a 2.5:1. */
+  --focus: #7a5a1c;
 
   /* ==== Papel (documentos impresos: contrato, comprobante, paz y salvo, acta) ====
      El papel NO tiene modo oscuro, y por eso estos tokens NO se redefinen en
@@ -67,7 +85,7 @@
   --paper: #ffffff;
   --paper-ink: #24211c; /* = --text-strong */
   --paper-ink-soft: #4b463d; /* = --text-body */
-  --paper-muted: #716c63; /* = --text-muted: labels de campo, pie */
+  --paper-muted: #716c63; /* = el --text-muted de antes del rediseño P1, que no toca el papel: labels de campo, pie (4.99 sobre la hoja) */
   --paper-rule: #ddd7c9; /* = --border: filas de tabla, filetes finos */
   --paper-accent: #c99a3d; /* = --brand-500: barra de marca, filetes de encabezado */
   --paper-accent-ink: #7a5a1c; /* = --brand-700: títulos de sección, nombre del documento */
@@ -101,10 +119,13 @@
   --sidebar-success: #4fc98c;
 
   /* ==== Estados de dominio (badges) ==== */
+  /* Rediseño P1 (30/09/2026): la mora pasa a ROJO (es lo que se cobra) y la
+     prórroga al ámbar tostado; antes eran --warning y #9c671c, dos marrones al
+     lado del oro (y la prórroga daba 3.57:1 en oscuro, F9-14). */
   --status-active: var(--success); /* Vigente / disponible / activa */
-  --status-arrears: var(--warning); /* En mora / borrador */
-  --status-extension: #9c671c; /* Prórroga */
-  --status-auctioned: var(--danger); /* Rematado / anulada / vencida */
+  --status-arrears: var(--danger); /* En mora */
+  --status-extension: var(--warning); /* Prórroga / borrador / en cola */
+  --status-auctioned: var(--danger); /* anulada / vencida / falló */
   --status-paid: var(--info); /* Pagado / vendido */
   --status-neutral: var(--text-muted); /* invitado, inactivo, written_off */
 
@@ -217,21 +238,27 @@
      Mismo criterio que en claro, contra `--bg-app` y contra su propio `-soft`. */
   --success: #4fc98c;
   --success-soft: #12301f;
-  --warning: #e5b45c;
-  --warning-soft: #35260c;
+  --warning: #f0a867; /* ámbar tostado: 7.29 sobre su soft */
+  --warning-soft: #3a2410;
   --danger: #e8736c;
   --danger-soft: #3a1a17;
+  /* Relleno de «Listo para remate»: con tinta oscura encima (6.32:1), no blanca. */
+  --danger-solid: #e8736c;
+  --on-danger-solid: #14120e;
   --info: #78aee8;
   --info-soft: #16243a;
+  --neutral-soft: #2a261e;
 
   /* ==== Neutrales (superficies y texto) ==== */
   --bg-app: #14120e;
   --bg-surface: #1e1b15; /* cards, topbar, modales — un punto más claro que bg-app */
   --bg-muted: #2a261e; /* un paso más claro que bg-surface, se nota como hover sobre una card oscura */
   --border: #3a3529;
+  --border-strong: #544d3e;
   --text-strong: #f7f4ec;
   --text-body: #d9d3c5;
   --text-muted: #a79f8e;
+  --focus: #f2d27a; /* 11.67 sobre --bg-surface */
 
   /* ==== Sidebar ====
      Sigue siendo la superficie MÁS oscura de la app incluso en dark mode —

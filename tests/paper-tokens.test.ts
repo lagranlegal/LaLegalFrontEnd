@@ -54,7 +54,9 @@ const oscuro = bloque("[data-theme='dark']")
 const ESPEJO: Record<string, string> = {
   '--paper-ink': '--text-strong',
   '--paper-ink-soft': '--text-body',
-  '--paper-muted': '--text-muted',
+  // '--paper-muted' ya no es espejo de '--text-muted': el rediseño P1 oscureció
+  // el gris de la interfaz (F9-22, sobre el beige de la app) y NO toca el papel,
+  // que es blanco y con #716c63 ya da 4.99. Su AA lo mide el último test.
   '--paper-rule': '--border',
   '--paper-accent': '--brand-500',
   '--paper-accent-ink': '--brand-700',

@@ -162,6 +162,75 @@ describe('contraste de los tokens (WCAG AA, 4.5:1 para texto normal)', () => {
   })
 })
 
+// Rediseño P1 (propuesta del 30/09/2026, §3 «Sistema visual»): cuatro valores
+// cambian y entran tokens nuevos. Cada par se mide contra el fondo donde vive
+// y se compara con el ratio que publicó la propuesta, a dos decimales: si
+// alguien mueve un hex, el número aprobado deja de cuadrar y esto avisa.
+describe('rediseño P1: los pares nuevos dan el ratio aprobado', () => {
+  const oscuroCompleto = { ...claro, ...oscuro }
+  const PARES: [tema: string, vars: Record<string, string>, fg: string, bg: string, esperado: number][] = [
+    ['claro', claro, '--text-muted', '--bg-muted', 5.02], // F9-22: era 4.39
+    ['claro', claro, '--text-muted', '--bg-app', 5.62],
+    ['claro', claro, '--warning', '--warning-soft', 5.44], // prórroga
+    ['claro', claro, '--danger', '--danger-soft', 5.53], // en mora
+    ['claro', claro, '--on-danger-solid', '--danger-solid', 6.45], // listo para remate
+    ['claro', claro, '--success', '--success-soft', 5.43],
+    ['claro', claro, '--info', '--info-soft', 5.62],
+    ['claro', claro, '--text-body', '--neutral-soft', 7.87], // rematado
+    ['claro', claro, '--focus', '--bg-app', 5.98],
+    ['oscuro', oscuroCompleto, '--warning', '--warning-soft', 7.29], // F9-14: la prórroga daba 3.57
+    ['oscuro', oscuroCompleto, '--danger', '--danger-soft', 5.3],
+    ['oscuro', oscuroCompleto, '--on-danger-solid', '--danger-solid', 6.32],
+    ['oscuro', oscuroCompleto, '--success', '--success-soft', 6.86],
+    ['oscuro', oscuroCompleto, '--info', '--info-soft', 6.69],
+    ['oscuro', oscuroCompleto, '--text-body', '--neutral-soft', 10.09],
+    ['oscuro', oscuroCompleto, '--focus', '--bg-surface', 11.67],
+  ]
+
+  it.each(PARES)('%s: %s sobre %s', (_tema, vars, fg, bg, esperado) => {
+    expect(vars[fg], `${fg} no está definido`).toBeDefined()
+    expect(vars[bg], `${bg} no está definido`).toBeDefined()
+    const r = ratio(vars[fg], vars[bg])
+    expect(r).toBeGreaterThanOrEqual(4.5)
+    expect(Number(r.toFixed(2))).toBeCloseTo(esperado, 1)
+  })
+
+  it('cada token nuevo tiene su valor en el tema oscuro', () => {
+    for (const t of ['--danger-solid', '--on-danger-solid', '--neutral-soft', '--border-strong', '--focus']) {
+      expect(claro[t], `${t} en claro`).toBeDefined()
+      expect(oscuro[t], `${t} en oscuro`).toBeDefined()
+    }
+  })
+
+  it('los valores son los de la propuesta', () => {
+    expect(claro['--text-muted']).toBe('#68635a')
+    expect([claro['--warning'], claro['--warning-soft']]).toEqual(['#94500f', '#fcefe2'])
+    expect([oscuro['--warning'], oscuro['--warning-soft']]).toEqual(['#f0a867', '#3a2410'])
+    expect([claro['--border-strong'], oscuro['--border-strong']]).toEqual(['#c3baa6', '#544d3e'])
+    expect([claro['--focus'], oscuro['--focus']]).toEqual(['#7a5a1c', '#f2d27a'])
+  })
+
+  it('el foco se ve (≥ 3:1) sobre los tres fondos, en los dos temas', () => {
+    for (const vars of [claro, oscuroCompleto]) {
+      for (const fondo of ['--bg-app', '--bg-surface', '--bg-muted']) {
+        expect(ratio(vars['--focus'], vars[fondo]), fondo).toBeGreaterThanOrEqual(3)
+      }
+    }
+  })
+
+  it('el borde de un control es más fuerte que el de una card, en los dos temas', () => {
+    for (const vars of [claro, oscuroCompleto]) {
+      expect(ratio(vars['--border-strong'], vars['--bg-surface'])).toBeGreaterThan(ratio(vars['--border'], vars['--bg-surface']))
+    }
+  })
+
+  it('la mora es roja y la prórroga ámbar (no dos marrones al lado del oro)', () => {
+    const alias = (token: string) => CSS.match(new RegExp(`${token}:\\s*var\\((--[\\w-]+)\\)`))?.[1]
+    expect(alias('--status-arrears')).toBe('--danger')
+    expect(alias('--status-extension')).toBe('--warning')
+  })
+})
+
 describe('el anillo de foco es sólido', () => {
   // Medido a mano en Chrome: `ring-ring/50` sobre marfil ≈ 2,2:1. Un anillo o
   // contorno de foco a media opacidad vuelve a quedar bajo 3:1 aunque el token

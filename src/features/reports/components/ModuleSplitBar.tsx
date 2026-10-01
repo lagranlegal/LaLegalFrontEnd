@@ -20,12 +20,12 @@ export function ModuleSplitBar({ pawn, store }: { pawn: string; store: string })
   return (
     <div className="flex flex-col gap-3">
       <div className="flex h-3 w-full overflow-hidden rounded-pill bg-border">
-        <div className="h-full bg-[var(--status-arrears)]" style={{ width: `${pawnPct}%` }} />
+        <div className="h-full bg-chart-3" style={{ width: `${pawnPct}%` }} />
         <div className="h-full bg-primary" style={{ width: `${storePct}%` }} />
       </div>
       <div className="flex flex-wrap justify-between gap-4 text-sm">
         <div className="flex items-center gap-2">
-          <span className="size-2.5 rounded-full bg-[var(--status-arrears)]" />
+          <span className="size-2.5 rounded-full bg-chart-3" />
           <span className="text-foreground">Empeño</span>
           <span className="text-muted-foreground">{pawnPct}%</span>
           <Money value={pawn} tone="in" className="ml-1" />

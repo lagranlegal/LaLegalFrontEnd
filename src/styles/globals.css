@@ -35,8 +35,12 @@
   --color-destructive: var(--danger);
   --color-destructive-foreground: var(--brand-contrast);
   --color-border: var(--border);
-  --color-input: var(--border);
-  --color-ring: var(--brand-700);
+  --color-input: var(--border-strong);
+  /* El foco tiene token propio desde el rediseño P1 (`--focus`); hoy vale lo
+     mismo que --brand-700 en los dos temas, pero ya no depende de la marca. */
+  --color-ring: var(--focus);
+  --color-focus: var(--focus);
+  --color-border-strong: var(--border-strong);
 
   /* La marca COMO TEXTO (utilidades `text-brand`, `border-brand`).
      `--color-primary` es el RELLENO del botón: en la paleta de oro es claro a
@@ -55,6 +59,9 @@
   --color-warning-soft: var(--warning-soft);
   --color-danger: var(--danger);
   --color-danger-soft: var(--danger-soft);
+  --color-danger-solid: var(--danger-solid);
+  --color-on-danger-solid: var(--on-danger-solid);
+  --color-neutral-soft: var(--neutral-soft);
   --color-info: var(--info);
   --color-info-soft: var(--info-soft);
 
