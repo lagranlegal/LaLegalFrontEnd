@@ -10,7 +10,7 @@ import { AppDialog } from '@/components/shared/AppDialog'
 import { MoneyInput } from '@/components/shared/MoneyInput'
 import { DatePicker } from '@/components/shared/DatePicker'
 import { Button } from '@/components/ui/button'
-import { FieldError } from '@/components/ui/input'
+import { FieldError, Input, Textarea } from '@/components/ui/input'
 import { useCategories } from '@/lib/catalogs/categories'
 import { normalizeDecimalInput } from '@/lib/money'
 import { applyServerErrors } from '@/lib/forms/applyServerErrors'
@@ -46,9 +46,6 @@ const importSchema = z
   })
 
 type ImportFormValues = z.infer<typeof importSchema>
-
-const inputClass =
-  'mt-1 w-full rounded-input border border-border bg-background px-3 py-2 text-sm text-foreground outline-none focus:border-primary disabled:bg-muted disabled:text-muted-foreground'
 
 /**
  * "Registrar contrato existente" (paso 5b, backend-starter/docs/DOMINIO.md §2.5):
@@ -184,8 +181,8 @@ export function ContractImportPage() {
             <label htmlFor="legacy_code" className="text-sm font-medium text-foreground">
               Código en el sistema anterior
             </label>
-            <input id="legacy_code" className={inputClass} placeholder="ej. C-1042" {...register('legacy_code')} />
-            {errors.legacy_code && <p className="mt-1 text-sm text-danger">{errors.legacy_code.message}</p>}
+            <Input id="legacy_code" invalid={!!errors.legacy_code} placeholder="ej. C-1042" {...register('legacy_code')} />
+            <FieldError fieldId="legacy_code">{errors.legacy_code?.message}</FieldError>
           </div>
           <CustomerPicker
             id="customer-picker"
@@ -209,8 +206,8 @@ export function ContractImportPage() {
               <label htmlFor="principal" className="text-sm font-medium text-foreground">
                 Monto que se prestó originalmente
               </label>
-              <Controller control={control} name="principal" render={({ field }) => <MoneyInput id="principal" className="mt-1" value={field.value} onChange={field.onChange} />} />
-              {errors.principal && <p className="mt-1 text-sm text-danger">{errors.principal.message}</p>}
+              <Controller control={control} name="principal" render={({ field }) => <MoneyInput id="principal" invalid={!!errors.principal} className="mt-1" value={field.value} onChange={field.onChange} />} />
+              <FieldError fieldId="principal">{errors.principal?.message}</FieldError>
             </div>
             <div>
               <label htmlFor="capital_balance" className="text-sm font-medium text-foreground">
@@ -219,16 +216,16 @@ export function ContractImportPage() {
               <Controller
                 control={control}
                 name="capital_balance"
-                render={({ field }) => <MoneyInput id="capital_balance" className="mt-1" value={field.value} onChange={field.onChange} />}
+                render={({ field }) => <MoneyInput id="capital_balance" invalid={!!errors.capital_balance} className="mt-1" value={field.value} onChange={field.onChange} />}
               />
-              {errors.capital_balance && <p className="mt-1 text-sm text-danger">{errors.capital_balance.message}</p>}
+              <FieldError fieldId="capital_balance">{errors.capital_balance?.message}</FieldError>
             </div>
             <div>
               <label htmlFor="interest_rate_pct" className="text-sm font-medium text-foreground">
                 Tasa de interés mensual pactada (%)
               </label>
-              <input id="interest_rate_pct" inputMode="decimal" className={inputClass} {...register('interest_rate_pct')} />
-              {errors.interest_rate_pct && <p className="mt-1 text-sm text-danger">{errors.interest_rate_pct.message}</p>}
+              <Input id="interest_rate_pct" invalid={!!errors.interest_rate_pct} inputMode="decimal" {...register('interest_rate_pct')} />
+              <FieldError fieldId="interest_rate_pct">{errors.interest_rate_pct?.message}</FieldError>
             </div>
             <div>
               <label htmlFor="appraisal_value" className="text-sm font-medium text-foreground">
@@ -244,21 +241,21 @@ export function ContractImportPage() {
               <label htmlFor="term_months" className="text-sm font-medium text-foreground">
                 Plazo (meses)
               </label>
-              <input id="term_months" type="number" min={1} className={inputClass} {...register('term_months', { valueAsNumber: true })} />
-              {errors.term_months && <p className="mt-1 text-sm text-danger">{errors.term_months.message}</p>}
+              <Input id="term_months" invalid={!!errors.term_months} type="number" min={1} {...register('term_months', { valueAsNumber: true })} />
+              <FieldError fieldId="term_months">{errors.term_months?.message}</FieldError>
             </div>
             <div>
               <label htmlFor="arrears_window_months" className="text-sm font-medium text-foreground">
                 Ventana de mora (meses)
               </label>
-              <input id="arrears_window_months" type="number" min={1} className={inputClass} {...register('arrears_window_months', { valueAsNumber: true })} />
-              {errors.arrears_window_months && <p className="mt-1 text-sm text-danger">{errors.arrears_window_months.message}</p>}
+              <Input id="arrears_window_months" invalid={!!errors.arrears_window_months} type="number" min={1} {...register('arrears_window_months', { valueAsNumber: true })} />
+              <FieldError fieldId="arrears_window_months">{errors.arrears_window_months?.message}</FieldError>
             </div>
             <div>
               <label htmlFor="extension_months" className="text-sm font-medium text-foreground">
                 Meses de prórroga permitidos
               </label>
-              <input id="extension_months" type="number" min={0} className={inputClass} {...register('extension_months', { valueAsNumber: true })} />
+              <Input id="extension_months" type="number" min={0} {...register('extension_months', { valueAsNumber: true })} />
             </div>
           </div>
         </section>
@@ -273,15 +270,15 @@ export function ContractImportPage() {
               <Controller
                 control={control}
                 name="start_date"
-                render={({ field }) => <DatePicker id="start_date" value={field.value} onChange={field.onChange} maxDate={todayBogota()} />}
+                render={({ field }) => <DatePicker id="start_date" invalid={!!errors.start_date} value={field.value} onChange={field.onChange} maxDate={todayBogota()} />}
               />
-              {errors.start_date && <p className="mt-1 text-sm text-danger">{errors.start_date.message}</p>}
+              <FieldError fieldId="start_date">{errors.start_date?.message}</FieldError>
             </div>
             <div>
               <label htmlFor="months_interest_paid" className="text-sm font-medium text-foreground">
                 Meses de interés ya cubiertos
               </label>
-              <input id="months_interest_paid" type="number" min={0} className={inputClass} {...register('months_interest_paid', { valueAsNumber: true })} />
+              <Input id="months_interest_paid" type="number" min={0} {...register('months_interest_paid', { valueAsNumber: true })} />
               <p className="mt-1 text-xs text-muted-foreground">
                 {interestPaidUntilPreview ? <>Intereses pagados hasta el {formatDate(interestPaidUntilPreview)}.</> : 'Selecciona primero la fecha de inicio.'}
               </p>
@@ -295,7 +292,7 @@ export function ContractImportPage() {
           <label htmlFor="notes" className="text-sm font-medium text-foreground">
             Notas (opcional)
           </label>
-          <textarea id="notes" rows={2} className={inputClass} {...register('notes')} />
+          <Textarea id="notes" rows={2} {...register('notes')} />
         </section>
 
         {formError && <p className="rounded-input bg-danger-soft px-3 py-2 text-sm text-danger">{formError}</p>}

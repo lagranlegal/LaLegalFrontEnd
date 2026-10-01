@@ -7,6 +7,7 @@ import { AppDialog } from '@/components/shared/AppDialog'
 import { MoneyInput } from '@/components/shared/MoneyInput'
 import { PhotoUploader } from '@/components/shared/PhotoUploader'
 import { Button } from '@/components/ui/button'
+import { Textarea } from '@/components/ui/input'
 import { applyServerErrors } from '@/lib/forms/applyServerErrors'
 import { useUpdateContract, type Contract } from '@/features/contracts/api'
 import { preventImplicitSubmit } from '@/lib/forms/preventImplicitSubmit'
@@ -19,8 +20,6 @@ const editSchema = z.object({
 })
 
 type EditFormValues = z.infer<typeof editSchema>
-
-const inputClass = 'mt-1 w-full rounded-input border border-border bg-background px-3 py-2 text-sm text-foreground outline-none focus:border-primary'
 
 /**
  * `appraisal_value`/`notes`/`signed_photo_url` — todo lo que `ContractUpdateIn`
@@ -97,7 +96,7 @@ export function ContractEditDialog({ open, onOpenChange, contract }: { open: boo
           <label htmlFor="notes" className="text-sm font-medium text-foreground">
             Notas
           </label>
-          <textarea id="notes" rows={3} className={inputClass} {...register('notes')} />
+          <Textarea id="notes" rows={3} {...register('notes')} />
         </div>
         <div>
           <p className="text-sm font-medium text-foreground">Foto del contrato firmado</p>
