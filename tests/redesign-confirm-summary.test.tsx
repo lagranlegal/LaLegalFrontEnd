@@ -1,3 +1,4 @@
+import saleFixtures from './fixtures/backend-f1.json'
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
@@ -54,6 +55,8 @@ afterEach(cleanup)
 beforeEach(() => {
   confirmMock.mockReset()
   mutateAsync.mockReset()
+  // La venta registrada real (fixture): sin ella la tarjeta de cierre recibe undefined.
+  mutateAsync.mockResolvedValue(saleFixtures.sale_bajo_precio_publicado.body)
   transferMutate.mockReset()
   apiGet.mockReset()
 })
@@ -132,7 +135,7 @@ describe('venta', () => {
 
   it('con la confirmación, vende', async () => {
     confirmMock.mockResolvedValue({ confirmed: true })
-    mutateAsync.mockResolvedValue({ number: 7 })
+    mutateAsync.mockResolvedValue({ ...saleFixtures.sale_bajo_precio_publicado.body, number: 7 })
     await montarVenta()
     fireEvent.click(screen.getByRole('button', { name: /^Cobrar/ }))
     await waitFor(() => expect(mutateAsync).toHaveBeenCalled())

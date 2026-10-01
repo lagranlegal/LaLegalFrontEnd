@@ -1,3 +1,4 @@
+import saleFixtures from './fixtures/backend-f1.json'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
@@ -72,6 +73,8 @@ async function montar(cost: string) {
 
 beforeEach(() => {
   mutateAsync.mockReset()
+  // La venta registrada real (fixture): sin ella la tarjeta de cierre recibe undefined.
+  mutateAsync.mockResolvedValue(saleFixtures.sale_bajo_precio_publicado.body)
   apiGet.mockReset()
   permisos = []
 })
