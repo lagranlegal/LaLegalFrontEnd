@@ -17,21 +17,6 @@ export function useDashboard({ enabled = true }: { enabled?: boolean } = {}) {
   return useQuery({ ...dashboardQueryOptions(), enabled })
 }
 
-/**
- * Duplicado deliberado del hook de `features/contracts/api.ts` (features
- * aisladas, CLAUDE.md regla 3 — el dashboard no importa internals de
- * contracts). La `queryKey` SÍ debe coincidir con la de contracts
- * (`['contracts','ready-for-auction']`) para que rematar un contrato
- * invalide esta card también, no solo la lista de contratos.
- */
-export function useReadyForAuction({ enabled = true }: { enabled?: boolean } = {}) {
-  return useQuery({
-    queryKey: ['contracts', 'ready-for-auction'] as const,
-    queryFn: () => unwrap(api.GET('/api/v1/contracts/ready-for-auction')),
-    enabled,
-  })
-}
-
 export type Dashboard = components['schemas']['DashboardOut']
 export type ContractAttention = components['schemas']['ContractAttentionOut']
 export type AttentionItem = components['schemas']['AttentionItemOut']

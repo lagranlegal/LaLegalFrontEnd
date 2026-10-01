@@ -1,4 +1,5 @@
-import type { Dashboard } from '@/features/dashboard/api'
+import type { AttentionItem, Dashboard } from '@/features/dashboard/api'
+import { formatDateShort } from '@/lib/dates'
 import type { StackedBarSegment } from '@/components/shared/charts/StackedBar'
 
 /**
@@ -31,3 +32,33 @@ export function contractStatusSegments(contracts: Dashboard['contracts']): Stack
     { key: 'auctioned_month', label: 'Rematados este mes', labelOne: 'Rematado este mes', count: contracts.auctioned_this_month, tone: 'closed' },
   ]
 }
+
+/**
+ * La pastilla sale del MOTIVO, no del `status`: el día del vencimiento el
+ * contrato ya está `in_arrears` en la base, pero lo que pide es cobrar la
+ * cuota de hoy, y la maqueta lo muestra «Vigente · vence hoy». Y un listo para
+ * remate sigue `in_extension` con la prórroga vencida.
+ */
+export const REASON_BADGE = {
+  ready_for_auction: 'ready_for_auction',
+  in_arrears: 'in_arrears',
+  in_extension: 'in_extension',
+  due_today: 'active',
+} as const satisfies Record<AttentionItem['reason_code'], string>
+
+/** La subleyenda bajo el cliente, por motivo. */
+export function reasonDetail(item: AttentionItem): string {
+  switch (item.reason_code) {
+    case 'ready_for_auction':
+      return `prórroga vencida ${formatDateShort(item.reference_date)}`
+    case 'in_arrears': {
+      const days = item.days_overdue ?? 0
+      return days === 1 ? '1 día de atraso' : `${days} días de atraso`
+    }
+    case 'in_extension':
+      return `vence ${formatDateShort(item.reference_date)}`
+    case 'due_today':
+      return 'vence hoy'
+  }
+}
+

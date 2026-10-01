@@ -1,57 +1,59 @@
-import { Link } from '@tanstack/react-router'
 import { usePermission } from '@/lib/permissions/usePermission'
-import { useContractAttention, useDashboard, useReadyForAuction } from '@/features/dashboard/api'
-import { TodayTasks } from '@/features/dashboard/components/TodayTasks'
+import { useContractAttention, useDashboard } from '@/features/dashboard/api'
 import { InicioHeader } from '@/features/dashboard/components/InicioHeader'
+import { TodayTasks } from '@/features/dashboard/components/TodayTasks'
 import { DashboardKpis } from '@/features/dashboard/components/DashboardKpis'
-import { QuickActions } from '@/features/dashboard/components/QuickActions'
-import { Money } from '@/components/shared/Money'
-import { RecordNumber } from '@/components/shared/RecordNumber'
-import { EmptyState } from '@/components/shared/EmptyState'
-import { isPermissionError } from '@/lib/api/isPermissionError'
 import { ContractsByStatusCard } from '@/features/dashboard/components/ContractsByStatusCard'
+import { AttentionCard } from '@/features/dashboard/components/AttentionCard'
+import { QuickActions } from '@/features/dashboard/components/QuickActions'
+import { isPermissionError } from '@/lib/api/isPermissionError'
 import { Button } from '@/components/ui/button'
-import { formatDate } from '@/lib/dates'
+import { cn } from '@/lib/utils'
 
-/** La forma de los KPIs en tarjetas y del bloque de abajo, mientras carga. */
-function DashboardSkeleton() {
+/** La forma de los KPIs en tarjetas, mientras carga. */
+function KpisSkeleton() {
   return (
-    <div className="flex flex-col gap-4.5" aria-hidden>
-      <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,200px),1fr))] gap-2.5">
-        {Array.from({ length: 4 }).map((_, i) => (
-          <div key={i} className="flex flex-col gap-2 rounded-card border border-border bg-card p-card">
-            <div className="h-3 w-24 animate-pulse rounded bg-border" />
-            <div className="h-6 w-32 animate-pulse rounded bg-border" />
-            <div className="h-3 w-20 animate-pulse rounded bg-border" />
-          </div>
-        ))}
-      </div>
-      <div className="h-64 animate-pulse rounded-card border border-border bg-card" />
+    <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,200px),1fr))] gap-2.5" aria-hidden>
+      {Array.from({ length: 4 }).map((_, i) => (
+        <div key={i} className="flex flex-col gap-2 rounded-card border border-border bg-card p-card">
+          <div className="h-3 w-24 animate-pulse rounded bg-border" />
+          <div className="h-6 w-32 animate-pulse rounded bg-border" />
+          <div className="h-3 w-20 animate-pulse rounded bg-border" />
+        </div>
+      ))}
     </div>
   )
 }
 
+/**
+ * El Inicio (rediseño P2-c): encabezado → «Para hoy» → KPIs → «Contratos por
+ * estado» y «Requieren acción». Cada bloque con su permiso y sin pedir lo que
+ * el rol no puede ver (issue #9):
+ * - `contracts.view` (también el Asesor): «Para hoy» y «Requieren acción».
+ * - `reports.view` (Admin): los KPIs y la barra por estado.
+ * - Ninguno de los dos (Bodega): los accesos directos a lo que sí puede hacer.
+ */
 export function DashboardPage() {
-  // Sin el permiso la consulta no sale: el 403 era seguro, pero evitable
-  // (issue #9). El 403 se sigue atendiendo abajo por si `/me` quedó viejo.
   const canViewReports = usePermission('reports.view')
   const canViewContracts = usePermission('contracts.view')
-  const canAuction = usePermission('contracts.auction')
-  const { data, isPending, isError, error, refetch } = useDashboard({ enabled: canViewReports })
+  const dashboard = useDashboard({ enabled: canViewReports })
   const attention = useContractAttention({ enabled: canViewContracts })
-  const { data: readyForAuction } = useReadyForAuction({ enabled: canAuction })
-  const reportsDenied = !canViewReports || (isError && isPermissionError(error))
+  // El 403 se sigue atendiendo por si `/me` quedó viejo: no es una falla.
+  const showReports = canViewReports && !(dashboard.isError && isPermissionError(dashboard.error))
+  const showStatus = showReports && !!dashboard.data
+  const retryAttention = () => void attention.refetch()
 
   return (
     <div className="flex flex-col gap-4.5">
       <InicioHeader />
-      {/* «Para hoy» es de todo el que ve contratos, también el Asesor (F9-60). */}
+
       {canViewContracts && (
-        <TodayTasks data={attention.data} isPending={attention.isPending} error={attention.error} onRetry={() => void attention.refetch()} />
+        <TodayTasks data={attention.data} isPending={attention.isPending} error={attention.error} onRetry={retryAttention} />
       )}
-      {/* `/` es el destino de TODOS los guards de ruta: un rol sin contratos ni
-          reportes (Bodega) ve sus accesos directos, no una pantalla vacía. */}
-      {reportsDenied && !canViewContracts && (
+
+      {/* `/inicio` es el destino de TODOS los guards: un rol sin contratos ni
+          reportes ve sus accesos directos, no una pantalla vacía (F9-60). */}
+      {!showReports && !canViewContracts && (
         <>
           <QuickActions />
           <p className="text-xs text-muted-foreground">
@@ -59,71 +61,29 @@ export function DashboardPage() {
           </p>
         </>
       )}
-      {!reportsDenied &&
-        (isPending ? (
-          <DashboardSkeleton />
-        ) : isError ? (
+
+      {showReports &&
+        (dashboard.isPending ? (
+          <KpisSkeleton />
+        ) : dashboard.isError ? (
           <div className="flex flex-col items-center gap-3 rounded-card border border-border bg-card p-card text-center">
             <p className="text-sm text-muted-foreground">No se pudo cargar el resumen de cifras.</p>
-            <Button variant="outline" onClick={() => refetch()}>
+            <Button variant="outline" onClick={() => void dashboard.refetch()}>
               Reintentar
             </Button>
           </div>
         ) : (
-          <ReportsSection data={data} readyForAuction={readyForAuction} />
+          <DashboardKpis data={dashboard.data} />
         ))}
-    </div>
-  )
-}
 
-function ReportsSection({
-  data,
-  readyForAuction,
-}: {
-  data: NonNullable<ReturnType<typeof useDashboard>['data']>
-  readyForAuction: ReturnType<typeof useReadyForAuction>['data']
-}) {
-  return (
-    <>
-      <DashboardKpis data={data} />
-
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-        <ContractsByStatusCard contracts={data.contracts} />
-
-        <div className="enter-up rounded-card border border-border bg-card p-card">
-          <h2 className="text-sm font-medium text-foreground">Listos para remate</h2>
-          {!readyForAuction || readyForAuction.length === 0 ? (
-            <EmptyState title="Nada pendiente de remate" description="Los contratos vencidos que agotan su prórroga aparecen aquí." />
-          ) : (
-            <div className="mt-3 flex flex-col divide-y divide-border">
-              {readyForAuction.slice(0, 5).map((contract) => (
-                <Link
-                  key={contract.id}
-                  to="/contratos/$contractId"
-                  params={{ contractId: contract.id }}
-                  className="-mx-2 flex items-center justify-between gap-3 rounded-input px-2 py-2.5 text-sm transition-colors hover:bg-accent"
-                >
-                  <span className="font-medium text-foreground">
-                    Contrato <RecordNumber value={contract.number} />
-                  </span>
-                  {/* `extension_ends_at`, NO `due_date`. Lo que pone a un
-                      contrato en esta lista es que se le venció la PRÓRROGA
-                      (`list_ready_for_auction` filtra por
-                      `extension_ends_at < hoy`), y las dos fechas no tienen
-                      relación: un cliente que pagó interés un año tiene el
-                      vencimiento del papel pasado hace meses y la prórroga
-                      vencida la semana pasada. La card mostraba la fecha
-                      equivocada como si fuera la causa. */}
-                  <span className="text-muted-foreground">
-                    Prórroga vencida el {contract.extension_ends_at ? formatDate(contract.extension_ends_at) : '—'}
-                  </span>
-                  <Money value={contract.capital_balance} />
-                </Link>
-              ))}
-            </div>
+      {(showStatus || canViewContracts) && (
+        <div className={cn('grid grid-cols-1 gap-4', showStatus && canViewContracts && 'xl:grid-cols-[minmax(250px,1fr)_minmax(0,2fr)]')}>
+          {showStatus && dashboard.data && <ContractsByStatusCard contracts={dashboard.data.contracts} />}
+          {canViewContracts && (
+            <AttentionCard data={attention.data} isPending={attention.isPending} error={attention.error} onRetry={retryAttention} />
           )}
         </div>
-      </div>
-    </>
+      )}
+    </div>
   )
 }

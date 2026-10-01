@@ -22,7 +22,6 @@ vi.mock('@/features/dashboard/api', () => ({
     error: new ApiError({ status: 403, code: 'PERMISSION_DENIED', message: 'x' }),
     refetch: vi.fn(),
   }),
-  useReadyForAuction: () => ({ data: undefined }),
   useContractAttention: () => ({ data: undefined, isPending: true, error: null, refetch: vi.fn() }),
 }))
 

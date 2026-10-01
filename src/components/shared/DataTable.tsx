@@ -1,10 +1,18 @@
 import type { ReactNode } from 'react'
-import { type ColumnDef, flexRender, getCoreRowModel, useReactTable } from '@tanstack/react-table'
+import { type ColumnDef, type RowData, flexRender, getCoreRowModel, useReactTable } from '@tanstack/react-table'
 import { Button } from '@/components/ui/button'
 import { isPermissionError } from '@/lib/api/isPermissionError'
 import { EmptyState } from '@/components/shared/EmptyState'
 import { cn } from '@/lib/utils'
 import { RefreshingBar } from '@/components/shared/RefreshingBar'
+
+declare module '@tanstack/react-table' {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  interface ColumnMeta<TData extends RowData, TValue> {
+    /** `right` alinea encabezado y celda a la derecha (dinero): con solo la celda, el título quedaba corrido. */
+    align?: 'right'
+  }
+}
 
 function DataTableSkeleton({ columnsCount }: { columnsCount: number }) {
   return (
@@ -65,6 +73,7 @@ export function DataTable<T>({
   hasNextPage,
   isFetchingNextPage,
   onLoadMore,
+  embedded = false,
 }: {
   columns: ColumnDef<T>[]
   data: T[]
@@ -83,6 +92,12 @@ export function DataTable<T>({
   hasNextPage?: boolean
   isFetchingNextPage?: boolean
   onLoadMore?: () => void
+  /**
+   * Dentro de otra tarjeta (el «Requieren acción» del Inicio, rediseño P2-c):
+   * sin borde ni fondo propios, encabezado sin relleno con su divisor, y el
+   * hover en `--bg-muted`. En el celular sigue colapsando a tarjetas.
+   */
+  embedded?: boolean
 }) {
   const table = useReactTable({
     data,
@@ -123,16 +138,22 @@ export function DataTable<T>({
   }
 
   return (
-    <div className="enter-up overflow-hidden rounded-card border border-border bg-card">
+    <div className={cn('enter-up overflow-hidden', !embedded && 'rounded-card border border-border bg-card')}>
       {/* Los datos que se ven siguen siendo válidos, solo están por cambiar:
           una barra delgada arriba avisa sin vaciar la tabla ni hacerla saltar. */}
       <RefreshingBar active={!!isRefreshing} />
       <table className="hidden w-full text-sm md:table">
-        <thead className="bg-background text-left text-xs text-muted-foreground">
+        <thead className={cn('text-left text-xs text-muted-foreground', embedded ? 'border-b border-border' : 'bg-background')}>
           {table.getHeaderGroups().map((headerGroup) => (
             <tr key={headerGroup.id}>
               {headerGroup.headers.map((header) => (
-                <th key={header.id} className="px-4 py-2 font-medium">
+                <th
+                  key={header.id}
+                  className={cn(
+                    embedded ? 'px-3.5 py-2.5 font-semibold whitespace-nowrap' : 'px-4 py-2 font-medium',
+                    header.column.columnDef.meta?.align === 'right' && 'text-right',
+                  )}
+                >
                   {header.isPlaceholder ? null : flexRender(header.column.columnDef.header, header.getContext())}
                 </th>
               ))}
@@ -143,12 +164,19 @@ export function DataTable<T>({
           {table.getRowModel().rows.map((row) => (
             <tr
               key={row.id}
-              className={cn('transition-colors hover:bg-accent/50', onRowClick && 'cursor-pointer active:bg-accent', onRowClick && ROW_FOCUS)}
+              className={cn('transition-colors', embedded ? 'hover:bg-muted' : 'hover:bg-accent/50', onRowClick && 'cursor-pointer active:bg-accent', onRowClick && ROW_FOCUS)}
               onClick={() => onRowClick?.(row.original)}
               {...rowKeyboardProps(onRowClick, row.original)}
             >
               {row.getVisibleCells().map((cell) => (
-                <td key={cell.id} className="px-4 py-3 text-foreground">
+                <td
+                  key={cell.id}
+                  className={cn(
+                    'text-foreground',
+                    embedded ? 'px-3.5 py-2.75' : 'px-4 py-3',
+                    cell.column.columnDef.meta?.align === 'right' && 'text-right',
+                  )}
+                >
                   {flexRender(cell.column.columnDef.cell, cell.getContext())}
                 </td>
               ))}
