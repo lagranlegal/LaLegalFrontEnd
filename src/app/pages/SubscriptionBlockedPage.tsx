@@ -1,4 +1,6 @@
 import { useNavigate } from '@tanstack/react-router'
+import { CalendarX2 } from 'lucide-react'
+import { ExitPage } from '@/components/shared/ExitPage'
 import { Button } from '@/components/ui/button'
 import { useLogout } from '@/features/auth/api'
 
@@ -20,21 +22,23 @@ export function SubscriptionBlockedPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background p-page">
-      <div className="w-full max-w-md rounded-card border border-border bg-card p-card text-center">
-        <h1 className="text-xl font-semibold text-foreground">Suscripción vencida</h1>
-        <p className="mt-2 text-sm text-muted-foreground">
-          La suscripción de tu empresa venció. Contacta al administrador de la plataforma para reactivarla.
-        </p>
-        <div className="mt-4 flex flex-col gap-2">
-          <Button className="w-full" onClick={() => void navigate({ to: '/inicio' })}>
+    <ExitPage
+      icon={CalendarX2}
+      tone="warning"
+      title="La suscripción de tu empresa venció"
+      actions={
+        <>
+          <Button size="lg" className="w-full" onClick={() => void navigate({ to: '/inicio' })}>
             Ya la reactivaron: volver a intentar
           </Button>
           <Button variant="ghost" className="w-full" disabled={logout.isPending} onClick={() => void handleLogout()}>
             Cerrar sesión
           </Button>
-        </div>
-      </div>
-    </div>
+        </>
+      }
+    >
+      Mientras esté vencida, la app no deja registrar ni consultar. Pídele al administrador de tu empresa que la renueve con Prendo; tus datos
+      siguen guardados.
+    </ExitPage>
   )
 }

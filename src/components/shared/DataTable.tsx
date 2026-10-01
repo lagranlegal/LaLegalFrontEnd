@@ -14,9 +14,9 @@ declare module '@tanstack/react-table' {
   }
 }
 
-function DataTableSkeleton({ columnsCount }: { columnsCount: number }) {
+function DataTableSkeleton({ columnsCount, embedded }: { columnsCount: number; embedded?: boolean }) {
   return (
-    <div className="divide-y divide-border rounded-card border border-border bg-card">
+    <div className={cn('divide-y divide-border', !embedded && 'rounded-card border border-border bg-card')}>
       {Array.from({ length: 5 }).map((_, row) => (
         <div key={row} className="flex gap-4 p-4">
           {Array.from({ length: columnsCount }).map((_, col) => (
@@ -95,7 +95,8 @@ export function DataTable<T>({
   /**
    * Dentro de otra tarjeta (el «Requieren acción» del Inicio, rediseño P2-c):
    * sin borde ni fondo propios, encabezado sin relleno con su divisor, y el
-   * hover en `--bg-muted`. En el celular sigue colapsando a tarjetas.
+   * hover en `--bg-muted`. En el celular sigue colapsando a tarjetas. La
+   * carga, el vacío y el error tampoco dibujan su propia caja (P3).
    */
   embedded?: boolean
 }) {
@@ -106,7 +107,7 @@ export function DataTable<T>({
     getCoreRowModel: getCoreRowModel(),
   })
 
-  if (isLoading) return <DataTableSkeleton columnsCount={columns.length} />
+  if (isLoading) return <DataTableSkeleton columnsCount={columns.length} embedded={embedded} />
 
   if (isError) {
     // Un 403 no es una falla: reintentar no va a cambiar nada, y "no se pudo
@@ -114,7 +115,7 @@ export function DataTable<T>({
     // qué pasa y a quién pedírselo.
     const sinPermiso = isPermissionError(error)
     return (
-      <div className="enter-up flex flex-col items-center gap-3 rounded-card border border-border bg-card p-card text-center">
+      <div className={cn('enter-up flex flex-col items-center gap-3 text-center', embedded ? 'py-card' : 'rounded-card border border-border bg-card p-card')}>
         <p className="text-sm text-muted-foreground">
           {sinPermiso
             ? 'Tu rol no tiene permiso para ver esto. Pídele a un administrador que te lo habilite.'
@@ -131,7 +132,9 @@ export function DataTable<T>({
 
   if (data.length === 0) {
     return (
-      <div className="enter-up rounded-card border border-border bg-card">
+      // Dentro de otra tarjeta (`embedded`), el vacío y el error no dibujan
+      // una segunda caja con borde dentro de la primera.
+      <div className={cn('enter-up', !embedded && 'rounded-card border border-border bg-card')}>
         <EmptyState title={emptyTitle} description={emptyDescription} action={emptyAction} />
       </div>
     )

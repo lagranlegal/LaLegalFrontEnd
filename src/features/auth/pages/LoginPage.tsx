@@ -38,6 +38,9 @@ export function LoginPage() {
    * Valida solo ese campo — la contraseña no hace falta para recuperarla.
    */
   async function onForgotPassword() {
+    // F9-62: el «Correo o contraseña incorrectos» del intento anterior no
+    // tiene que quedar al lado del error nuevo.
+    login.reset()
     if (!(await trigger('email'))) return
     await requestReset.mutateAsync(getValues('email'))
   }
@@ -94,6 +97,8 @@ export function LoginPage() {
             id="email"
             type="email"
             autoComplete="email"
+            // F9-62: quien abre el login viene a escribir el correo.
+            autoFocus
             className="mt-1 w-full rounded-input border border-border bg-background px-3 py-2 text-sm text-foreground outline-none focus:border-primary"
             {...register('email')}
           />

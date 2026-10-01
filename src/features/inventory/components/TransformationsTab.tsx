@@ -66,7 +66,8 @@ export function TransformationsTab() {
     {
       accessorKey: 'total_cost',
       header: 'Costo',
-      cell: (info) => <Money value={info.getValue<string>()} className="tnum" />,
+      meta: { align: 'right' },
+      cell: (info) => <Money value={info.getValue<string>()} className="whitespace-nowrap" />,
     },
     {
       accessorKey: 'created_by_name',

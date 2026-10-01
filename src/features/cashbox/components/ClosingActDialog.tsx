@@ -3,6 +3,8 @@ import { PrintLayout } from '@/components/shared/PrintLayout'
 import { CompanyDataNotice } from '@/components/shared/CompanyDataNotice'
 import { PrintField, PrintSection, PrintTable, PrintTd, PrintTh } from '@/components/shared/PrintBlocks'
 import { Money } from '@/components/shared/Money'
+import { CashDifference } from '@/components/shared/CashDifference'
+import { describeCashDifference } from '@/lib/cashbox/difference'
 import { Button } from '@/components/ui/button'
 import { formatDate, formatDateTime } from '@/lib/dates'
 import { movementLabel, MODULE_LABELS } from '@/lib/modules'
@@ -37,7 +39,6 @@ function SessionReportSkeleton() {
 
 export function ClosingActDialog({ open, onOpenChange, closing }: { open: boolean; onOpenChange: (open: boolean) => void; closing: ClosingHistory }) {
   const { data: report, isPending, isError, refetch } = useSessionReport(open ? closing.session_id : undefined)
-  const hasDifference = Number(closing.difference) !== 0
 
   return (
     <>
@@ -59,7 +60,7 @@ export function ClosingActDialog({ open, onOpenChange, closing }: { open: boolea
         }
       >
         <div className="flex flex-col gap-4">
-          <div className="grid grid-cols-2 gap-3 rounded-input bg-background p-3 text-sm sm:grid-cols-4">
+          <div className="tnum grid grid-cols-2 gap-3 rounded-input bg-muted p-3 text-sm sm:grid-cols-4">
             <div>
               <p className="text-xs text-muted-foreground">Saldo inicial</p>
               <Money value={closing.opening_balance} className="font-semibold" />
@@ -74,7 +75,7 @@ export function ClosingActDialog({ open, onOpenChange, closing }: { open: boolea
             </div>
             <div>
               <p className="text-xs text-muted-foreground">Diferencia</p>
-              <Money value={closing.difference} className={hasDifference ? 'font-semibold text-danger' : 'font-semibold text-success'} />
+              <CashDifference value={closing.difference} className="font-semibold" />
             </div>
           </div>
           {closing.difference_reason && (
@@ -114,7 +115,14 @@ export function ClosingActDialog({ open, onOpenChange, closing }: { open: boolea
               <Money value={closing.counted_cash} />
             </PrintField>
             <PrintField label="Diferencia">
-              <Money value={closing.difference} />
+              {/* En el papel también con palabra (F9-43): el acta la firma alguien. */}
+              {describeCashDifference(closing.difference).label}
+              {describeCashDifference(closing.difference).kind !== 'even' && (
+                <>
+                  {' '}
+                  <Money value={describeCashDifference(closing.difference).amount} />
+                </>
+              )}
             </PrintField>
           </section>
           {closing.difference_reason && <p className="mt-4 text-sm">Justificación: {closing.difference_reason}</p>}

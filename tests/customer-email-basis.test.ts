@@ -28,7 +28,7 @@ describe('emailNoticeStatus', () => {
   it('la base contractual y la autorización expresa se distinguen', () => {
     expect(emailNoticeStatus({ ...base, email_basis: 'contract' })).toEqual({ text: 'Solo de sus contratos vigentes', tone: 'ok' })
     expect(emailNoticeStatus({ ...base, email_basis: 'consent', email_consent_at: '2026-09-25T15:00:00Z' })).toEqual({
-      text: 'Autorizó recibirlos (25/09/2026 10:00 AM)',
+      text: 'Autorizó recibirlos (25/09/2026 10:00 a. m.)',
       tone: 'ok',
     })
   })
@@ -36,7 +36,7 @@ describe('emailNoticeStatus', () => {
   it('la baja gana sobre cualquier base, y el rebote también', () => {
     const conConsentimiento = { ...base, email_basis: 'consent' as const, email_consent_at: '2026-09-01T15:00:00Z' }
     expect(emailNoticeStatus({ ...conConsentimiento, email_opt_out_at: '2026-09-25T15:00:00Z' })).toEqual({
-      text: 'Pidió no recibirlos (25/09/2026 10:00 AM)',
+      text: 'Pidió no recibirlos (25/09/2026 10:00 a. m.)',
       tone: 'warning',
     })
     expect(emailNoticeStatus({ ...conConsentimiento, email_invalid_at: '2026-09-25T15:00:00Z' }).tone).toBe('warning')

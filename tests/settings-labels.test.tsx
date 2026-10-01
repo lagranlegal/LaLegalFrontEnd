@@ -3,7 +3,8 @@ import { cleanup, render, screen } from '@testing-library/react'
 import type { ReactNode } from 'react'
 
 /** F9-54: los campos de Configuración tienen label asociado (getByLabelText los encuentra). */
-vi.mock('@tanstack/react-router', () => ({ Link: ({ children }: { children: ReactNode }) => <a>{children}</a> }))
+// `useBlocker`: la barra de guardar pregunta antes de salir con cambios (P3).
+vi.mock('@tanstack/react-router', () => ({ Link: ({ children }: { children: ReactNode }) => <a>{children}</a>, useBlocker: () => ({ status: 'idle' }) }))
 vi.mock('@/components/shared/PhotoUploader', () => ({ PhotoUploader: () => null }))
 vi.mock('@/features/settings/api', () => ({
   useCompanySettings: () => ({

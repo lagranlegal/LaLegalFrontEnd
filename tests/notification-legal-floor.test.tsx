@@ -43,6 +43,7 @@ globalThis.ResizeObserver ??= class {
 const state = vi.hoisted(() => ({ settings: null as unknown, mutate: vi.fn() }))
 
 vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn() } }))
+vi.mock('@tanstack/react-router', () => ({ useBlocker: () => ({ status: 'idle' }) }))
 vi.mock('@/components/shared/BackLink', () => ({ BackLink: () => null }))
 vi.mock('@/features/settings/notifications/components/ContractClauseNotice', () => ({ ContractClauseNotice: () => null }))
 vi.mock('@/features/settings/notifications/api', () => ({
@@ -124,7 +125,7 @@ describe('pantalla de notificaciones — el piso a la vista', () => {
     state.settings = guardadoAntesDelPiso()
     render(<NotificationSettingsPage />)
     expect(screen.getByText(/por debajo del mínimo legal y abajo se ve ajustado/)).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Guardar parámetros' })).toBeEnabled()
+    expect(screen.getByRole('button', { name: 'Guardar cambios' })).toBeEnabled()
   })
 
   it('un rechazo del backend marca el campo y muestra el motivo', async () => {
@@ -132,7 +133,7 @@ describe('pantalla de notificaciones — el piso a la vista', () => {
     state.mutate = vi.fn().mockRejectedValue(parseApiError(fixtures.avisos_domingos.status, fixtures.avisos_domingos.body))
     render(<NotificationSettingsPage />)
     fireEvent.change(screen.getByLabelText('Máximo por día'), { target: { value: '2' } })
-    fireEvent.click(screen.getByRole('button', { name: 'Guardar parámetros' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Guardar cambios' }))
     await waitFor(() => expect(screen.getByText(/Ley 2300 de 2023/)).toBeInTheDocument())
   })
 })

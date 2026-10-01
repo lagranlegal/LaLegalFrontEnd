@@ -1,26 +1,13 @@
-import type { ReactNode } from 'react'
 import { Link } from '@tanstack/react-router'
 import { Gem } from 'lucide-react'
 import { Money } from '@/components/shared/Money'
-import { SummaryCard } from '@/components/shared/SummaryCard'
 import { PhotoThumbnail } from '@/components/shared/PhotoThumbnail'
 import { StatusBadge } from '@/components/shared/StatusBadge'
 import { formatDate } from '@/lib/dates'
 import { formatPercent } from '@/lib/percent'
+import { SummaryCard, SummaryField as Field } from '@/components/shared/SummaryCard'
 import type { Item } from '@/lib/inventory/items'
 import type { Contract } from '@/features/contracts/api'
-
-/** La tarjeta de datos subió a compartidos (rediseño P3); se re-exporta para no romper a quien la importaba de acá. */
-export { SummaryCard }
-
-function Field({ label, children }: { label: string; children: ReactNode }) {
-  return (
-    <div className="grid min-w-0 gap-px">
-      <dt className="text-xs text-muted-foreground">{label}</dt>
-      <dd className="tnum text-sm font-semibold text-foreground">{children}</dd>
-    </div>
-  )
-}
 
 /**
  * «Préstamo» (rediseño P2-a): lo pactado y lo que queda, en una grilla de dos.
@@ -120,3 +107,6 @@ export function NotesCard({ notes }: { notes: string }) {
     </SummaryCard>
   )
 }
+
+// Compatibilidad: la tarjeta subió a `components/shared/SummaryCard`.
+export { SummaryCard }

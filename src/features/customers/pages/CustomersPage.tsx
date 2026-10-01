@@ -10,10 +10,33 @@ import { Button } from '@/components/ui/button'
 import { useCustomersList, type Customer } from '@/features/customers/api'
 import { CustomerFormDialog } from '@/features/customers/components/CustomerFormDialog'
 
+/**
+ * Rediseño P3: la misma forma que la lista de contratos y «Requieren acción»
+ * del Inicio. El nombre en 500 con el documento debajo (12, atenuado, cifras
+ * tabulares); la fila entera se abre con el mouse o con Enter (`DataTable`).
+ */
+function CustomerCell({ customer }: { customer: Customer }) {
+  return (
+    <span className="block min-w-0">
+      <span className="block font-medium break-words text-foreground">{customer.full_name}</span>
+      <span className="tnum block text-xs text-muted-foreground">
+        {customer.doc_type.toUpperCase()} {customer.doc_number}
+      </span>
+    </span>
+  )
+}
+
 const columns: ColumnDef<Customer>[] = [
-  { accessorKey: 'full_name', header: 'Nombre' },
-  { accessorKey: 'doc_number', header: 'Documento', cell: (info) => `${info.row.original.doc_type.toUpperCase()} ${info.getValue<string>()}` },
-  { accessorKey: 'phone', header: 'Teléfono' },
+  { id: 'customer', header: 'Cliente', cell: (info) => <CustomerCell customer={info.row.original} /> },
+  { accessorKey: 'phone', header: 'Teléfono', cell: (info) => <span className="tnum whitespace-nowrap">{info.getValue<string>()}</span> },
+  {
+    accessorKey: 'email',
+    header: 'Correo',
+    cell: (info) => {
+      const email = info.getValue<string | null>()
+      return email ? <span className="break-all">{email}</span> : <span className="text-muted-foreground">—</span>
+    },
+  },
   { accessorKey: 'status', header: 'Estado', cell: (info) => <StatusBadge kind="customer" status={info.getValue<string>()} /> },
 ]
 
@@ -45,7 +68,7 @@ export function CustomersPage() {
         }
       />
 
-      <SearchInput ariaLabel="Buscar clientes" value={q} onChange={setQ} placeholder="Buscar por nombre o documento…" className="max-w-sm" />
+      <SearchInput ariaLabel="Buscar clientes" value={q} onChange={setQ} placeholder="Buscar por nombre o documento…" className="w-full sm:max-w-sm" />
 
       <DataTable
         columns={columns}

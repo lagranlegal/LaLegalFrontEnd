@@ -320,7 +320,13 @@ export function SaleReceiptDialog({ open, onOpenChange, sale }: { open: boolean;
         <div className="flex flex-col gap-4">
           <div className="flex items-center gap-2">
             <StatusBadge status={sale.status} />
-            <span className="text-sm text-muted-foreground">{PAYMENT_METHOD_LABELS[sale.payment_method as keyof typeof PAYMENT_METHOD_LABELS] ?? sale.payment_method}</span>
+            {/* F9-35: con su rótulo, no una palabra suelta junto al estado. */}
+            <span className="text-sm text-muted-foreground">
+              Medio de pago:{' '}
+              <span className="font-medium text-foreground">
+                {PAYMENT_METHOD_LABELS[sale.payment_method as keyof typeof PAYMENT_METHOD_LABELS] ?? sale.payment_method}
+              </span>
+            </span>
           </div>
           <p className="text-sm text-foreground">{customer ? `${customer.full_name} · ${customer.doc_type.toUpperCase()} ${customer.doc_number}` : 'Consumidor final'}</p>
           {sale.void_reason && <p className="rounded-input bg-danger-soft px-3 py-2 text-sm text-danger">Anulada: {sale.void_reason}</p>}

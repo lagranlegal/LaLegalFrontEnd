@@ -4,6 +4,7 @@ import type { Contract } from '@/features/contracts/api'
 import type { Customer } from '@/lib/customers/search'
 import type { Me } from '@/lib/auth/me'
 import type { SettlementInfo } from '@/features/contracts/settlement'
+import { formatPercent } from '@/lib/percent'
 
 export type DocumentType = 'contract' | 'settlement'
 
@@ -127,7 +128,7 @@ export function buildContractContext(
     'contrato.fecha_recargo': contract.extended_on ? formatDate(contract.extended_on) : NO_APLICA,
     'contrato.monto_recargo': contract.extension_amount ? formatCOP(contract.extension_amount) : NO_APLICA,
     'contrato.capital': formatCOP(contract.principal),
-    'contrato.tasa': `${contract.interest_rate_pct}%`,
+    'contrato.tasa': formatPercent(contract.interest_rate_pct),
     'contrato.plazo': `${contract.term_months} ${contract.term_months === 1 ? 'mes' : 'meses'}`,
     'contrato.ventana_mora': `${contract.arrears_window_months} ${contract.arrears_window_months === 1 ? 'mes' : 'meses'}`,
     'contrato.notas': contract.notes ?? '',
@@ -152,7 +153,7 @@ export function buildSampleContractContext(company: Me['company'] | undefined): 
     'contrato.fecha_recargo': formatDate(todayBogota()),
     'contrato.monto_recargo': formatCOP('200000'),
     'contrato.capital': formatCOP('1000000'),
-    'contrato.tasa': '5%',
+    'contrato.tasa': formatPercent('5.00'),
     'contrato.plazo': '4 meses',
     'contrato.ventana_mora': '4 meses',
     'contrato.notas': '',

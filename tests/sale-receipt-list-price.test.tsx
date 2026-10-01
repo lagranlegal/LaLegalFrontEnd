@@ -8,7 +8,7 @@ const venta = fixtures.sale_bajo_precio_publicado.body
 const itemId = venta.lines[0]!.item_id
 
 vi.mock('@/lib/auth/me', () => ({
-  useMe: () => ({ data: { company: { name: 'ZZ QA', legal_name: 'QA S.A.S.', tax_id: '900123456-7', logo_url: null, signature_url: null, address: 'Calle 1', contact_phone: '300', documents: {} } } }),
+  useMe: () => ({ data: { company: { name: 'ZZ QA', legal_name: 'QA S.A.S.', tax_id: '900123456-7', logo_url: null, signature_url: null, address: 'Calle 1', contact_phone: '300', documents: {} }, permissions: [] } }),
 }))
 vi.mock('@/lib/storage/photos', () => ({ useSignedPhotoUrl: () => ({ data: undefined }) }))
 vi.mock('sonner', () => ({ toast: { error: vi.fn(), success: vi.fn() } }))

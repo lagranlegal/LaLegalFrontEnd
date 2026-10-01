@@ -20,6 +20,7 @@ const LTV_PRENDA_EJEMPLO = 1_000_000
 
 import { resolveInheritedParams } from '@/features/catalogs/inheritance'
 import { useCategories } from '@/lib/catalogs/categories'
+import { formatPercent } from '@/lib/percent'
 
 const categorySchema = z.object({
   name: z.string().min(1, 'El nombre es obligatorio'),
@@ -262,7 +263,7 @@ export function CategoryFormDialog({
           <span className="font-medium text-foreground">LTV</span> es cuánto se presta sobre el avalúo de la prenda.{' '}
           {ltvEjemplo ? (
             <>
-              Con <span className="font-medium text-foreground">{ltvEjemplo.pct}%</span>, sobre una prenda avaluada en{' '}
+              Con <span className="font-medium text-foreground">{formatPercent(ltvEjemplo.pct ?? '', 'auto')}</span>, sobre una prenda avaluada en{' '}
               {formatCOP(LTV_PRENDA_EJEMPLO)} se presta hasta{' '}
               <span className="font-medium text-foreground">{formatCOP(ltvEjemplo.maximo)}</span>.
             </>

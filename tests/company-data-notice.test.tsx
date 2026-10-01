@@ -3,10 +3,14 @@ import { cleanup, render, screen } from '@testing-library/react'
 import { joinSpanish, missingCompanyFields } from '@/lib/documents/companyData'
 
 let company: Record<string, unknown> | null = null
-vi.mock('@/lib/auth/me', () => ({ useMe: () => ({ data: { company } }) }))
+let permissions: string[] = ['company.configure']
+vi.mock('@/lib/auth/me', () => ({ useMe: () => ({ data: { company, permissions } }) }))
 const { CompanyDataNotice } = await import('@/components/shared/CompanyDataNotice')
 
-afterEach(cleanup)
+afterEach(() => {
+  cleanup()
+  permissions = ['company.configure']
+})
 
 describe('aviso de datos de empresa faltantes al imprimir (F8-10)', () => {
   it('nombra lo que falta y manda a Configuración', () => {
@@ -17,6 +21,13 @@ describe('aviso de datos de empresa faltantes al imprimir (F8-10)', () => {
 
   it('con todo completo no dice nada', () => {
     company = { name: 'ZZ QA', tax_id: '900123456-7', address: 'Calle 1', contact_phone: '300' }
+    render(<CompanyDataNotice />)
+    expect(screen.queryByRole('status')).toBeNull()
+  })
+
+  it('sin `company.configure` no avisa: quien no puede arreglarlo no necesita el ruido (F9-36)', () => {
+    company = { name: 'ZZ QA', tax_id: null, address: null, contact_phone: null }
+    permissions = []
     render(<CompanyDataNotice />)
     expect(screen.queryByRole('status')).toBeNull()
   })

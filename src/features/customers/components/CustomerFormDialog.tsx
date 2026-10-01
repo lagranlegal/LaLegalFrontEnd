@@ -178,15 +178,18 @@ export function CustomerFormDialog({ open, onOpenChange, customer }: { open: boo
       }
     >
       <form id="customer-form" onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-4" noValidate>
+        {/* F9-28: lo opcional se rotula «(opcional)», como en el resto de la app;
+            lo obligatorio lleva `aria-required` para el lector de pantalla. */}
         <div>
           <label htmlFor="full_name" className="text-sm font-medium text-foreground">
             Nombre completo
           </label>
-          <Input id="full_name" invalid={!!errors.full_name} {...register('full_name')} />
+          <Input id="full_name" aria-required invalid={!!errors.full_name} {...register('full_name')} />
           <FieldError fieldId="full_name">{errors.full_name?.message}</FieldError>
         </div>
 
-        <div className="grid grid-cols-2 gap-3">
+        {/* F9-41: una columna bajo 480 px; a 360 «Cédula de ciudadanía» se cortaba. */}
+        <div className="grid grid-cols-1 gap-3 min-[480px]:grid-cols-2">
           <div>
             <label htmlFor="doc_type" className="text-sm font-medium text-foreground">
               Tipo de documento
@@ -214,7 +217,7 @@ export function CustomerFormDialog({ open, onOpenChange, customer }: { open: boo
             <label htmlFor="doc_number" className="text-sm font-medium text-foreground">
               Número de documento
             </label>
-            <Input id="doc_number" disabled={mode === 'edit'} invalid={!!errors.doc_number} {...register('doc_number')} />
+            <Input id="doc_number" aria-required disabled={mode === 'edit'} invalid={!!errors.doc_number} {...register('doc_number')} />
             <FieldError fieldId="doc_number">{errors.doc_number?.message}</FieldError>
           </div>
         </div>
@@ -222,22 +225,24 @@ export function CustomerFormDialog({ open, onOpenChange, customer }: { open: boo
         <div>
           <label htmlFor="doc_issue_place" className="text-sm font-medium text-foreground">
             Lugar de expedición
-          </label>
+          </label>{' '}
+          <span aria-hidden className="text-sm text-muted-foreground">(opcional)</span>
           <Input id="doc_issue_place" {...register('doc_issue_place')} />
         </div>
 
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 gap-3 min-[480px]:grid-cols-2">
           <div>
             <label htmlFor="phone" className="text-sm font-medium text-foreground">
               Teléfono
             </label>
-            <Input id="phone" invalid={!!errors.phone} {...register('phone')} />
+            <Input id="phone" aria-required invalid={!!errors.phone} {...register('phone')} />
             <FieldError fieldId="phone">{errors.phone?.message}</FieldError>
           </div>
           <div>
             <label htmlFor="email" className="text-sm font-medium text-foreground">
               Correo
-            </label>
+            </label>{' '}
+            <span aria-hidden className="text-sm text-muted-foreground">(opcional)</span>
             <Input id="email" type="email" invalid={!!errors.email} {...register('email')} />
             <FieldError fieldId="email">{errors.email?.message}</FieldError>
             {savedEmailIsInvalid && !errors.email && (
@@ -309,14 +314,16 @@ export function CustomerFormDialog({ open, onOpenChange, customer }: { open: boo
         <div>
           <label htmlFor="address" className="text-sm font-medium text-foreground">
             Dirección
-          </label>
+          </label>{' '}
+          <span aria-hidden className="text-sm text-muted-foreground">(opcional)</span>
           <Input id="address" {...register('address')} />
         </div>
 
         <div>
           <label htmlFor="notes" className="text-sm font-medium text-foreground">
             Notas
-          </label>
+          </label>{' '}
+          <span aria-hidden className="text-sm text-muted-foreground">(opcional)</span>
           <Textarea id="notes" rows={2} {...register('notes')} />
         </div>
 

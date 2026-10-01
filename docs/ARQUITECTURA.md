@@ -129,6 +129,8 @@ lista de los 43 permisos vive en `backend-starter/docs/DOMINIO.md` §11.
   `lib/api/isPermissionError`: si la pantalla **afirma un estado** y no lo puede saber, no muestra nada; si es una
   lista, dice qué permiso falta y a quién pedirlo, sin reintentar; si el elemento es opcional (el selector de
   cuenta), se oculta y la operación sigue (el backend usa la cuenta por defecto).
+- **Un 404 tampoco se reintenta.** `lib/api/isNotFoundError` (`NOT_FOUND`): un detalle que no existe o no es de la
+  empresa dice eso y ofrece volver a la lista (`DetailLoadError`, F9-58), nunca «No se pudo cargar… Reintentar».
 - **Una consulta cuyo permiso ya se sabe que falta no sale** (`enabled` con `usePermission`): el Inicio del Asesor
   pedía el resumen, el remate y la caja en cada carga para recibir tres 403 (issue #9). `useCashboxCurrent` lo hace
   adentro porque la franja de caja está en todas las pantallas; deshabilitada queda en `isPending`, así que quien
@@ -206,8 +208,12 @@ antes de confirmar. Y tiene que dar lo mismo que el backend.
 
 Toda fecha se muestra, interpreta y envía en la **zona de la empresa** (`me.company.timezone`, por defecto
 `America/Bogota`), la misma con la que el backend calcula "hoy". `todayBogota()` para toda lógica de "hoy";
-`formatDate` / `formatDateTime` (`dd/MM/yyyy`, `dd/MM/yyyy h:mm a`) para los timestamps; las fechas sin hora
+`formatDate` / `formatDateTime` («30/09/2026», «30/09/2026 1:31 p. m.») para los timestamps; las fechas sin hora
 (vencimientos, `session_date`) se muestran tal cual, sin pasar por `Date`, para no correrse un día por UTC.
+**La hora se escribe como en Colombia** («1:31 p. m.», `formatTime` = `formatClock`; una hora de reloj sin fecha,
+como una franja de contacto, con `formatHourOfDay`): el `h:mm a` de date-fns sin locale daba «1:31 PM» (issue #16).
+Los porcentajes, con `formatPercent` (`lib/percent.ts`: «5,00 %»; `'auto'` sin ceros de relleno). Nadie formatea a
+mano: `tests/formatos-es-co.test.ts` barre `src/` y falla con un «%» pegado o una hora en inglés.
 Prohibido `new Date().toISOString().slice(0, 10)`, `toLocaleDateString()` sin zona o `dayjs()` pelado: el backend
 ya sufrió una ventana de cinco horas diarias (7 p. m.–medianoche) con "hoy" = mañana.
 
@@ -406,6 +412,12 @@ cargado aparte): cada empresa puede escribir su contrato y su paz y salvo.
   sale con el JSX de siempre (`ContractPrintView`), que es código y no una fila sembrada en la base. La firma de la
   empresa, si está cargada, se estampa sola. El formato de fábrica y la plantilla de arranque del editor
   (`startingTemplates.ts`) traen la **cláusula de autorización de avisos** antes de las firmas.
+- **Medir la paginación, no suponerla.** Lo que se parte entre hojas solo se ve en un PDF real: se renderiza el
+  documento (el DOM que produce `TemplateRenderer`, volcado desde un test) con el CSS del build, Chrome lo imprime
+  (Playwright, `page.pdf`) y PDFKit de macOS lista el texto de cada hoja. Así se revisó la issue #13 (01/10/2026):
+  con plantillas de 3 a 5 hojas, en los tres formatos, con y sin tabla de prendas, la firma quedó siempre después
+  del párrafo que la precede, y solo pasó a la hoja siguiente cuando no cabía (necesita ≈ 145 pt: margen, espacio
+  de firma y rótulo). No se reprodujo; no se cambió el CSS.
 - **Leyenda de las dos fechas**: un contrato que nace de un recargo conserva la fecha del original (el ciclo de
   interés no se mueve) y se firma el día del recargo. Sin explicarlo, el papel queda antedatado: es un problema
   legal. Por eso `ExtensionDatesNotice` se imprime **fuera de la plantilla**, en los dos caminos: una plantilla

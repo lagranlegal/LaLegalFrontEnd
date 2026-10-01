@@ -18,6 +18,7 @@ import { useSuppliers } from '@/lib/catalogs/suppliers'
 import { formatQuantity } from '@/lib/inventory/units'
 import type { Item } from '@/lib/inventory/items'
 import { deleteDetachedPhotos } from '@/lib/storage/detachedPhotos'
+import { formatPercent } from '@/lib/percent'
 
 /** Contrato del que salió una pieza de remate — trazabilidad hacia atrás. */
 function AuctionOriginInfo({ contractId }: { contractId: string }) {
@@ -103,7 +104,7 @@ function LotMarginInfo({ cost, salePrice }: { cost: string; salePrice: string | 
       <div>
         <p className="text-xs text-muted-foreground">Margen</p>
         <p className={cn('text-sm font-medium', marginPct === null ? 'text-muted-foreground' : isLoss ? 'text-danger' : 'text-success')}>
-          {marginPct === null ? '—' : `${marginPct}%`}
+          {marginPct === null ? '—' : formatPercent(marginPct, 0)}
         </p>
       </div>
     </div>
