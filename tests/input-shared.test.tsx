@@ -1,4 +1,5 @@
-import { readFileSync } from 'node:fs'
+import { readdirSync, readFileSync } from 'node:fs'
+import { join } from 'node:path'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 
@@ -66,6 +67,15 @@ const MIGRADOS = [
 describe('formularios migrados', () => {
   it.each(MIGRADOS)('%s no define su propio inputClass', (ruta) => {
     expect(readFileSync(ruta, 'utf8')).not.toMatch(/inputClass\s*=/)
+  })
+
+  // Issue #4 cerrado: ya no queda ninguna copia en features ni en los compartidos.
+  it('ningún archivo de src/features ni de components/shared vuelve a definir inputClass', () => {
+    const conCopia = ['src/features', 'src/components/shared']
+      .flatMap((dir) => readdirSync(dir, { recursive: true, encoding: 'utf8' }).map((f) => join(dir, f)))
+      .filter((ruta) => ruta.endsWith('.tsx') || ruta.endsWith('.ts'))
+      .filter((ruta) => /inputClass\s*=/.test(readFileSync(ruta, 'utf8')))
+    expect(conCopia).toEqual([])
   })
 })
 
