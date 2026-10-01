@@ -5,6 +5,7 @@ import { Money } from '@/components/shared/Money'
 import { EmptyState } from '@/components/shared/EmptyState'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
+import { FilterChip } from '@/components/shared/FilterChip'
 import { formatDate } from '@/lib/dates'
 import { formatQuantity } from '@/lib/inventory/units'
 import { usePayables, useInventoryValuation, useStaleInventory } from '@/features/reports/api'
@@ -211,18 +212,9 @@ function StaleCard() {
             y dejaba afuera, en el rótulo, una fila que la tabla sí muestra. */}
         <span className="text-xs text-muted-foreground">Sin venderse hace</span>
         {STALE_THRESHOLDS.map((dias) => (
-          <button
-            key={dias}
-            type="button"
-            onClick={() => setThreshold(dias)}
-            aria-label={`${dias} días o más`}
-            className={cn(
-              'rounded-pill px-3 py-1 text-sm font-medium transition-colors',
-              threshold === dias ? 'bg-primary text-primary-foreground' : 'bg-background text-muted-foreground hover:bg-accent',
-            )}
-          >
+          <FilterChip key={dias} active={threshold === dias} onClick={() => setThreshold(dias)} aria-label={`${dias} días o más`}>
             {dias}
-          </button>
+          </FilterChip>
         ))}
         <span className="text-xs text-muted-foreground">días o más</span>
       </div>

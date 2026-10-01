@@ -13,7 +13,7 @@ import { PortfolioBalanceCell } from '@/features/contracts/components/PortfolioB
 import { Can } from '@/components/shared/Can'
 import { usePermission } from '@/lib/permissions/usePermission'
 import { Button } from '@/components/ui/button'
-import { cn } from '@/lib/utils'
+import { FilterChip } from '@/components/shared/FilterChip'
 import { formatDate, todayBogota } from '@/lib/dates'
 import { fetchAllContracts, useContractsList, useContractSearch, useReadyForAuction, type Contract } from '@/features/contracts/api'
 import { fetchAllCustomers } from '@/features/customers/api'
@@ -130,17 +130,9 @@ export function ContractsListPage() {
       <div className="flex flex-wrap items-center gap-2">
         {!isSearching &&
           statusTabs.map((tab) => (
-            <button
-              key={tab.value}
-              type="button"
-              onClick={() => setStatus(tab.value)}
-              className={cn(
-                'rounded-pill px-3 py-1.5 text-sm font-medium transition-colors',
-                status === tab.value ? 'bg-primary text-primary-foreground' : 'bg-background text-muted-foreground hover:bg-accent',
-              )}
-            >
+            <FilterChip key={tab.value} active={status === tab.value} onClick={() => setStatus(tab.value)}>
               {tab.label}
-            </button>
+            </FilterChip>
           ))}
 
         <div className="ml-auto flex flex-wrap items-center justify-end gap-2">

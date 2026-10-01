@@ -6,6 +6,7 @@ import { PrintLayout } from '@/components/shared/PrintLayout'
 import { Button } from '@/components/ui/button'
 import { confirm } from '@/components/shared/confirmStore'
 import { cn } from '@/lib/utils'
+import { FilterChip } from '@/components/shared/FilterChip'
 import { useMe } from '@/lib/auth/me'
 import { LazyTemplateEditor, LazyTemplateRenderer } from '@/components/shared/documentTemplate/lazy'
 import { buildSampleContractContext, buildSampleSettlementContext, type DocumentType } from '@/lib/documents/mergeFields'
@@ -223,15 +224,17 @@ function TemplateDraftPanel({
         </div>
         <div>
           <span className="block text-sm text-muted-foreground">Formato</span>
-          <div className="mt-1 flex overflow-hidden rounded-input border border-border">
+          {/* Segmentado neutro (F9-13): el oro relleno es solo del primario. */}
+          <div className="mt-1 flex overflow-hidden rounded-input border border-border-strong">
             {LAYOUT_OPTIONS.map((option) => (
               <button
                 key={option}
                 type="button"
+                aria-pressed={draftLayout === option}
                 onClick={() => setDraftLayout(option)}
                 className={cn(
-                  'px-3 py-2 text-sm font-medium transition-colors',
-                  draftLayout === option ? 'bg-primary text-primary-foreground' : 'bg-background text-muted-foreground hover:bg-accent',
+                  'min-h-11 px-3 text-sm font-medium transition-colors',
+                  draftLayout === option ? 'bg-foreground font-semibold text-background' : 'bg-card text-body hover:bg-muted',
                 )}
               >
                 {LAYOUT_LABELS[option]}
@@ -331,17 +334,9 @@ export function DocumentTemplatesPage() {
 
       <div className="flex flex-wrap gap-2">
         {DOCUMENT_TYPE_TABS.map((tab) => (
-          <button
-            key={tab.value}
-            type="button"
-            onClick={() => switchDocumentType(tab.value)}
-            className={cn(
-              'rounded-pill px-3 py-1.5 text-sm font-medium transition-colors',
-              documentType === tab.value ? 'bg-primary text-primary-foreground' : 'bg-background text-muted-foreground hover:bg-accent',
-            )}
-          >
+          <FilterChip key={tab.value} active={documentType === tab.value} onClick={() => switchDocumentType(tab.value)}>
             {tab.label}
-          </button>
+          </FilterChip>
         ))}
       </div>
 

@@ -17,6 +17,7 @@ import { PAYMENT_METHOD_LABELS } from '@/lib/paymentMethods'
 import { todayBogota } from '@/lib/dates'
 import { compareMoney, subtractMoney } from '@/lib/money'
 import { cn } from '@/lib/utils'
+import { FilterChip } from '@/components/shared/FilterChip'
 import { useCategories } from '@/lib/catalogs/categories'
 import { usePermission } from '@/lib/permissions/usePermission'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
@@ -372,17 +373,9 @@ export function ReportesPage() {
 
       <div className="flex flex-wrap gap-2">
         {MODULE_TABS.map((tab) => (
-          <button
-            key={tab.value}
-            type="button"
-            onClick={() => setModuleFilter(tab.value)}
-            className={cn(
-              'rounded-pill px-3 py-1.5 text-sm font-medium transition-colors',
-              moduleFilter === tab.value ? 'bg-primary text-primary-foreground' : 'bg-background text-muted-foreground hover:bg-accent',
-            )}
-          >
+          <FilterChip key={tab.value} active={moduleFilter === tab.value} onClick={() => setModuleFilter(tab.value)}>
             {tab.label}
-          </button>
+          </FilterChip>
         ))}
       </div>
 

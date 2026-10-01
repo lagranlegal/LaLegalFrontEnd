@@ -14,7 +14,7 @@ import { RefreshingBar } from '@/components/shared/RefreshingBar'
 import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { cn } from '@/lib/utils'
+import { FilterChip } from '@/components/shared/FilterChip'
 import { formatDate, formatDateTime, todayBogota } from '@/lib/dates'
 import { useCategories, type Category } from '@/lib/catalogs/categories'
 import { useSuppliers } from '@/lib/catalogs/suppliers'
@@ -98,17 +98,9 @@ function FilterSelect({
 /** Filtro de sí/no, como píldora. Para lo que no es una lista de opciones. */
 function FilterToggle({ active, onToggle, label }: { active: boolean; onToggle: () => void; label: string }) {
   return (
-    <button
-      type="button"
-      onClick={onToggle}
-      aria-pressed={active}
-      className={cn(
-        'rounded-pill px-3 py-1.5 text-sm font-medium transition-colors',
-        active ? 'bg-primary text-primary-foreground' : 'bg-background text-muted-foreground hover:bg-accent',
-      )}
-    >
+    <FilterChip active={active} onClick={onToggle}>
       {label}
-    </button>
+    </FilterChip>
   )
 }
 
@@ -396,17 +388,9 @@ function ItemsTab() {
 
       <div className="flex flex-wrap items-center gap-2">
         {ITEM_STATUS_TABS.map((tab) => (
-          <button
-            key={tab.value}
-            type="button"
-            onClick={() => setStatus(tab.value)}
-            className={cn(
-              'rounded-pill px-3 py-1.5 text-sm font-medium transition-colors',
-              status === tab.value ? 'bg-primary text-primary-foreground' : 'bg-background text-muted-foreground hover:bg-accent',
-            )}
-          >
+          <FilterChip key={tab.value} active={status === tab.value} onClick={() => setStatus(tab.value)}>
             {tab.label}
-          </button>
+          </FilterChip>
         ))}
       </div>
 
@@ -555,17 +539,9 @@ function EntriesTab() {
           uno. Va primero porque es la pregunta que se hace todos los días. */}
       <div className="flex flex-wrap items-center gap-2">
         {PAYMENT_STATUS_TABS.map((tab) => (
-          <button
-            key={tab.value}
-            type="button"
-            onClick={() => setPaymentStatus(tab.value)}
-            className={cn(
-              'rounded-pill px-3 py-1.5 text-sm font-medium transition-colors',
-              paymentStatus === tab.value ? 'bg-primary text-primary-foreground' : 'bg-background text-muted-foreground hover:bg-accent',
-            )}
-          >
+          <FilterChip key={tab.value} active={paymentStatus === tab.value} onClick={() => setPaymentStatus(tab.value)}>
             {tab.label}
-          </button>
+          </FilterChip>
         ))}
       </div>
 
