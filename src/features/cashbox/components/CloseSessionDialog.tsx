@@ -1,7 +1,8 @@
 import { useState } from 'react'
 import { toast } from 'sonner'
 import { AppDialog } from '@/components/shared/AppDialog'
-import { Money } from '@/components/shared/Money'
+import { CashDifference } from '@/components/shared/CashDifference'
+import { describeCashDifference } from '@/lib/cashbox/difference'
 import { MoneyInput } from '@/components/shared/MoneyInput'
 import { Button } from '@/components/ui/button'
 import { FieldError, Textarea } from '@/components/ui/input'
@@ -29,7 +30,8 @@ export function CloseSessionDialog({ open, onOpenChange, session }: { open: bool
   const closeSession = useCloseSession()
 
   const difference = report ? subtractMoney(countedCash, report.expected_cash) : '0.00'
-  const hasDifference = Number(difference) !== 0
+  const differenceKind = describeCashDifference(difference).kind
+  const hasDifference = differenceKind !== 'even'
   const reasonMissing = hasDifference && !reason.trim()
 
   async function handleSubmit(e: React.FormEvent) {
@@ -91,9 +93,18 @@ export function CloseSessionDialog({ open, onOpenChange, session }: { open: bool
         </div>
 
         {report && (
-          <div className={cn('flex items-center justify-between rounded-input px-3 py-2 text-sm', hasDifference ? 'bg-danger-soft' : 'bg-success-soft')}>
-            <span className={hasDifference ? 'text-danger' : 'text-success'}>Diferencia</span>
-            <Money value={difference} className={cn('font-semibold', hasDifference ? 'text-danger' : 'text-success')} />
+          // Con palabra (F9-43): «Faltante $ 7.000» o «Sobrante $ 3.000», no solo un signo.
+          <div
+            role="status"
+            className={cn(
+              'flex items-center justify-between rounded-input px-3 py-2 text-sm',
+              differenceKind === 'shortage' && 'bg-danger-soft',
+              differenceKind === 'surplus' && 'bg-warning-soft',
+              differenceKind === 'even' && 'bg-success-soft',
+            )}
+          >
+            <span className="text-foreground">Diferencia</span>
+            {hasDifference ? <CashDifference value={difference} /> : <span className="font-semibold text-success">Cuadra</span>}
           </div>
         )}
 

@@ -17,7 +17,9 @@ import { formatDate, formatDateTime, formatTime, todayBogota } from '@/lib/dates
 import { PAYMENT_METHOD_LABELS } from '@/lib/paymentMethods'
 import { MODULE_LABELS } from '@/lib/modules'
 import { useClosingsHistory, type ClosingHistory } from '@/lib/cashbox/closings'
-import { cn } from '@/lib/utils'
+import { SummaryCard, SummaryField } from '@/components/shared/SummaryCard'
+import { CashDifference } from '@/components/shared/CashDifference'
+import { NoClosingsInRange } from '@/features/cashbox/components/NoClosingsInRange'
 import {
   useCashboxCurrent,
   useExpenseCategories,
@@ -102,12 +104,19 @@ export function CashboxPage() {
     }
   }
 
+  // Rediseño P3: el monto a la derecha y en color de texto. Un gasto es una
+  // salida de plata, no algo que pida acción: el rojo queda para el faltante.
   const expenseColumns: ColumnDef<Expense>[] = [
     { accessorKey: 'description', header: 'Descripción' },
     { accessorKey: 'category_id', header: 'Categoría', cell: (info) => expenseCategoryName(expenseCategories, info.getValue<string>()) },
     { accessorKey: 'module', header: 'Módulo', cell: (info) => MODULE_LABELS[info.getValue<'pawn' | 'store' | 'general'>()] ?? info.getValue<string>() },
     { accessorKey: 'payment_method', header: 'Medio', cell: (info) => PAYMENT_METHOD_LABELS[info.getValue<'cash' | 'transfer' | 'other'>()] ?? info.getValue<string>() },
-    { accessorKey: 'amount', header: 'Monto', cell: (info) => <Money value={info.getValue<string>()} tone="out" /> },
+    {
+      accessorKey: 'amount',
+      header: 'Monto',
+      meta: { align: 'right' },
+      cell: (info) => <Money value={info.getValue<string>()} className="font-semibold whitespace-nowrap" />,
+    },
     {
       id: 'receipt',
       header: 'Comprobante',
@@ -115,20 +124,13 @@ export function CashboxPage() {
     },
   ]
 
+  // F9-43: montos a la derecha y la diferencia con palabra («Faltante $ 7.000»).
   const closingColumns: ColumnDef<ClosingHistory>[] = [
-    { accessorKey: 'session_date', header: 'Fecha', cell: (info) => formatDate(info.getValue<string>()) },
-    { accessorKey: 'expected_cash', header: 'Esperado', cell: (info) => <Money value={info.getValue<string>()} /> },
-    { accessorKey: 'counted_cash', header: 'Contado', cell: (info) => <Money value={info.getValue<string>()} /> },
-    {
-      accessorKey: 'difference',
-      header: 'Diferencia',
-      cell: (info) => {
-        const value = info.getValue<string>()
-        const hasDifference = Number(value) !== 0
-        return <Money value={value} className={cn(hasDifference && 'font-medium text-danger')} />
-      },
-    },
-    { accessorKey: 'closed_at', header: 'Cerrado', cell: (info) => formatDateTime(info.getValue<string>()) },
+    { accessorKey: 'session_date', header: 'Fecha', cell: (info) => <span className="tnum whitespace-nowrap">{formatDate(info.getValue<string>())}</span> },
+    { accessorKey: 'expected_cash', header: 'Esperado', meta: { align: 'right' }, cell: (info) => <Money value={info.getValue<string>()} className="whitespace-nowrap" /> },
+    { accessorKey: 'counted_cash', header: 'Contado', meta: { align: 'right' }, cell: (info) => <Money value={info.getValue<string>()} className="whitespace-nowrap" /> },
+    { accessorKey: 'difference', header: 'Diferencia', meta: { align: 'right' }, cell: (info) => <CashDifference value={info.getValue<string>()} /> },
+    { accessorKey: 'closed_at', header: 'Cerrado', cell: (info) => <span className="tnum whitespace-nowrap">{formatDateTime(info.getValue<string>())}</span> },
   ]
 
   return (
@@ -139,31 +141,27 @@ export function CashboxPage() {
         {sessionPending ? (
           <div className="h-32 animate-pulse rounded-card bg-border" />
         ) : session ? (
-          <div className="rounded-card border border-border bg-card p-card">
-            <div className="flex flex-wrap items-center justify-between gap-4">
+          <section aria-labelledby="caja-turno" className="grid gap-4 rounded-card border border-border bg-card p-card">
+            <div className="flex flex-wrap items-start justify-between gap-4">
               <div className="min-w-0">
+                <h2 id="caja-turno" className="flex items-center gap-2 text-md font-semibold text-foreground">
+                  <span aria-hidden className="size-2 rounded-full bg-success" />
+                  Caja abierta
+                </h2>
                 {/* El banner global ya avisa cuando el turno quedó abierto de
                     otro día (F9-01), pero esta card no lo hacía — y es la
                     pantalla donde se opera y se cierra, o sea donde la
                     confusión cuesta. Mismo criterio y mismo dato
                     (`session_date` contra el hoy de la empresa). */}
-                {sessionDeOtroDia ? (
-                  <p className="text-xs font-medium text-warning">
-                    Turno abierto desde el {formatDate(session.session_date)} a las {formatTime(session.opened_at)} — todo lo
-                    que registres hoy entra en ese turno
+                {sessionDeOtroDia && (
+                  <p className="mt-1 text-caption font-medium text-warning">
+                    Turno abierto desde el {formatDate(session.session_date)} a las {formatTime(session.opened_at)}: todo lo que registres hoy
+                    entra en ese turno
                   </p>
-                ) : (
-                  <p className="text-xs text-muted-foreground">Caja abierta desde las {formatTime(session.opened_at)}</p>
                 )}
-                <p className="tnum text-lg font-semibold text-foreground">
-                  Saldo inicial <Money value={session.opening_balance} />
-                </p>
               </div>
-              {/* `flex-wrap` y `min-w-0`: son tres botones (gasto, consignar,
-                  cerrar) y en 360px no cabían en una línea, así que la fila
-                  empujaba el contenido 59px fuera del viewport — el peor
-                  desborde de la app, y en la pantalla que más se usa desde el
-                  mostrador (auditoría de QA, F6-03). */}
+              {/* `flex-wrap`: son tres botones (gasto, consignar, cerrar) y en
+                  360px no cabían en una línea (auditoría de QA, F6-03). */}
               <div className="flex flex-wrap items-center gap-2">
                 <Can permission="cashbox.expense">
                   <Button
@@ -203,7 +201,21 @@ export function CashboxPage() {
                 </Can>
               </div>
             </div>
-          </div>
+            <dl className="grid grid-cols-2 gap-x-4 gap-y-3 sm:grid-cols-4">
+              <SummaryField label="Turno del">{formatDate(session.session_date)}</SummaryField>
+              <SummaryField label="Abierta a las">{formatTime(session.opened_at)}</SummaryField>
+              {session.opened_by_name && <SummaryField label="Abrió">{session.opened_by_name}</SummaryField>}
+              <SummaryField label="Base de apertura">
+                <Money value={session.opening_balance} />
+              </SummaryField>
+              {/* Solo si la sesión lo trae: el front no suma movimientos. */}
+              {session.expected_cash && (
+                <SummaryField label="Efectivo esperado">
+                  <Money value={session.expected_cash} />
+                </SummaryField>
+              )}
+            </dl>
+          </section>
         ) : (
           <div className="rounded-card border border-border bg-card">
             <EmptyState
@@ -229,9 +241,9 @@ export function CashboxPage() {
         )}
 
         {session && (
-          <div>
-            <h2 className="mb-3 text-sm font-medium text-foreground">Gastos de hoy</h2>
+          <SummaryCard title="Gastos de hoy">
             <DataTable
+              embedded
               columns={expenseColumns}
               data={expenses}
               getRowId={(row) => row.id}
@@ -243,29 +255,31 @@ export function CashboxPage() {
               isFetchingNextPage={expensesFetchingNext}
               onLoadMore={() => fetchNextExpenses()}
             />
-          </div>
+          </SummaryCard>
         )}
 
         {canViewHistory && (
-        <div>
-          <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
-            <h2 className="text-sm font-medium text-foreground">Histórico de cierres</h2>
-            <DateRangePicker value={range} onChange={setRange} />
-          </div>
-          <DataTable
-            columns={closingColumns}
-            data={closings}
-            getRowId={(row) => row.session_id}
-            isLoading={closingsPending}
-            isError={closingsError}
-            onRetry={() => refetchClosings()}
-            emptyTitle="Aún no hay cierres registrados"
-            onRowClick={(row) => setActaClosing(row)}
-            hasNextPage={closingsHasNext}
-            isFetchingNextPage={closingsFetchingNext}
-            onLoadMore={() => fetchNextClosings()}
-          />
-        </div>
+          <SummaryCard title="Histórico de cierres" action={<DateRangePicker value={range} onChange={setRange} />}>
+            {range && !closingsPending && !closingsError && closings.length === 0 ? (
+              <NoClosingsInRange range={range} />
+            ) : (
+              <DataTable
+                embedded
+                columns={closingColumns}
+                data={closings}
+                getRowId={(row) => row.session_id}
+                isLoading={closingsPending}
+                isError={closingsError}
+                onRetry={() => refetchClosings()}
+                emptyTitle="Aún no hay cierres registrados"
+                emptyDescription="Cada cierre de caja queda acá con su acta."
+                onRowClick={(row) => setActaClosing(row)}
+                hasNextPage={closingsHasNext}
+                isFetchingNextPage={closingsFetchingNext}
+                onLoadMore={() => fetchNextClosings()}
+              />
+            )}
+          </SummaryCard>
         )}
       </div>
 
