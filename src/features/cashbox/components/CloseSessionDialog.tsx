@@ -4,6 +4,7 @@ import { AppDialog } from '@/components/shared/AppDialog'
 import { Money } from '@/components/shared/Money'
 import { MoneyInput } from '@/components/shared/MoneyInput'
 import { Button } from '@/components/ui/button'
+import { FieldError, Textarea } from '@/components/ui/input'
 import { ApiError } from '@/lib/api/client'
 import { subtractMoney } from '@/lib/money'
 import { cn } from '@/lib/utils'
@@ -11,8 +12,6 @@ import { useCloseSession, useSessionReport, type Session } from '@/features/cash
 import { SessionReportPanel } from '@/features/cashbox/components/SessionReportPanel'
 import { DenominationCounter } from '@/features/cashbox/components/DenominationCounter'
 import { preventImplicitSubmit } from '@/lib/forms/preventImplicitSubmit'
-
-const inputClass = 'mt-1 w-full rounded-input border border-border bg-background px-3 py-2 text-sm text-foreground outline-none focus:border-primary'
 
 /**
  * Cierre de caja con vista previa desde `/report` (paso 6 del plan de construcción original):
@@ -103,8 +102,8 @@ export function CloseSessionDialog({ open, onOpenChange, session }: { open: bool
             <label htmlFor="difference-reason" className="text-sm font-medium text-foreground">
               Justificación del descuadre
             </label>
-            <textarea id="difference-reason" rows={3} className={inputClass} value={reason} onChange={(e) => setReason(e.target.value)} />
-            {reasonMissing && <p className="mt-1 text-sm text-danger">Obligatoria mientras haya diferencia, sin excepción.</p>}
+            <Textarea id="difference-reason" rows={3} invalid={reasonMissing} value={reason} onChange={(e) => setReason(e.target.value)} />
+            <FieldError fieldId="difference-reason">{reasonMissing && 'Obligatoria mientras haya diferencia, sin excepción.'}</FieldError>
           </div>
         )}
 

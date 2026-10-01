@@ -5,6 +5,7 @@ import { Money } from '@/components/shared/Money'
 import { MoneyInput } from '@/components/shared/MoneyInput'
 import { CashSessionRequiredDialog } from '@/components/shared/CashSessionRequiredDialog'
 import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { ApiError } from '@/lib/api/client'
 import { useAccounts } from '@/lib/accounts/list'
@@ -16,9 +17,6 @@ import {
   useCreateWithdrawal,
   type CapitalPosition,
 } from '@/features/capital/api'
-
-const inputClass =
-  'mt-1 w-full rounded-input border border-border bg-background px-3 py-2 text-sm text-foreground outline-none focus:border-primary'
 
 /**
  * Aporte del dueño o retiro — **el mismo diálogo en dos sentidos**.
@@ -203,9 +201,8 @@ export function CapitalMovementDialog({
             <label htmlFor="capital-notes" className="text-sm font-medium text-foreground">
               Motivo {esRetiro ? '' : <span className="text-muted-foreground">(opcional)</span>}
             </label>
-            <input
+            <Input
               id="capital-notes"
-              className={inputClass}
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
               placeholder={esRetiro ? 'Retiro de utilidades de septiembre' : 'Capital para seguir prestando'}
