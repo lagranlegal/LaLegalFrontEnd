@@ -60,8 +60,10 @@ plataforma ahí diría que el inquilino se llama Prendo.
 - **Modales**: centrados, radio 16, borde y la única sombra de la app (con menús y desplegables), X arriba a la
   derecha, título grande, campos con label arriba y **botón primario rectangular en oro**. Todos los diálogos de la
   app siguen este patrón.
-- **Punto de venta**: CTA grande de ancho completo en oro, texto carbón y **el total dentro del botón** Con efectivo,
-  «Efectivo recibido» y el **cambio** en grande (o cuánto falta); es solo cálculo en pantalla, no se envía (F9-32).
+- **Punto de venta** (rediseño P2, §«Punto de venta» abajo): escáner con foco a la izquierda y el carrito debajo; a
+  la derecha **una sola columna de cobro** que cabe entera a 1280×800, con «Cobrar $ X» de bloque en oro. Con
+  efectivo, «Recibido en efectivo», montos rápidos y el **cambio** en grande (o cuánto falta); es solo cálculo en
+  pantalla, no se envía (F9-32). La venta termina en la misma pantalla, con su comprobante.
 - **Celular**: KPIs apilados, tablas que colapsan a tarjetas, CTAs de ancho completo.
 
 ## 2. Tokens (`src/styles/tokens.css`) — única fuente de verdad
@@ -133,6 +135,39 @@ compartidos; las pantallas vienen después (P2, P3).
 - `tests/token-contrast.test.ts` mide cada par nuevo contra el ratio aprobado (§«rediseño P1»); el papel no cambió:
   `--paper-muted` conserva el gris anterior a propósito.
 
+### Punto de venta (rediseño P2, 30/09/2026)
+
+`/ventas/nueva` reproduce la maqueta aprobada (`propuesta_rediseno.html`, «Punto de venta»). Lo que vale para otras
+pantallas de cobro:
+
+- **El escáner** es la variante `scanner` de `ItemPicker` (y la `lg` de `SearchInput`): 56 px, ícono de código de
+  barras, **nace con foco** y dice «Listo para escanear» (punto verde, `--success`) solo mientras lo tiene; bajo
+  480 px queda el punto y el texto pasa al lector de pantalla. Tras agregar, por Enter o por clic en la lista, **el
+  foco vuelve al campo** (F9-27, F9-33).
+- **Carrito**: «Carrito · N artículos» (cuenta líneas, no unidades) con «Vaciar» (pregunta antes). Por línea: nombre
+  600 · 14, código en `--font-mono` y la descripción como detalle; cantidad con −/+ de 40 px dentro del borde de
+  controles (lo que se pesa conserva su campo); quitar en gris, no en rojo (no es destructivo: no mueve nada); el
+  monto 700 · 15. Bajo 560 px el monto sube junto al nombre y los controles bajan a su fila. El precio editable
+  (con `sales.apply_discount`) va **plegado** tras «Cambiar precio».
+- **Columna de cobro**: Cliente («Consumidor final» · Cambiar) → medio de pago **segmentado** de 44 px (activo en
+  neutro invertido, `role="radio"`) con la cuenta debajo → Subtotal, Descuento **plegado** («Agregar»), Total
+  700 · 20 → «Recibido en efectivo» (`MoneyInput` tamaño `lg`, 600 · 18) con **montos rápidos** → «Cambio a
+  devolver» sobre `--bg-muted` (o «Falta para completar» en peligro) → «Cobrar $ X» de bloque → «Enter no cobra: el
+  cobro se confirma con el botón.»
+- **Montos rápidos** (`features/sales/quickCash.ts`, función pura con tests): «Exacto» y dos montos estrictamente
+  mayores que lo que se cobra. Hasta 100 mil, el billete que lo cubre y el siguiente (23.000 → 50.000 y 100.000);
+  desde 100 mil, redondeo a 100 mil y a 500 mil (1.155.000 → 1.200.000 y 1.500.000). El que coincide con lo
+  recibido se marca con `--brand-50` y borde de marca.
+- **Cierre**: al cobrar no se vuelve a la lista; una tarjeta con el chequeo sobre `--success-soft` dice «Venta #N
+  registrada», el cambio entregado y el cliente, con «Imprimir comprobante» (el `PrintLayout` de
+  `SaleReceiptDialog`) y «Nueva venta». Escanear otro artículo ya empieza la venta siguiente.
+- **Confirmación con resumen antes de cobrar**: sigue activa, detrás de la constante `CONFIRM_BEFORE_CHARGE` de
+  `SaleFormPage` (el dueño aún no decide si se queda). Apagarla es cambiar esa línea.
+- Sin título visible: la pantalla es el mostrador (queda un `h1` solo para el lector de pantalla).
+- **`cn` y los tamaños propios**: `lib/utils.ts` le enseña a tailwind-merge los tamaños de texto de `globals.css`
+  (15, botón chico y grande, titular…). Sin eso los tomaba por un color y, junto a un color real, borraba uno de los
+  dos. Un tamaño nuevo en `globals.css` se agrega también ahí.
+
 ## 3. Componentes compartidos (`components/shared`)
 
 Construidos una vez sobre shadcn/ui + tokens; las features los componen. Si una feature necesita una variante, se
@@ -150,7 +185,7 @@ agrega como prop al compartido, no se clona. **Un solo modal, un solo calendario
 | `AppDialog` | **el** modal (§1): tamaños `sm` `md` `lg` `xl`, sobre Radix (foco atrapado, Escape, scroll bloqueado); limita la altura al viewport y hace scroll adentro. `confirmDiscard` (con `formState.isDirty`): Escape, clic afuera o la X preguntan antes de descartar lo escrito (F9-40); Cancelar no pregunta. **Prohibido crear otro modal** |
 | `ConfirmDialog` / `confirm()` | confirmación imperativa (`await confirm({ title, tone: 'danger' })`) para acciones destructivas o de dinero; `requireReason` exige motivo (anular, reabrir, descuadre). `summary` pinta un resumen renglón por renglón: una confirmación de dinero repite a quién, cuánto, cómo y a dónde (el abono: contrato, cliente, qué paga, total, medio y cuenta; F9-18). Es la pieza «Confirmación con resumen» de la propuesta (`ConfirmSummary`): renglones con divisor dentro de un recuadro de radio 10, `emphasis: 'total'` para el monto (va **último**, en negrita sobre `--brand-50`) y `emphasis: 'after'` para cómo queda (en verde). El botón de confirmar es de bloque, con el monto adentro; con `tone: 'danger'` va en el relleno rojo. La usan préstamo, abono, venta, gasto y traslado, con título en pregunta y «Volver». Se monta una vez (`ConfirmDialogHost`) |
 | `DatePicker` / `DateRangePicker` | **el** calendario: español, semana desde el lunes, `dd/MM/yyyy`, "hoy" = `todayBogota()`, presets (Hoy, Ayer, Esta semana, Este mes) |
-| `Money` / `MoneyInput` | nadie formatea ni captura dinero fuera de estos dos (reglas de `MoneyInput`: ARQUITECTURA §7) |
+| `Money` / `MoneyInput` | nadie formatea ni captura dinero fuera de estos dos (reglas de `MoneyInput`: ARQUITECTURA §7). `MoneyInput` tiene tamaño `lg` (cifra 600 · 18) para lo recibido en el POS |
 | `StatusBadge` | pastilla de estado con el **único** mapa estado → tono + ícono Lucide + etiqueta en español: 24 px, 600 · 12, ícono de 13, fondo `-soft` de su semántico (o `--neutral-soft`) y «Listo para remate» como **único estado relleno** (`--danger-solid`). Orden de urgencia en `CONTRACT_STATUS_URGENCY`. Un cliente pasa `kind="customer"`: su «active» dice **«Activo»**, no «Vigente» (F9-42). Un reintento de correo es ámbar; rojo solo lo que se perdió. Las clases van completas y estáticas, nunca interpoladas (ARQUITECTURA §16) |
 | `FilterChip` | la pestaña de filtro en pastilla (estado de contratos e inventario, módulo y antigüedad de Reportes, tipo de plantilla). La activa va en **neutro invertido** con `aria-pressed`, nunca en el oro del primario (F9-13); la inactiva, con el borde de controles |
 | `LegacyCodeBadge` | pastilla neutra con el código del sistema anterior de un contrato importado. No es un estado |
@@ -161,7 +196,7 @@ agrega como prop al compartido, no se clona. **Un solo modal, un solo calendario
 | `CashClosedNotice` | aviso arriba de una operación de dinero **en efectivo** con la caja cerrada, con «Abrir caja» si hay permiso (F9-19). Avisa antes de llenar, no bloquea: por banco se sigue operando sin caja. Con `anyMethod` avisa con cualquier medio: el gasto exige la caja abierta aunque se pague por transferencia. Sin saber el estado, no afirma nada |
 | `CashSessionRequiredDialog` | la respuesta a `CASH_SESSION_NOT_OPEN`: abrir caja desde ahí o a quién pedírselo |
 | `AccountPicker` | la cuenta donde queda la plata, junto al medio de pago (ARQUITECTURA §7); oculto sin `accounts.view`. Preselecciona la predeterminada del tipo por `onAutoSelect`, que en un formulario de React Hook Form es `resetField` con `defaultValue`: una preselección no ensucia el formulario ni dispara «¿Descartar lo escrito?» |
-| `CustomerPicker` / `ItemPicker` / `SearchInput` | elegir cliente (con «Consumidor final» en ventas), agregar artículos de a uno, búsqueda con debounce de 300 ms contra `?q=`. `SearchInput` lleva `ariaLabel` (sin él, el placeholder hace de nombre) |
+| `CustomerPicker` / `ItemPicker` / `SearchInput` | elegir cliente (con «Consumidor final» en ventas), agregar artículos de a uno, búsqueda con debounce de 300 ms contra `?q=`. `SearchInput` lleva `ariaLabel` (sin él, el placeholder hace de nombre); `ref`, `size="lg"`, `icon` y `trailing` existen para el escáner. `ItemPicker variant="scanner"` es el escáner del POS (§2, «Punto de venta») |
 | `PhotoUploader` / `PhotoThumbnail` | subir (comprimido a WebP, bucket privado, URL firmada, varias fotos con orden) y mostrar una foto guardada. El borrado ocurre al guardar (ARQUITECTURA §15) |
 | `PrintLayout` / `PrintBlocks` | documento imprimible en hoja carta con membrete de la empresa, montado en un portal para que al imprimir salga solo el documento. **Solo tokens `--paper-*`.** Las piezas: sección, campo, tabla, tabla de prendas, firma (espacio fijo, con o sin imagen). Un documento nuevo se arma con estas piezas. `CompanyDataNotice` avisa junto al botón de imprimir si faltan datos de la empresa |
 | `SaleReceiptDialog`, `ReturnFormDialog`, `EntryDetailDialog` | comprobante de venta, devolución y detalle de una compra: compartidos porque se abren desde más de un módulo |
